@@ -832,8 +832,8 @@ export default function DashboardPage() {
                   // Actualizar estado local
                   setHasSimulatedPurchase(true);
                   
-                  // Redirigir directamente a la página de progreso del curso
-                  router.push('/course/destroy-that-fat/progress');
+                  // Redirigir directamente al dashboard de student
+                  router.push('/student');
                 }}
                 className="bg-black hover:bg-gray-800 text-white font-bold px-8 py-3 rounded-xl transition-all duration-300 hover:scale-105 shadow-lg"
               >

@@ -19,7 +19,7 @@ interface Course {
   original_price?: number;
   discount_percentage?: number;
   category?: string;
-  category_name?: string;
+  category_name?: stringimage.png;
   rating?: number;
   students_count?: number;
   lessons_count?: number;
