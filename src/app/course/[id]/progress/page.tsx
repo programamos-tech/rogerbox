@@ -30,7 +30,7 @@ export default function CourseProgressPage() {
   const courseId = params?.id as string;
   
   const { courses, loading: coursesLoading } = useUnifiedCourses();
-  const { userPurchases, loading: purchasesLoading } = useUserPurchases();
+  const { purchases, loading: purchasesLoading } = useUserPurchases();
   
   const [workoutStreak, setWorkoutStreak] = useState(0);
   const [userRating, setUserRating] = useState(0);
@@ -55,7 +55,7 @@ export default function CourseProgressPage() {
   ]);
 
   const course = courses?.find(c => c.slug === courseId);
-  const userPurchase = userPurchases?.find(p => p.course_slug === courseId);
+  const userPurchase = purchases?.find((p: any) => p.course_slug === courseId);
   
   // Verificar si hay una compra simulada en localStorage
   const [simulatedPurchase, setSimulatedPurchase] = useState<any>(null);
@@ -86,11 +86,11 @@ export default function CourseProgressPage() {
     const daysDiff = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
     
     // La clase actual es el día actual (0-indexed)
-    return Math.min(daysDiff, (course?.lessons?.length || 1) - 1);
+    return Math.min(daysDiff, ((course as any)?.lessons?.length || 1) - 1);
   };
 
   const currentLessonIndex = getCurrentLessonIndex();
-  const currentLesson = course?.lessons?.[currentLessonIndex];
+  const currentLesson = (course as any)?.lessons?.[currentLessonIndex];
   const completedLessons = effectivePurchase?.completed_lessons || [];
   
   // Función para determinar el estado de una clase
@@ -103,7 +103,7 @@ export default function CourseProgressPage() {
     
     if (lessonIndex < daysDiff) {
       // Clases pasadas - completadas o disponibles para repasar
-      return completedLessons.includes(course?.lessons?.[lessonIndex]?.id) ? 'completed' : 'available';
+      return completedLessons.includes((course as any)?.lessons?.[lessonIndex]?.id) ? 'completed' : 'available';
     } else if (lessonIndex === daysDiff) {
       // Clase del día actual
       return 'current';
@@ -114,7 +114,7 @@ export default function CourseProgressPage() {
   };
 
   // Calcular progreso basado en clases completadas
-  const progressPercentage = course?.lessons ? (completedLessons.length / course.lessons.length) * 100 : 0;
+  const progressPercentage = (course as any)?.lessons ? (completedLessons.length / (course as any).lessons.length) * 100 : 0;
 
   useEffect(() => {
     if (!coursesLoading && !purchasesLoading) {
@@ -256,7 +256,7 @@ export default function CourseProgressPage() {
                   </div>
                   <div className="flex items-center space-x-2">
                     <Calendar className="w-4 h-4" />
-                    <span>Día {currentLessonIndex + 1} de {course.lessons?.length || 0}</span>
+                    <span>Día {currentLessonIndex + 1} de {(course as any).lessons?.length || 0}</span>
                   </div>
                 </div>
 
@@ -287,7 +287,7 @@ export default function CourseProgressPage() {
                 </div>
                 <div className="text-center p-4 bg-purple-50 rounded-lg">
                   <div className="text-3xl font-bold text-purple-600 mb-2">
-                    {Math.round((completedLessons.length / (course.lessons?.length || 1)) * 100)}%
+                    {Math.round((completedLessons.length / ((course as any).lessons?.length || 1)) * 100)}%
                   </div>
                   <div className="text-sm text-gray-600">Progreso total</div>
                 </div>
@@ -406,7 +406,7 @@ export default function CourseProgressPage() {
               </div>
 
               <div className="space-y-2">
-                {course.lessons?.map((lesson, index) => {
+                {(course as any).lessons?.map((lesson: any, index: number) => {
                   const status = getLessonStatus(index);
                   return (
                     <div
@@ -457,7 +457,7 @@ export default function CourseProgressPage() {
                 <div className="flex items-center space-x-3">
                   <Clock className="w-5 h-5 text-gray-400" />
                   <span className="text-sm text-gray-600">
-                    {course.lessons?.length || 0} clases
+                    {(course as any).lessons?.length || 0} clases
                   </span>
                 </div>
                 <div className="flex items-center space-x-3">
@@ -469,7 +469,7 @@ export default function CourseProgressPage() {
                 <div className="flex items-center space-x-3">
                   <Trophy className="w-5 h-5 text-gray-400" />
                   <span className="text-sm text-gray-600">
-                    {course.difficulty || 'Intermedio'}
+                    {course.level || 'Intermedio'}
                   </span>
                 </div>
               </div>

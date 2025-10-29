@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { supabase } from '@/lib/supabase';
 import { Star, Clock, Users, Play, ShoppingCart, Heart, ArrowLeft, CheckCircle, Zap, Target, Award, Shield, Tag, CreditCard } from 'lucide-react';
-import WompiPaymentWidget from '@/components/WompiPaymentWidget';
+import WompiCheckout from '@/components/WompiCheckout';
 import RogerBoxMuxPlayer from '@/components/RogerBoxMuxPlayer';
 
 interface Course {
@@ -243,34 +243,56 @@ export default function CourseDetailPage() {
   const handlePurchase = () => {
     if (!course) return;
     
-    // Validar autenticación solo al comprar
+    // MANDATORY: Validar que el usuario esté autenticado ANTES de permitir compra
     if (!session?.user) {
-      // Redirigir al login con un parámetro para volver al curso después
-      router.push(`/login?callbackUrl=${encodeURIComponent(window.location.pathname)}`);
+      // Guardar la URL actual para redirigir después del login
+      const currentUrl = window.location.pathname;
+      router.push(`/login?callbackUrl=${encodeURIComponent(currentUrl)}`);
+      return;
+    }
+
+    // Validar si el usuario ya compró este curso
+    if (isEnrolled) {
+      alert('Ya tienes acceso a este curso. Ve a tu dashboard para empezar a entrenar! 💪');
+      router.push('/dashboard');
+      return;
+    }
+
+    // Validar que el usuario tenga email (requerido por Wompi)
+    if (!session.user.email) {
+      alert('Tu cuenta no tiene un email asociado. Por favor actualiza tu perfil.');
       return;
     }
     
+    // Usuario autenticado correctamente, mostrar widget de pago
     setShowPaymentWidget(true);
   };
 
-  const handlePaymentSuccess = async (transactionId: string) => {
-    console.log('✅ Pago exitoso:', transactionId);
+  const handlePaymentSuccess = async () => {
+    console.log('✅ Pago exitoso');
     setShowPaymentWidget(false);
     
-    // Aquí podrías actualizar el estado del curso como comprado
+    // Actualizar el estado de inscripción
     setIsEnrolled(true);
         
-        // Mostrar mensaje de éxito
+    // Mostrar mensaje de éxito y recargar datos
     alert('¡Pago exitoso! Ya tienes acceso al curso.');
     
-    // Opcional: redirigir al dashboard o a la primera lección
-    // router.push('/dashboard');
+    // Recargar los datos del curso para actualizar el estado de inscripción
+    await loadCourseData();
+    
+    // Opcional: redirigir al dashboard del estudiante
+    // router.push('/student/dashboard');
   };
 
   const handlePaymentError = (error: string) => {
     console.error('❌ Error en el pago:', error);
     setShowPaymentWidget(false);
     alert(`Error en el pago: ${error}`);
+  };
+
+  const handlePaymentClose = () => {
+    setShowPaymentWidget(false);
   };
 
   if (loading) {
@@ -511,13 +533,23 @@ export default function CourseDetailPage() {
                     </div>
 
                     {/* Purchase Button */}
-                    <button
-                      onClick={handlePurchase}
-                      className="w-full bg-[#85ea10] hover:bg-[#7dd30f] text-black font-bold py-3 px-6 rounded-xl transition-all duration-300 flex items-center justify-center space-x-2 text-base shadow-lg hover:shadow-xl transform hover:scale-105"
-                    >
-                      <ShoppingCart className="w-5 h-5" />
-                      <span>¡COMPRAR AHORA!</span>
-                    </button>
+                    {isEnrolled ? (
+                      <button
+                        onClick={() => router.push('/dashboard')}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl transition-all duration-300 flex items-center justify-center space-x-2 text-base shadow-lg hover:shadow-xl transform hover:scale-105"
+                      >
+                        <CheckCircle className="w-5 h-5" />
+                        <span>YA TIENES ESTE CURSO</span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={handlePurchase}
+                        className="w-full bg-[#85ea10] hover:bg-[#7dd30f] text-black font-bold py-3 px-6 rounded-xl transition-all duration-300 flex items-center justify-center space-x-2 text-base shadow-lg hover:shadow-xl transform hover:scale-105"
+                      >
+                        <ShoppingCart className="w-5 h-5" />
+                        <span>¡COMPRAR AHORA!</span>
+                      </button>
+                    )}
 
                     {/* Payment Info */}
                     <div className="space-y-2 pt-3 border-t border-gray-200 dark:border-gray-600">
@@ -548,13 +580,23 @@ export default function CourseDetailPage() {
                     </div>
                     
                     {/* Purchase Button */}
-                    <button
-                      onClick={handlePurchase}
-                      className="w-full bg-[#85ea10] hover:bg-[#7dd30f] text-black font-bold py-3 px-6 rounded-xl transition-all duration-300 flex items-center justify-center space-x-2 text-base shadow-lg hover:shadow-xl transform hover:scale-105"
-                    >
-                      <ShoppingCart className="w-5 h-5" />
-                      <span>¡COMPRAR AHORA!</span>
-                    </button>
+                    {isEnrolled ? (
+                      <button
+                        onClick={() => router.push('/dashboard')}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl transition-all duration-300 flex items-center justify-center space-x-2 text-base shadow-lg hover:shadow-xl transform hover:scale-105"
+                      >
+                        <CheckCircle className="w-5 h-5" />
+                        <span>YA TIENES ESTE CURSO</span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={handlePurchase}
+                        className="w-full bg-[#85ea10] hover:bg-[#7dd30f] text-black font-bold py-3 px-6 rounded-xl transition-all duration-300 flex items-center justify-center space-x-2 text-base shadow-lg hover:shadow-xl transform hover:scale-105"
+                      >
+                        <ShoppingCart className="w-5 h-5" />
+                        <span>¡COMPRAR AHORA!</span>
+                      </button>
+                    )}
 
                     {/* Payment Info */}
                     <div className="space-y-2 pt-3 border-t border-gray-200 dark:border-gray-600">
@@ -716,16 +758,19 @@ export default function CourseDetailPage() {
         </div>
       </div>
 
-      {/* Widget de pago de Wompi */}
-      {course && session?.user && (
-        <WompiPaymentWidget
-          isOpen={showPaymentWidget}
-          onClose={() => setShowPaymentWidget(false)}
-          course={course}
-          customerEmail={(session.user as any).email}
-          customerName={(session.user as any).name || ''}
+      {/* Widget oficial de Wompi Checkout */}
+      {course && session?.user && showPaymentWidget && (
+        <WompiCheckout
+          course={{
+            id: course.id,
+            title: course.title,
+            price: course.price,
+            original_price: course.original_price,
+            discount_percentage: course.discount_percentage,
+          }}
           onSuccess={handlePaymentSuccess}
           onError={handlePaymentError}
+          onClose={handlePaymentClose}
         />
       )}
       </div>

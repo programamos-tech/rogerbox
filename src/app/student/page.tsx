@@ -29,7 +29,7 @@ export default function PurchasedDashboard() {
   const { data: session } = useSession();
   const router = useRouter();
   const { courses, loading: coursesLoading } = useUnifiedCourses();
-  const { userPurchases, loading: purchasesLoading } = useUserPurchases();
+  const { purchases, loading: purchasesLoading } = useUserPurchases();
   
   const [simulatedPurchase, setSimulatedPurchase] = useState<any>(null);
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -117,8 +117,8 @@ export default function PurchasedDashboard() {
   // Obtener el curso comprado
   const purchasedCourse = simulatedPurchase ? 
     (courseWithLessons || courses?.find(c => c.slug === simulatedPurchase.course?.slug)) :
-    userPurchases?.[0] ? 
-      courses?.find(c => c.slug === userPurchases[0].course_slug) : 
+    purchases?.[0] ? 
+      courses?.find(c => c.slug === purchases[0].course?.slug) : 
       null;
 
   // Debug: Verificar que el curso tenga lecciones
@@ -127,7 +127,7 @@ export default function PurchasedDashboard() {
   console.log('🔍 courseWithLessons:', courseWithLessons);
   console.log('🔍 simulatedPurchase:', simulatedPurchase);
 
-  const effectivePurchase = simulatedPurchase || userPurchases?.[0];
+  const effectivePurchase = simulatedPurchase || purchases?.[0];
 
   // Calcular estadísticas
   const getCurrentLessonIndex = () => {
@@ -347,7 +347,7 @@ export default function PurchasedDashboard() {
                     onPlay={() => console.log('▶️ Video reproduciéndose')}
                     onError={(e) => console.error('❌ Error en video:', e)}
                   >
-                    <source src={getMuxVideoUrl(currentLesson.video_url)} type="application/x-mpegURL" />
+                    <source src={getMuxVideoUrl(currentLesson.video_url) || undefined} type="application/x-mpegURL" />
                     Tu navegador no soporta el elemento de video.
                   </video>
                   

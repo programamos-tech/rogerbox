@@ -23,20 +23,23 @@ function PaymentResultContent() {
   const [error, setError] = useState<string | null>(null);
 
   const orderId = searchParams.get('order_id');
+  const reference = searchParams.get('reference');
   const transactionId = searchParams.get('transaction_id');
 
   useEffect(() => {
-    if (!orderId && !transactionId) {
-      setError('ID de orden o transacción no encontrado');
+    if (!orderId && !transactionId && !reference) {
+      setError('ID de orden, referencia o transacción no encontrado');
       setLoading(false);
       return;
     }
 
     loadOrderResult();
-  }, [orderId, transactionId]);
+  }, [orderId, transactionId, reference]);
 
   const loadOrderResult = async () => {
     try {
+      console.log('🔍 Buscando orden con:', { orderId, reference, transactionId });
+
       let query = supabase
         .from('orders')
         .select(`
@@ -45,15 +48,18 @@ function PaymentResultContent() {
           amount,
           currency,
           created_at,
-          courses (
+          course_id,
+          courses!inner (
             title,
             preview_image
           )
         `);
 
-      // Buscar por order_id o transaction_id
+      // Buscar por order_id, reference o transaction_id
       if (orderId) {
         query = query.eq('id', orderId);
+      } else if (reference) {
+        query = query.eq('wompi_reference', reference);
       } else if (transactionId) {
         query = query.eq('wompi_transaction_id', transactionId);
       }
@@ -61,25 +67,51 @@ function PaymentResultContent() {
       const { data, error } = await query.single();
 
       if (error) {
-        console.error('Error loading order:', error);
+        console.error('❌ Error loading order:', error);
         setError('Error al cargar la información de la orden');
         return;
       }
 
+      console.log('✅ Orden encontrada:', data);
+
       // Transformar los datos para que coincidan con la interfaz
+      const courses = data.courses as any;
       const transformedData = {
         id: data.id,
         status: data.status,
         amount: data.amount,
         currency: data.currency,
-        course_title: data.courses?.[0]?.title || 'Curso no encontrado',
-        course_image: data.courses?.[0]?.preview_image || '',
+        course_title: courses?.title || 'Curso no encontrado',
+        course_image: courses?.preview_image || '',
         created_at: data.created_at
       };
 
       setOrder(transformedData);
+
+      // Si el pago está pendiente, verificar estado cada 3 segundos
+      if (data.status === 'pending') {
+        const intervalId = setInterval(async () => {
+          console.log('🔄 Verificando estado de la orden...');
+          const { data: updatedOrder } = await supabase
+            .from('orders')
+            .select('status')
+            .eq('id', data.id)
+            .single();
+
+          if (updatedOrder && updatedOrder.status !== 'pending') {
+            console.log('✅ Estado actualizado:', updatedOrder.status);
+            setOrder(prev => prev ? { ...prev, status: updatedOrder.status } : null);
+            clearInterval(intervalId);
+          }
+        }, 3000);
+
+        // Limpiar intervalo después de 2 minutos
+        setTimeout(() => clearInterval(intervalId), 120000);
+
+        return () => clearInterval(intervalId);
+      }
     } catch (err) {
-      console.error('Error:', err);
+      console.error('❌ Error:', err);
       setError('Error interno del servidor');
     } finally {
       setLoading(false);
