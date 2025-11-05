@@ -630,13 +630,13 @@ function PaymentResultContent() {
             <ArrowRight className="w-5 h-5" />
           </button>
         ) : (
-          <button
-            onClick={handleContinue}
+        <button
+          onClick={handleContinue}
             className="w-full bg-[#85ea10] text-black font-bold py-3 px-6 rounded-xl hover:bg-[#6bc20a] transition-colors flex items-center justify-center gap-2"
-          >
-            {order.status === 'approved' ? 'Ir al Dashboard' : 'Ver Cursos'}
-            <ArrowRight className="w-5 h-5" />
-          </button>
+        >
+          {order.status === 'approved' ? 'Ir al Dashboard' : 'Ver Cursos'}
+          <ArrowRight className="w-5 h-5" />
+        </button>
         )}
 
         {/* Información adicional para pagos pendientes */}

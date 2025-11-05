@@ -43,84 +43,84 @@ export default function Footer() {
           </div>
 
           {/* Quick Links - Column 2 */}
-          <div className="text-center md:text-left">
+            <div className="text-center md:text-left">
             <h4 className="text-base md:text-base font-semibold text-gray-900 dark:text-white mb-3 md:mb-3">
-              Enlaces Rápidos
-            </h4>
+                Enlaces Rápidos
+              </h4>
             <div className="space-y-2 md:space-y-2 text-sm md:text-sm">
-              <a href="/courses" className="block text-gray-500 dark:text-white/60 hover:text-[#85ea10] transition-colors">
-                Cursos
-              </a>
-              <a href="/nutritional-plans" className="block text-gray-500 dark:text-white/60 hover:text-[#85ea10] transition-colors">
-                Planes Nutricionales
-              </a>
-              <a href="/about" className="block text-gray-500 dark:text-white/60 hover:text-[#85ea10] transition-colors">
-                Qué es RogerBox
-              </a>
-              <a href="/contact" className="block text-gray-500 dark:text-white/60 hover:text-[#85ea10] transition-colors">
-                Contacto
-              </a>
+                <a href="/courses" className="block text-gray-500 dark:text-white/60 hover:text-[#85ea10] transition-colors">
+                  Cursos
+                </a>
+                <a href="/nutritional-plans" className="block text-gray-500 dark:text-white/60 hover:text-[#85ea10] transition-colors">
+                  Planes Nutricionales
+                </a>
+                <a href="/about" className="block text-gray-500 dark:text-white/60 hover:text-[#85ea10] transition-colors">
+                  Qué es RogerBox
+                </a>
+                <a href="/contact" className="block text-gray-500 dark:text-white/60 hover:text-[#85ea10] transition-colors">
+                  Contacto
+                </a>
+              </div>
             </div>
-          </div>
 
           {/* Social Media - Column 3 */}
-          <div className="text-center md:text-left">
+            <div className="text-center md:text-left">
             <h4 className="text-base md:text-base font-semibold text-gray-900 dark:text-white mb-3 md:mb-3">
-              Síguenos
-            </h4>
+                Síguenos
+              </h4>
             <div className="flex flex-col gap-2 md:gap-2">
-              <a
-                href="https://instagram.com/rogerbox"
-                target="_blank"
-                rel="noopener noreferrer"
+                <a
+                  href="https://instagram.com/rogerbox"
+                  target="_blank"
+                  rel="noopener noreferrer"
                 className="flex items-center justify-center md:justify-start gap-2 text-gray-600 dark:text-gray-400 hover:text-[#85ea10] dark:hover:text-[#85ea10] transition-colors duration-300"
-              >
+                >
                 <svg className="w-4 h-4 md:w-4 md:h-4 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                  <rect width="20" height="20" x="2" y="2" rx="5" ry="5"/>
-                  <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
-                  <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>
-                </svg>
-                <span className="text-sm md:text-sm font-medium">Instagram</span>
-              </a>
-              
-              <a
-                href="https://youtube.com/@rogerbox"
-                target="_blank"
-                rel="noopener noreferrer"
+                    <rect width="20" height="20" x="2" y="2" rx="5" ry="5"/>
+                    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
+                    <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>
+                  </svg>
+                  <span className="text-sm md:text-sm font-medium">Instagram</span>
+                </a>
+                
+                <a
+                  href="https://youtube.com/@rogerbox"
+                  target="_blank"
+                  rel="noopener noreferrer"
                 className="flex items-center justify-center md:justify-start gap-2 text-gray-600 dark:text-gray-400 hover:text-[#85ea10] dark:hover:text-[#85ea10] transition-colors duration-300"
-              >
+                >
                 <svg className="w-4 h-4 md:w-4 md:h-4 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                  <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"/>
-                  <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/>
-                </svg>
-                <span className="text-sm md:text-sm font-medium">YouTube</span>
-              </a>
-              
-              <a
-                href="https://tiktok.com/@rogerbox"
-                target="_blank"
-                rel="noopener noreferrer"
+                    <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"/>
+                    <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/>
+                  </svg>
+                  <span className="text-sm md:text-sm font-medium">YouTube</span>
+                </a>
+                
+                <a
+                  href="https://tiktok.com/@rogerbox"
+                  target="_blank"
+                  rel="noopener noreferrer"
                 className="flex items-center justify-center md:justify-start gap-2 text-gray-600 dark:text-gray-400 hover:text-[#85ea10] dark:hover:text-[#85ea10] transition-colors duration-300"
-              >
+                >
                 <svg className="w-4 h-4 md:w-4 md:h-4 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                  <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
-                </svg>
-                <span className="text-sm md:text-sm font-medium">TikTok</span>
-              </a>
-              
-              <a
-                href="https://linkedin.com/company/rogerbox"
-                target="_blank"
-                rel="noopener noreferrer"
+                    <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
+                  </svg>
+                  <span className="text-sm md:text-sm font-medium">TikTok</span>
+                </a>
+                
+                <a
+                  href="https://linkedin.com/company/rogerbox"
+                  target="_blank"
+                  rel="noopener noreferrer"
                 className="flex items-center justify-center md:justify-start gap-2 text-gray-600 dark:text-gray-400 hover:text-[#85ea10] dark:hover:text-[#85ea10] transition-colors duration-300"
-              >
+                >
                 <svg className="w-4 h-4 md:w-4 md:h-4 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                  <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/>
-                  <rect width="4" height="12" x="2" y="9"/>
-                  <circle cx="4" cy="4" r="2"/>
-                </svg>
-                <span className="text-sm md:text-sm font-medium">LinkedIn</span>
-              </a>
+                    <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/>
+                    <rect width="4" height="12" x="2" y="9"/>
+                    <circle cx="4" cy="4" r="2"/>
+                  </svg>
+                  <span className="text-sm md:text-sm font-medium">LinkedIn</span>
+                </a>
             </div>
           </div>
         </div>
