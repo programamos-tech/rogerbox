@@ -2,8 +2,10 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { supabase } from '@/lib/supabase';
-import { CheckCircle, XCircle, Clock, ArrowRight } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, ArrowRight, CheckCircle2, Sparkles, Download } from 'lucide-react';
+import CourseStartDateModal from '@/components/CourseStartDateModal';
 
 interface OrderResult {
   id: string;
@@ -18,9 +20,15 @@ interface OrderResult {
 function PaymentResultContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { data: session } = useSession();
   const [order, setOrder] = useState<OrderResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showStartDateModal, setShowStartDateModal] = useState(false);
+  const [courseId, setCourseId] = useState<string | null>(null);
+  const [hasStartDate, setHasStartDate] = useState(false);
+  const [buyerName, setBuyerName] = useState<string>('');
+  const [buyerDocument, setBuyerDocument] = useState<string>('');
 
   const orderId = searchParams.get('order_id');
   const reference = searchParams.get('reference');
@@ -36,6 +44,35 @@ function PaymentResultContent() {
     loadOrderResult();
   }, [orderId, transactionId, reference]);
 
+  // Obtener información del comprador cuando la sesión esté disponible (solo si no se obtuvo de la orden)
+  useEffect(() => {
+    const fetchBuyerInfo = async () => {
+      // Solo obtener del perfil si no tenemos nombre del comprador
+      if ((session as any)?.user?.id && !buyerName) {
+        try {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('name, document_id')
+            .eq('id', (session as any).user.id)
+            .maybeSingle();
+
+          if (profile) {
+            if (!buyerName) {
+              setBuyerName(profile.name || '');
+            }
+            if (!buyerDocument) {
+              setBuyerDocument(profile.document_id || '');
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching buyer info:', error);
+        }
+      }
+    };
+
+    fetchBuyerInfo();
+  }, [session, buyerName, buyerDocument]);
+
   const loadOrderResult = async () => {
     try {
       console.log('🔍 Buscando orden con:', { orderId, reference, transactionId });
@@ -49,6 +86,9 @@ function PaymentResultContent() {
           currency,
           created_at,
           course_id,
+          customer_name,
+          customer_email,
+          user_id,
           courses!inner (
             title,
             preview_image
@@ -87,6 +127,105 @@ function PaymentResultContent() {
       };
 
       setOrder(transformedData);
+      setCourseId(data.course_id);
+
+      console.log('👤 Datos de la orden:', {
+        customer_name: data.customer_name,
+        user_id: data.user_id,
+        session_user_id: (session as any)?.user?.id
+      });
+
+      let foundName = data.customer_name || '';
+      let foundDocument = '';
+
+      // Obtener nombre del cliente desde la orden primero
+      if (data.customer_name) {
+        console.log('✅ Nombre obtenido de la orden:', data.customer_name);
+        foundName = data.customer_name;
+      }
+      
+      // Obtener información completa del perfil del usuario (nombre y cédula)
+      if (data.user_id) {
+        console.log('🔍 Buscando perfil para user_id:', data.user_id);
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('name, document_id')
+          .eq('id', data.user_id)
+          .maybeSingle();
+
+        if (profileError) {
+          console.error('❌ Error obteniendo perfil:', profileError);
+        }
+
+        if (profile) {
+          console.log('✅ Perfil encontrado:', { name: profile.name, document_id: profile.document_id });
+          // Si no hay nombre en la orden, usar el del perfil
+          if (!foundName && profile.name) {
+            foundName = profile.name;
+          }
+          // Siempre obtener la cédula del perfil
+          if (profile.document_id) {
+            foundDocument = profile.document_id;
+          }
+        } else {
+          console.log('⚠️ No se encontró perfil para user_id:', data.user_id);
+        }
+      }
+      
+      // Si aún no tenemos nombre, intentar obtenerlo de la sesión actual
+      if (!foundName && (session as any)?.user?.id) {
+        console.log('🔍 Buscando perfil de sesión actual:', (session as any).user.id);
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('name, document_id')
+          .eq('id', (session as any).user.id)
+          .maybeSingle();
+
+        if (profileError) {
+          console.error('❌ Error obteniendo perfil de sesión:', profileError);
+        }
+
+        if (profile) {
+          console.log('✅ Perfil de sesión encontrado:', { name: profile.name, document_id: profile.document_id });
+          if (!foundName && profile.name) {
+            foundName = profile.name;
+          }
+          if (!foundDocument && profile.document_id) {
+            foundDocument = profile.document_id;
+          }
+        }
+      }
+
+      // Actualizar el estado con los valores encontrados
+      if (foundName) {
+        setBuyerName(foundName);
+      }
+      if (foundDocument) {
+        setBuyerDocument(foundDocument);
+      }
+
+      console.log('📋 Datos finales del comprador:', {
+        buyerName: foundName,
+        buyerDocument: foundDocument
+      });
+
+      // Si el pago está aprobado, verificar si tiene fecha de inicio
+      if (data.status === 'approved' && data.course_id) {
+        // Buscar la compra del curso
+        const { data: purchase } = await supabase
+          .from('course_purchases')
+          .select('start_date')
+          .eq('order_id', data.id)
+          .eq('course_id', data.course_id)
+          .maybeSingle();
+
+        if (purchase && !purchase.start_date) {
+          // No tiene fecha de inicio, mostrar modal
+          setShowStartDateModal(true);
+        } else if (purchase && purchase.start_date) {
+          setHasStartDate(true);
+        }
+      }
 
       // Si el pago está pendiente, verificar estado cada 3 segundos
       if (data.status === 'pending') {
@@ -161,19 +300,209 @@ function PaymentResultContent() {
   };
 
   const handleContinue = () => {
-    if (order?.status === 'approved') {
+    if (order?.status === 'approved' && !hasStartDate) {
+      // Si no tiene fecha de inicio, mostrar modal
+      setShowStartDateModal(true);
+    } else if (order?.status === 'approved') {
       router.push('/dashboard');
     } else {
       router.push('/courses');
     }
   };
 
+  const handleDownloadReceipt = () => {
+    if (!order) return;
+
+    // Crear contenido HTML para el comprobante
+    const receiptContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="UTF-8">
+          <title>Comprobante de Pago - RogerBox</title>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              max-width: 800px;
+              margin: 0 auto;
+              padding: 40px;
+              color: #333;
+            }
+            .header {
+              text-align: center;
+              margin-bottom: 40px;
+              border-bottom: 3px solid #85ea10;
+              padding-bottom: 20px;
+            }
+            .logo {
+              font-size: 36px;
+              font-weight: 900 !important;
+              color: #000;
+              font-family: 'Arial Black', 'Arial Bold', Arial, sans-serif !important;
+              letter-spacing: 0px;
+              text-transform: uppercase;
+              -webkit-font-smoothing: antialiased;
+              -moz-osx-font-smoothing: grayscale;
+            }
+            .logo span {
+              color: #85ea10;
+              font-weight: 900 !important;
+            }
+            .title {
+              font-size: 24px;
+              font-weight: bold;
+              color: #85ea10;
+              margin-top: 20px;
+            }
+            .company-info {
+              background: #f9fafb;
+              padding: 20px;
+              border-radius: 12px;
+              margin: 30px 0;
+              border-left: 4px solid #85ea10;
+            }
+            .company-info h3 {
+              margin: 0 0 15px 0;
+              color: #000;
+              font-size: 18px;
+            }
+            .company-info p {
+              margin: 5px 0;
+              color: #666;
+              font-size: 14px;
+            }
+            .details {
+              background: #f9fafb;
+              padding: 30px;
+              border-radius: 12px;
+              margin: 30px 0;
+            }
+            .detail-row {
+              display: flex;
+              justify-content: space-between;
+              padding: 12px 0;
+              border-bottom: 1px solid #e5e7eb;
+            }
+            .detail-row:last-child {
+              border-bottom: none;
+            }
+            .detail-label {
+              font-weight: 600;
+              color: #666;
+            }
+            .detail-value {
+              color: #000;
+              text-align: right;
+              max-width: 60%;
+            }
+            .footer {
+              margin-top: 40px;
+              padding-top: 20px;
+              border-top: 2px solid #e5e7eb;
+              text-align: center;
+              color: #666;
+              font-size: 12px;
+            }
+            .status-badge {
+              display: inline-block;
+              padding: 6px 12px;
+              border-radius: 6px;
+              font-weight: 600;
+              background: #dcfce7;
+              color: #166534;
+            }
+            @media print {
+              body {
+                padding: 20px;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div class="logo" style="font-weight: 900 !important; font-family: 'Arial Black', Arial, sans-serif !important; letter-spacing: 0px !important;">ROGER<span style="font-weight: 900 !important;">BOX</span></div>
+            <div class="title">Comprobante de Pago</div>
+          </div>
+
+          <div class="company-info">
+            <h3>Información de la Empresa</h3>
+            <p><strong>NIT:</strong> 1102819763-9</p>
+            <p><strong>Dirección:</strong> Cr 54 A #25-26, Edificio Mont Cervino, Local 1, Los Alpes</p>
+            <p><strong>WhatsApp:</strong> 3005009487</p>
+          </div>
+
+          <div class="details">
+            <div class="detail-row">
+              <span class="detail-label">Número de Orden:</span>
+              <span class="detail-value">${order.id.substring(0, 8).toUpperCase()}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Fecha de Pago:</span>
+              <span class="detail-value">${new Date(order.created_at).toLocaleDateString('es-CO', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              })}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Estado:</span>
+              <span class="detail-value">
+                <span class="status-badge">${order.status === 'approved' ? 'Aprobado' : order.status === 'pending' ? 'Pendiente' : 'Declinado'}</span>
+              </span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Comprador:</span>
+              <span class="detail-value">${buyerName || 'No disponible'}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Cédula:</span>
+              <span class="detail-value">${buyerDocument || 'No disponible'}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Curso:</span>
+              <span class="detail-value">${order.course_title}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Monto Pagado:</span>
+              <span class="detail-value" style="font-size: 18px; font-weight: bold; color: #85ea10;">
+                $${order.amount.toLocaleString('es-CO')} ${order.currency}
+              </span>
+            </div>
+          </div>
+
+          <div class="footer">
+            <p>Este es un comprobante de pago generado por RogerBox</p>
+            <p>Para consultas, contacta a nuestro equipo de soporte</p>
+            <p style="margin-top: 10px;">www.rogerbox.com</p>
+          </div>
+        </body>
+      </html>
+    `;
+
+    // Crear un blob con el contenido HTML
+    const blob = new Blob([receiptContent], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    
+    // Crear un enlace temporal y hacer click para descargar
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `comprobante-pago-${order.id.substring(0, 8)}-${new Date().toISOString().split('T')[0]}.html`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // Limpiar el URL
+    URL.revokeObjectURL(url);
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="bg-gray-800 rounded-2xl p-8 shadow-2xl">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="bg-white rounded-2xl p-8 shadow-2xl">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#85ea10] mx-auto"></div>
-          <p className="text-gray-300 mt-4 text-center">Cargando resultado del pago...</p>
+          <p className="text-gray-600 mt-4 text-center">Cargando resultado del pago...</p>
         </div>
       </div>
     );
@@ -181,18 +510,18 @@ function PaymentResultContent() {
 
   if (error || !order) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="bg-gray-800 rounded-2xl p-8 shadow-2xl max-w-md w-full mx-4">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="bg-white rounded-2xl p-8 shadow-2xl max-w-md w-full mx-4">
           <XCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-white text-center mb-4">
+          <h1 className="text-2xl font-bold text-gray-900 text-center mb-4">
             Error
           </h1>
-          <p className="text-gray-300 text-center mb-6">
+          <p className="text-gray-600 text-center mb-6">
             {error || 'No se pudo cargar la información del pago'}
           </p>
           <button
             onClick={() => router.push('/courses')}
-            className="w-full bg-[#85ea10] text-white font-bold py-3 px-6 rounded-xl hover:bg-[#6bc20a] transition-colors"
+            className="w-full bg-[#85ea10] text-black font-bold py-3 px-6 rounded-xl hover:bg-[#6bc20a] transition-colors"
           >
             Volver a Cursos
           </button>
@@ -204,11 +533,13 @@ function PaymentResultContent() {
   const statusInfo = getStatusMessage(order.status);
 
   return (
-    <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
-      <div className="bg-gray-800 rounded-2xl p-8 shadow-2xl max-w-md w-full border border-gray-700">
-        {/* Icono de estado */}
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl p-8 shadow-2xl max-w-md w-full border border-gray-200">
+        {/* Logo RogerBox */}
         <div className="text-center mb-6">
-          {getStatusIcon(order.status)}
+          <h1 className="text-3xl font-black text-gray-900 uppercase tracking-tight">
+            ROGER<span className="text-[#85ea10]">BOX</span>
+          </h1>
         </div>
 
         {/* Título y mensaje */}
@@ -216,57 +547,97 @@ function PaymentResultContent() {
           <h1 className={`text-3xl font-bold mb-3 ${order.status === 'approved' ? 'text-[#85ea10]' : statusInfo.color}`}>
             {statusInfo.title}
           </h1>
-          <p className="text-gray-300 text-lg">
+          <p className="text-gray-600 text-lg">
             {statusInfo.message}
           </p>
           {order.status === 'approved' && (
-            <div className="mt-4 p-3 bg-green-900/20 border border-[#85ea10]/30 rounded-lg">
-              <p className="text-[#85ea10] font-semibold text-sm">
-                ✅ ¡Tu curso ya está disponible en tu dashboard!
+            <div className="mt-4 p-3 bg-[#85ea10]/10 border-2 border-[#85ea10] rounded-lg flex items-center justify-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-[#85ea10] flex-shrink-0" />
+              <p className="text-[#85ea10] font-bold text-sm">
+                ¡Tu curso ya está disponible en tu dashboard!
               </p>
             </div>
           )}
         </div>
 
         {/* Información de la orden */}
-        <div className="bg-gray-700 rounded-xl p-4 mb-6 border border-gray-600">
-          <h3 className="font-semibold text-white mb-3">Detalles de la Orden</h3>
+        <div className="bg-gray-50 rounded-xl p-4 mb-6 border border-gray-200">
+          <h3 className="font-semibold text-gray-900 mb-3">Detalles de la Orden</h3>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
-              <span className="text-gray-400">Curso:</span>
-              <span className="font-medium text-white text-right max-w-xs">{order.course_title}</span>
+              <span className="text-gray-600">Curso:</span>
+              <span className="font-medium text-gray-900 text-right max-w-xs flex items-start gap-1">
+                <Sparkles className="w-4 h-4 text-[#85ea10] flex-shrink-0 mt-0.5" />
+                {order.course_title}
+              </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-400">Monto:</span>
-              <span className="font-medium text-white">
+              <span className="text-gray-600">Monto:</span>
+              <span className="font-medium text-gray-900">
                 ${order.amount.toLocaleString('es-CO')} {order.currency}
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-400">Estado:</span>
-              <span className={`font-medium capitalize ${order.status === 'approved' ? 'text-[#85ea10]' : statusInfo.color}`}>
-                {order.status === 'approved' ? '✅ Aprobado' : 
-                 order.status === 'declined' ? '❌ Declinado' : 
-                 order.status === 'pending' ? '⏳ Pendiente' : order.status}
+              <span className="text-gray-600">Estado:</span>
+              <span className={`font-medium capitalize flex items-center gap-1 ${order.status === 'approved' ? 'text-[#85ea10]' : statusInfo.color}`}>
+                {order.status === 'approved' ? (
+                  <>
+                    <CheckCircle2 className="w-4 h-4" />
+                    Aprobado
+                  </>
+                ) : order.status === 'declined' ? (
+                  <>
+                    <XCircle className="w-4 h-4" />
+                    Declinado
+                  </>
+                ) : order.status === 'pending' ? (
+                  <>
+                    <Clock className="w-4 h-4" />
+                    Pendiente
+                  </>
+                ) : (
+                  order.status
+                )}
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-400">Fecha:</span>
-              <span className="font-medium text-white">
+              <span className="text-gray-600">Fecha:</span>
+              <span className="font-medium text-gray-900">
                 {new Date(order.created_at).toLocaleDateString('es-CO')}
               </span>
             </div>
           </div>
         </div>
 
+        {/* Botón de descargar comprobante */}
+        {order.status === 'approved' && (
+          <button
+            onClick={handleDownloadReceipt}
+            className="w-full mb-3 bg-gray-100 hover:bg-gray-200 text-gray-900 font-semibold py-3 px-6 rounded-xl transition-colors flex items-center justify-center gap-2 border border-gray-300"
+          >
+            <Download className="w-5 h-5" />
+            Descargar Comprobante de Pago
+          </button>
+        )}
+
         {/* Botón de acción */}
-        <button
-          onClick={handleContinue}
-          className="w-full bg-[#85ea10] text-white font-bold py-3 px-6 rounded-xl hover:bg-[#6bc20a] transition-colors flex items-center justify-center gap-2"
-        >
-          {order.status === 'approved' ? 'Ir al Dashboard' : 'Ver Cursos'}
-          <ArrowRight className="w-5 h-5" />
-        </button>
+        {order.status === 'approved' && !hasStartDate ? (
+          <button
+            onClick={() => setShowStartDateModal(true)}
+            className="w-full bg-[#85ea10] text-black font-bold py-3 px-6 rounded-xl hover:bg-[#6bc20a] transition-colors flex items-center justify-center gap-2"
+          >
+            Seleccionar Fecha de Inicio
+            <ArrowRight className="w-5 h-5" />
+          </button>
+        ) : (
+          <button
+            onClick={handleContinue}
+            className="w-full bg-[#85ea10] text-black font-bold py-3 px-6 rounded-xl hover:bg-[#6bc20a] transition-colors flex items-center justify-center gap-2"
+          >
+            {order.status === 'approved' ? 'Ir al Dashboard' : 'Ver Cursos'}
+            <ArrowRight className="w-5 h-5" />
+          </button>
+        )}
 
         {/* Información adicional para pagos pendientes */}
         {order.status === 'pending' && (
@@ -277,6 +648,21 @@ function PaymentResultContent() {
           </div>
         )}
       </div>
+
+      {/* Modal de selección de fecha de inicio */}
+      {showStartDateModal && courseId && orderId && (
+        <CourseStartDateModal
+          courseId={courseId}
+          orderId={orderId}
+          onClose={() => {
+            setShowStartDateModal(false);
+            // Verificar si ahora tiene fecha de inicio
+            setTimeout(() => {
+              setHasStartDate(true);
+            }, 1000);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -284,10 +670,10 @@ function PaymentResultContent() {
 // Componente de carga para Suspense
 function PaymentResultLoading() {
   return (
-    <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-      <div className="bg-gray-800 rounded-2xl p-8 shadow-2xl">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="bg-white rounded-2xl p-8 shadow-2xl">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#85ea10] mx-auto"></div>
-        <p className="text-gray-300 mt-4 text-center">Cargando resultado del pago...</p>
+        <p className="text-gray-600 mt-4 text-center">Cargando resultado del pago...</p>
       </div>
     </div>
   );

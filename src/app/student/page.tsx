@@ -172,46 +172,67 @@ export default function PurchasedDashboard() {
     Math.round((completedLessons.length / purchasedCourse.lessons.length) * 100) : 0;
 
   // Generar calendario de próximas clases
+  // Regla: Solo la clase del día actual está disponible. Si no se toma, se pierde.
   const generateUpcomingClasses = () => {
     if (!purchasedCourse?.lessons || !effectivePurchase?.start_date) return [];
     
     const startDate = new Date(effectivePurchase.start_date);
+    startDate.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
     const upcoming = [];
+    const completedCount = completedLessons.length;
     
     // Mostrar todas las lecciones del curso
     for (let i = 0; i < purchasedCourse.lessons.length; i++) {
       const classDate = new Date(startDate);
       classDate.setDate(startDate.getDate() + i);
+      classDate.setHours(0, 0, 0, 0);
       
       const lesson = purchasedCourse.lessons[i];
       const isCompleted = completedLessons.includes(lesson.id);
-      const isToday = i === currentLessonIndex;
-      const isPast = i < currentLessonIndex;
-      const isTomorrow = i === currentLessonIndex + 1;
+      const daysDiff = Math.floor((today.getTime() - classDate.getTime()) / (1000 * 60 * 60 * 24));
       
-      // Determinar el texto de estado
+      // Determinar el estado de la clase
       let statusText = '';
+      let isAvailable = false;
+      let isLost = false;
+      let isUpcoming = false;
+      
       if (isCompleted) {
         statusText = 'Completada';
-      } else if (isToday) {
+      } else if (daysDiff === 0 && i === completedCount) {
+        // Clase del día actual, disponible
         statusText = 'Disponible hoy';
-      } else if (isTomorrow) {
+        isAvailable = true;
+      } else if (daysDiff > 0 && i >= completedCount) {
+        // Clase pasada no completada, perdida
+        statusText = 'Perdida';
+        isLost = true;
+      } else if (daysDiff === -1 && i === completedCount) {
+        // Siguiente clase (mañana)
         statusText = 'Disponible mañana';
-      } else if (isPast) {
-        statusText = 'Disponible para repaso';
-      } else {
+        isUpcoming = true;
+      } else if (daysDiff < -1) {
+        // Clase futura
         statusText = 'Próximamente';
+      } else {
+        // Otras clases bloqueadas
+        statusText = 'Bloqueada';
       }
       
       upcoming.push({
         date: classDate,
         lesson,
         isCompleted,
-        isToday,
-        isPast,
-        isTomorrow,
+        isToday: isAvailable,
+        isPast: isLost,
+        isTomorrow: isUpcoming,
         dayNumber: i + 1,
-        statusText
+        statusText,
+        isAvailable,
+        isLost
       });
     }
     

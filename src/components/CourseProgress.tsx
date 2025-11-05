@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Calendar, Clock, CheckCircle, Play, Lock, Target, TrendingUp, Award } from 'lucide-react';
+import { Calendar, Clock, CheckCircle, Play, Lock, Target, TrendingUp, Award, XCircle } from 'lucide-react';
 
 interface CourseProgressProps {
   course: {
@@ -44,17 +44,43 @@ export default function CourseProgress({ course, lessons }: CourseProgressProps)
   const progress = getProgress();
 
   // Determinar estado de cada clase
+  // Regla: Solo la clase del día actual está disponible. Si no se toma, se pierde.
   const getLessonStatus = (lessonIndex: number) => {
     const lessonDate = new Date(startDate);
     lessonDate.setDate(startDate.getDate() + lessonIndex);
+    lessonDate.setHours(0, 0, 0, 0);
     
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const daysDiff = Math.floor((today.getTime() - lessonDate.getTime()) / (1000 * 60 * 60 * 24));
+    
+    // Si la clase ya fue completada
     if (lessonIndex < progress.completedLessons) {
       return 'completed';
-    } else if (lessonIndex === progress.completedLessons && currentDate >= lessonDate) {
+    }
+    
+    // Si la clase es del día actual (daysDiff === 0) y no está completada, está disponible
+    if (daysDiff === 0 && lessonIndex === progress.completedLessons) {
       return 'available';
-    } else {
+    }
+    
+    // Si la clase es de un día pasado y no fue completada, está perdida
+    if (daysDiff > 0 && lessonIndex >= progress.completedLessons) {
+      return 'lost';
+    }
+    
+    // Si la clase es futura, está bloqueada
+    if (daysDiff < 0) {
       return 'locked';
     }
+    
+    // Si es la siguiente clase disponible (mañana)
+    if (daysDiff === -1 && lessonIndex === progress.completedLessons) {
+      return 'upcoming';
+    }
+    
+    return 'locked';
   };
 
   return (
@@ -155,6 +181,10 @@ export default function CourseProgress({ course, lessons }: CourseProgressProps)
                   ? 'border-green-200 bg-green-50 dark:bg-green-900/20' 
                   : status === 'available'
                   ? 'border-[#85ea10] bg-green-50 dark:bg-green-900/20'
+                  : status === 'lost'
+                  ? 'border-red-200 bg-red-50 dark:bg-red-900/20 opacity-60'
+                  : status === 'upcoming'
+                  ? 'border-blue-200 bg-blue-50 dark:bg-blue-900/20'
                   : 'border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700'
               }`}
             >
@@ -165,12 +195,20 @@ export default function CourseProgress({ course, lessons }: CourseProgressProps)
                     ? 'bg-green-500' 
                     : status === 'available'
                     ? 'bg-[#85ea10]'
+                    : status === 'lost'
+                    ? 'bg-red-500'
+                    : status === 'upcoming'
+                    ? 'bg-blue-500'
                     : 'bg-gray-400'
                 }`}>
                   {status === 'completed' ? (
                     <CheckCircle className="w-5 h-5 text-white" />
                   ) : status === 'available' ? (
                     <Play className="w-5 h-5 text-black" />
+                  ) : status === 'lost' ? (
+                    <XCircle className="w-5 h-5 text-white" />
+                  ) : status === 'upcoming' ? (
+                    <Clock className="w-5 h-5 text-white" />
                   ) : (
                     <Lock className="w-5 h-5 text-white" />
                   )}
@@ -186,10 +224,17 @@ export default function CourseProgress({ course, lessons }: CourseProgressProps)
                         ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
                         : status === 'available'
                         ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                        : status === 'lost'
+                        ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                        : status === 'upcoming'
+                        ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
                         : 'bg-gray-100 text-gray-600 dark:bg-gray-600 dark:text-gray-300'
                     }`}>
                       {status === 'completed' ? 'Completada' : 
-                       status === 'available' ? 'Disponible' : 'Bloqueada'}
+                       status === 'available' ? 'Disponible hoy' : 
+                       status === 'lost' ? 'Perdida' :
+                       status === 'upcoming' ? 'Disponible mañana' :
+                       'Bloqueada'}
                     </span>
                   </div>
                   

@@ -4,9 +4,10 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { supabase } from '@/lib/supabase';
-import { Star, Clock, Users, Play, ShoppingCart, Heart, ArrowLeft, CheckCircle, Zap, Target, Award, Shield, Tag, CreditCard } from 'lucide-react';
+import { Star, Clock, Users, Play, ShoppingCart, Heart, ArrowLeft, CheckCircle, Zap, Target, Award, Shield, Tag, CreditCard, User, ChevronDown, Settings, LogOut } from 'lucide-react';
 import WompiCheckout from '@/components/WompiCheckout';
 import RogerBoxMuxPlayer from '@/components/RogerBoxMuxPlayer';
+import Footer from '@/components/Footer';
 
 interface Course {
   id: string;
@@ -61,6 +62,8 @@ export default function CourseDetailPage() {
   const [categoryMap, setCategoryMap] = useState<{ [key: string]: string }>({});
   const [showPaymentWidget, setShowPaymentWidget] = useState(false);
   const [showFullDescription, setShowFullDescription] = useState(false);
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [showUserMenu, setShowUserMenu] = useState(false);
 
   // Cargar categorías desde la base de datos
   useEffect(() => {
@@ -96,6 +99,49 @@ export default function CourseDetailPage() {
   // Resolver parámetros de manera segura
   const resolvedParams = params || {};
   const courseId = Array.isArray(resolvedParams.id) ? resolvedParams.id[0] : resolvedParams.id;
+
+  // Cargar perfil del usuario si está autenticado
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (session?.user?.id) {
+        try {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .maybeSingle();
+
+          if (error) throw error;
+          if (data) {
+            setUserProfile(data);
+          }
+        } catch (error) {
+          console.error('Error fetching user profile:', error);
+        }
+      }
+    };
+
+    if (status === 'authenticated') {
+      fetchUserProfile();
+    }
+  }, [session, status]);
+
+  // Cerrar el menú de usuario al hacer clic fuera
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (showUserMenu && !target.closest('.user-menu-container')) {
+        setShowUserMenu(false);
+      }
+    };
+
+    if (showUserMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [showUserMenu]);
 
   useEffect(() => {
     // Cargar datos del curso sin requerir autenticación
@@ -333,6 +379,70 @@ export default function CourseDetailPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      {/* Header */}
+      <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-gray-200 dark:border-white/20 sticky top-0 z-50">
+        <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            {/* Logo - Alineado a la izquierda */}
+            <button
+              onClick={() => router.push('/dashboard')}
+              className="flex items-center hover:opacity-80 transition-opacity"
+            >
+              <h1 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tight">
+                ROGER<span className="text-[#85ea10]">BOX</span>
+              </h1>
+            </button>
+
+            {/* User Menu - Alineado a la derecha */}
+            {session && userProfile && (
+              <div className="relative user-menu-container">
+                <button
+                  onClick={() => setShowUserMenu(!showUserMenu)}
+                  className="flex items-center space-x-3 text-gray-700 dark:text-white hover:text-[#85ea10] transition-colors"
+                >
+                  <div className="w-8 h-8 bg-[#85ea10] rounded-full flex items-center justify-center">
+                    <User className="w-5 h-5 text-black" />
+                  </div>
+                  <div className="hidden sm:block text-left">
+                    <p className="text-sm font-medium">{userProfile.name}</p>
+                  </div>
+                  <ChevronDown className="w-4 h-4" />
+                </button>
+
+                {/* Dropdown Menu */}
+                {showUserMenu && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-white/20 py-1 z-50">
+                    <a
+                      href="/profile"
+                      className="flex items-center space-x-2 px-4 py-2 text-sm text-gray-700 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
+                    >
+                      <User className="w-4 h-4" />
+                      <span>Mi Perfil</span>
+                    </a>
+                    {(session as any)?.user?.id === 'cdeaf7e0-c7fa-40a9-b6e9-288c9a677b5e' && (
+                      <button
+                        onClick={() => router.push('/admin')}
+                        className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-gray-700 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
+                      >
+                        <Settings className="w-4 h-4" />
+                        <span>Admin Panel</span>
+                      </button>
+                    )}
+                    <button
+                      onClick={() => router.push('/signout')}
+                      className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-gray-700 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      <span>Cerrar sesión</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </header>
+
       <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content - Video, Title, Stats, Price */}
@@ -774,6 +884,9 @@ export default function CourseDetailPage() {
         />
       )}
       </div>
+
+      {/* Footer */}
+      <Footer />
     </div>
   );
 }

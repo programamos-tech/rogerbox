@@ -175,17 +175,15 @@ export default function WompiCheckout({ course, onSuccess, onError, onClose }: W
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-xl max-w-xl w-full mx-4 max-h-[90vh] overflow-y-auto relative">
         {/* Close Button */}
-        {onClose && (
-          <button
-            onClick={onClose}
-            className="absolute top-4 right-4 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-            aria-label="Cerrar"
-          >
-            <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
-          </button>
-        )}
+        <button
+          onClick={onClose || (() => {})}
+          className="absolute top-4 right-4 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors shadow-sm"
+          aria-label="Cerrar"
+        >
+          <X className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+        </button>
         
         {/* Header */}
         <div className="text-center mb-6">
@@ -290,28 +288,10 @@ export default function WompiCheckout({ course, onSuccess, onError, onClose }: W
         ) : (
           <>
             <CreditCard className="w-5 h-5 mr-2" />
-            Pagar con Wompi
+            Completar Pago
           </>
         )}
       </button>
-
-      {/* Métodos de pago aceptados */}
-      <div className="mt-6">
-        <p className="text-xs text-gray-500 dark:text-gray-400 text-center mb-3">
-          Métodos de pago aceptados:
-        </p>
-        <div className="flex items-center justify-center space-x-4">
-          <div className="px-3 py-2 bg-gray-100 dark:bg-gray-700 rounded text-xs font-semibold text-gray-700 dark:text-gray-300">
-            💳 Tarjetas
-          </div>
-          <div className="px-3 py-2 bg-gray-100 dark:bg-gray-700 rounded text-xs font-semibold text-gray-700 dark:text-gray-300">
-            📱 Nequi
-          </div>
-          <div className="px-3 py-2 bg-gray-100 dark:bg-gray-700 rounded text-xs font-semibold text-gray-700 dark:text-gray-300">
-            🏦 PSE
-          </div>
-        </div>
-      </div>
 
       {/* Información de seguridad */}
       <div className="mt-6 text-center">
