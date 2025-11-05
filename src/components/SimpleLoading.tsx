@@ -29,13 +29,13 @@ export default function SimpleLoading({
   };
 
   const loadingMessages = [
-    "Preparando tu rutina...",
-    "Calentando motores...",
-    "Cargando ejercicios...",
-    "¡Casi listo!",
-    "Preparando la sesión...",
-    "Cargando videos...",
-    "¡Listo para entrenar!"
+    "Cada repetición te acerca a tu meta",
+    "Tu cuerpo puede hacerlo, tu mente debe creerlo",
+    "La disciplina es el puente entre metas y logros",
+    "El éxito es la suma de pequeños esfuerzos repetidos",
+    "No esperes el momento perfecto, empieza ahora",
+    "La transformación comienza con una decisión",
+    "Eres más fuerte de lo que piensas"
   ];
 
   useEffect(() => {
@@ -72,7 +72,7 @@ export default function SimpleLoading({
       <div className="text-center">
         {/* Logo Simple */}
         <div className="mb-8">
-          <h1 className="text-6xl md:text-8xl font-black text-gray-900 dark:text-white mb-4 tracking-wider">
+          <h1 className="text-4xl md:text-5xl font-black text-gray-900 dark:text-white mb-4 tracking-tight">
             ROGER<span className="text-[#85ea10]">BOX</span>
           </h1>
         </div>

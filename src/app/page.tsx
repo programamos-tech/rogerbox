@@ -214,8 +214,8 @@ export default function HomePage() {
           <source src="/roger-hero.mp4" type="video/mp4" />
         </video>
         {/* Overlay for better text readability */}
-        <div className="absolute inset-0 bg-black/50"></div>
-        <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/40"></div>
+        <div className="absolute inset-0 bg-black/30 dark:bg-black/50"></div>
+        <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/30 dark:from-black/30 dark:to-black/40"></div>
       </div>
 
       {/* Header */}
@@ -224,7 +224,7 @@ export default function HomePage() {
           ? 'bg-white/80 dark:bg-gray-900/80 border-b border-gray-200/50 dark:border-gray-700/50' 
           : 'bg-transparent border-b border-transparent'
       }`}>
-        <div className="w-full px-4 lg:px-8 xl:px-12">
+        <div className="w-full px-4 md:px-12 lg:px-20 xl:px-32">
           <div className="flex items-center justify-between h-20 w-full">
             <div className="flex items-center flex-shrink-0">
               <button
@@ -235,8 +235,8 @@ export default function HomePage() {
                 style={{ minWidth: 'fit-content' }}
               >
                 <h1 className="text-xl md:text-2xl lg:text-3xl font-black uppercase tracking-tight whitespace-nowrap">
-                  <span className="text-white drop-shadow-md group-hover:text-[#85ea10] transition-colors duration-300">ROGER</span>
-                  <span className="text-[#85ea10] drop-shadow-md group-hover:text-white transition-colors duration-300">BOX</span>
+                  <span className={`${isScrolled ? 'text-gray-900 dark:text-white' : 'text-white dark:text-white'} drop-shadow-md group-hover:text-[#85ea10] transition-colors duration-300`}>ROGER</span>
+                  <span className="text-[#85ea10] drop-shadow-md group-hover:text-gray-900 dark:group-hover:text-white transition-colors duration-300">BOX</span>
                 </h1>
               </button>
             </div>
@@ -245,23 +245,23 @@ export default function HomePage() {
             {/* <nav className="hidden md:flex items-center space-x-8">
               <a href="/#cursos" className={`transition-colors ${
                 isScrolled 
-                  ? 'text-gray-700 hover:text-gray-900' 
-                  : 'text-white/90 hover:text-white'
+                  ? 'text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white' 
+                  : 'text-white/90 hover:text-white dark:text-white/90 dark:hover:text-white'
               }`}>Cursos</a>
               <a href="/about" className={`transition-colors ${
                 isScrolled 
-                  ? 'text-gray-700 hover:text-gray-900' 
-                  : 'text-white/90 hover:text-white'
+                  ? 'text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white' 
+                  : 'text-white/90 hover:text-white dark:text-white/90 dark:hover:text-white'
               }`}>Qué es RogerBox</a>
               <a href="/enterprises" className={`transition-colors ${
                 isScrolled 
-                  ? 'text-gray-700 hover:text-gray-900' 
-                  : 'text-white/90 hover:text-white'
+                  ? 'text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white' 
+                  : 'text-white/90 hover:text-white dark:text-white/90 dark:hover:text-white'
               }`}>Servicio para Empresas</a>
               <a href="/contact" className={`transition-colors ${
                 isScrolled 
-                  ? 'text-gray-700 hover:text-gray-900' 
-                  : 'text-white/90 hover:text-white'
+                  ? 'text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white' 
+                  : 'text-white/90 hover:text-white dark:text-white/90 dark:hover:text-white'
               }`}>Contacto</a>
             </nav> */}
 
@@ -269,7 +269,11 @@ export default function HomePage() {
             <div className="flex items-center space-x-2 md:space-x-4">
               <button
                 onClick={() => router.push('/login')}
-                className="transition-all duration-300 font-semibold px-3 py-2 md:px-6 md:py-3 rounded-xl hover:scale-105 hover:shadow-lg text-white hover:text-white hover:bg-white/10 text-sm md:text-base"
+                className={`transition-all duration-300 font-semibold px-3 py-2 md:px-6 md:py-3 rounded-xl hover:scale-105 hover:shadow-lg text-sm md:text-base ${
+                  isScrolled 
+                    ? 'text-gray-900 hover:text-gray-700 hover:bg-gray-100 dark:text-white dark:hover:text-white dark:hover:bg-white/10' 
+                    : 'text-white hover:text-white hover:bg-white/10 dark:text-white dark:hover:text-white dark:hover:bg-white/10'
+                }`}
               >
                 Iniciar Sesión
               </button>
@@ -287,7 +291,7 @@ export default function HomePage() {
       {/* Hero Section */}
       <section className="relative min-h-screen flex items-center justify-center pt-16 pb-8">
         {/* Hero Content */}
-        <div className="relative z-10 w-full px-6 lg:px-16 xl:px-24 text-center max-w-7xl mx-auto">
+        <div className="relative z-10 w-full px-6 md:px-12 lg:px-20 xl:px-32 text-center max-w-[95%] lg:max-w-[90%] xl:max-w-full mx-auto">
           <div className="space-y-5 md:space-y-6">
             {/* Main Title */}
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-white mb-4 md:mb-5 uppercase tracking-tight leading-tight">
@@ -371,10 +375,10 @@ export default function HomePage() {
 
       {/* Section Title */}
       <section id="titulo-cursos" className="relative py-10 md:py-12 bg-white dark:bg-gray-900 w-full">
-        <div className="w-full px-6 lg:px-16 xl:px-24 text-center max-w-6xl mx-auto">
+        <div className="w-full px-6 md:px-12 lg:px-20 xl:px-32 text-center max-w-full mx-auto">
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-black text-gray-900 dark:text-white uppercase tracking-tight leading-tight mb-3 md:mb-4">
-            <span className="drop-shadow-md">EMPIEZA CON </span>
-            <span className="text-[#85ea10] drop-shadow-md">NUESTROS CURSOS</span>
+            <span>EMPIEZA CON </span>
+            <span className="text-[#85ea10]">NUESTROS CURSOS</span>
           </h2>
           <p className="text-lg md:text-xl text-gray-700 dark:text-white/80 font-medium leading-relaxed max-w-3xl mx-auto">
             Entrena desde casa con solo <span className="text-[#85ea10] font-bold">20 minutos al día</span> y pon tu cuerpo <span className="text-[#85ea10] font-bold">10/10</span>
@@ -385,7 +389,7 @@ export default function HomePage() {
       {/* Courses Section */}
       <section id="cursos" className="pt-0 pb-12 md:pb-16 lg:pb-20 bg-white dark:bg-gray-900 relative z-10 w-full" style={{ overflow: 'visible' }}>
           {loadingCourses ? (
-        <div className="w-full px-6 lg:px-16 xl:px-24 max-w-7xl mx-auto">
+        <div className="w-full px-6 md:px-12 lg:px-20 xl:px-32 max-w-full mx-auto">
             <div className="text-center py-12 md:py-16">
               <div className="animate-spin rounded-full h-12 w-12 md:h-14 md:w-14 border-b-2 border-[#85ea10] mx-auto mb-4"></div>
               <h3 className="text-base md:text-lg font-semibold text-gray-900 dark:text-white mb-2">
@@ -426,7 +430,7 @@ export default function HomePage() {
                 msOverflowStyle: 'none'
               }}
             >
-              <div className="flex gap-4 md:gap-8 lg:gap-12 px-4 md:px-6 lg:px-16 xl:px-24 justify-start md:justify-center md:items-stretch md:align-content-stretch">
+              <div className="flex gap-4 md:gap-6 lg:gap-8 xl:gap-12 px-4 md:px-6 lg:px-20 xl:px-32 justify-start md:justify-center md:items-stretch md:align-content-stretch">
                 {/* Curso en progreso a la izquierda */}
                 {inProgressCourses[0] && (
                   <div className="flex flex-shrink-0 opacity-50 pointer-events-none w-full md:w-auto" style={{ alignSelf: 'stretch', display: 'flex' }}>
@@ -786,9 +790,9 @@ export default function HomePage() {
             </div>
           </div>
         ) : displayedCourses.length === 2 ? (
-          <div className="w-full px-6 lg:px-16 xl:px-24 max-w-7xl mx-auto">
+          <div className="w-full px-6 md:px-12 lg:px-20 xl:px-32 max-w-full mx-auto">
             {/* Dos cursos - Cards lado a lado */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12 w-full">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12 xl:gap-16 w-full">
               {displayedCourses.map(course => (
               <div 
                 key={course.id} 
@@ -902,10 +906,10 @@ export default function HomePage() {
             </div>
           </div>
         ) : (
-          <div className="w-full px-6 lg:px-12">
+          <div className="w-full px-6 md:px-12 lg:px-20 xl:px-32">
             {/* Tres o más cursos - Formato horizontal estilo YouTube (compacto) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full">
-              {displayedCourses.slice(0, 3).map(course => (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 lg:gap-8 xl:gap-10 w-full">
+              {displayedCourses.slice(0, 4).map(course => (
                 <div 
                   key={course.id} 
                   onClick={(e) => {
@@ -1013,7 +1017,7 @@ export default function HomePage() {
           )}
 
           {!loadingCourses && displayedCourses.length === 0 && (
-          <div className="w-full px-6 lg:px-16 xl:px-24 max-w-7xl mx-auto">
+          <div className="w-full px-6 md:px-12 lg:px-20 xl:px-32 max-w-full mx-auto">
             <div className="text-center py-12 md:py-16">
               <div className="w-16 h-16 md:w-20 md:h-20 bg-gray-100 dark:bg-white/10 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Search className="w-8 h-8 md:w-10 md:h-10 text-gray-400 dark:text-white/40" />
@@ -1033,11 +1037,11 @@ export default function HomePage() {
       <section className="pt-6 md:pt-8 pb-8 md:pb-12 bg-gray-50 dark:bg-gray-900 relative z-10 w-full overflow-visible">
         {/* Fondo oscuro sólido en modo oscuro para cubrir el video */}
         <div className="hidden dark:block absolute inset-0 bg-gray-900 z-0"></div>
-        <div className="w-full px-4 lg:px-8 xl:px-12 relative z-10 max-w-[95%] mx-auto overflow-visible">
+        <div className="w-full px-6 md:px-12 lg:px-20 xl:px-32 relative z-10 max-w-full mx-auto overflow-visible">
           <div className="text-center mb-6 md:mb-8">
             <h2 className="text-3xl md:text-4xl lg:text-5xl font-black text-gray-900 dark:text-white uppercase tracking-tight leading-tight mb-2 md:mb-3">
-              <span className="drop-shadow-md">PLANES </span>
-              <span className="text-[#85ea10] drop-shadow-md">NUTRICIONALES</span>
+              <span>PLANES </span>
+              <span className="text-[#85ea10]">NUTRICIONALES</span>
             </h2>
             <p className="text-lg md:text-xl text-gray-700 dark:text-white/80 font-medium leading-relaxed max-w-3xl mx-auto">
               Complementa tu entrenamiento con planes alimentarios personalizados diseñados por expertos en nutrición
@@ -1077,11 +1081,11 @@ export default function HomePage() {
                 WebkitOverflowScrolling: 'touch'
               }}
             >
-              <div className="flex gap-0 md:gap-3 lg:gap-4 px-4 md:px-8 lg:px-12 justify-start md:justify-center items-stretch" style={{ overflow: 'visible' }}>
+              <div className="flex gap-0 md:gap-4 lg:gap-6 xl:gap-8 px-4 md:px-8 lg:px-20 xl:px-32 justify-start md:justify-center items-stretch" style={{ overflow: 'visible' }}>
                 {/* Plan Básico - A la izquierda */}
-                <div className="flex flex-shrink-0 w-full min-w-full md:min-w-0 md:flex-1 md:max-w-[400px] snap-center" style={{ alignSelf: 'stretch', display: 'flex' }}>
+                <div className="flex flex-shrink-0 w-full min-w-full md:min-w-0 md:flex-1 md:max-w-[450px] snap-center" style={{ alignSelf: 'stretch', display: 'flex' }}>
                   <div 
-                    className="bg-white dark:bg-gray-800 rounded-2xl p-8 md:p-10 lg:p-12 shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 border border-gray-200 dark:border-white/20 flex flex-col w-full max-w-[400px] mx-auto relative"
+                    className="bg-white dark:bg-gray-800 rounded-2xl p-8 md:p-10 lg:p-12 shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 border border-gray-200 dark:border-white/20 flex flex-col w-full max-w-[450px] mx-auto relative"
                   >
                     <div className="text-center mb-6 md:mb-8">
                       <div className="w-16 h-16 md:w-20 md:h-20 bg-[#85ea10] rounded-full flex items-center justify-center mx-auto mb-4">
@@ -1124,8 +1128,8 @@ export default function HomePage() {
                 </div>
 
                 {/* Plan Avanzado - Principal en el centro */}
-                <div ref={mainPlanRef} className="flex flex-shrink-0 w-full min-w-full md:min-w-0 md:flex-1 md:max-w-[400px] snap-center" style={{ padding: '15px', overflow: 'visible' }}>
-                  <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 md:p-10 lg:p-12 shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 border-2 border-[#85ea10] relative flex flex-col w-full max-w-[400px] mx-auto" style={{ transformOrigin: 'center center' }}>
+                <div ref={mainPlanRef} className="flex flex-shrink-0 w-full min-w-full md:min-w-0 md:flex-1 md:max-w-[450px] snap-center" style={{ padding: '15px', overflow: 'visible' }}>
+                  <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 md:p-10 lg:p-12 shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 border-2 border-[#85ea10] relative flex flex-col w-full max-w-[450px] mx-auto" style={{ transformOrigin: 'center center' }}>
                     <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 z-10">
                       <div className="bg-[#85ea10] text-black px-3 py-1.5 rounded-full text-xs font-bold">
                         MÁS POPULAR
@@ -1181,9 +1185,9 @@ export default function HomePage() {
                 </div>
 
                 {/* Plan Premium - A la derecha */}
-                <div className="flex flex-shrink-0 w-full min-w-full md:min-w-0 md:flex-1 md:max-w-[400px] snap-center" style={{ alignSelf: 'stretch', display: 'flex' }}>
+                <div className="flex flex-shrink-0 w-full min-w-full md:min-w-0 md:flex-1 md:max-w-[450px] snap-center" style={{ alignSelf: 'stretch', display: 'flex' }}>
                   <div 
-                    className="bg-white dark:bg-gray-800 rounded-2xl p-8 md:p-10 lg:p-12 shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 border border-gray-200 dark:border-white/20 flex flex-col w-full max-w-[400px] mx-auto relative"
+                    className="bg-white dark:bg-gray-800 rounded-2xl p-8 md:p-10 lg:p-12 shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 border border-gray-200 dark:border-white/20 flex flex-col w-full max-w-[450px] mx-auto relative"
                   >
                     <div className="text-center mb-6 md:mb-8">
                       <div className="w-16 h-16 md:w-20 md:h-20 bg-[#85ea10] rounded-full flex items-center justify-center mx-auto mb-4">

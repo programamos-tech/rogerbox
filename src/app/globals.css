@@ -50,6 +50,11 @@ body {
   font-weight: 600 !important;
 }
 
+/* Ocultar scrollbar pero mantener funcionalidad de scroll */
+.overflow-x-auto::-webkit-scrollbar {
+  display: none;
+}
+
 .font-black {
   font-weight: 900 !important;
 }

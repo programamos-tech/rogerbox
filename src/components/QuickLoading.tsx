@@ -38,7 +38,7 @@ export default function QuickLoading({
             <div className="absolute inset-0 bg-[#85ea10]/20 blur-2xl rounded-full scale-110 animate-pulse"></div>
             
             {/* Logo principal */}
-            <h1 className="relative text-5xl md:text-6xl font-black text-gray-900 dark:text-white tracking-wider animate-pulse uppercase">
+            <h1 className="relative text-4xl md:text-5xl font-black text-gray-900 dark:text-white tracking-tight animate-pulse uppercase">
               <span className="font-black">ROGER<span className="text-[#85ea10]">BOX</span></span>
             </h1>
           </div>

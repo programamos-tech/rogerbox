@@ -15,6 +15,9 @@ import CourseHeroCard from '@/components/CourseHeroCard';
 import WeeklyWeightReminder from '@/components/WeeklyWeightReminder';
 import NutritionalBlogs from '@/components/NutritionalBlogs';
 import ReadMoreText from '@/components/ReadMoreText';
+import ComplementSection from '@/components/ComplementSection';
+import StoriesSection from '@/components/StoriesSection';
+import InsightsSection from '@/components/InsightsSection';
 import { useUnifiedCourses } from '@/hooks/useUnifiedCourses';
 import { useUserPurchases } from '@/hooks/useUserPurchases';
 import { generateGoalSuggestion, GoalSuggestion } from '@/lib/goalSuggestion';
@@ -81,23 +84,6 @@ export default function DashboardPage() {
   // Hook para compras del usuario
   const { purchases, loading: loadingPurchases, hasActivePurchases } = useUserPurchases();
   
-  // Estado para compras simuladas
-  const [hasSimulatedPurchase, setHasSimulatedPurchase] = useState(false);
-  
-  // Verificar compras simuladas
-  useEffect(() => {
-    const simulatedPurchase = localStorage.getItem('simulated_purchase');
-    if (simulatedPurchase) {
-      try {
-        const purchase = JSON.parse(simulatedPurchase);
-        if (purchase.user_id === (session as any)?.user?.id) {
-          setHasSimulatedPurchase(true);
-        }
-      } catch (error) {
-        console.error('Error parsing simulated purchase:', error);
-      }
-    }
-  }, [session]);
   
 
   // Debug logs
@@ -729,20 +715,19 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
       {/* Header */}
       <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-gray-200 dark:border-white/20 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            {/* Logo */}
+            {/* Logo - Alineado a la izquierda */}
             <button
               onClick={() => router.push('/dashboard')}
-              className="flex items-center space-x-3 hover:opacity-80 transition-opacity"
+              className="flex items-center hover:opacity-80 transition-opacity"
             >
-              <h1 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-wider">
+              <h1 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tight">
                 ROGER<span className="text-[#85ea10]">BOX</span>
               </h1>
             </button>
 
-
-            {/* User Menu */}
+            {/* User Menu - Alineado a la derecha */}
             <div className="relative">
               <button
                 onClick={() => setShowUserMenu(!showUserMenu)}
@@ -753,7 +738,6 @@ export default function DashboardPage() {
                 </div>
                 <div className="hidden sm:block text-left">
                   <p className="text-sm font-medium">{userProfile.name}</p>
-                  <p className="text-xs text-gray-500 dark:text-white/60">{userProfile.email}</p>
                 </div>
                 <ChevronDown className="w-4 h-4" />
               </button>
@@ -791,825 +775,484 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 relative">
-        {/* Welcome Message - Centrado arriba del progreso */}
-
-        {/* Botón temporal para simular compra de curso - Solo para testing */}
-        {userProfile && (!(userProfile as any)?.purchased_courses || (userProfile as any)?.purchased_courses?.length === 0) && !hasSimulatedPurchase && (
-          <div className="mb-8">
-            <div className="bg-gradient-to-r from-[#85ea10] to-[#7dd30f] rounded-2xl p-6 text-center shadow-lg">
-              <div className="flex items-center justify-center space-x-2 mb-3">
-                <ShoppingCart className="w-6 h-6 text-black" />
-                <h2 className="text-xl font-bold text-black">
-                  ¡Simula tu primera compra!
+      {/* Main Content - Layout optimizado sin scroll */}
+      <main className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-4 relative">
+        {/* CURSOS COMPRADOS - Si tiene cursos comprados, mostrar arriba */}
+        {hasActivePurchases && purchases.length > 0 && (
+          <div className="mb-6">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+              Mis Cursos
                 </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {purchases.map((purchase) => (
+                <div
+                  key={purchase.id}
+                  onClick={() => router.push(`/course/${purchase.course?.slug || purchase.course_id}`)}
+                  className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden hover:shadow-xl hover:scale-[1.02] transition-all duration-300 cursor-pointer"
+                >
+                  <div className="relative aspect-video">
+                    <img
+                      src={purchase.course?.preview_image || '/images/course-placeholder.jpg'}
+                      alt={purchase.course?.title || 'Curso'}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute top-2 left-2 bg-[#85ea10] text-black px-2 py-1 rounded-full text-xs font-bold">
+                      ACTIVO
               </div>
-              <p className="text-black/80 mb-4">
-                Mientras arreglamos el sistema de pagos, puedes simular la compra de un curso para probar la plataforma completa.
-              </p>
+                  </div>
+                  <div className="p-4">
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2 line-clamp-2">
+                      {purchase.course?.title || 'Curso'}
+                    </h3>
               <button
-                onClick={() => {
-                  // Simular compra del curso "destroy-that-fat"
-                  const mockCourse = {
-                    id: 'destroy-that-fat',
-                    title: 'DESTROY that FAT HIIT 40 MIN',
-                    slug: 'destroy-that-fat'
-                  };
-                  
-                  // Crear un estado temporal de compra con fecha de inicio de hoy
-                  const today = new Date();
-                  const simulatedPurchase = {
-                    course: mockCourse,
-                    created_at: today.toISOString(),
-                    start_date: today.toISOString(), // Empezar hoy
-                    user_id: (session as any)?.user?.id,
-                    completed_lessons: [] // Sin clases completadas aún
-                  };
-                  
-                  localStorage.setItem('simulated_purchase', JSON.stringify(simulatedPurchase));
-                  
-                  // Actualizar estado local
-                  setHasSimulatedPurchase(true);
-                  
-                  // Redirigir directamente al dashboard de student
+                      onClick={(e) => {
+                        e.stopPropagation();
                   router.push('/student');
                 }}
-                className="bg-black hover:bg-gray-800 text-white font-bold px-8 py-3 rounded-xl transition-all duration-300 hover:scale-105 shadow-lg"
+                      className="w-full bg-[#85ea10] hover:bg-[#7dd30f] text-black font-bold py-2 rounded-lg transition-all duration-300 text-sm"
               >
-                Simular Compra de "DESTROY that FAT"
+                      Continuar Curso
               </button>
+            </div>
+          </div>
+              ))}
             </div>
           </div>
         )}
 
-        {/* Redirigir usuarios con cursos comprados al dashboard específico */}
-        {userProfile && ((userProfile as any)?.purchased_courses?.length > 0 || hasSimulatedPurchase) && (
-          <div className="mb-8">
-            <div className="bg-gradient-to-r from-[#85ea10] to-[#7dd30f] rounded-2xl p-6 text-center shadow-lg">
-              <div className="flex items-center justify-center space-x-2 mb-3">
-                <Play className="w-6 h-6 text-black" />
-                <h2 className="text-xl font-bold text-black">
-                  ¡Tienes cursos activos!
-                </h2>
+        {/* Layout Principal: 2 columnas + sección inferior compacta */}
+        <div className="flex flex-col h-[calc(100vh-180px)]">
+          {/* Layout de 2 columnas: Complementos e Insights */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1 min-h-0 mb-4">
+            {/* COLUMNA 1: COMPLEMENTOS (STORIES) */}
+            <div className="lg:col-span-1 flex flex-col min-h-0">
+              <StoriesSection />
               </div>
-              <p className="text-black/80 mb-4">
-                Ve a tu dashboard personalizado para ver tu progreso y continuar con tus clases.
-              </p>
-              <button
-                onClick={() => router.push('/student')}
-                className="bg-black hover:bg-gray-800 text-white font-bold px-8 py-3 rounded-xl transition-all duration-300 hover:scale-105 shadow-lg"
-              >
-                Ir a Mi Dashboard
-              </button>
+
+            {/* COLUMNA 2: INSIGHTS */}
+            <div className="lg:col-span-1 flex flex-col min-h-0">
+              <InsightsSection userProfile={userProfile} />
             </div>
           </div>
-        )}
 
-        {/* Course Hero Card - Si tiene cursos comprados */}
-        {purchasedCourses.length > 0 && nextLesson && (
-          <CourseHeroCard
-            userProfile={userProfile}
-            purchasedCourse={purchasedCourses[0]}
-            nextLesson={nextLesson}
-            lessons={purchasedCourseLessons}
-            onStartLesson={(lessonId) => {
-              console.log('Starting lesson:', lessonId);
-              // Aquí iría la lógica para iniciar la lección
-            }}
-          />
-        )}
-
-        {/* Goal Suggestion Card - Solo si NO tiene meta establecida Y NO tiene cursos comprados */}
-        {!userProfile?.target_weight && !purchasedCourses.length && showGoalSuggestion && goalSuggestion && (
-          <GoalSuggestionCard
-            suggestion={goalSuggestion}
-            onAccept={handleAcceptGoalSuggestion}
-            onCustomize={handleCustomizeGoalSuggestion}
-            onDismiss={handleDismissGoalSuggestion}
-            isLoading={isAcceptingGoal}
-            userBMI={userProfile ? userProfile.weight / Math.pow(userProfile.height / 100, 2) : 25}
-            userName={userProfile?.name || 'Usuario'}
-            availableCourses={realCourses}
-          />
-        )}
-
-        {/* Progress Card - Solo si SÍ tiene meta establecida Y NO tiene cursos comprados, O si está personalizando meta */}
-        {((userProfile?.target_weight && userProfile?.goal_deadline) || isCustomizingGoal) && !purchasedCourses.length && (
-          <ProgressCard
-            userProfile={userProfile}
-            goalSuggestion={isCustomizingGoal && goalSuggestion ? goalSuggestion : {
-              targetWeight: userProfile.target_weight,
-              deadline: userProfile.goal_deadline,
-              recommendedCourse: getRecommendedCourse(userProfile),
-              estimatedDuration: getEstimatedDuration(userProfile)
-            }}
-            onCustomize={() => {
-              setShowProgressCard(false);
-              setShowGoalModal(true);
-            }}
-          />
-        )}
-
-
-        {/* Category Filters - Carrusel en móvil/tablet, grid en desktop */}
-        <div className="mb-6">
-          {/* Desktop: Grid layout */}
-          <div className="hidden lg:flex flex-wrap gap-2">
-            {categories.map(category => (
+          {/* Tips Nutricionales - Compacto */}
+          <div className="flex-shrink-0 bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 overflow-hidden">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center space-x-2">
+                <BookOpen className="w-5 h-5 text-[#85ea10]" />
+                <span>Tips Nutricionales</span>
+              </h3>
               <button
-                key={category.id}
-                onClick={() => setSelectedCategory(category.id)}
-                className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-md border transition-all duration-200 font-medium text-sm ${
-                  selectedCategory === category.id
-                    ? 'bg-[#85ea10] text-black border-[#85ea10] shadow-md'
-                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-white border-gray-200 dark:border-white/20 hover:border-[#85ea10]/50'
-                }`}
+                onClick={() => router.push('/nutritional-blogs')}
+                className="text-xs text-[#85ea10] hover:text-[#7dd30f] font-medium"
               >
-                <span className="text-sm">{category.icon}</span>
-                <span>{category.name}</span>
+                Ver todos →
               </button>
-            ))}
           </div>
-
-          {/* Mobile & Tablet: Horizontal scrollable carousel */}
-          <div className="lg:hidden">
-            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-              {categories.map(category => (
-                <button
-                  key={category.id}
-                  onClick={() => setSelectedCategory(category.id)}
-                  className={`flex items-center space-x-1.5 px-4 py-2 rounded-lg border transition-all duration-200 font-medium text-sm whitespace-nowrap flex-shrink-0 ${
-                    selectedCategory === category.id
-                      ? 'bg-[#85ea10] text-black border-[#85ea10] shadow-md'
-                      : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-white border-gray-200 dark:border-white/20 hover:border-[#85ea10]/50'
-                  }`}
+            <div className="flex gap-3 overflow-x-auto scrollbar-hide">
+              {[
+                { title: 'Hidratación', desc: 'Bebe 8 vasos de agua al día' },
+                { title: 'Proteínas', desc: 'Incluye proteína en cada comida' },
+                { title: 'Fibra', desc: 'Consume 25-30g diarios' },
+                { title: 'Grasas saludables', desc: 'Aguacate y frutos secos' },
+              ].map((tip, index) => (
+                <div
+                  key={index}
+                  className="flex-shrink-0 w-48 bg-gray-50 dark:bg-gray-700 rounded-lg p-3 border border-gray-200 dark:border-gray-600"
                 >
-                  <span className="text-sm">{category.icon}</span>
-                  <span>{category.name}</span>
-                </button>
+                  <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">
+                    {tip.title}
+                  </h4>
+                  <p className="text-xs text-gray-600 dark:text-gray-300">
+                    {tip.desc}
+                  </p>
+                </div>
               ))}
             </div>
           </div>
         </div>
 
-        {/* Recommended Courses */}
-        {loadingCourses ? (
-          <div className="mb-8">
-            <div className="mb-6">
-              <h2 className="text-xl font-bold dashboard-title text-gray-900 dark:text-white">
-                Cursos Recomendados
+        {/* CARRUSEL DE CURSOS DESTACADO - Cards completas para incentivar compras */}
+        {realCourses.length > 0 && (
+          <div className="mt-6 mb-8">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-2">
+                  Cursos Disponibles
               </h2>
+                <p className="text-gray-600 dark:text-gray-300">
+                  Transforma tu cuerpo con nuestros programas especializados
+                </p>
             </div>
-            <CourseLoadingSkeleton count={3} showRecommended={true} />
+              <button
+                onClick={() => router.push('/courses')}
+                className="text-sm text-[#85ea10] hover:text-[#7dd30f] font-semibold flex items-center space-x-1"
+              >
+                <span>Ver todos</span>
+                <ChevronRight className="w-4 h-4" />
+              </button>
           </div>
-        ) : recommendedCourses.length > 0 && (
-          <div className="mb-8">
-            {/* Desktop: Grid layout */}
-            <div className="hidden xl:grid grid-cols-3 gap-6">
-              {recommendedCourses.map(course => (
-                <div 
-                  key={course.id} 
-                  onClick={(e) => {
-                    console.log('🖱️ Recommended card clicked:', course.title);
-                    console.log('🖱️ Recommended course slug:', course.slug);
-                    console.log('🖱️ Recommended course ID:', course.id);
-                    
-                    // Verificar si el curso ya fue comprado
-                    const isPurchased = (userProfile as any)?.purchased_courses?.some((purchasedCourse: any) => 
-                      purchasedCourse.course_id === course.id || purchasedCourse.course_slug === course.slug
-                    ) || hasSimulatedPurchase;
-                    
-                    if (isPurchased) {
-                      router.push(`/course/${course.slug || course.id}/progress`);
-                    } else {
-                      router.push(`/course/${course.slug || course.id}`);
-                    }
-                  }}
-                  className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden hover:shadow-3xl hover:shadow-[#85ea10]/10 hover:scale-[1.02] transition-all duration-300 flex flex-col cursor-pointer"
-                >
-                  <div className="relative">
-                    <div className="aspect-video bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 flex items-center justify-center overflow-hidden">
-                      <img 
-                        src={course.preview_image || course.thumbnail || '/images/course-placeholder.jpg'} 
-                        alt={course.title}
-                        className="w-full h-full object-cover"
-                      onError={(e) => {
-                        console.log('🖼️ Dashboard: Error loading recommended course image:', course.preview_image || course.thumbnail);
-                        const target = e.target as HTMLImageElement;
-                        target.style.display = 'none';
-                        const fallback = target.nextElementSibling as HTMLElement;
-                        if (fallback) fallback.classList.remove('hidden');
-                      }}
-                      onLoad={() => {
-                        console.log('🖼️ Dashboard: Recommended course image loaded successfully:', course.preview_image || course.thumbnail);
-                      }}
-                      />
-                      <div className="hidden absolute inset-0 bg-gradient-to-br from-[#85ea10]/20 to-[#85ea10]/40 flex items-center justify-center">
-                        <Play className="w-12 h-12 text-[#85ea10]" />
+
+            {/* Carrusel con curso principal y coming soon */}
+            <div className="relative">
+              {/* Botones de navegación */}
+              <button
+                onClick={() => {
+                  const container = document.getElementById('courses-carousel');
+                  if (container) {
+                    container.scrollBy({ left: -500, behavior: 'smooth' });
+                  }
+                }}
+                className="absolute left-4 top-1/2 -translate-y-1/2 z-20 bg-white/95 dark:bg-gray-800/95 backdrop-blur-md hover:bg-white dark:hover:bg-gray-800 text-gray-900 dark:text-white rounded-full p-3 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-110 border border-gray-200 dark:border-gray-700"
+              >
+                <ChevronLeft className="w-6 h-6" />
+              </button>
+
+              <button
+                onClick={() => {
+                  const container = document.getElementById('courses-carousel');
+                  if (container) {
+                    container.scrollBy({ left: 500, behavior: 'smooth' });
+                  }
+                }}
+                className="absolute right-4 top-1/2 -translate-y-1/2 z-20 bg-white/95 dark:bg-gray-800/95 backdrop-blur-md hover:bg-white dark:hover:bg-gray-800 text-gray-900 dark:text-white rounded-full p-3 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-110 border border-gray-200 dark:border-gray-700"
+              >
+                <ChevronRight className="w-6 h-6" />
+              </button>
+
+              {/* Contenedor del carrusel */}
+              <div 
+                id="courses-carousel"
+                className="overflow-x-auto scrollbar-hide"
+                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+              >
+                <div className="flex gap-6 md:gap-8 px-4 md:px-6 lg:px-20 xl:px-32 justify-start md:justify-center">
+                  {/* Card Coming Soon Izquierda */}
+                  <div className="flex-shrink-0 w-[400px] lg:w-[450px]">
+                    <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl overflow-hidden h-full" style={{ filter: 'grayscale(100%)' }}>
+                      <div className="relative aspect-video">
+                        <div className="w-full h-full bg-gradient-to-br from-gray-300 to-gray-400 dark:from-gray-600 dark:to-gray-700 flex items-center justify-center">
+                          <Play className="w-20 h-20 text-gray-400 dark:text-gray-600" />
                       </div>
+                        <div className="absolute inset-0 bg-black/30"></div>
+                        <div className="absolute top-4 left-4 z-10">
+                          <div className="bg-gray-500 text-white text-sm font-bold px-4 py-2 rounded-full">
+                            PRÓXIMAMENTE
                     </div>
-                    {/* Tag Recomendado - Más pequeño y discreto */}
-                    <div className="absolute top-2 left-2 bg-[#85ea10] text-black px-2 py-0.5 rounded-full text-xs font-semibold shadow-md">
-                      Recomendado
                     </div>
-                    
-                    {/* Rating - Movido abajo para no interferir con la imagen */}
-                    <div className="absolute bottom-3 right-3 flex items-center space-x-1 bg-black/70 backdrop-blur-sm text-white px-3 py-1.5 rounded-full">
-                      <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                      <span className="text-sm font-semibold">{course.rating}</span>
                     </div>
+                      <div className="p-6">
+                        <h3 className="text-xl font-bold text-gray-400 dark:text-gray-600 mb-2">
+                          Curso en preparación
+                        </h3>
+                        <p className="text-sm text-gray-400 dark:text-gray-600 mb-4">
+                          Estamos trabajando en este contenido...
+                        </p>
+                        <button
+                          disabled
+                          className="w-full bg-gray-400 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 cursor-not-allowed opacity-50"
+                        >
+                          <ShoppingCart className="w-5 h-5" />
+                          <span>Próximamente</span>
+                        </button>
                   </div>
-                  <div className="p-6 flex flex-col flex-grow">
-                    {/* Información de calorías y clases */}
-                    <h3 className="text-xl font-bold course-title text-gray-900 dark:text-white mb-2">{course.title}</h3>
-                    <ReadMoreText 
-                      text={course.short_description} 
-                      maxLength={120}
-                      className="text-gray-600 dark:text-white/70 text-sm mb-3"
-                    />
-                    
-                    {/* Cuadro verde unificado */}
-                    <div className="bg-[#85ea10]/10 rounded-lg p-4 mb-4 flex-grow flex flex-col justify-center">
-                      {/* Categoría del curso */}
-                      <div className="flex items-center justify-center mb-2">
-                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-[#85ea10] text-black">
-                          {course.category_name || 'Sin categoría'}
-                        </span>
+                      </div>
                       </div>
                       
-                      {/* Mensaje motivacional */}
-                      <div className="flex items-center justify-center space-x-2 mb-3">
-                        <Zap className="w-4 h-4 text-[#85ea10]" />
-                        <span className="text-sm font-semibold text-gray-700 dark:text-white">
-                          ¡Sin límites! Para todos los niveles
-                        </span>
+                  {/* Cursos Reales - Cards completas */}
+                  {realCourses.map((course) => (
+                    <div key={course.id} className="flex-shrink-0 w-[400px] lg:w-[450px]">
+                      <div
+                        onClick={() => router.push(`/course/${course.slug || course.id}`)}
+                        className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 cursor-pointer h-full flex flex-col"
+                      >
+                        <div className="relative aspect-video">
+                          <img
+                            src={course.preview_image || course.thumbnail || '/images/course-placeholder.jpg'}
+                            alt={course.title}
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute top-4 left-4 flex gap-2">
+                            {course.isPopular && (
+                              <span className="bg-orange-500 text-white text-xs font-bold px-3 py-1.5 rounded-full">
+                                POPULAR
+                      </span>
+                            )}
+                            {course.isNew && (
+                              <span className="bg-[#85ea10] text-black text-xs font-bold px-3 py-1.5 rounded-full">
+                                NUEVO
+                      </span>
+                            )}
                       </div>
-                      
-                      {/* Estadísticas del curso */}
-                      <div className="flex items-center justify-between text-xs text-gray-600 dark:text-white/70">
-                      <span className="flex items-center space-x-1">
-                        <Zap className="w-3 h-3 text-[#85ea10]" />
-                        <span>{(course as any)?.calories_burned || 0} cal</span>
-                      </span>
-                      <span className="flex items-center space-x-1">
-                        <Play className="w-3 h-3" />
-                        <span>{course.lessons_count || 1} clases</span>
-                      </span>
-                      <span className="flex items-center space-x-1">
-                        <Clock className="w-3 h-3" />
-                        <span>{course.duration}</span>
-                      </span>
-                      <span className="flex items-center space-x-1">
-                        <Users className="w-3 h-3" />
-                        <span>{course.students_count?.toLocaleString() || 0} personas</span>
-                      </span>
-                      </div>
+                          <div className="absolute top-4 right-4 flex items-center space-x-1 bg-black/70 backdrop-blur-sm text-white px-3 py-1.5 rounded-full">
+                            <Star className="w-4 h-4 text-yellow-400 fill-current" />
+                            <span className="text-sm font-semibold">{course.rating || '4.8'}</span>
                     </div>
-                    <div className="space-y-3">
-                      {/* Precio */}
-                      <div className="text-center">
-                        <div className="flex items-center justify-center space-x-2 mb-1">
-                          {course.discount_percentage && course.discount_percentage > 0 ? (
-                            <>
-                              <span className="text-3xl font-black price-text text-gray-900 dark:text-white">
+                        </div>
+                        <div className="p-6 flex-1 flex flex-col">
+                          <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 line-clamp-2">
+                            {course.title}
+                          </h3>
+                          <p className="text-sm text-gray-600 dark:text-gray-300 mb-4 line-clamp-2 flex-1">
+                            {course.short_description || course.description}
+                          </p>
+                          <div className="flex items-center justify-between mb-4">
+                            <div>
+                              <div className="flex items-center space-x-2">
+                                <span className="text-3xl font-black text-gray-900 dark:text-white">
                                 ${calculateFinalPrice(course).toLocaleString('es-CO')}
                               </span>
-                              <span className="text-xl font-bold text-gray-500 dark:text-white/60 line-through">
-                                ${calculateOriginalPrice(course).toLocaleString('es-CO')}
-                              </span>
-                            </>
-                          ) : (
-                            <span className="text-3xl font-black price-text text-gray-900 dark:text-white">
-                              ${calculateFinalPrice(course).toLocaleString('es-CO')}
+                                {course.original_price && course.original_price > course.price && (
+                                  <span className="text-lg text-gray-500 line-through">
+                                    ${course.original_price.toLocaleString('es-CO')}
                             </span>
                           )}
                         </div>
-                        <div className="flex flex-col items-center space-y-1">
                           {course.discount_percentage && course.discount_percentage > 0 && (
                             <span className="text-sm text-[#85ea10] font-semibold">
-                              {course.discount_percentage}% de descuento
+                                  {course.discount_percentage}% OFF
                             </span>
                           )}
-                          {/* IVA temporalmente deshabilitado */}
-                          {/* {course.include_iva && course.iva_percentage && (
-                            <span className="text-xs text-gray-500 dark:text-gray-400">
-                              IVA {course.iva_percentage}% incluido
-                            </span>
-                          )} */}
                         </div>
                       </div>
-                      
-                      {/* Botón */}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           router.push(`/course/${course.slug || course.id}`);
                         }}
-                        className="w-full bg-[#85ea10] hover:bg-[#7dd30f] text-black font-bold py-3 rounded-lg transition-all duration-200 flex items-center justify-center space-x-2 shadow-lg hover:shadow-xl transform hover:scale-105"
+                            className="w-full bg-[#85ea10] hover:bg-[#7dd30f] text-black font-bold py-3 rounded-lg transition-all duration-200 flex items-center justify-center space-x-2"
                       >
-                        <ShoppingCart className="w-4 h-4" />
-                        <span>¡Comenzar Ahora!</span>
+                            <ShoppingCart className="w-5 h-5" />
+                            <span>Ver Detalles</span>
                       </button>
                     </div>
                   </div>
                 </div>
               ))}
-            </div>
 
-            {/* Mobile & Tablet: Horizontal scrollable carousel */}
-            <div className="xl:hidden relative">
+                  {/* Card Coming Soon Derecha */}
+                  <div className="flex-shrink-0 w-[400px] lg:w-[450px]">
+                    <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl overflow-hidden h-full" style={{ filter: 'grayscale(100%)' }}>
+                      <div className="relative aspect-video">
+                        <div className="w-full h-full bg-gradient-to-br from-gray-300 to-gray-400 dark:from-gray-600 dark:to-gray-700 flex items-center justify-center">
+                          <Play className="w-20 h-20 text-gray-400 dark:text-gray-600" />
+                        </div>
+                        <div className="absolute inset-0 bg-black/30"></div>
+                        <div className="absolute top-4 left-4 z-10">
+                          <div className="bg-gray-500 text-white text-sm font-bold px-4 py-2 rounded-full">
+                            PRÓXIMAMENTE
+                      </div>
+                      </div>
+                      </div>
+                      <div className="p-6">
+                        <h3 className="text-xl font-bold text-gray-400 dark:text-gray-600 mb-2">
+                          Curso en preparación
+                        </h3>
+                        <p className="text-sm text-gray-400 dark:text-gray-600 mb-4">
+                          Estamos trabajando en este contenido...
+                        </p>
+                        <button
+                          disabled
+                          className="w-full bg-gray-400 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 cursor-not-allowed opacity-50"
+                        >
+                          <ShoppingCart className="w-5 h-5" />
+                          <span>Próximamente</span>
+                        </button>
+                    </div>
+                        </div>
+                        </div>
+                          </div>
+                          </div>
+                          </div>
+                          </div>
+        )}
+                      
+        {/* CARRUSEL DE CURSOS COMPLETO - Solo si hay más de 3 cursos (oculto por defecto, se puede mostrar con scroll) */}
+        {realCourses.length > 3 && false && (
+          <div className="mt-12 mb-8">
+            <div className="mb-6">
+              <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-2">
+                Cursos Disponibles
+              </h2>
+              <p className="text-gray-600 dark:text-gray-300">
+                Descubre nuestros cursos y transforma tu cuerpo
+              </p>
+                      </div>
+                      
+            {/* Carrusel con curso principal y coming soon */}
+            <div className="relative">
+              {/* Botones de navegación */}
+                      <button
+                onClick={() => {
+                  const container = document.getElementById('courses-carousel');
+                  if (container) {
+                    container.scrollBy({ left: -400, behavior: 'smooth' });
+                  }
+                }}
+                className="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 z-20 bg-white/90 dark:bg-gray-800/90 backdrop-blur-md hover:bg-white dark:hover:bg-gray-800 text-gray-900 dark:text-white rounded-full p-2 md:p-3 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110 border border-gray-200 dark:border-gray-700"
+              >
+                <ChevronLeft className="w-5 h-5 md:w-6 md:h-6" />
+                      </button>
+              
+                <button
+                  onClick={() => {
+                  const container = document.getElementById('courses-carousel');
+                  if (container) {
+                    container.scrollBy({ left: 400, behavior: 'smooth' });
+                  }
+                }}
+                className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 z-20 bg-white/90 dark:bg-gray-800/90 backdrop-blur-md hover:bg-white dark:hover:bg-gray-800 text-gray-900 dark:text-white rounded-full p-2 md:p-3 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110 border border-gray-200 dark:border-gray-700"
+              >
+                <ChevronRight className="w-5 h-5 md:w-6 md:h-6" />
+                </button>
+
+              {/* Contenedor del carrusel */}
               <div 
-                id="recommended-courses-scroll"
-                className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide" 
+                id="courses-carousel"
+                className="overflow-x-auto scrollbar-hide"
                 style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
               >
-                {recommendedCourses.map(course => (
-                  <div 
-                    key={course.id} 
-                    onClick={(e) => {
-                      console.log('🖱️ Recommended card clicked:', course.title);
-                      console.log('🖱️ Recommended course slug:', course.slug);
-                      console.log('🖱️ Recommended course ID:', course.id);
-                      router.push(`/course/${course.slug || course.id}`);
-                    }}
-                    className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden hover:shadow-3xl hover:shadow-[#85ea10]/10 hover:scale-[1.02] transition-all duration-300 flex flex-col cursor-pointer flex-shrink-0 w-[calc(100vw-2rem)] xl:w-auto"
-                  >
-                    <div className="relative">
-                      <div className="aspect-video bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 flex items-center justify-center overflow-hidden">
-                        <img 
-                          src={course.preview_image || course.thumbnail || '/images/course-placeholder.jpg'} 
-                          alt={course.title}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            console.log('🖼️ Dashboard: Error loading recommended course image:', course.preview_image || course.thumbnail);
-                            const target = e.target as HTMLImageElement;
-                            target.style.display = 'none';
-                            const fallback = target.nextElementSibling as HTMLElement;
-                            if (fallback) fallback.classList.remove('hidden');
-                          }}
-                          onLoad={() => {
-                            console.log('🖼️ Dashboard: Recommended course image loaded successfully:', course.preview_image || course.thumbnail);
-                          }}
-                        />
-                        <div className="hidden absolute inset-0 bg-gradient-to-br from-[#85ea10]/20 to-[#85ea10]/40 flex items-center justify-center">
-                          <Play className="w-12 h-12 text-[#85ea10]" />
-                        </div>
-                      </div>
-                      {/* Tag Recomendado - Más pequeño y discreto */}
-                      <div className="absolute top-2 left-2 bg-[#85ea10] text-black px-2 py-0.5 rounded-full text-xs font-semibold shadow-md">
-                        Recomendado
-                      </div>
-                      
-                      {/* Rating - Movido abajo para no interferir con la imagen */}
-                      <div className="absolute bottom-3 right-3 flex items-center space-x-1 bg-black/70 backdrop-blur-sm text-white px-3 py-1.5 rounded-full">
-                        <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                        <span className="text-sm font-semibold">{course.rating}</span>
-                      </div>
-                    </div>
-                    <div className="p-6 flex flex-col flex-grow">
-                      {/* Información de calorías y clases */}
-                      <h3 className="text-xl font-bold course-title text-gray-900 dark:text-white mb-2">{course.title}</h3>
-                      <ReadMoreText 
-                        text={course.short_description} 
-                        maxLength={60}
-                        className="text-gray-600 dark:text-white/70 text-sm mb-3"
-                      />
-                      
-                      {/* Cuadro verde unificado */}
-                      <div className="bg-[#85ea10]/10 rounded-lg p-4 mb-4 flex-grow flex flex-col justify-center">
-                        {/* Categoría del curso */}
-                        <div className="flex items-center justify-center mb-2">
-                          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-[#85ea10] text-black">
-                            {course.category_name || 'Sin categoría'}
-                          </span>
-                        </div>
-                        
-                        {/* Descripción del nivel */}
-                        <div className="flex items-center justify-center mb-3">
-                          <Zap className="w-4 h-4 text-[#85ea10] mr-1" />
-                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                            ¡Sin límites! Para todos los niveles
-                          </span>
-                        </div>
-                        
-                        {/* Estadísticas del curso */}
-                        <div className="grid grid-cols-4 gap-2 text-center">
-                          <div className="flex flex-col items-center">
-                            <Zap className="w-4 h-4 text-[#85ea10] mb-1" />
-                            <span className="text-xs text-gray-600 dark:text-gray-400">500+ cal</span>
-                          </div>
-                          <div className="flex flex-col items-center">
-                            <Play className="w-4 h-4 text-[#85ea10] mb-1" />
-                            <span className="text-xs text-gray-600 dark:text-gray-400">{course.lessons_count || 0} clases</span>
-                          </div>
-                          <div className="flex flex-col items-center">
-                            <Clock className="w-4 h-4 text-[#85ea10] mb-1" />
-                            <span className="text-xs text-gray-600 dark:text-gray-400">{course.duration}</span>
-                          </div>
-                          <div className="flex flex-col items-center">
-                            <Users className="w-4 h-4 text-[#85ea10] mb-1" />
-                            <span className="text-xs text-gray-600 dark:text-gray-400">{course.students_count || 0} personas</span>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      {/* Precio y botón */}
-                      <div className="text-center mb-4">
-                        <div className="flex items-center justify-center space-x-2 mb-1">
-                          {course.original_price && course.original_price > course.price ? (
-                            <>
-                              <span className="text-2xl font-bold text-gray-900 dark:text-white">${course.price?.toLocaleString()}</span>
-                              <span className="text-lg text-gray-500 line-through">${course.original_price.toLocaleString()}</span>
-                            </>
-                          ) : (
-                            <span className="text-2xl font-bold text-gray-900 dark:text-white">${course.price?.toLocaleString()}</span>
-                          )}
-                        </div>
-                        {course.original_price && course.original_price > course.price && (
-                          <div className="text-sm text-[#85ea10] font-semibold">
-                            {Math.round(((course.original_price - course.price) / course.original_price) * 100)}% de descuento
-                          </div>
-                        )}
-                      </div>
-                      
+                <div className="flex gap-6 md:gap-8 lg:gap-12 px-4 md:px-6 lg:px-20 xl:px-32 justify-start md:justify-center">
+                  {/* Card Coming Soon Izquierda */}
+                  <div className="flex-shrink-0 w-full md:w-[400px] lg:w-[500px]">
+                    <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl overflow-hidden h-full" style={{ filter: 'grayscale(100%)' }}>
+                      <div className="relative aspect-video">
+                        <div className="w-full h-full bg-gradient-to-br from-gray-300 to-gray-400 dark:from-gray-600 dark:to-gray-700 flex items-center justify-center">
+                          <Play className="w-16 h-16 text-gray-400 dark:text-gray-600" />
+              </div>
+                        <div className="absolute inset-0 bg-black/30"></div>
+                        <div className="absolute top-3 left-3 z-10">
+                          <div className="bg-gray-400 text-white text-xs font-bold px-3 py-1.5 rounded-full">
+                            PRÓXIMAMENTE
+            </div>
+          </div>
+          </div>
+                      <div className="p-6">
+                        <h3 className="text-xl font-bold text-gray-400 dark:text-gray-600 mb-2">
+                          Curso en preparación
+                        </h3>
+                        <p className="text-sm text-gray-400 dark:text-gray-600 mb-4">
+                          Estamos trabajando en este contenido...
+                        </p>
                       <button
-                        className="w-full bg-[#85ea10] hover:bg-[#7dd30f] text-black font-bold py-3 rounded-lg transition-all duration-200 flex items-center justify-center space-x-2 shadow-lg hover:shadow-xl transform hover:scale-105"
+                          disabled
+                          className="w-full bg-gray-400 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 cursor-not-allowed opacity-50"
                       >
                         <ShoppingCart className="w-4 h-4" />
-                        <span>¡Comenzar Ahora!</span>
+                          <span>Próximamente</span>
                       </button>
                     </div>
                   </div>
-                ))}
               </div>
               
-              {/* Scroll indicator arrow */}
-              <div className="absolute right-0 top-1/2 transform -translate-y-1/2 bg-gradient-to-l from-white dark:from-gray-800 to-transparent pl-8 pr-2 py-4">
-                <button
-                  onClick={() => {
-                    const scrollContainer = document.getElementById('recommended-courses-scroll');
-                    if (scrollContainer) {
-                      const cardWidth = 280 + 16; // card width + gap
-                      scrollContainer.scrollBy({ left: cardWidth, behavior: 'smooth' });
-                    }
-                  }}
-                  className="flex items-center justify-center w-8 h-8 bg-[#85ea10] rounded-full shadow-lg hover:bg-[#7dd30f] transition-colors cursor-pointer"
-                >
-                  <svg className="w-4 h-4 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* All Courses */}
-        {filteredCourses.length > 0 && (
-        <div data-courses-section>
-          <div className="mb-6">
-            <h2 className="text-xl font-bold dashboard-title text-gray-900 dark:text-white">
-              Todos los Cursos
-            </h2>
-          </div>
-          {loadingCourses ? (
-            <CourseLoadingSkeleton count={6} />
-          ) : (
-            <>
-              {/* Desktop: Grid layout */}
-              <div className="hidden xl:grid grid-cols-3 gap-6">
-                {filteredCourses.map(course => (
-              <div 
-                key={course.id} 
-                onClick={(e) => {
-                  console.log('🖱️ Card clicked:', course.title);
-                  console.log('🖱️ Course slug:', course.slug);
-                  console.log('🖱️ Course ID:', course.id);
-                  console.log('🖱️ Event target:', e.target);
-                  console.log('🖱️ Event currentTarget:', e.currentTarget);
-                  router.push(`/course/${course.slug || course.id}`);
-                }}
-                className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden hover:shadow-3xl hover:shadow-[#85ea10]/10 hover:scale-[1.02] hover:bg-gradient-to-br hover:from-white hover:to-gray-50 dark:hover:from-gray-800 dark:hover:to-gray-700 transition-all duration-300 ease-out flex flex-col cursor-pointer"
-              >
-                <div className="relative">
-                  <div className="aspect-video bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 flex items-center justify-center overflow-hidden">
-                    <img 
-                      src={course.preview_image || course.thumbnail || '/images/course-placeholder.jpg'} 
-                      alt={course.title}
+                  {/* Curso Principal - Card a color */}
+                  <div className="flex-shrink-0 w-full md:w-[400px] lg:w-[500px]">
+                    {realCourses[0] && (
+                      <div
+                        onClick={() => router.push(`/course/${realCourses[0].slug || realCourses[0].id}`)}
+                        className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 cursor-pointer"
+                      >
+                        <div className="relative aspect-video">
+                          <img
+                            src={realCourses[0].preview_image || realCourses[0].thumbnail || '/images/course-placeholder.jpg'}
+                            alt={realCourses[0].title}
                       className="w-full h-full object-cover"
-                      onError={(e) => {
-                        console.log('🖼️ Dashboard: Error loading course card image:', course.preview_image || course.thumbnail);
-                        const target = e.target as HTMLImageElement;
-                        target.src = '/images/course-placeholder.jpg';
-                      }}
-                      onLoad={() => {
-                        console.log('🖼️ Dashboard: Course card image loaded successfully:', course.preview_image || course.thumbnail);
-                      }}
-                    />
-                    <div className="hidden absolute inset-0 bg-gradient-to-br from-[#85ea10]/20 to-[#85ea10]/40 flex items-center justify-center">
-                      <Play className="w-12 h-12 text-[#85ea10]" />
-                    </div>
-                  </div>
-                  {/* Etiquetas POPULAR/NUEVO */}
-                  <div className="absolute top-3 left-3 flex flex-col space-y-2">
-                    {course.isPopular && (
-                      <div className="bg-orange-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">
+                          />
+                          <div className="absolute top-3 left-3 flex gap-2">
+                            {realCourses[0].isPopular && (
+                              <span className="bg-orange-500 text-white text-xs font-bold px-2 py-1 rounded-full">
                         POPULAR
-                      </div>
+                              </span>
                     )}
-                    {course.isNew && (
-                      <div className="bg-[#85ea10] text-black text-xs font-bold px-2 py-1 rounded-full shadow-lg">
+                            {realCourses[0].isNew && (
+                              <span className="bg-[#85ea10] text-black text-xs font-bold px-2 py-1 rounded-full">
                         NUEVO
-                      </div>
+                              </span>
                     )}
                   </div>
-                  
-                  {/* Rating */}
-                  <div className="absolute top-3 right-3 flex items-center space-x-1 bg-white/90 dark:bg-white dark:bg-gray-800/90 px-2 py-1 rounded-full">
-                    <Star className="w-4 h-4 text-yellow-500 fill-current" />
-                    <span className="text-sm font-medium">{course.rating}</span>
+                          <div className="absolute top-3 right-3 flex items-center space-x-1 bg-black/70 backdrop-blur-sm text-white px-3 py-1.5 rounded-full">
+                            <Star className="w-4 h-4 text-yellow-400 fill-current" />
+                            <span className="text-sm font-semibold">{realCourses[0].rating}</span>
                   </div>
                 </div>
-                <div className="p-6 flex flex-col flex-grow">
-                  {/* Información de calorías y clases */}
-                  <h3 className="text-xl font-bold course-title text-gray-900 dark:text-white mb-2">{course.title}</h3>
-                  <p className="text-gray-600 dark:text-white/70 text-sm mb-3">{course.short_description}</p>
-                  
-                  {/* Cuadro verde unificado */}
-                  <div className="bg-[#85ea10]/10 rounded-lg p-4 mb-4 flex-grow flex flex-col justify-center">
-                    {/* Categoría del curso */}
-                    <div className="flex items-center justify-center mb-2">
-                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-[#85ea10] text-black">
-                        {course.category_name || 'Sin categoría'}
+                        <div className="p-6">
+                          <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 line-clamp-2">
+                            {realCourses[0].title}
+                          </h3>
+                          <p className="text-sm text-gray-600 dark:text-gray-300 mb-4 line-clamp-2">
+                            {realCourses[0].short_description}
+                          </p>
+                          <div className="flex items-center justify-between mb-4">
+                            <div>
+                              <div className="flex items-center space-x-2">
+                                <span className="text-2xl font-black text-gray-900 dark:text-white">
+                                  ${calculateFinalPrice(realCourses[0]).toLocaleString('es-CO')}
                       </span>
-                    </div>
-                    
-                    {/* Mensaje motivacional */}
-                    <div className="flex items-center justify-center space-x-2 mb-3">
-                      <Zap className="w-4 h-4 text-[#85ea10]" />
-                      <span className="text-sm font-semibold text-gray-700 dark:text-white">
-                        ¡Sin límites! Para todos los niveles
-                      </span>
-                    </div>
-                    
-                    {/* Estadísticas del curso */}
-                    <div className="flex items-center justify-between text-xs text-gray-600 dark:text-white/70">
-                      <span className="flex items-center space-x-1">
-                        <Zap className="w-3 h-3 text-[#85ea10]" />
-                        <span>{(course as any)?.calories_burned || 0} cal</span>
-                      </span>
-                      <span className="flex items-center space-x-1">
-                        <Play className="w-3 h-3" />
-                        <span>{course.lessons_count || 1} clases</span>
-                      </span>
-                      <span className="flex items-center space-x-1">
-                        <Clock className="w-3 h-3" />
-                        <span>{course.duration}</span>
-                      </span>
-                      <span className="flex items-center space-x-1">
-                        <Users className="w-3 h-3" />
-                        <span>{course.students_count?.toLocaleString() || 0} personas</span>
-                      </span>
-                    </div>
-                  </div>
-                  <div className="space-y-3">
-                    {/* Precio */}
-                    <div className="text-center">
-                      <div className="flex items-center justify-center space-x-2 mb-1">
-                        {course.discount_percentage && course.discount_percentage > 0 ? (
-                          <>
-                            <span className="text-3xl font-black price-text text-gray-900 dark:text-white">
-                              ${calculateFinalPrice(course).toLocaleString('es-CO')}
-                            </span>
-                            <span className="text-xl font-bold text-gray-500 dark:text-white/60 line-through">
-                              ${calculateOriginalPrice(course).toLocaleString('es-CO')}
-                            </span>
-                          </>
-                        ) : (
-                          <span className="text-3xl font-black price-text text-gray-900 dark:text-white">
-                            ${calculateFinalPrice(course).toLocaleString('es-CO')}
+                                {realCourses[0].original_price && realCourses[0].original_price > realCourses[0].price && (
+                                  <span className="text-lg text-gray-500 line-through">
+                                    ${realCourses[0].original_price.toLocaleString('es-CO')}
                           </span>
                         )}
                       </div>
-                      <div className="flex flex-col items-center space-y-1">
-                        {course.discount_percentage && course.discount_percentage > 0 && (
+                              {realCourses[0].discount_percentage && realCourses[0].discount_percentage > 0 && (
                           <span className="text-sm text-[#85ea10] font-semibold">
-                            {course.discount_percentage}% de descuento
+                                  {realCourses[0].discount_percentage}% OFF
                           </span>
                         )}
-                        {/* IVA temporalmente deshabilitado */}
-                        {/* {course.include_iva && course.iva_percentage && (
-                          <span className="text-xs text-gray-500 dark:text-gray-400">
-                            IVA {course.iva_percentage}% incluido
-                          </span>
-                        )} */}
                       </div>
                     </div>
-                    
-                    {/* Botón */}
                     <button
-                      onClick={async (e) => {
+                            onClick={(e) => {
                         e.stopPropagation();
-                        // Trackear la visita al curso
-                        await trackCourseView(course.id);
-                        router.push(`/course/${course.slug || course.id}`);
+                              router.push(`/course/${realCourses[0].slug || realCourses[0].id}`);
                       }}
-                      className="w-full bg-[#85ea10] hover:bg-[#7dd30f] text-black font-bold py-3 rounded-lg transition-colors duration-150 flex items-center justify-center space-x-2 shadow-lg"
+                            className="w-full bg-[#85ea10] hover:bg-[#7dd30f] text-black font-bold py-3 rounded-lg transition-all duration-200 flex items-center justify-center space-x-2"
                     >
                       <ShoppingCart className="w-4 h-4" />
                       <span>¡Comenzar Ahora!</span>
                     </button>
                   </div>
-                </div>
-              </div>
-            ))}
-            </div>
-
-            {/* Mobile & Tablet: Horizontal scrollable carousel */}
-            <div className="xl:hidden relative">
-              <div 
-                id="all-courses-scroll"
-                className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide" 
-                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-              >
-                {filteredCourses.map(course => (
-                  <div 
-                    key={course.id} 
-                    onClick={(e) => {
-                      console.log('🖱️ Card clicked:', course.title);
-                      console.log('🖱️ Course slug:', course.slug);
-                      console.log('🖱️ Course ID:', course.id);
-                      console.log('🖱️ Event target:', e.target);
-                      console.log('🖱️ Event currentTarget:', e.currentTarget);
-                      router.push(`/course/${course.slug || course.id}`);
-                    }}
-                    className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden hover:shadow-3xl hover:shadow-[#85ea10]/10 hover:scale-[1.02] hover:bg-gradient-to-br hover:from-white hover:to-gray-50 dark:hover:from-gray-800 dark:hover:to-gray-700 transition-all duration-300 ease-out flex flex-col cursor-pointer flex-shrink-0 w-[calc(100vw-2rem)] xl:w-auto"
-                  >
-                    <div className="relative">
-                      <div className="aspect-video bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 flex items-center justify-center overflow-hidden">
-                        <img 
-                          src={course.preview_image || course.thumbnail || '/images/course-placeholder.jpg'} 
-                          alt={course.title}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            console.log('🖼️ Dashboard: Error loading course card image:', course.preview_image || course.thumbnail);
-                            const target = e.target as HTMLImageElement;
-                            target.src = '/images/course-placeholder.jpg';
-                          }}
-                          onLoad={() => {
-                            console.log('🖼️ Dashboard: Course card image loaded successfully:', course.preview_image || course.thumbnail);
-                          }}
-                        />
-                        <div className="hidden absolute inset-0 bg-gradient-to-br from-[#85ea10]/20 to-[#85ea10]/40 flex items-center justify-center">
-                          <Play className="w-12 h-12 text-[#85ea10]" />
-                        </div>
-                      </div>
-                      {/* Etiquetas POPULAR/NUEVO */}
-                      <div className="absolute top-3 left-3 flex flex-col space-y-2">
-                        {course.isPopular && (
-                          <div className="bg-orange-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">
-                            POPULAR
-                          </div>
-                        )}
-                        {course.isNew && (
-                          <div className="bg-[#85ea10] text-black text-xs font-bold px-2 py-1 rounded-full shadow-lg">
-                            NUEVO
                           </div>
                         )}
                       </div>
                       
-                      {/* Rating */}
-                      <div className="absolute top-3 right-3 flex items-center space-x-1 bg-white/90 dark:bg-white dark:bg-gray-800/90 px-2 py-1 rounded-full">
-                        <Star className="w-4 h-4 text-yellow-500 fill-current" />
-                        <span className="text-sm font-medium">{course.rating}</span>
+                  {/* Card Coming Soon Derecha */}
+                  <div className="flex-shrink-0 w-full md:w-[400px] lg:w-[500px]">
+                    <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl overflow-hidden h-full" style={{ filter: 'grayscale(100%)' }}>
+                      <div className="relative aspect-video">
+                        <div className="w-full h-full bg-gradient-to-br from-gray-300 to-gray-400 dark:from-gray-600 dark:to-gray-700 flex items-center justify-center">
+                          <Play className="w-16 h-16 text-gray-400 dark:text-gray-600" />
                       </div>
+                        <div className="absolute inset-0 bg-black/30"></div>
+                        <div className="absolute top-3 left-3 z-10">
+                          <div className="bg-gray-400 text-white text-xs font-bold px-3 py-1.5 rounded-full">
+                            PRÓXIMAMENTE
                     </div>
-                    <div className="p-6 flex flex-col flex-grow">
-                      {/* Información de calorías y clases */}
-                      <h3 className="text-xl font-bold course-title text-gray-900 dark:text-white mb-2">{course.title}</h3>
-                      <ReadMoreText 
-                        text={course.short_description} 
-                        maxLength={60}
-                        className="text-gray-600 dark:text-white/70 text-sm mb-3"
-                      />
-                      
-                      {/* Cuadro verde unificado */}
-                      <div className="bg-[#85ea10]/10 rounded-lg p-4 mb-4 flex-grow flex flex-col justify-center">
-                        {/* Categoría del curso */}
-                        <div className="flex items-center justify-center mb-2">
-                          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-[#85ea10] text-black">
-                            {course.category_name || 'Sin categoría'}
-                          </span>
                         </div>
-                        
-                        {/* Mensaje motivacional */}
-                        <div className="flex items-center justify-center space-x-2 mb-3">
-                          <Zap className="w-4 h-4 text-[#85ea10]" />
-                          <span className="text-sm font-semibold text-gray-700 dark:text-white">
-                            ¡Sin límites! Para todos los niveles
-                          </span>
                         </div>
-                        
-                        {/* Estadísticas del curso */}
-                        <div className="flex items-center justify-between text-xs text-gray-600 dark:text-white/70">
-                          <span className="flex items-center space-x-1">
-                            <Zap className="w-3 h-3 text-[#85ea10]" />
-                            <span>{(course as any)?.calories_burned || 0} cal</span>
-                          </span>
-                          <span className="flex items-center space-x-1">
-                            <Play className="w-3 h-3" />
-                            <span>{course.lessons_count || 1} clases</span>
-                          </span>
-                          <span className="flex items-center space-x-1">
-                            <Clock className="w-3 h-3" />
-                            <span>{course.duration}</span>
-                          </span>
-                          <span className="flex items-center space-x-1">
-                            <Users className="w-3 h-3" />
-                            <span>{course.students_count?.toLocaleString() || 0} personas</span>
-                          </span>
-                        </div>
-                      </div>
-                      <div className="space-y-3">
-                        {/* Precio */}
-                        <div className="text-center">
-                          <div className="flex items-center justify-center space-x-2 mb-1">
-                            {course.original_price && course.original_price > course.price ? (
-                              <>
-                                <span className="text-2xl font-bold text-gray-900 dark:text-white">
-                                  ${course.price?.toLocaleString()}
-                                </span>
-                                <span className="text-lg text-gray-500 line-through">
-                                  ${course.original_price?.toLocaleString()}
-                                </span>
-                              </>
-                            ) : (
-                              <span className="text-2xl font-bold text-gray-900 dark:text-white">
-                                ${course.price?.toLocaleString()}
-                              </span>
-                            )}
-                          </div>
-                          {course.original_price && course.original_price > course.price && (
-                            <div className="text-sm text-[#85ea10] font-semibold">
-                              {Math.round(((course.original_price - course.price) / course.original_price) * 100)}% de descuento
-                            </div>
-                          )}
-                        </div>
-                        
-                        {/* Botón */}
+                      <div className="p-6">
+                        <h3 className="text-xl font-bold text-gray-400 dark:text-gray-600 mb-2">
+                          Curso en preparación
+                        </h3>
+                        <p className="text-sm text-gray-400 dark:text-gray-600 mb-4">
+                          Estamos trabajando en este contenido...
+                        </p>
                         <button
-                          onClick={async (e) => {
-                            e.stopPropagation();
-                            // Trackear la visita al curso
-                            await trackCourseView(course.id);
-                            router.push(`/course/${course.slug || course.id}`);
-                          }}
-                          className="w-full bg-[#85ea10] hover:bg-[#7dd30f] text-black font-bold py-3 rounded-lg transition-colors duration-150 flex items-center justify-center space-x-2 shadow-lg"
+                          disabled
+                          className="w-full bg-gray-400 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 cursor-not-allowed opacity-50"
                         >
                           <ShoppingCart className="w-4 h-4" />
-                          <span>¡Comenzar Ahora!</span>
+                          <span>Próximamente</span>
                         </button>
                       </div>
                     </div>
                   </div>
-                ))}
               </div>
-              
-              {/* Scroll indicator arrow */}
-              <div className="absolute right-0 top-1/2 transform -translate-y-1/2 bg-gradient-to-l from-white dark:from-gray-800 to-transparent pl-8 pr-2 py-4">
-                <button
-                  onClick={() => {
-                    const scrollContainer = document.getElementById('all-courses-scroll');
-                    if (scrollContainer) {
-                      const cardWidth = 280 + 16; // card width + gap
-                      scrollContainer.scrollBy({ left: cardWidth, behavior: 'smooth' });
-                    }
-                  }}
-                  className="flex items-center justify-center w-8 h-8 bg-[#85ea10] rounded-full shadow-lg hover:bg-[#7dd30f] transition-colors cursor-pointer"
-                >
-                  <svg className="w-4 h-4 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </button>
               </div>
             </div>
-            </>
-          )}
-
-          {/* Información de cursos */}
-          {!loadingCourses && filteredCourses.length > 0 && (
-            <div className="text-center mt-4 text-sm text-gray-600 dark:text-gray-400">
-              Mostrando {filteredCourses.length} cursos
-            </div>
-          )}
         </div>
         )}
 
-        {/* Nutritional Blogs Section */}
-        <div className="mb-8">
-          <NutritionalBlogs />
-        </div>
       </main>
 
       {/* Footer */}

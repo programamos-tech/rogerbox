@@ -91,11 +91,11 @@ export default function ComplementSection() {
     <div className="mb-12">
       {/* Header */}
       <div className="mb-6">
-        <h3 className="text-2xl font-bold text-white flex items-center space-x-2 mb-2">
+        <h3 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center space-x-2 mb-2">
           <Sparkles className="w-6 h-6 text-[#85ea10]" />
           <span>Complementos</span>
         </h3>
-        <p className="text-white/60 text-sm">
+        <p className="text-gray-600 dark:text-white/60 text-sm">
           Nuevo contenido diario
         </p>
       </div>
@@ -106,7 +106,7 @@ export default function ComplementSection() {
         <button
           onClick={prevSlide}
           disabled={currentIndex === 0}
-          className="absolute -left-12 top-1/2 transform -translate-y-1/2 z-10 bg-black/50 hover:bg-black/70 disabled:opacity-30 disabled:cursor-not-allowed text-white p-3 rounded-full transition-all duration-300 backdrop-blur-sm hidden md:block"
+          className="absolute -left-12 top-1/2 transform -translate-y-1/2 z-10 bg-gray-900/50 dark:bg-black/50 hover:bg-gray-900/70 dark:hover:bg-black/70 disabled:opacity-30 disabled:cursor-not-allowed text-white p-3 rounded-full transition-all duration-300 backdrop-blur-sm hidden md:block"
         >
           <ChevronLeft className="w-6 h-6" />
         </button>
@@ -114,7 +114,7 @@ export default function ComplementSection() {
         <button
           onClick={nextSlide}
           disabled={currentIndex >= Math.ceil(complements.length / cardsPerView) - 1}
-          className="absolute -right-12 top-1/2 transform -translate-y-1/2 z-10 bg-black/50 hover:bg-black/70 disabled:opacity-30 disabled:cursor-not-allowed text-white p-3 rounded-full transition-all duration-300 backdrop-blur-sm hidden md:block"
+          className="absolute -right-12 top-1/2 transform -translate-y-1/2 z-10 bg-gray-900/50 dark:bg-black/50 hover:bg-gray-900/70 dark:hover:bg-black/70 disabled:opacity-30 disabled:cursor-not-allowed text-white p-3 rounded-full transition-all duration-300 backdrop-blur-sm hidden md:block"
         >
           <ChevronRight className="w-6 h-6" />
         </button>
@@ -124,7 +124,7 @@ export default function ComplementSection() {
           {visibleComplements.map((complement) => (
             <div
               key={complement.id}
-              className={`flex-shrink-0 bg-white/10 backdrop-blur-lg rounded-2xl overflow-hidden border border-white/20 hover:bg-white/15 hover:border-[#85ea10]/30 hover:scale-[1.02] hover:z-20 transition-all duration-300 ease-out cursor-pointer ${
+              className={`flex-shrink-0 bg-white dark:bg-white/10 backdrop-blur-lg rounded-2xl overflow-hidden border border-gray-200 dark:border-white/20 hover:bg-gray-50 dark:hover:bg-white/15 hover:border-[#85ea10]/30 hover:scale-[1.02] hover:z-20 transition-all duration-300 ease-out cursor-pointer shadow-lg dark:shadow-none ${
                 cardsPerView === 1 ? 'w-full max-w-lg mx-auto' :
                 cardsPerView === 2 ? 'w-[28rem]' :
                 cardsPerView === 3 ? 'w-96' :
@@ -158,10 +158,10 @@ export default function ComplementSection() {
 
               {/* Content - Minimalista */}
               <div className="p-4">
-                <h4 className="text-white font-bold text-lg mb-2 line-clamp-1">
+                <h4 className="text-gray-900 dark:text-white font-bold text-lg mb-2 line-clamp-1">
                   {complement.title}
                 </h4>
-                <p className="text-white/60 text-sm line-clamp-2">
+                <p className="text-gray-600 dark:text-white/60 text-sm line-clamp-2">
                   {complement.description}
                 </p>
               </div>
@@ -178,7 +178,7 @@ export default function ComplementSection() {
               className={`w-2 h-2 rounded-full transition-all duration-300 ${
                 index === currentIndex 
                   ? 'bg-[#85ea10] w-8' 
-                  : 'bg-white/30 hover:bg-white/50'
+                  : 'bg-gray-300 dark:bg-white/30 hover:bg-gray-400 dark:hover:bg-white/50'
               }`}
             />
           ))}

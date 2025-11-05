@@ -195,7 +195,7 @@ function RegisterForm() {
       {/* Left Side - Full Height Green */}
       <div className="hidden lg:flex lg:w-1/2 bg-[#85ea10] items-center justify-center">
         <div className="text-center text-white">
-            <h1 className="text-6xl font-black mb-8 tracking-wider uppercase">
+            <h1 className="text-6xl font-black mb-8 tracking-tight uppercase">
               <span className="text-gray-900 font-black">ROGER</span><span className="text-white font-black">BOX</span>
             </h1>
                <div className="relative h-16 mb-8 overflow-hidden">
@@ -224,7 +224,7 @@ function RegisterForm() {
           <div className="bg-white dark:bg-gray-900 p-8 rounded-2xl shadow-2xl">
             {/* Header */}
             <div className="text-center mb-8">
-              <h1 className="text-3xl font-black text-gray-900 dark:text-white mb-2 uppercase tracking-wider">
+              <h1 className="text-3xl font-black text-gray-900 dark:text-white mb-2 uppercase tracking-tight">
                 ÚNETE A <span className="text-gray-900 dark:text-white font-black">ROGER</span><span className="text-[#85ea10] font-black">BOX</span>
               </h1>
               <p className="text-gray-600 dark:text-white text-lg">
