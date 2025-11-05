@@ -5,10 +5,10 @@ import { wompiService, WompiWebhookData } from '@/lib/wompi';
 export async function POST(request: NextRequest) {
   try {
     console.log('🔔 Webhook received at:', new Date().toISOString());
-    
+
     const body = await request.text();
     const signature = request.headers.get('x-wompi-signature') || '';
-    
+
     console.log('🔔 Webhook received:', {
       body: body.substring(0, 200) + '...',
       signature: signature.substring(0, 20) + '...',
@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
       userAgent: request.headers.get('user-agent'),
       allHeaders: Object.fromEntries(request.headers.entries())
     });
-    
+
     // En sandbox, no verificamos la firma por ahora
     // if (!wompiService.verifyWebhookSignature(body, signature)) {
     //   console.error('❌ Invalid webhook signature');
@@ -27,19 +27,19 @@ export async function POST(request: NextRequest) {
     // }
 
     const webhookData: WompiWebhookData = JSON.parse(body);
-    
+
     // Validar estructura del webhook
     if (!webhookData.data || !webhookData.data.transaction) {
       console.error('❌ Invalid webhook structure:', webhookData);
       return NextResponse.json(
-        { 
+        {
           success: false,
-          error: 'Invalid webhook structure' 
+          error: 'Invalid webhook structure'
         },
         { status: 400 }
       );
     }
-    
+
     const { transaction } = webhookData.data;
 
     console.log('🔔 Wompi webhook received:', {
@@ -64,21 +64,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Actualizar transacción en wompi_transactions
+    // Crear o actualizar transacción en wompi_transactions (UPSERT)
     const { error: transactionError } = await supabase
       .from('wompi_transactions')
-      .update({
+      .upsert({
+        wompi_transaction_id: transaction.id,
+        order_id: order.id,
+        wompi_reference: transaction.reference,
         status: transaction.status,
         status_message: transaction.status_message,
+        amount_in_cents: transaction.amount_in_cents,
+        currency: transaction.currency || 'COP',
         payment_method_type: transaction.payment_method_type,
-        finalized_at: transaction.finalized_at ? new Date(transaction.finalized_at) : null,
+        payment_source_id: transaction.payment_source_id,
+        customer_email: transaction.customer_email || order.customer_email,
+        customer_name: order.customer_name,
         raw_webhook_data: webhookData,
+        finalized_at: transaction.finalized_at ? new Date(transaction.finalized_at) : null,
         webhook_received_at: new Date()
-      })
-      .eq('wompi_transaction_id', transaction.id);
+      }, {
+        onConflict: 'wompi_transaction_id' // Si ya existe, actualizar
+      });
 
     if (transactionError) {
-      console.error('❌ Error updating transaction:', transactionError);
+      console.error('❌ Error upserting transaction:', transactionError);
+    } else {
+      console.log('✅ Transaction saved to wompi_transactions');
     }
 
     // Procesar según el estado de la transacción
@@ -86,22 +97,22 @@ export async function POST(request: NextRequest) {
       case 'APPROVED':
         await handleApprovedPayment(order, transaction);
         break;
-      
+
       case 'DECLINED':
       case 'VOIDED':
         await handleDeclinedPayment(order, transaction);
         break;
-      
+
       case 'ERROR':
         await handleErrorPayment(order, transaction);
         break;
-      
+
       default:
         console.log('ℹ️ Transaction status not processed:', transaction.status);
     }
 
     console.log('✅ Webhook processed successfully');
-    return NextResponse.json({ 
+    return NextResponse.json({
       success: true,
       message: 'Webhook processed successfully'
     }, {
@@ -113,15 +124,15 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('❌ Error processing webhook:', error);
-    
+
     // Responder con 200 para evitar reintentos de Wompi
     return NextResponse.json(
-      { 
+      {
         success: false,
         error: 'Internal server error',
         message: error instanceof Error ? error.message : 'Unknown error'
       },
-      { 
+      {
         status: 200, // Cambiar a 200 para evitar reintentos
         headers: {
           'Content-Type': 'application/json'

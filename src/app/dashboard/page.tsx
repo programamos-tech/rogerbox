@@ -821,7 +821,7 @@ export default function DashboardPage() {
                   const today = new Date();
                   const simulatedPurchase = {
                     course: mockCourse,
-                    purchase_date: today.toISOString(),
+                    created_at: today.toISOString(),
                     start_date: today.toISOString(), // Empezar hoy
                     user_id: (session as any)?.user?.id,
                     completed_lessons: [] // Sin clases completadas aún

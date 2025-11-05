@@ -7,9 +7,8 @@ interface UserPurchase {
   id: string;
   course_id: string;
   order_id: string;
-  purchase_date: string;
-  status: string;
-  start_date: string | null;
+  created_at: string;
+  is_active: boolean;
   course: {
     id: string;
     title: string;
@@ -42,9 +41,9 @@ export const useUserPurchases = (): UseUserPurchasesReturn => {
     try {
       setLoading(true);
       setError(null);
-      
+
       console.log('🔄 useUserPurchases: Cargando compras del usuario...');
-      
+
       // SIMULACIÓN TEMPORAL: Solo para rogerboxtech@gmail.com
       if (session.user.email === 'rogerboxtech@gmail.com') {
         console.log('🎭 SIMULACIÓN: Usuario rogerbox detectado, simulando compra...');
@@ -52,9 +51,8 @@ export const useUserPurchases = (): UseUserPurchasesReturn => {
           id: 'sim-001',
           course_id: '1',
           order_id: 'order-sim-001',
-          purchase_date: new Date().toISOString(),
-          status: 'active',
-          start_date: null, // Sin fecha de inicio para mostrar el calendario
+          created_at: new Date().toISOString(),
+          is_active: true,
           course: {
             id: '1',
             title: 'CARDIO HIIT 40 MIN ¡BAJA DE PESO!',
@@ -63,22 +61,30 @@ export const useUserPurchases = (): UseUserPurchasesReturn => {
             duration_days: 84
           }
         };
-        
+
         console.log('✅ SIMULACIÓN: Compra simulada creada');
         setPurchases([simulatedPurchase]);
         setLoading(false);
         return;
       }
-      
+
+      // Obtener el user_id del usuario autenticado
+      const userId = (session.user as any).id;
+
+      if (!userId) {
+        console.warn('⚠️ useUserPurchases: No se pudo obtener el user_id');
+        setLoading(false);
+        return;
+      }
+
       const { data, error: fetchError } = await supabase
         .from('course_purchases')
         .select(`
           id,
           course_id,
           order_id,
-          purchase_date,
-          status,
-          start_date,
+          created_at,
+          is_active,
           course:course_id (
             id,
             title,
@@ -87,9 +93,9 @@ export const useUserPurchases = (): UseUserPurchasesReturn => {
             duration_days
           )
         `)
-        .eq('user_email', session.user.email)
-        .eq('status', 'active')
-        .order('purchase_date', { ascending: false });
+        .eq('user_id', userId)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
 
       if (fetchError) {
         console.error('❌ useUserPurchases: Error:', fetchError);
@@ -98,15 +104,15 @@ export const useUserPurchases = (): UseUserPurchasesReturn => {
       }
 
       console.log(`✅ useUserPurchases: ${data?.length || 0} compras encontradas`);
-      
+
       // Transformar los datos para que coincidan con la interfaz
       const transformedData = data?.map((purchase: any) => ({
         ...purchase,
         course: purchase.course?.[0] || null
       })) || [];
-      
+
       setPurchases(transformedData);
-      
+
     } catch (err) {
       console.error('❌ useUserPurchases: Error general:', err);
       setError(err instanceof Error ? err.message : 'Error desconocido');
