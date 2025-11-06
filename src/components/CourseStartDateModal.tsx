@@ -82,7 +82,7 @@ export default function CourseStartDateModal({ courseId, orderId, onClose }: Cou
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-md">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 dark:bg-gray-900/80 backdrop-blur-md">
       <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 md:p-8 shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
         {/* Close Button */}
         {onClose && (

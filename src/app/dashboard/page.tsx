@@ -800,45 +800,74 @@ export default function DashboardPage() {
 
       {/* Main Content - Layout optimizado sin scroll */}
       <main className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-4 relative">
-        {/* CURSOS COMPRADOS - Si tiene cursos comprados, mostrar arriba */}
+        {/* CURSOS COMPRADOS - Banner de ancho completo */}
         {hasActivePurchases && purchases.length > 0 && (
-          <div className="mb-6">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-              Mis Cursos
+          <div className="mb-8 -mx-4 sm:-mx-6 lg:-mx-8">
+            <div className="px-4 sm:px-6 lg:px-8 mb-4">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <BookOpen className="w-5 h-5 text-[#85ea10]" />
+                Mi Curso
                 </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {purchases.map((purchase) => (
-                <div
-                  key={purchase.id}
-                  onClick={() => router.push(`/course/${purchase.course?.slug || purchase.course_id}`)}
-                  className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden hover:shadow-xl hover:scale-[1.02] transition-all duration-300 cursor-pointer"
-                >
-                  <div className="relative aspect-video">
-                    <img
-                      src={purchase.course?.preview_image || '/images/course-placeholder.jpg'}
-                      alt={purchase.course?.title || 'Curso'}
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute top-2 left-2 bg-[#85ea10] text-black px-2 py-1 rounded-full text-xs font-bold">
-                      ACTIVO
               </div>
-                  </div>
-                  <div className="p-4">
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2 line-clamp-2">
-                      {purchase.course?.title || 'Curso'}
-                    </h3>
-              <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                  router.push('/student');
-                }}
-                      className="w-full bg-[#85ea10] hover:bg-[#7dd30f] text-black font-bold py-2 rounded-lg transition-all duration-300 text-sm"
-              >
-                      Continuar Curso
+            <div className="space-y-4">
+              {purchases.map((purchase) => {
+                // Verificar si hay clase disponible hoy
+                const hasAvailableClass = (() => {
+                  if (!purchase.start_date) return false;
+                  const startDate = new Date(purchase.start_date);
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  startDate.setHours(0, 0, 0, 0);
+                  const daysDiff = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+                  return daysDiff >= 0; // Si ya pasó el día de inicio, hay clase disponible
+                })();
+
+                return (
+                  <div
+                    key={purchase.id}
+                    onClick={() => router.push('/student')}
+                    className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden hover:shadow-2xl hover:scale-[1.01] transition-all duration-300 cursor-pointer mx-4 sm:mx-6 lg:mx-8"
+                  >
+                    {/* Imagen - Banner de ancho completo */}
+                    <div className="relative w-full h-[280px] md:h-[320px]">
+                      <img
+                        src={purchase.course?.preview_image || '/images/course-placeholder.jpg'}
+                        alt={purchase.course?.title || 'Curso'}
+                        className="w-full h-full object-cover"
+                      />
+                      {/* Overlay oscuro para mejor legibilidad del texto */}
+                      <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/80"></div>
+                      
+                      {/* Badge Clase Disponible */}
+                      {hasAvailableClass && (
+                        <div className="absolute top-4 right-4 bg-white/10 backdrop-blur-md border border-[#85ea10]/50 rounded-lg px-4 py-2 flex items-center gap-2 z-10 shadow-lg">
+                          <div className="w-2 h-2 bg-[#85ea10] rounded-full animate-pulse"></div>
+                          <span className="text-white text-sm font-semibold">Clase Disponible</span>
+                        </div>
+                      )}
+                      
+                      {/* Contenido superpuesto en la imagen */}
+                      <div className="absolute bottom-0 left-0 right-0 p-4 md:p-6">
+                        <div className="max-w-4xl">
+                          <h3 className="text-xl md:text-2xl font-black text-white mb-4 drop-shadow-lg line-clamp-2">
+                            {purchase.course?.title || 'Curso'}
+                          </h3>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              router.push('/student?autoStart=true');
+                            }}
+                            className="bg-[#85ea10] hover:bg-[#7dd30f] text-black font-black py-3 px-6 rounded-xl transition-all duration-300 text-sm md:text-base shadow-2xl hover:shadow-[#85ea10]/50 hover:scale-105 flex items-center justify-center gap-2"
+                          >
+                            <Play className="w-4 h-4 md:w-5 md:h-5" />
+                            <span>{hasAvailableClass ? 'Tomar Clase Ahora' : 'Continuar Curso'}</span>
               </button>
-            </div>
-          </div>
-              ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
@@ -848,9 +877,9 @@ export default function DashboardPage() {
           {/* Layout de 2 columnas: Complementos e Insights */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1 min-h-0 mb-4">
             {/* COLUMNA 1: COMPLEMENTOS (STORIES) */}
-            <div className="lg:col-span-1 flex flex-col min-h-0">
+            <div className="lg:col-span-1 flex flex-col min-h-0" data-section="complementos" id="complementos">
               <StoriesSection />
-          </div>
+              </div>
 
             {/* COLUMNA 2: INSIGHTS */}
             <div className="lg:col-span-1 flex flex-col min-h-0">
@@ -878,7 +907,7 @@ export default function DashboardPage() {
                 <span>Ver todos</span>
                 <ChevronRight className="w-4 h-4" />
               </button>
-          </div>
+            </div>
 
             {/* Carrusel con curso principal y coming soon */}
             <div className="relative">
@@ -905,7 +934,7 @@ export default function DashboardPage() {
                 <ChevronLeft className="w-6 h-6" />
               </button>
 
-                      <button
+              <button
                 onClick={() => {
                   const container = document.getElementById('courses-carousel');
                   if (container) {
@@ -925,7 +954,7 @@ export default function DashboardPage() {
                 className="absolute right-4 top-1/2 -translate-y-1/2 z-20 bg-white/95 dark:bg-gray-800/95 backdrop-blur-md hover:bg-white dark:hover:bg-gray-800 text-gray-900 dark:text-white rounded-full p-3 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-110 border border-gray-200 dark:border-gray-700"
               >
                 <ChevronRight className="w-6 h-6" />
-                      </button>
+              </button>
 
               {/* Contenedor del carrusel */}
               <div 
@@ -953,8 +982,8 @@ export default function DashboardPage() {
                       </div>
                       </div>
                       </div>
-                    </div>
-                      
+          </div>
+
                       {/* CONTENIDO - Resto del espacio */}
                       <div className="flex-1 flex flex-col min-w-0 overflow-visible p-4 md:p-5 lg:p-6 md:justify-between">
                         <div className="flex flex-col gap-3 md:gap-4 mb-4 md:mb-0">
@@ -1034,28 +1063,28 @@ export default function DashboardPage() {
                             <ShoppingCart className="w-4 h-4" />
                             <span>Próximamente</span>
                 </button>
-              </div>
             </div>
           </div>
-          </div>
+        </div>
+            </div>
                       
                   {/* Cursos Reales - Cards horizontales estilo landing */}
                   {realCourses.map((course) => (
                     <div key={course.id} className="flex-shrink-0 w-full md:w-[850px]">
                       <div 
-                onClick={(e) => {
+                  onClick={(e) => {
                           console.log('🖱️ Dashboard card clicked:', course.title);
-                  router.push(`/course/${course.slug || course.id}`);
-                }}
+                      router.push(`/course/${course.slug || course.id}`);
+                  }}
                         className="flex flex-col md:flex-row bg-gray-100 dark:bg-gray-800 hover:shadow-xl hover:shadow-[#85ea10]/5 transition-all duration-150 rounded-2xl cursor-pointer w-full overflow-hidden h-full"
-              >
+                >
                         {/* IMAGEN - Vertical en mobile, horizontal en desktop */}
                         <div className="w-full md:w-[320px] h-[250px] md:h-full flex-shrink-0 relative">
                           <div className="absolute inset-0 w-full h-full rounded-t-2xl md:rounded-l-2xl md:rounded-tr-none overflow-hidden">
-                    <img 
+                      <img 
                               src={course.thumbnail || course.preview_image || '/images/course-placeholder.jpg'} 
-                      alt={course.title}
-                      className="w-full h-full object-cover"
+                        alt={course.title}
+                        className="w-full h-full object-cover"
                               style={{ objectPosition: 'center center', display: 'block' }}
                       onError={(e) => {
                         const target = e.target as HTMLImageElement;
@@ -1064,8 +1093,8 @@ export default function DashboardPage() {
                     />
                             <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-all duration-300 flex items-center justify-center opacity-0 hover:opacity-100 z-10">
                               <Play className="w-12 h-12 text-white drop-shadow-lg" fill="currentColor" />
+                      </div>
                     </div>
-                  </div>
                           
                           <div className="absolute top-3 left-3 flex gap-2 z-20">
                     {course.isPopular && (
@@ -1078,13 +1107,13 @@ export default function DashboardPage() {
                         NUEVO
                       </div>
                     )}
-                  </div>
-                  
+                    </div>
+                    
                           <div className="absolute bottom-3 right-3 flex items-center space-x-1 bg-black/70 backdrop-blur-sm text-white px-3 py-1.5 rounded-full z-10">
                       <Star className="w-4 h-4 text-yellow-400 fill-current" />
                             <span className="text-sm font-semibold">{course.rating || '4.8'}</span>
+                    </div>
                   </div>
-                </div>
                         
                         {/* CONTENIDO - Resto del espacio */}
                         <div className="flex-1 flex flex-col min-w-0 overflow-visible p-4 md:p-5 lg:p-6 md:justify-between">
@@ -1097,9 +1126,9 @@ export default function DashboardPage() {
                             </p>
                             <div className="flex justify-center w-full">
                               <span className="inline-flex items-center justify-center px-3 py-1.5 rounded-full text-sm font-medium bg-[#85ea10] text-black">
-                        {course.category_name || 'Sin categoría'}
-                      </span>
-                    </div>
+                          {course.category_name || 'Sin categoría'}
+                        </span>
+                      </div>
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                               <div className="flex items-center justify-center space-x-2">
                                 <Play className="w-4 h-4 text-[#85ea10] flex-shrink-0" />
@@ -1133,35 +1162,35 @@ export default function DashboardPage() {
                             <div className="flex items-center justify-center space-x-2 p-2 bg-[#85ea10]/10 rounded-lg">
                               <Zap className="w-3 h-3 md:w-4 md:h-4 text-[#85ea10] flex-shrink-0" />
                               <span className="text-xs md:text-sm font-semibold text-gray-900 dark:text-white">
-                        ¡Sin límites! Para todos los niveles
-                      </span>
-                    </div>
-                    </div>
+                          ¡Sin límites! Para todos los niveles
+                        </span>
+                      </div>
+                      </div>
                           <div className="pt-3 border-t border-gray-200 dark:border-gray-700 mt-auto md:mt-0">
                             <div className="flex items-center justify-center flex-wrap gap-2 mb-3">
                               {course.original_price ? (
                                 <>
                                   <span className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
-                              ${calculateFinalPrice(course).toLocaleString('es-CO')}
-                            </span>
+                                ${calculateFinalPrice(course).toLocaleString('es-CO')}
+                              </span>
                                   <span className="text-lg md:text-xl text-gray-500 dark:text-white/50 line-through">
                                     ${course.original_price?.toLocaleString('es-CO')}
                                   </span>
                                   <span className="text-xs md:text-sm text-[#85ea10] font-bold bg-[#85ea10]/10 px-2 py-1 rounded-lg">
                                     {course.discount_percentage}% de descuento
-                            </span>
-                          </>
-                        ) : (
+                              </span>
+                            </>
+                          ) : (
                                 <span className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
-                            ${calculateFinalPrice(course).toLocaleString('es-CO')}
-                          </span>
-                        )}
-                      </div>
-                    <button
+                              ${calculateFinalPrice(course).toLocaleString('es-CO')}
+                            </span>
+                          )}
+                        </div>
+                      <button
                       onClick={async (e) => {
-                        e.stopPropagation();
-                        router.push(`/course/${course.slug || course.id}`);
-                      }}
+                          e.stopPropagation();
+                          router.push(`/course/${course.slug || course.id}`);
+                        }}
                               style={{
                                 width: '100%',
                                 backgroundColor: '#85ea10',
@@ -1178,13 +1207,13 @@ export default function DashboardPage() {
                                 border: 'none'
                               }}
                               className="hover:bg-[#7dd30f] transition-colors duration-150 shadow-lg"
-                    >
-                      <ShoppingCart className="w-4 h-4" />
-                      <span>¡Comenzar Ahora!</span>
-                    </button>
+                      >
+                        <ShoppingCart className="w-4 h-4" />
+                        <span>¡Comenzar Ahora!</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
             </div>
                   ))}
 
@@ -1199,15 +1228,15 @@ export default function DashboardPage() {
                         <div className="absolute inset-0 w-full h-full rounded-t-2xl md:rounded-l-2xl md:rounded-tr-none overflow-hidden">
                           <div className="absolute inset-0 w-full h-full bg-gradient-to-br from-gray-300 to-gray-400 dark:from-gray-600 dark:to-gray-700 flex items-center justify-center">
                             <Play className="w-16 h-16 text-gray-400 dark:text-gray-600" />
-                          </div>
+                        </div>
                           <div className="absolute inset-0 bg-black/30"></div>
                           <div className="absolute top-3 left-3 z-20">
                             <div className="bg-gray-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">
                               PRÓXIMAMENTE
-                            </div>
-                          </div>
-                        </div>
                       </div>
+                      </div>
+                      </div>
+                    </div>
                       
                       {/* CONTENIDO - Resto del espacio */}
                       <div className="flex-1 flex flex-col min-w-0 overflow-visible p-4 md:p-5 lg:p-6 md:justify-between">
@@ -1221,52 +1250,52 @@ export default function DashboardPage() {
                           <div className="flex justify-center w-full">
                             <span className="inline-flex items-center justify-center px-3 py-1.5 rounded-full text-sm font-medium bg-gray-400 text-white">
                               Próximamente
-                            </span>
-                          </div>
+                          </span>
+                        </div>
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                             <div className="flex items-center justify-center space-x-2">
                               <Play className="w-4 h-4 text-gray-400 dark:text-gray-600 flex-shrink-0" />
-                              <div className="flex flex-col items-center">
+                          <div className="flex flex-col items-center">
                                 <div className="text-xs text-gray-400 dark:text-gray-600 mb-0.5">Clases</div>
                                 <div className="text-sm font-semibold text-gray-400 dark:text-gray-600">-</div>
-                              </div>
+                          </div>
                             </div>
                             <div className="flex items-center justify-center space-x-2">
                               <Clock className="w-4 h-4 text-gray-400 dark:text-gray-600 flex-shrink-0" />
-                              <div className="flex flex-col items-center">
+                          <div className="flex flex-col items-center">
                                 <div className="text-xs text-gray-400 dark:text-gray-600 mb-0.5">Duración</div>
                                 <div className="text-sm font-semibold text-gray-400 dark:text-gray-600">-</div>
-                              </div>
+                          </div>
                             </div>
                             <div className="flex items-center justify-center space-x-2">
                               <Users className="w-4 h-4 text-gray-400 dark:text-gray-600 flex-shrink-0" />
-                              <div className="flex flex-col items-center">
+                          <div className="flex flex-col items-center">
                                 <div className="text-xs text-gray-400 dark:text-gray-600 mb-0.5">Estudiantes</div>
                                 <div className="text-sm font-semibold text-gray-400 dark:text-gray-600">-</div>
-                              </div>
+                          </div>
                             </div>
                             <div className="flex items-center justify-center space-x-2">
                               <Zap className="w-4 h-4 text-gray-400 dark:text-gray-600 flex-shrink-0" />
-                              <div className="flex flex-col items-center">
+                          <div className="flex flex-col items-center">
                                 <div className="text-xs text-gray-400 dark:text-gray-600 mb-0.5">Nivel</div>
                                 <div className="text-sm font-semibold text-gray-400 dark:text-gray-600">-</div>
-                              </div>
-                            </div>
                           </div>
+                        </div>
+                      </div>
                           <div className="flex items-center justify-center space-x-2 p-2 bg-gray-400/10 rounded-lg">
                             <Zap className="w-3 h-3 md:w-4 md:h-4 text-gray-400 dark:text-gray-600 flex-shrink-0" />
                             <span className="text-xs md:text-sm font-semibold text-gray-400 dark:text-gray-600">
                               ¡Sin límites! Para todos los niveles
                             </span>
-                          </div>
                         </div>
+                          </div>
                         <div className="pt-3 border-t border-gray-200 dark:border-gray-700 mt-auto md:mt-0">
                           <div className="flex items-center justify-center flex-wrap gap-2 mb-3">
                             <span className="text-2xl md:text-3xl font-bold text-gray-400 dark:text-gray-600">
                               Próximamente
                             </span>
-                          </div>
-                          <button
+                      </div>
+                      <button
                             disabled
                             style={{
                               width: '100%',
@@ -1284,17 +1313,17 @@ export default function DashboardPage() {
                               border: 'none'
                             }}
                             className="opacity-50"
-                          >
-                            <ShoppingCart className="w-4 h-4" />
+                      >
+                        <ShoppingCart className="w-4 h-4" />
                             <span>Próximamente</span>
-                          </button>
-                        </div>
-                      </div>
-                          </div>
-                          </div>
-                      </div>
-                      </div>
+                      </button>
                     </div>
+                  </div>
+              </div>
+                          </div>
+                      </div>
+              </div>
+            </div>
           </div>
         )}
 
@@ -1306,11 +1335,11 @@ export default function DashboardPage() {
                 <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-2 flex items-center space-x-2">
                   <BookOpen className="w-6 h-6 text-[#85ea10]" />
                   <span>Tips Nutricionales</span>
-                </h2>
+            </h2>
                 <p className="text-gray-600 dark:text-gray-300">
                   Consejos y recomendaciones de nuestros expertos
                 </p>
-              </div>
+          </div>
               <button
                 onClick={() => router.push('/nutritional-blogs')}
                 className="text-sm text-[#85ea10] hover:text-[#7dd30f] font-semibold flex items-center space-x-1"
@@ -1335,14 +1364,14 @@ export default function DashboardPage() {
                         <img
                           src={blog.featured_image_url}
                           alt={blog.title}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.src = '/images/course-placeholder.jpg';
-                          }}
-                        />
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = '/images/course-placeholder.jpg';
+                      }}
+                    />
                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all duration-300"></div>
-                      </div>
+                    </div>
                     )}
                     
                     {/* Contenido */}
@@ -1354,30 +1383,30 @@ export default function DashboardPage() {
                         <p className="text-sm md:text-base text-gray-600 dark:text-gray-300 line-clamp-3 mb-4">
                           {blog.excerpt}
                         </p>
-                      </div>
+                  </div>
                       
                       <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-600">
                         <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
                           <div className="flex items-center gap-1">
                             <User className="w-4 h-4" />
                             <span>{blog.author}</span>
-                          </div>
+                      </div>
                           <div className="flex items-center gap-1">
                             <Clock className="w-4 h-4" />
                             <span>{blog.reading_time} min</span>
-                          </div>
-                        </div>
+                      </div>
+                  </div>
                         <div className="flex items-center gap-2 text-[#85ea10] font-semibold group-hover:text-[#6bc20a] transition-colors">
                           <span className="text-sm">Leer más</span>
                           <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                        </div>
-                      </div>
-                    </div>
                   </div>
                 </div>
+                    </div>
+                    </div>
+                    </div>
               ))}
-            </div>
-          </div>
+                  </div>
+                      </div>
         )}
                       
         {/* CARRUSEL DE CURSOS COMPLETO - Solo si hay más de 3 cursos (oculto por defecto, se puede mostrar con scroll) */}
@@ -1390,12 +1419,12 @@ export default function DashboardPage() {
               <p className="text-gray-600 dark:text-gray-300">
                 Descubre nuestros cursos y transforma tu cuerpo
               </p>
-                        </div>
-                        
+                    </div>
+                    
             {/* Carrusel con curso principal y coming soon */}
             <div className="relative">
               {/* Botones de navegación */}
-                      <button
+                    <button
                 onClick={() => {
                   const container = document.getElementById('courses-carousel');
                   if (container) {
@@ -1405,7 +1434,7 @@ export default function DashboardPage() {
                 className="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 z-20 bg-white/90 dark:bg-gray-800/90 backdrop-blur-md hover:bg-white dark:hover:bg-gray-800 text-gray-900 dark:text-white rounded-full p-2 md:p-3 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110 border border-gray-200 dark:border-gray-700"
               >
                 <ChevronLeft className="w-5 h-5 md:w-6 md:h-6" />
-                      </button>
+                    </button>
               
                 <button
                   onClick={() => {
@@ -1432,13 +1461,13 @@ export default function DashboardPage() {
                       <div className="relative aspect-video">
                         <div className="w-full h-full bg-gradient-to-br from-gray-300 to-gray-400 dark:from-gray-600 dark:to-gray-700 flex items-center justify-center">
                           <Play className="w-16 h-16 text-gray-400 dark:text-gray-600" />
-              </div>
+                  </div>
                         <div className="absolute inset-0 bg-black/30"></div>
                         <div className="absolute top-3 left-3 z-10">
                           <div className="bg-gray-400 text-white text-xs font-bold px-3 py-1.5 rounded-full">
                             PRÓXIMAMENTE
-            </div>
-          </div>
+                </div>
+              </div>
           </div>
                       <div className="p-6">
                         <h3 className="text-xl font-bold text-gray-400 dark:text-gray-600 mb-2">
@@ -1456,8 +1485,8 @@ export default function DashboardPage() {
                       </button>
                     </div>
                   </div>
-                        </div>
-                        
+            </div>
+
                   {/* Curso Principal - Card a color */}
                   <div className="flex-shrink-0 w-full md:w-[400px] lg:w-[500px]">
                     {realCourses[0] && (
@@ -1469,25 +1498,25 @@ export default function DashboardPage() {
                           <img
                             src={realCourses[0].preview_image || realCourses[0].thumbnail || '/images/course-placeholder.jpg'}
                             alt={realCourses[0].title}
-                      className="w-full h-full object-cover"
+                          className="w-full h-full object-cover"
                           />
                           <div className="absolute top-3 left-3 flex gap-2">
                             {realCourses[0].isPopular && (
                               <span className="bg-orange-500 text-white text-xs font-bold px-2 py-1 rounded-full">
-                        POPULAR
+                            POPULAR
                           </span>
-                    )}
+                        )}
                             {realCourses[0].isNew && (
                               <span className="bg-[#85ea10] text-black text-xs font-bold px-2 py-1 rounded-full">
-                        NUEVO
+                            NUEVO
                           </span>
-                    )}
-                        </div>
+                        )}
+                      </div>
                           <div className="absolute top-3 right-3 flex items-center space-x-1 bg-black/70 backdrop-blur-sm text-white px-3 py-1.5 rounded-full">
                             <Star className="w-4 h-4 text-yellow-400 fill-current" />
                             <span className="text-sm font-semibold">{realCourses[0]?.rating}</span>
                       </div>
-                </div>
+                    </div>
                         <div className="p-6">
                           <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 line-clamp-2">
                             {realCourses[0]?.title}
@@ -1500,7 +1529,7 @@ export default function DashboardPage() {
                               <div className="flex items-center space-x-2">
                                 <span className="text-2xl font-black text-gray-900 dark:text-white">
                                   ${realCourses[0] ? calculateFinalPrice(realCourses[0]).toLocaleString('es-CO') : '0'}
-                                </span>
+                          </span>
                                 {realCourses[0]?.original_price && (realCourses[0]?.original_price || 0) > (realCourses[0]?.price || 0) && (
                                 <span className="text-lg text-gray-500 line-through">
                                     ${realCourses[0]?.original_price?.toLocaleString('es-CO')}

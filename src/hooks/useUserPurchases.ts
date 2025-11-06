@@ -78,7 +78,7 @@ export const useUserPurchases = (): UseUserPurchasesReturn => {
         return;
       }
 
-      // Primero obtener las compras
+      // OPTIMIZACIÓN: Usar JOIN para obtener compras y cursos en una sola query
       const { data: purchasesData, error: fetchError } = await supabase
         .from('course_purchases')
         .select(`
@@ -87,7 +87,14 @@ export const useUserPurchases = (): UseUserPurchasesReturn => {
           order_id,
           created_at,
           is_active,
-          start_date
+          start_date,
+          courses!inner (
+            id,
+            title,
+            slug,
+            preview_image,
+            duration_days
+          )
         `)
         .eq('user_id', userId)
         .eq('is_active', true)
@@ -99,30 +106,12 @@ export const useUserPurchases = (): UseUserPurchasesReturn => {
         return;
       }
 
-      console.log(`✅ useUserPurchases: ${purchasesData?.length || 0} compras encontradas`);
-
       if (!purchasesData || purchasesData.length === 0) {
         setPurchases([]);
         return;
       }
 
-      // Obtener los cursos correspondientes
-      const courseIds = purchasesData.map(p => p.course_id);
-      const { data: coursesData, error: coursesError } = await supabase
-        .from('courses')
-        .select('id, title, slug, preview_image, duration_days')
-        .in('id', courseIds);
-
-      if (coursesError) {
-        console.error('❌ useUserPurchases: Error cargando cursos:', coursesError);
-        setError(coursesError.message);
-        return;
-      }
-
-      // Crear un mapa de cursos por ID
-      const coursesMap = new Map(coursesData?.map(c => [c.id, c]) || []);
-
-      // Transformar los datos para que coincidan con la interfaz
+      // Transformar los datos (el JOIN ya trae el curso)
       const transformedData = purchasesData.map((purchase: any) => ({
         id: purchase.id,
         course_id: purchase.course_id,
@@ -130,7 +119,7 @@ export const useUserPurchases = (): UseUserPurchasesReturn => {
         created_at: purchase.created_at,
         is_active: purchase.is_active,
         start_date: purchase.start_date,
-        course: coursesMap.get(purchase.course_id) || null
+        course: purchase.courses || null
       }));
 
       setPurchases(transformedData);
