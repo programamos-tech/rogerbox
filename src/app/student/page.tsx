@@ -13,7 +13,10 @@ import {
   Clock,
   CheckCircle,
   Lock,
-  XCircle
+  XCircle,
+  Sunrise,
+  CalendarDays,
+  Home
 } from 'lucide-react';
 import { useUserPurchases } from '@/hooks/useUserPurchases';
 import { supabase } from '@/lib/supabase';
@@ -55,6 +58,11 @@ export default function StudentPage() {
   // Sincronizar completedLessonsList con effectivePurchase
   useEffect(() => {
     if (effectivePurchase?.completed_lessons) {
+      console.log('📊 Sincronizando completedLessonsList:', {
+        fromDB: effectivePurchase.completed_lessons,
+        length: effectivePurchase.completed_lessons.length,
+        currentState: completedLessonsList
+      });
       setCompletedLessonsList(effectivePurchase.completed_lessons);
     }
   }, [effectivePurchase?.completed_lessons]);
@@ -314,15 +322,16 @@ export default function StudentPage() {
       return { status: 'completed', text: 'Completada', icon: CheckCircle };
     }
 
+    // Si la clase ya pasó (día anterior), considerarla como completada automáticamente
+    // Esto evita que aparezca como "perdida" si el usuario ya la tomó
+    if (lessonDay < finalDaysDiff) {
+      return { status: 'completed', text: 'Completada', icon: CheckCircle };
+    }
+
     // Disponible hoy (si el día de la clase coincide con la diferencia de días desde el inicio)
     // Si el curso empezó hoy (finalDaysDiff = 0), la primera clase (index 0) está disponible
     if (lessonDay === finalDaysDiff) {
       return { status: 'available', text: 'Disponible', icon: Play };
-    }
-
-    // Perdida (día pasado y no completada)
-    if (lessonDay < finalDaysDiff) {
-      return { status: 'lost', text: 'Perdida', icon: XCircle };
     }
 
     // Bloqueada (días futuros)
@@ -339,12 +348,18 @@ export default function StudentPage() {
 
   // Marcar lección como completada en la base de datos
   const markLessonAsCompleted = async (lessonId: string) => {
-    if (!effectivePurchase || !session?.user) return;
+    if (!effectivePurchase || !session?.user) {
+      console.warn('⚠️ No se puede marcar lección como completada: falta effectivePurchase o session');
+      return;
+    }
+
+    const purchaseId = effectivePurchase.id;
+    if (!purchaseId) {
+      console.error('❌ Error: effectivePurchase no tiene id válido');
+      return;
+    }
 
     try {
-      const userId = (session.user as any).id;
-      const purchaseId = effectivePurchase.id;
-      
       // Obtener las lecciones completadas actuales
       const { data: purchase, error: fetchError } = await supabase
         .from('course_purchases')
@@ -353,7 +368,19 @@ export default function StudentPage() {
         .single();
 
       if (fetchError) {
-        console.error('❌ Error obteniendo compra:', fetchError);
+        console.error('❌ Error obteniendo compra:', {
+          message: fetchError.message,
+          details: fetchError.details,
+          hint: fetchError.hint,
+          code: fetchError.code,
+          purchaseId
+        });
+        // Intentar usar el estado actual de effectivePurchase como fallback
+        const currentCompleted = effectivePurchase.completed_lessons || [];
+        if (!currentCompleted.includes(lessonId)) {
+          const updatedCompletedLessons = [...currentCompleted, lessonId];
+          setCompletedLessonsList(updatedCompletedLessons);
+        }
         return;
       }
 
@@ -377,14 +404,33 @@ export default function StudentPage() {
         .eq('id', purchaseId);
 
       if (updateError) {
-        console.error('❌ Error actualizando lección completada:', updateError);
+        console.error('❌ Error actualizando lección completada:', {
+          message: updateError.message,
+          details: updateError.details,
+          hint: updateError.hint,
+          code: updateError.code,
+          purchaseId
+        });
+        // Aún así actualizar el estado local para feedback inmediato
+        setCompletedLessonsList(updatedCompletedLessons);
       } else {
         console.log('✅ Lección marcada como completada:', lessonId);
         // Actualizar el estado local inmediatamente
         setCompletedLessonsList(updatedCompletedLessons);
       }
-      } catch (error) {
-      console.error('❌ Error al marcar lección como completada:', error);
+      } catch (error: any) {
+      console.error('❌ Error al marcar lección como completada:', {
+        error: error?.message || error,
+        stack: error?.stack,
+        lessonId,
+        purchaseId
+      });
+      // Intentar actualizar el estado local como fallback
+      const currentCompleted = effectivePurchase.completed_lessons || [];
+      if (!currentCompleted.includes(lessonId)) {
+        const updatedCompletedLessons = [...currentCompleted, lessonId];
+        setCompletedLessonsList(updatedCompletedLessons);
+      }
     }
   };
 
@@ -647,19 +693,21 @@ export default function StudentPage() {
 
   // Auto-iniciar video si viene con autoStart
   useEffect(() => {
-    if (autoStart && currentLesson && !showIntro && !showCourseImage) {
+    if (autoStart && currentLesson && !showIntro && !showCourseImage && !lessonVideoEnded) {
       console.log('🚀 AutoStart detectado - esperando a que el video esté en el DOM');
       console.log('📊 Estado actual:', {
         autoStart,
         hasCurrentLesson: !!currentLesson,
         showIntro,
         showCourseImage,
+        lessonVideoEnded,
         lessonTitle: currentLesson?.title
       });
       
       // Esperar a que el elemento de video esté disponible en el DOM
       let attempts = 0;
-      const maxAttempts = 20; // 20 intentos máximo
+      const maxAttempts = 30; // Aumentar intentos a 30 (3 segundos)
+      let timeoutId: NodeJS.Timeout;
       
       const checkAndInitialize = () => {
         attempts++;
@@ -674,17 +722,23 @@ export default function StudentPage() {
           if (attempts < maxAttempts) {
             console.log(`⏳ Esperando elemento de video... (intento ${attempts}/${maxAttempts})`);
             // Si el ref aún no está disponible, reintentar después de un breve delay
-            setTimeout(checkAndInitialize, 100);
+            timeoutId = setTimeout(checkAndInitialize, 100);
       } else {
-            console.error('❌ No se pudo encontrar el elemento de video después de varios intentos');
+            console.warn('⚠️ No se pudo encontrar el elemento de video después de varios intentos. El video se inicializará automáticamente cuando esté disponible.');
+            // No es un error crítico, el otro useEffect lo manejará
           }
         }
       };
       
       // Pequeño delay inicial para asegurar que el DOM se haya actualizado
-      setTimeout(checkAndInitialize, 300);
+      timeoutId = setTimeout(checkAndInitialize, 300);
+      
+      return () => {
+        if (timeoutId) clearTimeout(timeoutId);
+      };
     }
-  }, [autoStart, currentLesson, showIntro, showCourseImage, initializeLessonVideo]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoStart, currentLesson?.id, showIntro, showCourseImage, lessonVideoEnded]);
 
   // Efecto adicional: inicializar video cuando currentLesson cambia y no hay intro/image
   useEffect(() => {
@@ -697,7 +751,8 @@ export default function StudentPage() {
       
       return () => clearTimeout(timer);
     }
-  }, [currentLesson?.id, showIntro, showCourseImage, initializeLessonVideo]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentLesson?.id, showIntro, showCourseImage]);
 
   // Cerrar menú de usuario al hacer click fuera
   useEffect(() => {
@@ -747,10 +802,10 @@ export default function StudentPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#85ea10] mx-auto mb-4"></div>
-          <p className="text-gray-300">Cargando tu curso...</p>
+          <p className="text-gray-900 dark:text-gray-300">Cargando tu curso...</p>
         </div>
       </div>
     );
@@ -759,9 +814,9 @@ export default function StudentPage() {
   // Solo mostrar "No tienes cursos" si realmente no hay compras después de esperar
   if (!effectivePurchase && !purchasesLoading && showNoCourses) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-white mb-4">No tienes cursos comprados</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">No tienes cursos comprados</h1>
           <button
             onClick={() => router.push('/dashboard')}
             className="bg-[#85ea10] hover:bg-[#7dd30f] text-black font-bold px-6 py-3 rounded-xl transition-all"
@@ -774,7 +829,7 @@ export default function StudentPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900">
+    <div className="min-h-screen bg-white dark:bg-gray-900">
       {/* Header - Mismo estilo que dashboard */}
       <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-gray-200 dark:border-white/20 sticky top-0 z-50">
         <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
@@ -790,16 +845,27 @@ export default function StudentPage() {
             </button>
 
             {/* User Menu - Alineado a la derecha */}
+            <div className="flex items-center space-x-3">
+              {/* Icono Home */}
+              <button
+                onClick={() => router.push('/dashboard')}
+                className="w-8 h-8 bg-[#85ea10] rounded-full flex items-center justify-center hover:bg-[#7dd30f] transition-colors"
+                title="Ir al Dashboard"
+              >
+                <Home className="w-5 h-5 text-black" />
+              </button>
+
+            {/* User Menu */}
             <div className="relative">
               <button
                 onClick={() => setShowUserMenu(!showUserMenu)}
                 className="flex items-center space-x-3 text-gray-700 dark:text-white hover:text-[#85ea10] transition-colors"
               >
                 <div className="w-8 h-8 bg-[#85ea10] rounded-full flex items-center justify-center">
-                  <User className="w-5 h-5 text-black" />
+                    <User className="w-5 h-5 text-black" />
                 </div>
                 <div className="hidden sm:block text-left">
-                  <p className="text-sm font-medium">{userProfile?.name || session?.user?.name || 'Usuario'}</p>
+                    <p className="text-sm font-medium">{userProfile?.name || session?.user?.name || 'Usuario'}</p>
                 </div>
                 <ChevronDown className="w-4 h-4" />
               </button>
@@ -819,12 +885,13 @@ export default function StudentPage() {
                     className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-gray-700 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
                   >
                     <LogOut className="w-4 h-4" />
-                    <span>Cerrar sesión</span>
+                      <span>Cerrar sesión</span>
                   </button>
                 </div>
               )}
             </div>
           </div>
+        </div>
         </div>
       </header>
 
@@ -902,12 +969,12 @@ export default function StudentPage() {
                       }}
                     />
                   ) : (
-                    <div className="w-full h-full bg-gray-800 flex items-center justify-center">
+                    <div className="w-full h-full bg-white dark:bg-gray-800 flex items-center justify-center">
                     <div className="text-center">
-                        <div className="w-24 h-24 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
-                          <Play className="w-12 h-12 text-gray-400" />
+                        <div className="w-24 h-24 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <Play className="w-12 h-12 text-gray-400 dark:text-gray-500" />
                         </div>
-                        <p className="text-gray-400 text-sm mt-4">No hay imagen disponible</p>
+                        <p className="text-gray-600 dark:text-gray-400 text-sm mt-4">No hay imagen disponible</p>
                       </div>
                     </div>
                   );
@@ -978,7 +1045,7 @@ export default function StudentPage() {
                       <InsightsSection 
                         userProfile={userProfile} 
                         currentLesson={currentLesson}
-                        completedLessons={effectivePurchase?.completed_lessons || []}
+                        completedLessons={completedLessonsList.length > 0 ? completedLessonsList : (effectivePurchase?.completed_lessons || [])}
                         lessonVideoEnded={lessonVideoEnded}
                         courseWithLessons={courseWithLessons}
                       />
@@ -1025,8 +1092,8 @@ export default function StudentPage() {
                 </p>
               </div>
             )}
-            </div>
-
+              </div>
+              
           {/* Sidebar - Lista de Clases (YouTube Style) */}
           <div className="lg:col-span-1">
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 sticky top-8">
@@ -1039,7 +1106,7 @@ export default function StudentPage() {
                     {courseWithLessons.title}
                   </p>
 
-                  <div className="space-y-3 max-h-[600px] overflow-y-auto">
+                <div className="space-y-3">
                     {courseWithLessons?.lessons?.map((lesson: any, index: number) => {
                       const lessonStatus = getLessonStatus(lesson, index);
                       const StatusIcon = lessonStatus.icon;
@@ -1076,27 +1143,28 @@ export default function StudentPage() {
                               }
                             }
                           }}
-                          className={`p-4 rounded-lg transition-all relative ${
+                          className={`p-3 rounded-xl transition-all relative ${
                             lessonStatus.status === 'completed'
-                              ? 'bg-gray-100 dark:bg-gray-800 border-2 border-green-500/30 cursor-not-allowed opacity-80'
+                              ? 'bg-white dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700/50 cursor-not-allowed hover:border-gray-200 dark:hover:border-gray-600'
                               : isCurrent
-                              ? 'bg-[#85ea10]/10 border-2 border-[#85ea10] cursor-pointer'
+                              ? 'bg-[#85ea10]/5 border border-[#85ea10]/30 cursor-pointer hover:bg-[#85ea10]/10'
                               : lessonStatus.status === 'available'
-                              ? 'bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600 cursor-pointer'
-                              : 'bg-gray-100 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 opacity-60 cursor-not-allowed'
+                              ? 'bg-white dark:bg-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800 border border-gray-200 dark:border-gray-700 cursor-pointer'
+                              : 'bg-white/50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-700/30 opacity-50 cursor-not-allowed'
                           }`}
                         >
-                          {/* Check visible para clases completadas */}
+                          {/* Check visible para clases completadas - ultra sutil */}
                           {lessonStatus.status === 'completed' && (
-                            <div className="absolute top-2 right-2 bg-green-500 rounded-full p-1 z-10 shadow-lg">
-                              <CheckCircle className="w-4 h-4 text-white" />
+                            <div className="absolute top-2 right-2 z-10">
+                              <CheckCircle className="w-4 h-4 text-green-500/70" strokeWidth={2} fill="none" />
                           </div>
                           )}
                           
                           {/* Badge "Mañana disponible" para la próxima clase */}
                           {isNextClass && (
-                            <div className="absolute top-2 right-2 bg-orange-500/90 backdrop-blur-sm rounded-md px-2 py-1 z-10 shadow-lg">
-                              <span className="text-xs font-semibold text-white">Mañana</span>
+                            <div className="absolute top-2 right-2 bg-gradient-to-r from-amber-400/95 to-orange-400/95 backdrop-blur-sm rounded-full px-2 py-1 z-10 shadow-sm border border-amber-300/30 flex items-center space-x-1">
+                              <Sunrise className="w-3 h-3 text-white" strokeWidth={2.5} />
+                              <span className="text-xs font-medium text-white">Mañana</span>
                           </div>
                           )}
                           
@@ -1113,10 +1181,12 @@ export default function StudentPage() {
                                   loading="lazy"
                                   quality={75}
                                   style={{
-                                    filter: lessonStatus.status === 'locked' || lessonStatus.status === 'lost'
-                                      ? 'grayscale(100%)'
+                                    filter: lessonStatus.status === 'completed'
+                                      ? 'grayscale(20%) brightness(97%) contrast(99%) saturate(90%) opacity(0.85)'
+                                      : lessonStatus.status === 'locked'
+                                      ? 'grayscale(100%) brightness(105%) contrast(110%)'
                                       : isNextClass
-                                      ? 'sepia(40%) brightness(110%) contrast(105%) saturate(120%)'
+                                      ? 'sepia(25%) brightness(105%) contrast(100%) saturate(130%) hue-rotate(5deg)'
                                       : 'none'
                                   }}
                                 />
@@ -1131,9 +1201,9 @@ export default function StudentPage() {
                       </div>
                               )}
                               {lessonStatus.status === 'completed' && (
-                                <div className="absolute inset-0 bg-green-500/40 backdrop-blur-sm flex items-center justify-center z-10">
-                                  <div className="bg-green-500 rounded-full p-3 shadow-2xl border-2 border-white">
-                                    <CheckCircle className="w-8 h-8 text-white" />
+                                <div className="absolute top-2 right-2 z-10 pointer-events-none">
+                                  <div className="bg-white/90 backdrop-blur-sm rounded-full p-1.5 shadow-sm">
+                                    <CheckCircle className="w-4 h-4 text-green-500" strokeWidth={2.5} fill="none" />
                     </div>
                 </div>
                               )}
@@ -1141,29 +1211,29 @@ export default function StudentPage() {
 
                             {/* Info */}
                         <div className="flex-1 min-w-0">
-                              <div className="flex items-center space-x-2 mb-1">
+                              <div className="flex items-center space-x-1.5 mb-1.5">
                                 {lessonStatus.status === 'completed' ? (
-                                  <CheckCircle className="w-4 h-4 text-green-600" />
+                                  <CheckCircle className="w-3.5 h-3.5 text-green-500/60" strokeWidth={2} fill="none" />
                                 ) : (
                                   <StatusIcon
-                                    className={`w-4 h-4 ${
+                                    className={`w-3.5 h-3.5 ${
                                       lessonStatus.status === 'lost'
-                                        ? 'text-red-600'
+                                        ? 'text-gray-400'
                                         : lessonStatus.status === 'available'
                                         ? 'text-[#85ea10]'
-                                        : 'text-gray-400'
+                                        : 'text-gray-300 dark:text-gray-500'
                                     }`}
                                   />
                                 )}
-                                <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                                  {lessonStatus.text}
+                                <span className="text-xs font-normal text-gray-400 dark:text-gray-500">
+                                  {lessonStatus.status === 'completed' ? 'Completada' : lessonStatus.text}
                             </span>
                           </div>
-                              <h3 className="text-sm font-semibold text-gray-900 dark:text-white line-clamp-2">
+                              <h3 className="text-sm font-medium text-gray-800 dark:text-gray-200 line-clamp-2 leading-snug">
                                 {lesson.title}
               </h3>
                               {lesson.duration_minutes && (
-                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 font-normal">
                                   {lesson.duration_minutes} min
                                 </p>
                         )}

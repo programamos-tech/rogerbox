@@ -3,7 +3,7 @@
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Play, Clock, Users, Star, Search, User, LogOut, ChevronDown, ShoppingCart, Heart, BookOpen, Target, Zap, Utensils, ChefHat, Award, TrendingUp, Trophy, Weight, X, Info, Settings, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Play, Clock, Users, Star, Search, User, LogOut, ChevronDown, ShoppingCart, Heart, BookOpen, Target, Zap, Utensils, ChefHat, Award, TrendingUp, Trophy, Weight, X, Info, Settings, RefreshCw, ChevronLeft, ChevronRight, Dumbbell } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { trackCourseView } from '@/lib/analytics';
 import Footer from '@/components/Footer';
@@ -638,12 +638,50 @@ export default function DashboardPage() {
   // Función para manejar el envío del peso
   const handleWeightSubmit = async (weight: number) => {
     try {
-      // Aquí se actualizaría el peso en la base de datos
-      console.log('Peso actualizado:', weight);
+      if (!(session as any)?.user?.id) return;
+      
+      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+      
+      // Guardar registro de peso en weight_records
+      const { error: weightRecordError } = await supabase
+        .from('weight_records')
+        .upsert({
+          user_id: (session as any).user.id,
+          weight: weight,
+          record_date: today,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_id,record_date'
+        });
+      
+      if (weightRecordError) {
+        console.error('Error guardando registro de peso:', weightRecordError);
+      }
+      
+      // Actualizar también el peso actual en el perfil
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
+          current_weight: weight,
+          last_weight_update: today,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', (session as any).user.id);
+      
+      if (profileError) {
+        console.error('Error actualizando perfil:', profileError);
+      }
+      
       // Actualizar el perfil local
       if (userProfile) {
-        setUserProfile({ ...userProfile, weight });
+        setUserProfile({ 
+          ...userProfile, 
+          current_weight: weight,
+          last_weight_update: today
+        });
       }
+      
+      console.log('Peso actualizado:', weight);
     } catch (error) {
       console.error('Error al actualizar peso:', error);
     }
@@ -751,6 +789,17 @@ export default function DashboardPage() {
             </button>
 
             {/* User Menu - Alineado a la derecha */}
+            <div className="flex items-center space-x-3">
+              {/* Icono Mi Curso */}
+              <button
+                onClick={() => router.push('/student')}
+                className="w-8 h-8 bg-[#85ea10] rounded-full flex items-center justify-center hover:bg-[#7dd30f] transition-colors"
+                title="Mi Curso"
+              >
+                <Dumbbell className="w-5 h-5 text-black" />
+              </button>
+
+            {/* User Menu */}
             <div className="relative">
               <button
                 onClick={() => setShowUserMenu(!showUserMenu)}
@@ -793,6 +842,7 @@ export default function DashboardPage() {
                   </button>
                 </div>
               )}
+              </div>
             </div>
           </div>
         </div>
@@ -883,7 +933,10 @@ export default function DashboardPage() {
 
             {/* COLUMNA 2: INSIGHTS */}
             <div className="lg:col-span-1 flex flex-col min-h-0">
-              <InsightsSection userProfile={userProfile} />
+              <InsightsSection 
+                userProfile={userProfile} 
+                completedLessons={purchases.flatMap((p: any) => p.completed_lessons || [])}
+              />
             </div>
           </div>
         </div>
