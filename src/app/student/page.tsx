@@ -910,7 +910,9 @@ export default function StudentPage() {
                     playsInline
                     onEnded={handleIntroEnd}
                     onError={(e) => {
-                      console.error('❌ Error cargando video intro:', e);
+                      console.warn('⚠️ Video intro no disponible, saltando al contenido del curso');
+                      // Si el video no se puede cargar, saltar directamente a mostrar la imagen del curso
+                      handleIntroEnd();
                     }}
                     onLoadStart={() => {
                       console.log('🎬 Iniciando carga del teaser');

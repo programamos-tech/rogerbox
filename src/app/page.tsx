@@ -210,6 +210,11 @@ export default function HomePage() {
           className={`w-full h-full object-cover transition-opacity duration-500 ${videoLoaded ? 'opacity-100' : 'opacity-0'}`}
           onLoadedData={() => setVideoLoaded(true)}
           onCanPlay={() => setVideoLoaded(true)}
+          onError={() => {
+            console.warn('⚠️ Video de fondo no disponible, usando fondo negro');
+            // Mantener el fondo negro si el video no se puede cargar
+            setVideoLoaded(false);
+          }}
         >
           <source src="/roger-hero.mp4" type="video/mp4" />
         </video>
