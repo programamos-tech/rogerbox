@@ -4,8 +4,10 @@ import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import { CheckCircle, Zap, Award, Play, Calendar, Clock, ArrowRight, Pill, Weight, TrendingUp } from 'lucide-react';
+import { CheckCircle, Zap, Award, Play, Calendar, Clock, ArrowRight, Pill, Weight, TrendingUp, Activity, Plus, Info, X, Edit } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { getBMIColor } from '@/lib/goalSuggestion';
+import WeeklyWeightReminder from '@/components/WeeklyWeightReminder';
 
 interface UserProfile {
   weight: number;
@@ -27,6 +29,7 @@ interface Lesson {
   id?: string;
   calories?: number | null;
   calories_burned?: number | null;
+  duration_minutes?: number | null;
 }
 
 interface InsightsSectionProps {
@@ -35,48 +38,236 @@ interface InsightsSectionProps {
   completedLessons?: string[];
   lessonVideoEnded?: boolean;
   courseWithLessons?: any;
+  effectivePurchase?: any; // Para obtener start_date y calcular racha
 }
+
+const formatDateLabel = (dateString?: string | null) => {
+  if (!dateString) return null;
+
+  const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  const dayName = date.toLocaleDateString('es-ES', { weekday: 'long' });
+  const dayNumber = date.getDate();
+  const monthName = date.toLocaleDateString('es-ES', { month: 'short' });
+
+  return `${dayName.charAt(0).toUpperCase() + dayName.slice(1)} ${dayNumber} ${monthName}`;
+};
+
+// Calcular IMC
+const calculateBMI = (weight: number, height: number): number => {
+  if (!weight || !height || height === 0) return 0;
+  const heightInMeters = height / 100;
+  return weight / (heightInMeters * heightInMeters);
+};
+
+// Obtener categoría de IMC según OMS
+const getBMICategory = (bmi: number): { label: string; color: string } => {
+  if (bmi >= 30) {
+    return { label: 'Obesidad', color: 'rojo' };
+  } else if (bmi >= 25) {
+    return { label: 'Sobrepeso', color: 'amarillo' };
+  } else if (bmi >= 18.5) {
+    return { label: 'Peso Normal', color: 'verde' };
+  } else {
+    return { label: 'Bajo Peso', color: 'azul' };
+  }
+};
 
 export default function InsightsSection({ 
   userProfile, 
   currentLesson, 
   completedLessons = [],
   lessonVideoEnded = false,
-  courseWithLessons
+  courseWithLessons,
+  effectivePurchase
 }: InsightsSectionProps) {
   const router = useRouter();
   const { data: session } = useSession();
   const [classStreak, setClassStreak] = useState(0);
+  const [consecutiveDaysStreak, setConsecutiveDaysStreak] = useState(0);
+  const [totalMinutesExercised, setTotalMinutesExercised] = useState(0);
   const [nextLesson, setNextLesson] = useState<any>(null);
   const [weightHistory, setWeightHistory] = useState<WeightRecord[]>([]);
+  const [bmi, setBmi] = useState<number>(0);
+  const [showWeightModal, setShowWeightModal] = useState(false);
+  const [showBMIModal, setShowBMIModal] = useState(false);
+  const [showGoalModal, setShowGoalModal] = useState(false);
+  const [targetWeight, setTargetWeight] = useState<string>('');
 
-  // Calcular racha de clases - contar todas las clases completadas
+  // Calcular IMC
   useEffect(() => {
-    // Usar el array de completedLessons directamente
-    // Si el video terminó y la clase actual no está en la lista, agregarla temporalmente para el cálculo
+    if (userProfile?.weight && userProfile?.height) {
+      const currentWeight = userProfile.current_weight || userProfile.weight;
+      const calculatedBMI = calculateBMI(currentWeight, userProfile.height);
+      setBmi(calculatedBMI);
+    }
+  }, [userProfile]);
+
+  // Calcular peso meta seguro según OMS
+  const calculateSafeTargetWeight = (): number => {
+    if (!userProfile?.weight || !userProfile?.height) return latestWeight;
+    
+    const currentWeight = userProfile.current_weight || userProfile.weight;
+    const currentBMI = calculateBMI(currentWeight, userProfile.height);
+    
+    // Según OMS: meta realista es 5-10% de pérdida de peso para sobrepeso/obesidad
+    if (currentBMI >= 30) {
+      // Obesidad: 8% del peso actual
+      return Math.round((currentWeight * 0.92) * 10) / 10;
+    } else if (currentBMI >= 25) {
+      // Sobrepeso: 7% del peso actual
+      return Math.round((currentWeight * 0.93) * 10) / 10;
+    } else if (currentBMI >= 18.5) {
+      // Peso normal: mantener peso actual
+      return currentWeight;
+    } else {
+      // Bajo peso: sugerir ganar hasta IMC 20
+      const targetBMI = 20;
+      return Math.round((targetBMI * Math.pow(userProfile.height / 100, 2)) * 10) / 10;
+    }
+  };
+
+  // Abrir modal de meta con sugerencia pre-llenada
+  const handleOpenGoalModal = () => {
+    // Si ya hay una meta, usar esa. Si no, usar la sugerencia según OMS
+    const weightToUse = userProfile?.target_weight || calculateSafeTargetWeight();
+    setTargetWeight(weightToUse.toString());
+    setShowGoalModal(true);
+  };
+
+  // Guardar meta de peso
+  const handleSaveGoal = async () => {
+    const userId = (session as any)?.user?.id;
+    if (!userId || !targetWeight) return;
+
+    try {
+      const weightValue = parseFloat(targetWeight);
+      if (isNaN(weightValue) || weightValue < 30 || weightValue > 300) {
+        alert('Por favor ingresa un peso válido entre 30 y 300 kg');
+        return;
+      }
+
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          target_weight: weightValue,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', userId);
+
+      if (error) throw error;
+
+      // Actualizar el perfil local
+      if (userProfile) {
+        userProfile.target_weight = weightValue;
+      }
+
+      setShowGoalModal(false);
+      // Recargar la página para actualizar los datos
+      window.location.reload();
+    } catch (error) {
+      console.error('Error al guardar meta:', error);
+      alert('Error al guardar la meta. Por favor intenta de nuevo.');
+    }
+  };
+
+  // Calcular racha de días consecutivos
+  useEffect(() => {
+    const calculateConsecutiveDaysStreak = async () => {
+      if (!effectivePurchase?.start_date || !courseWithLessons?.lessons || !completedLessons?.length) {
+        setConsecutiveDaysStreak(0);
+        return;
+      }
+
+      try {
+        // Obtener start_date del curso
+        const startDate = new Date(effectivePurchase.start_date);
+        startDate.setHours(0, 0, 0, 0);
+        
+        // Crear un mapa de días con clases completadas
+        // Cada clase corresponde a un día desde el inicio (basado en lesson_order)
+        const daysWithClasses = new Set<number>();
+        
+        courseWithLessons.lessons.forEach((lesson: any) => {
+          if (completedLessons.includes(lesson.id)) {
+            // El lesson_order indica qué día corresponde (0 = primer día, 1 = segundo día, etc.)
+            const dayIndex = lesson.lesson_order !== undefined ? lesson.lesson_order : 
+                           courseWithLessons.lessons.findIndex((l: any) => l.id === lesson.id);
+            daysWithClasses.add(dayIndex);
+          }
+        });
+
+        if (daysWithClasses.size === 0) {
+          setConsecutiveDaysStreak(0);
+          return;
+        }
+
+        // Obtener el día más reciente con clase completada
+        const maxDay = Math.max(...Array.from(daysWithClasses));
+        
+        // Calcular racha consecutiva desde el día más reciente hacia atrás
+        let streak = 0;
+        for (let day = maxDay; day >= 0; day--) {
+          if (daysWithClasses.has(day)) {
+            streak++;
+          } else {
+            // Si encontramos un día sin clase, la racha se rompe
+            break;
+          }
+        }
+
+        setConsecutiveDaysStreak(streak);
+      } catch (error) {
+        console.error('Error calculando racha de días:', error);
+        setConsecutiveDaysStreak(0);
+      }
+    };
+
+    calculateConsecutiveDaysStreak();
+  }, [completedLessons, courseWithLessons, effectivePurchase]);
+
+  // Calcular minutos totales ejercitados
+  useEffect(() => {
+    const calculateTotalMinutes = async () => {
+      if (!completedLessons?.length || !courseWithLessons?.lessons) {
+        setTotalMinutesExercised(0);
+        return;
+      }
+
+      try {
+        let totalMinutes = 0;
+        
+        // Sumar duration_minutes de todas las clases completadas
+        courseWithLessons.lessons.forEach((lesson: any) => {
+          if (completedLessons.includes(lesson.id) && lesson.duration_minutes) {
+            totalMinutes += Number(lesson.duration_minutes);
+          }
+        });
+
+        setTotalMinutesExercised(totalMinutes);
+      } catch (error) {
+        console.error('Error calculando minutos totales:', error);
+        setTotalMinutesExercised(0);
+      }
+    };
+
+    calculateTotalMinutes();
+  }, [completedLessons, courseWithLessons]);
+
+  // Calcular número total de clases completadas
+  useEffect(() => {
     let allCompleted = [...(completedLessons || [])];
     
     if (lessonVideoEnded && currentLesson?.id) {
-      // Si la clase actual no está en la lista, agregarla para el cálculo
       if (!allCompleted.includes(currentLesson.id)) {
         allCompleted.push(currentLesson.id);
       }
     }
     
-    // La racha es simplemente el número total de clases completadas
-    const streakCount = allCompleted.length;
-    
-    // Debug: verificar qué está pasando
-    console.log('🔍 Cálculo de racha:', {
-      completedLessons,
-      completedLessonsLength: completedLessons?.length,
-      currentLessonId: currentLesson?.id,
-      lessonVideoEnded,
-      allCompleted,
-      streakCount
-    });
-    
-    setClassStreak(streakCount);
+    setClassStreak(allCompleted.length);
   }, [completedLessons, lessonVideoEnded, currentLesson]);
 
   // Obtener la próxima clase
@@ -88,46 +279,39 @@ export default function InsightsSection({
       if (currentIndex >= 0 && currentIndex < lessons.length - 1) {
         setNextLesson(lessons[currentIndex + 1]);
       } else {
-        setNextLesson(null); // No hay más clases
+        setNextLesson(null);
       }
     }
   }, [courseWithLessons, currentLesson]);
 
-  // Obtener registros de peso reales de la base de datos
+  // Obtener registros de peso (se piden los viernes)
   useEffect(() => {
     const fetchWeightHistory = async () => {
-      console.log('📊 Fetching weight history...', { 
-        hasUserProfile: !!userProfile, 
-        hasSession: !!(session as any)?.user?.id,
-        userWeight: userProfile?.weight 
-      });
-      
       if (!userProfile) {
-        console.log('⚠️ No userProfile, clearing weight history');
         setWeightHistory([]);
         return;
       }
       
-      // Si hay peso inicial, siempre mostrarlo como mínimo
       const initialWeight = userProfile.weight || userProfile.current_weight;
       if (!initialWeight) {
-        console.log('⚠️ No weight data, clearing weight history');
         setWeightHistory([]);
         return;
       }
       
-      // Si no hay sesión, mostrar al menos el peso inicial
       if (!(session as any)?.user?.id) {
-        console.log('⚠️ No session, showing initial weight only');
+        // Si no hay sesión, mostrar al menos el peso inicial del onboarding
+        const onboardingDate = userProfile.created_at 
+          ? new Date(userProfile.created_at).toISOString().split('T')[0]
+          : new Date().toISOString().split('T')[0];
+        
         setWeightHistory([{
-          date: new Date().toISOString().split('T')[0],
+          date: onboardingDate,
           weight: initialWeight
         }]);
         return;
       }
       
       try {
-        // Obtener registros de peso ordenados por fecha
         const { data: records, error } = await supabase
           .from('weight_records')
           .select('weight, record_date')
@@ -135,39 +319,44 @@ export default function InsightsSection({
           .order('record_date', { ascending: true });
         
         if (error) {
-          // Si la tabla no existe, usar el peso inicial
-          console.warn('⚠️ Error obteniendo historial de peso (la tabla puede no existir aún):', error.message);
+          console.warn('⚠️ Error obteniendo historial de peso:', error.message);
+          // Mostrar peso inicial del onboarding
+          const onboardingDate = userProfile.created_at 
+            ? new Date(userProfile.created_at).toISOString().split('T')[0]
+            : new Date().toISOString().split('T')[0];
+          
           setWeightHistory([{
-            date: new Date().toISOString().split('T')[0],
+            date: onboardingDate,
             weight: initialWeight
           }]);
           return;
         }
         
-        console.log('📊 Weight records from DB:', records);
-        
         if (records && records.length > 0) {
-          // Convertir a formato WeightRecord
           const history: WeightRecord[] = records.map(record => ({
             date: record.record_date,
             weight: Number(record.weight)
           }));
-          
-          console.log('✅ Setting weight history:', history);
           setWeightHistory(history);
         } else {
-          // Si no hay registros, mostrar al menos el peso inicial
-          console.log('⚠️ No records found, showing initial weight');
+          // Si no hay registros, mostrar peso inicial del onboarding
+          const onboardingDate = userProfile.created_at 
+            ? new Date(userProfile.created_at).toISOString().split('T')[0]
+            : new Date().toISOString().split('T')[0];
+          
           setWeightHistory([{
-            date: new Date().toISOString().split('T')[0],
+            date: onboardingDate,
             weight: initialWeight
           }]);
         }
       } catch (error) {
         console.warn('⚠️ Error obteniendo historial de peso:', error);
-        // En caso de error, mostrar al menos el peso inicial
+        const onboardingDate = userProfile.created_at 
+          ? new Date(userProfile.created_at).toISOString().split('T')[0]
+          : new Date().toISOString().split('T')[0];
+        
         setWeightHistory([{
-          date: new Date().toISOString().split('T')[0],
+          date: onboardingDate,
           weight: initialWeight
         }]);
       }
@@ -176,262 +365,108 @@ export default function InsightsSection({
     fetchWeightHistory();
   }, [userProfile, session]);
 
-  // Modo dashboard: mostrar insights/progreso
-  // Modo completion: mostrar mensaje de clase completada (cuando lessonVideoEnded es true)
+  // Función para manejar el envío del peso (igual que en dashboard)
+  const handleWeightSubmit = async (weight: number) => {
+    try {
+      if (!(session as any)?.user?.id) return;
+      
+      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+      
+      // Guardar registro de peso en weight_records
+      const { error: weightRecordError } = await supabase
+        .from('weight_records')
+        .upsert({
+          user_id: (session as any).user.id,
+          weight: weight,
+          record_date: today,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_id,record_date'
+        });
+      
+      if (weightRecordError) {
+        console.error('Error guardando registro de peso:', weightRecordError);
+        throw weightRecordError;
+      }
+      
+      // Actualizar también el peso actual en el perfil
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
+          current_weight: weight,
+          last_weight_update: today,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', (session as any).user.id);
+      
+      if (profileError) {
+        console.error('Error actualizando perfil:', profileError);
+      }
+      
+      // Recargar el historial de peso
+      const { data: records } = await supabase
+        .from('weight_records')
+        .select('weight, record_date')
+        .eq('user_id', (session as any).user.id)
+        .order('record_date', { ascending: true });
+
+      if (records && records.length > 0) {
+        const history: WeightRecord[] = records.map(record => ({
+          date: record.record_date,
+          weight: Number(record.weight)
+        }));
+        setWeightHistory(history);
+      }
+      
+      console.log('Peso actualizado:', weight);
+    } catch (error) {
+      console.error('Error al actualizar peso:', error);
+      throw error;
+    }
+  };
+
+  // Preparar datos para la gráfica
+  const hasWeightData = weightHistory.length > 0;
+  const hasWeightTrend = weightHistory.length >= 2;
+  const initialWeight = hasWeightData
+    ? weightHistory[0].weight
+    : Number(userProfile?.current_weight || userProfile?.weight || 0);
+  const latestWeight = hasWeightData
+    ? weightHistory[weightHistory.length - 1].weight
+    : Number(userProfile?.current_weight || userProfile?.weight || 0);
+  const weightDifference = latestWeight - initialWeight;
+  const weightValues = weightHistory.map(record => record.weight);
+  
+  // Calcular rango dinámico basado en el peso actual del usuario
+  const currentWeightForRange = latestWeight || initialWeight || 70;
+  // Crear un rango de ±10kg alrededor del peso actual, pero mínimo 5kg de rango
+  const rangePadding = Math.max(5, currentWeightForRange * 0.15); // 15% del peso o mínimo 5kg
+  const minWeightValue = weightValues.length 
+    ? Math.min(...weightValues, currentWeightForRange - rangePadding)
+    : Math.max(30, currentWeightForRange - rangePadding);
+  const maxWeightValue = weightValues.length
+    ? Math.max(...weightValues, currentWeightForRange + rangePadding)
+    : currentWeightForRange + rangePadding;
+  const weightRange = maxWeightValue - minWeightValue || 10;
+  
+  // Calcular valores del eje Y (5 líneas de referencia)
+  const yAxisValues = [0, 1, 2, 3, 4].map(i => {
+    return maxWeightValue - (i * (weightRange / 4));
+  });
+
+  // Obtener colores del IMC
+  const bmiColors = bmi > 0 ? getBMIColor(bmi) : null;
+  const bmiCategory = bmi > 0 ? getBMICategory(bmi) : null;
+
+  // Modo dashboard vs completion
   const isCompletionMode = lessonVideoEnded && currentLesson;
   
-  // Si no hay userProfile, no mostrar nada
   if (!userProfile) return null;
   
-  // Si es modo completion, mostrar el mensaje de completado
+  // Modo completion (cuando termina una clase)
   if (isCompletionMode) {
-    // El resto del código de completion mode continúa abajo
-  } else {
-    // Modo dashboard: mostrar insights/progreso
-    return (
-      <div className="w-full h-full bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 min-h-0 overflow-y-auto">
-        <div className="space-y-6">
-          {/* Header */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                Tu Progreso
-              </h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Sigue así, vas por buen camino
-              </p>
-            </div>
-            <div className="text-right">
-              <div className="text-2xl font-bold text-[#85ea10]">
-                {classStreak}
-              </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">
-                {classStreak === 1 ? 'clase' : 'clases'} completadas
-              </div>
-            </div>
-          </div>
-
-          {/* Stats Grid */}
-          <div className="grid grid-cols-2 gap-4">
-            {/* Racha de días */}
-            <div className="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 rounded-lg p-4 border border-orange-200 dark:border-orange-800">
-              <div className="flex items-center space-x-2 mb-2">
-                <Zap className="w-5 h-5 text-orange-600 dark:text-orange-400" />
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Racha
-                </span>
-              </div>
-              <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
-                {userProfile.streak_days || 0}
-              </div>
-              <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                días consecutivos
-              </div>
-            </div>
-
-            {/* Peso actual */}
-            <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
-              <div className="flex items-center space-x-2 mb-2">
-                <Weight className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Peso
-                </span>
-              </div>
-              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                {userProfile.current_weight || userProfile.weight || 0} kg
-              </div>
-              <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                {userProfile.target_weight ? `Meta: ${userProfile.target_weight} kg` : 'Sin meta'}
-              </div>
-            </div>
-          </div>
-
-          {/* Gráfica de Progreso de Peso */}
-          {weightHistory.length > 0 && (
-            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center space-x-2">
-                  <TrendingUp className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                  <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
-                    Progreso de Peso
-                  </h3>
-                </div>
-                <div className="text-xs text-gray-600 dark:text-gray-400">
-                  {userProfile.weight}kg {userProfile.target_weight ? `→ ${userProfile.target_weight}kg` : ''}
-                </div>
-              </div>
-              
-              {/* Gráfica SVG */}
-              <div className="relative w-full h-40">
-                <svg className="w-full h-full" viewBox="0 0 300 140" preserveAspectRatio="none">
-                  {/* Grid lines */}
-                  <defs>
-                    <linearGradient id="weightGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                      <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.3" />
-                      <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.05" />
-                    </linearGradient>
-                  </defs>
-                  
-                  {/* Área bajo la curva - solo si hay 2 o más puntos */}
-                  {weightHistory.length >= 2 && (() => {
-                    const minWeight = Math.min(...weightHistory.map(r => r.weight));
-                    const maxWeight = Math.max(...weightHistory.map(r => r.weight));
-                    const range = maxWeight - minWeight || 1;
-                    const points = weightHistory.map((record, index) => {
-                      const x = (index / Math.max(weightHistory.length - 1, 1)) * 280 + 10;
-                      const y = range === 0 ? 80 : 120 - ((record.weight - minWeight) / range) * 100;
-                      return `${x},${y}`;
-                    }).join(' ');
-                    
-                    return (
-                      <polygon
-                        points={`${points.split(' ')[0].split(',')[0]},120 ${points} ${points.split(' ')[points.split(' ').length - 1].split(',')[0]},120`}
-                        fill="url(#weightGradient)"
-                      />
-                    );
-                  })()}
-                  
-                  {/* Línea de progreso - solo si hay 2 o más puntos */}
-                  {weightHistory.length >= 2 && (() => {
-                    const minWeight = Math.min(...weightHistory.map(r => r.weight));
-                    const maxWeight = Math.max(...weightHistory.map(r => r.weight));
-                    const range = maxWeight - minWeight || 1;
-                    const points = weightHistory.map((record, index) => {
-                      const x = (index / Math.max(weightHistory.length - 1, 1)) * 280 + 10;
-                      const y = range === 0 ? 80 : 120 - ((record.weight - minWeight) / range) * 100;
-                      return `${x},${y}`;
-                    }).join(' ');
-                    
-                    return (
-                      <polyline
-                        points={points}
-                        fill="none"
-                        stroke="#3b82f6"
-                        strokeWidth="2.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    );
-                  })()}
-                  
-                  {/* Puntos de datos */}
-                  {weightHistory.map((record, index) => {
-                    // Si solo hay un punto, centrarlo horizontalmente
-                    const x = weightHistory.length === 1 
-                      ? 150 
-                      : (index / Math.max(weightHistory.length - 1, 1)) * 280 + 10;
-                    const minWeight = Math.min(...weightHistory.map(r => r.weight));
-                    const maxWeight = Math.max(...weightHistory.map(r => r.weight));
-                    const range = maxWeight - minWeight || 1;
-                    // Si todos los pesos son iguales, centrar la línea verticalmente
-                    const y = range === 0 ? 80 : 120 - ((record.weight - minWeight) / range) * 100;
-                    const isFirst = index === 0;
-                    const isLast = index === weightHistory.length - 1;
-                    
-                    // Formatear fecha: "Viernes 15 Ene"
-                    const date = new Date(record.date);
-                    const dayName = date.toLocaleDateString('es-ES', { weekday: 'long' });
-                    const dayNumber = date.getDate();
-                    const monthName = date.toLocaleDateString('es-ES', { month: 'short' });
-                    const formattedDate = `${dayName.charAt(0).toUpperCase() + dayName.slice(1)} ${dayNumber} ${monthName}`;
-                    
-                    return (
-                      <g key={index}>
-                        <circle
-                          cx={x}
-                          cy={y}
-                          r={isLast ? 5.5 : 5}
-                          fill={isFirst ? "#6366f1" : isLast ? "#10b981" : "#3b82f6"}
-                          stroke="white"
-                          strokeWidth="2"
-                        />
-                        {/* Etiqueta con fecha y peso */}
-                        <text
-                          x={x}
-                          y={y - 20}
-                          textAnchor="middle"
-                          className="text-[9px] font-semibold fill-gray-700 dark:fill-gray-300"
-                        >
-                          {formattedDate}
-                        </text>
-                        <text
-                          x={x}
-                          y={y - 8}
-                          textAnchor="middle"
-                          className="text-[10px] font-bold fill-gray-900 dark:fill-gray-100"
-                        >
-                          {Math.round(record.weight)}kg
-                        </text>
-                      </g>
-                    );
-                  })}
-                </svg>
-                
-                {/* Información adicional */}
-                {weightHistory.length > 1 && (() => {
-                  const firstWeight = weightHistory[0].weight;
-                  const lastWeight = weightHistory[weightHistory.length - 1].weight;
-                  const difference = lastWeight - firstWeight;
-                  const isGaining = difference > 0;
-                  const isLosing = difference < 0;
-                  
-                  return (
-                    <div className="mt-2 text-center">
-                      <p className="text-xs text-gray-600 dark:text-gray-400">
-                        {isLosing ? (
-                          <span className="text-green-600 dark:text-green-400 font-semibold">
-                            ↓ Has bajado {Math.abs(difference).toFixed(1)}kg
-                          </span>
-                        ) : isGaining ? (
-                          <span className="text-orange-600 dark:text-orange-400 font-semibold">
-                            ↑ Has subido {difference.toFixed(1)}kg
-                          </span>
-                        ) : (
-                          <span className="text-gray-600 dark:text-gray-400">
-                            Peso estable
-                          </span>
-                        )}
-                      </p>
-                    </div>
-                  );
-                })()}
-              </div>
-            </div>
-          )}
-
-          {/* Motivational Message */}
-          <div className="bg-gradient-to-r from-[#85ea10]/10 to-[#7dd30f]/10 rounded-lg p-4 border border-[#85ea10]/20">
-            <div className="flex items-center space-x-2">
-              <Award className="w-5 h-5 text-[#85ea10]" />
-              <p className="text-sm font-medium text-gray-900 dark:text-white">
-                {classStreak === 0 
-                  ? '¡Comienza tu primera clase hoy! 🚀'
-                  : classStreak === 1
-                  ? '¡Excelente! Has completado tu primera clase. ¡Sigue así! 💪'
-                  : `¡Increíble! Has completado ${classStreak} clases. ¡Sigue así! 🔥`
-                }
-              </p>
-            </div>
-          </div>
-
-          {/* CTA para tomar clase */}
-          {classStreak === 0 && (
-            <button
-              onClick={() => router.push('/student?autoStart=true')}
-              className="w-full bg-gradient-to-r from-[#85ea10] to-[#7dd30f] hover:from-[#7dd30f] hover:to-[#6bc00e] text-black font-bold py-3 px-4 rounded-lg transition-all duration-300 shadow-lg hover:shadow-[#85ea10]/50 hover:scale-[1.02] flex items-center justify-center space-x-2"
-            >
-              <Play className="w-5 h-5" />
-              <span>Tomar mi primera clase</span>
-            </button>
-          )}
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="w-full h-full flex flex-row bg-white dark:bg-gray-800 rounded-xl shadow-lg min-h-0 overflow-hidden">
-      {/* Card Izquierdo - Imagen (50%) - Ocupa todo el alto */}
       {nextLesson && (
         <div className="w-1/2 flex-shrink-0 border-r border-gray-200 dark:border-gray-700">
           <div className="relative w-full h-full rounded-l-xl overflow-hidden bg-white dark:bg-gray-900">
@@ -458,10 +493,8 @@ export default function InsightsSection({
         </div>
       )}
       
-      {/* Card Derecho - Texto (50%) */}
       {nextLesson && (
         <div className="w-1/2 flex-shrink-0 flex flex-col p-5 min-h-0 h-full">
-          {/* Clase Completada y Racha */}
           <div className="space-y-2 mb-6 mt-2">
             <div className="flex items-center space-x-2">
               <CheckCircle className="w-5 h-5 text-gray-600 dark:text-gray-400 flex-shrink-0" />
@@ -472,15 +505,13 @@ export default function InsightsSection({
             <div className="flex items-center space-x-2">
               <Zap className="w-4 h-4 text-orange-500 flex-shrink-0" />
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Tu racha va en <span className="font-bold text-gray-900 dark:text-white">{classStreak}</span> {classStreak === 1 ? 'clase' : 'clases'}
+                  Tu racha va en <span className="font-bold text-gray-900 dark:text-white">{consecutiveDaysStreak}</span> {consecutiveDaysStreak === 1 ? 'día' : 'días'} consecutivos
               </p>
             </div>
           </div>
 
-          {/* Separador */}
           <div className="border-t border-gray-200 dark:border-gray-700 mb-6"></div>
 
-          {/* Próxima Clase */}
           <div className="space-y-2 mb-6">
             <div className="flex items-center space-x-2">
               <Calendar className="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
@@ -498,7 +529,6 @@ export default function InsightsSection({
             )}
           </div>
 
-          {/* Disponible mañana - Badge destacado */}
           <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-6">
             <div className="flex items-start space-x-3">
               <Clock className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
@@ -513,14 +543,11 @@ export default function InsightsSection({
             </div>
           </div>
 
-          {/* CTA - Toma tu complemento */}
           <button
             onClick={() => {
               router.push('/dashboard');
-              // Scroll a la sección de complementos después de un pequeño delay
               setTimeout(() => {
-                const complementSection = document.querySelector('[data-section="complementos"]') || 
-                                        document.querySelector('.lg\\:col-span-1:first-of-type');
+                  const complementSection = document.querySelector('[data-section="complementos"]');
                 if (complementSection) {
                   complementSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }
@@ -533,19 +560,15 @@ export default function InsightsSection({
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform flex-shrink-0" />
           </button>
 
-          {/* Mensaje nutricional */}
           <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-4 mb-4">
             Toma un plan nutricional y mira resultados un <span className="font-bold text-gray-700 dark:text-gray-300">40%</span> más rápido!
           </p>
 
-          {/* CTA - Planes nutricionales */}
           <button
             onClick={() => {
               router.push('/dashboard');
-              // Scroll a la sección de planes nutricionales después de un pequeño delay
               setTimeout(() => {
-                const nutritionSection = document.querySelector('[data-section="planes-nutricionales"]') || 
-                                       document.querySelector('[data-section="nutrition"]');
+                  const nutritionSection = document.querySelector('[data-section="planes-nutricionales"]');
                 if (nutritionSection) {
                   nutritionSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }
@@ -557,26 +580,21 @@ export default function InsightsSection({
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform flex-shrink-0" />
           </button>
 
-          {/* Logo RogerBox */}
           <div className="flex justify-center mb-6 mt-2">
             <h1 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">
               ROGER<span className="text-[#85ea10]">BOX</span>
             </h1>
           </div>
 
-          {/* Mensaje de despedida - Abajo */}
           <div className="pt-6 mt-auto border-t border-gray-200 dark:border-gray-700">
             <div className="flex items-center space-x-2 text-gray-600 dark:text-gray-400">
               <ArrowRight className="w-4 h-4 flex-shrink-0" />
-              <p className="text-sm font-medium">
-                Nos vemos mañana
-              </p>
+                <p className="text-sm font-medium">Nos vemos mañana</p>
             </div>
           </div>
         </div>
       )}
 
-      {/* Si no hay próxima clase - Compacto */}
       {!nextLesson && (
         <div className="flex-1 p-3 flex items-center justify-center min-h-0">
           <div className="text-center">
@@ -590,6 +608,525 @@ export default function InsightsSection({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+  // Modo dashboard: mostrar insights/progreso completo
+    return (
+      <div className="w-full h-full bg-white dark:bg-gray-800 rounded-xl shadow-lg p-5 min-h-0 overflow-hidden flex flex-col">
+        <div className="flex-1 min-h-0 flex flex-col space-y-4">
+          {/* Header */}
+          <div className="flex items-center justify-between flex-shrink-0">
+            <div>
+              <div className="flex items-center space-x-2 mb-1">
+                <TrendingUp className="w-5 h-5 text-[#85ea10]" />
+                <h2 className="text-lg font-bold text-gray-900 dark:text-white">
+                  Tu Progreso
+                </h2>
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Sigue así, vas por buen camino
+              </p>
+            </div>
+            <div className="text-right">
+              <div className="text-xl font-bold text-[#85ea10]">
+                {classStreak}
+              </div>
+              <div className="text-xs text-gray-500 dark:text-gray-400 capitalize">
+                {classStreak === 1 ? 'clase' : 'clases'} completadas
+              </div>
+            </div>
+          </div>
+
+        {/* Stats Grid - 4 tarjetas */}
+          <div className="grid grid-cols-2 gap-3 flex-shrink-0">
+          {/* Racha de días consecutivos */}
+            <div className="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 rounded-lg p-3 border border-orange-200 dark:border-orange-800">
+              <div className="flex items-center space-x-1.5 mb-1.5">
+                <Zap className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+                <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                  Racha
+                </span>
+              </div>
+              <div className="text-xl font-bold text-orange-600 dark:text-orange-400">
+              {consecutiveDaysStreak}
+              </div>
+              <div className="text-[10px] text-gray-600 dark:text-gray-400 mt-0.5">
+                Días consecutivos sin perder una clase
+              </div>
+            </div>
+
+          {/* Minutos ejercitados */}
+          <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-lg p-3 border border-purple-200 dark:border-purple-800">
+            <div className="flex items-center space-x-1.5 mb-1.5">
+              <Activity className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+              <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                Minutos
+              </span>
+            </div>
+            <div className="text-xl font-bold text-purple-600 dark:text-purple-400">
+              {totalMinutesExercised}
+            </div>
+            <div className="text-[10px] text-gray-600 dark:text-gray-400 mt-0.5">
+              Ejercitados
+              </div>
+            </div>
+
+            {/* Peso actual */}
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-lg p-3 border border-blue-200 dark:border-blue-800 flex flex-col h-full">
+              {/* Título con icono de editar */}
+              <div className="flex items-center justify-between mb-2 flex-shrink-0">
+                <div className="flex items-center space-x-1.5">
+                  <Weight className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                    Peso
+                  </span>
+                </div>
+                <button
+                  onClick={handleOpenGoalModal}
+                  className="bg-[#85ea10] hover:bg-[#7dd30f] text-white rounded-full p-1.5 transition-colors shadow-sm"
+                  title="Actualizar meta"
+                >
+                  <Edit className="w-4 h-4" />
+                </button>
+              </div>
+              
+              {/* Valores en una línea horizontal alineada a la izquierda */}
+              <div className="flex items-start justify-start gap-3 flex-shrink-0">
+                <div className="flex flex-col">
+                  <div className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                    {latestWeight.toFixed(1)} kg
+                  </div>
+                  <div className="text-[9px] text-gray-500 dark:text-gray-400 mt-0.5">
+                    Peso actual
+                  </div>
+                </div>
+
+                {/* Meta de peso con flecha */}
+                {userProfile.target_weight ? (
+                  <>
+                    <ArrowRight className="w-4 h-4 text-[#85ea10] flex-shrink-0 mt-1" />
+                    <div className="flex flex-col">
+                      <div className="text-lg font-bold text-[#1e3a8a] dark:text-[#85ea10]">
+                        {userProfile.target_weight} kg
+                      </div>
+                      <div className="text-[9px] text-gray-500 dark:text-gray-400 mt-0.5">
+                        Peso meta
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <button
+                    onClick={handleOpenGoalModal}
+                    className="bg-[#1e3a8a] hover:bg-[#152a6a] text-white text-[9px] font-semibold px-2 py-1 rounded-md transition-colors shadow-md flex-shrink-0"
+                  >
+                    Agregar meta
+                  </button>
+                )}
+              </div>
+            </div>
+
+          {/* IMC con semáforo */}
+          {bmi > 0 && bmiColors && bmiCategory && (
+            <div className={`bg-gradient-to-br ${bmiColors.background} rounded-lg p-3 border ${bmiColors.border}`}>
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center space-x-1.5">
+                  <div className={`w-2.5 h-2.5 rounded-full ${
+                    bmiCategory.color === 'rojo' ? 'bg-red-500' :
+                    bmiCategory.color === 'amarillo' ? 'bg-yellow-500' :
+                    bmiCategory.color === 'verde' ? 'bg-green-500' : 'bg-blue-500'
+                  }`}></div>
+                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                    IMC
+                  </span>
+                </div>
+                <button
+                  onClick={() => setShowBMIModal(true)}
+                  className="bg-[#85ea10] hover:bg-[#7dd30f] text-white rounded-full p-1.5 transition-colors shadow-sm"
+                  title="Información sobre IMC"
+                >
+                  <Info className="w-5 h-5" />
+                </button>
+              </div>
+              <div className={`text-xl font-bold ${bmiColors.text}`}>
+                {bmi.toFixed(1)}
+              </div>
+              <div className="text-[10px] text-gray-600 dark:text-gray-400 mt-0.5">
+                {bmiCategory.label}
+              </div>
+            </div>
+          )}
+          </div>
+
+          {/* Gráfica de Progreso de Peso */}
+          {hasWeightData && (
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700 flex-1 min-h-0 flex flex-col">
+              <div className="flex items-center justify-between mb-3 flex-shrink-0">
+                <div className="flex items-center space-x-2">
+                  <TrendingUp className="w-5 h-5 text-[#85ea10]" />
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+                    Progreso de Peso
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setShowWeightModal(true)}
+                  className="flex items-center space-x-2 px-4 py-2.5 bg-[#85ea10] hover:bg-[#7dd30f] text-black text-sm font-semibold rounded-lg transition-colors"
+                >
+                  <Plus className="w-5 h-5" />
+                  <span>Registrar peso</span>
+                </button>
+              </div>
+              
+              {/* Gráfica simplificada con fondo blanco - más grande */}
+              <div className="relative w-full flex-1 min-h-0 bg-white dark:bg-gray-800 rounded-lg">
+                <svg className="w-full h-full" viewBox="0 0 600 360" preserveAspectRatio="xMidYMid meet">
+                  {/* Líneas de referencia horizontales (eje Y) */}
+                  {yAxisValues.map((weightValue, i) => {
+                    const y = 40 + (i * 65);
+                    return (
+                      <g key={`grid-${i}`}>
+                        <line
+                          x1="60"
+                          y1={y}
+                          x2="540"
+                          y2={y}
+                          stroke="#e5e7eb"
+                          strokeWidth="1"
+                          strokeDasharray="3,3"
+                          className="dark:stroke-gray-700"
+                        />
+                        <text
+                          x="15"
+                          y={y + 5}
+                          className="text-[12px] fill-gray-600 dark:fill-gray-400"
+                          textAnchor="start"
+                          fontWeight="600"
+                        >
+                          {weightValue.toFixed(1)}kg
+                        </text>
+                      </g>
+                    );
+                  })}
+                  
+                  {/* Etiquetas de semanas en el eje X */}
+                  {weightHistory.map((record, index) => {
+                    const x = weightHistory.length === 1 
+                      ? 300 // Centrado cuando solo hay un punto
+                      : 60 + (index / Math.max(weightHistory.length - 1, 1)) * 480;
+                    const weekNumber = index + 1;
+                    return (
+                      <text
+                        key={`week-${index}`}
+                        x={x}
+                        y={330}
+                        className="text-[11px] fill-gray-500 dark:fill-gray-400"
+                        textAnchor="middle"
+                        fontWeight="500"
+                      >
+                        Semana {weekNumber}
+                      </text>
+                    );
+                  })}
+                  
+                  {/* Línea de conexión entre puntos - solo si hay 2 o más */}
+                  {hasWeightTrend && (
+                    <polyline
+                      points={weightHistory.map((record, index) => {
+                        const x = 60 + (index / Math.max(weightHistory.length - 1, 1)) * 480;
+                        const y = 320 - ((record.weight - minWeightValue) / weightRange) * 280;
+                        return `${x},${y}`;
+                      }).join(' ')}
+                      fill="none"
+                      stroke="#1e3a8a"
+                      strokeWidth="3.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  )}
+                  
+                  {/* Puntos de datos con colores RogerBox */}
+                  {weightHistory.map((record, index) => {
+                    const x = weightHistory.length === 1 
+                      ? 300 // Centrado cuando solo hay un punto
+                      : 60 + (index / Math.max(weightHistory.length - 1, 1)) * 480;
+                    const y = 320 - ((record.weight - minWeightValue) / weightRange) * 280;
+                    const isFirst = index === 0;
+                    const isLast = index === weightHistory.length - 1;
+                    const formattedDate = formatDateLabel(record.date) || 'Inicio';
+                    
+                    // Color: azul oscuro para el primero, verde RogerBox para el último, azul oscuro para intermedios
+                    const pointColor = isFirst ? "#1e3a8a" : isLast ? "#85ea10" : "#1e3a8a";
+                    
+                    return (
+                      <g key={index}>
+                        {/* Punto principal */}
+                        <circle
+                          cx={x}
+                          cy={y}
+                          r={isLast ? 9 : 8}
+                          fill={pointColor}
+                          stroke="white"
+                          strokeWidth="3"
+                        />
+                        
+                        {/* Etiqueta con fecha y peso */}
+                        <g transform={`translate(${x}, ${y - 28})`}>
+                          <rect
+                            x={-60}
+                            y={-8}
+                            width={120}
+                            height={32}
+                            rx="7"
+                            fill="white"
+                            className="dark:fill-gray-900"
+                            stroke={pointColor}
+                            strokeWidth="2"
+                          />
+                          <text
+                            x={0}
+                            y={4}
+                            textAnchor="middle"
+                            className="text-[10px] font-medium fill-gray-600 dark:fill-gray-300"
+                          >
+                            {formattedDate}
+                          </text>
+                          <text
+                            x={0}
+                            y={18}
+                            textAnchor="middle"
+                            className="text-[13px] font-bold"
+                            fill={pointColor}
+                          >
+                            {record.weight.toFixed(1)}kg
+                          </text>
+                        </g>
+                      </g>
+                    );
+                  })}
+                </svg>
+                
+                {/* Información adicional - siempre visible sin scroll */}
+                {hasWeightTrend && (
+                  <div className="mt-2 text-center flex-shrink-0">
+                    <p className="text-[10px] text-gray-600 dark:text-gray-400">
+                      {weightDifference < 0 ? (
+                        <span className="text-[#85ea10] font-semibold">
+                          ↓ Has bajado {Math.abs(weightDifference).toFixed(1)}kg desde el inicio
+                        </span>
+                      ) : weightDifference > 0 ? (
+                        <span className="text-orange-600 dark:text-orange-400 font-semibold">
+                          ↑ Has subido {weightDifference.toFixed(1)}kg desde el inicio
+                        </span>
+                      ) : (
+                        <span className="text-gray-600 dark:text-gray-400">
+                          Peso estable desde el inicio
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Modal para registrar peso - usando el mismo componente que los viernes */}
+          {showWeightModal && (
+            <WeeklyWeightReminder
+              onClose={() => setShowWeightModal(false)}
+              onWeightSubmit={handleWeightSubmit}
+            />
+          )}
+
+          {/* Modal para establecer meta de peso */}
+          {showGoalModal && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 w-full max-w-md">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                    Establece tu Meta de Peso
+                  </h2>
+                  <button
+                    onClick={() => setShowGoalModal(false)}
+                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  >
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  {/* Peso actual */}
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                    <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">Tu peso actual:</div>
+                    <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                      {latestWeight.toFixed(1)} kg
+                    </div>
+                  </div>
+
+                  {/* Información según OMS */}
+                  {bmi > 0 && (
+                    <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+                      <div className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                        Recomendación según OMS:
+                      </div>
+                      {bmi >= 30 ? (
+                        <p className="text-sm text-gray-700 dark:text-gray-300">
+                          Tienes obesidad (IMC ≥ 30). Se recomienda una pérdida del 5-10% del peso actual como primer objetivo seguro.
+                        </p>
+                      ) : bmi >= 25 ? (
+                        <p className="text-sm text-gray-700 dark:text-gray-300">
+                          Tienes sobrepeso (IMC 25-29.9). Se recomienda una pérdida del 5-10% del peso actual como objetivo seguro.
+                        </p>
+                      ) : bmi >= 18.5 ? (
+                        <p className="text-sm text-gray-700 dark:text-gray-300">
+                          Tu peso está en el rango normal (IMC 18.5-24.9). Puedes mantener tu peso actual o establecer una meta de tonificación.
+                        </p>
+                      ) : (
+                        <p className="text-sm text-gray-700 dark:text-gray-300">
+                          Tienes bajo peso (IMC &lt; 18.5). Se recomienda consultar con un profesional de la salud.
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Input para peso meta */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Peso Objetivo (kg)
+                    </label>
+                    <input
+                      type="number"
+                      value={targetWeight}
+                      onChange={(e) => setTargetWeight(e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#85ea10] focus:border-[#85ea10] bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                      placeholder="Ej: 65.0"
+                      step="0.1"
+                      min="30"
+                      max="300"
+                    />
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Peso sugerido según OMS: <span className="font-semibold text-[#85ea10]">{calculateSafeTargetWeight().toFixed(1)} kg</span>
+                    </p>
+                  </div>
+
+                  {/* Nota importante */}
+                  <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+                    <p className="text-xs text-gray-600 dark:text-gray-400">
+                      <strong>Nota:</strong> Esta es una guía general. Consulta con un profesional de la salud para una evaluación personalizada.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-6 flex space-x-3">
+                  <button
+                    onClick={() => setShowGoalModal(false)}
+                    className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleSaveGoal}
+                    className="flex-1 px-4 py-3 bg-[#85ea10] hover:bg-[#7dd30f] text-black font-semibold rounded-lg transition-colors"
+                  >
+                    Guardar Meta
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Modal de información del IMC */}
+          {showBMIModal && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                    ¿Qué es el IMC?
+                  </h2>
+                  <button
+                    onClick={() => setShowBMIModal(false)}
+                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  >
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="font-semibold text-gray-900 dark:text-white mb-2">¿Qué significa?</h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-300">
+                      El <strong>Índice de Masa Corporal (IMC)</strong> es una medida que relaciona tu peso con tu altura para evaluar si tienes un peso saludable.
+                    </p>
+                  </div>
+
+                  <div>
+                    <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Fórmula:</h3>
+                    <div className="bg-gray-100 dark:bg-gray-800 p-3 rounded-lg">
+                      <code className="text-sm text-gray-800 dark:text-gray-200">
+                        IMC = Peso (kg) ÷ Altura (m)²
+                      </code>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Clasificación:</h3>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600 dark:text-gray-300">Bajo peso:</span>
+                        <span className="text-blue-600 font-medium">&lt; 18.5</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600 dark:text-gray-300">Peso normal:</span>
+                        <span className="text-green-600 font-medium">18.5 - 24.9</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600 dark:text-gray-300">Sobrepeso:</span>
+                        <span className="text-orange-600 font-medium">25.0 - 29.9</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600 dark:text-gray-300">Obesidad I:</span>
+                        <span className="text-red-600 font-medium">30.0 - 34.9</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600 dark:text-gray-300">Obesidad II:</span>
+                        <span className="text-red-700 font-medium">35.0 - 39.9</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600 dark:text-gray-300">Obesidad III:</span>
+                        <span className="text-red-800 font-medium">≥ 40.0</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {bmi > 0 && bmiCategory && (
+                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+                      <p className="text-sm text-blue-800 dark:text-blue-200">
+                        <strong>Tu IMC actual:</strong> {bmi.toFixed(1)}
+                        <br />
+                        <strong>Clasificación:</strong> {bmiCategory.label}
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3">
+                    <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                      <strong>Nota:</strong> El IMC es una guía general. Consulta con un profesional de la salud para una evaluación completa.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-6">
+                  <button
+                    onClick={() => setShowBMIModal(false)}
+                    className="w-full px-4 py-2 bg-[#85ea10] hover:bg-[#7dd30f] text-black font-semibold rounded-lg transition-colors"
+                  >
+                    Entendido
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
     </div>
   );
 }

@@ -1050,6 +1050,7 @@ export default function StudentPage() {
                         completedLessons={completedLessonsList.length > 0 ? completedLessonsList : (effectivePurchase?.completed_lessons || [])}
                         lessonVideoEnded={lessonVideoEnded}
                         courseWithLessons={courseWithLessons}
+                        effectivePurchase={effectivePurchase}
                       />
                   </div>
                   )

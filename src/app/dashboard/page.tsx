@@ -3,7 +3,7 @@
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Play, Clock, Users, Star, Search, User, LogOut, ChevronDown, ShoppingCart, Heart, BookOpen, Target, Zap, Utensils, ChefHat, Award, TrendingUp, Trophy, Weight, X, Info, Settings, RefreshCw, ChevronLeft, ChevronRight, Dumbbell } from 'lucide-react';
+import { Play, Clock, Users, Star, Search, User, LogOut, ChevronDown, ShoppingCart, Heart, BookOpen, Target, Zap, Utensils, ChefHat, Award, TrendingUp, Trophy, Weight, X, Info, Settings, RefreshCw, ChevronLeft, ChevronRight, Dumbbell, Sparkles } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { trackCourseView } from '@/lib/analytics';
 import Footer from '@/components/Footer';
@@ -872,49 +872,108 @@ export default function DashboardPage() {
                   return daysDiff >= 0; // Si ya pasó el día de inicio, hay clase disponible
                 })();
 
+                // Calcular tiempo restante hasta las 12:00 AM
+                const getTimeUntilMidnight = () => {
+                  const now = new Date();
+                  const midnight = new Date();
+                  midnight.setHours(24, 0, 0, 0);
+                  const diff = midnight.getTime() - now.getTime();
+                  const hours = Math.floor(diff / (1000 * 60 * 60));
+                  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                  return { hours, minutes };
+                };
+
+                const timeLeft = getTimeUntilMidnight();
+
                 return (
                   <div
                     key={purchase.id}
-                    onClick={() => router.push('/student')}
-                    className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden hover:shadow-2xl hover:scale-[1.01] transition-all duration-300 cursor-pointer mx-4 sm:mx-6 lg:mx-8"
+                    className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden mx-4 sm:mx-6 lg:mx-8"
                   >
-                    {/* Imagen - Banner de ancho completo */}
-                    <div className="relative w-full h-[280px] md:h-[320px]">
-                      <img
-                        src={purchase.course?.preview_image || '/images/course-placeholder.jpg'}
-                        alt={purchase.course?.title || 'Curso'}
-                        className="w-full h-full object-cover"
-                      />
-                      {/* Overlay oscuro para mejor legibilidad del texto */}
-                      <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/80"></div>
-                      
-                      {/* Badge Clase Disponible */}
-                      {hasAvailableClass && (
-                        <div className="absolute top-4 right-4 bg-white/10 backdrop-blur-md border border-[#85ea10]/50 rounded-lg px-4 py-2 flex items-center gap-2 z-10 shadow-lg">
-                          <div className="w-2 h-2 bg-[#85ea10] rounded-full animate-pulse"></div>
-                          <span className="text-white text-sm font-semibold">Clase Disponible</span>
+                    {hasAvailableClass ? (
+                      /* Banner blanco elegante para clase disponible */
+                      <div className="relative w-full bg-white dark:bg-gray-800 p-6 md:p-8 border-2 border-[#85ea10]/20 rounded-2xl">
+                        {/* Badge Clase Disponible */}
+                        <div className="inline-flex items-center gap-2 bg-[#85ea10] rounded-full px-4 py-1.5 mb-4">
+                          <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                          <span className="text-black text-sm font-semibold">Clase Disponible</span>
                         </div>
-                      )}
-                      
-                      {/* Contenido superpuesto en la imagen */}
-                      <div className="absolute bottom-0 left-0 right-0 p-4 md:p-6">
-                        <div className="max-w-4xl">
-                          <h3 className="text-xl md:text-2xl font-black text-white mb-4 drop-shadow-lg line-clamp-2">
-                            {purchase.course?.title || 'Curso'}
-                          </h3>
+
+                        {/* Título y descripción */}
+                        <div className="mb-6">
+                          <div className="flex items-center gap-2 mb-3">
+                            <Sparkles className="w-5 h-5 text-[#85ea10]" />
+                            <h3 className="text-2xl md:text-3xl font-black text-gray-900 dark:text-white line-clamp-2">
+                              {purchase.course?.title || 'Nueva Clase'}
+                            </h3>
+                          </div>
+                          <p className="text-gray-600 dark:text-gray-300 text-sm md:text-base font-medium mb-5 line-clamp-2">
+                            {purchase.course?.short_description || purchase.course?.description || '¡No te pierdas esta increíble clase!'}
+                          </p>
+                          
+                          {/* Información de tiempo */}
+                          <div className="flex items-center gap-4 flex-wrap">
+                            <div className="flex items-center gap-2 bg-[#85ea10]/10 rounded-lg px-3 py-2 border border-[#85ea10]/20">
+                              <Clock className="w-4 h-4 text-[#85ea10]" />
+                              <span className="text-gray-700 dark:text-gray-300 text-sm font-semibold">
+                                {purchase.course?.duration_days ? `${purchase.course.duration_days} días` : '30 días'}
+                              </span>
+                            </div>
+                            {timeLeft.hours > 0 && (
+                              <div className="flex items-center gap-2 bg-[#85ea10]/10 rounded-lg px-3 py-2 border border-[#85ea10]/20">
+                                <Clock className="w-4 h-4 text-[#85ea10]" />
+                                <span className="text-gray-700 dark:text-gray-300 text-sm font-semibold">
+                                  {timeLeft.hours}h {timeLeft.minutes}m restantes
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Recordatorio y botón */}
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                          <div className="bg-[#85ea10]/5 rounded-lg px-4 py-2 border border-[#85ea10]/20">
+                            <p className="text-gray-600 dark:text-gray-400 text-xs font-medium">
+                              ⏰ Recuerda: La clase se bloquea antes de las 12:00 AM
+                            </p>
+                          </div>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               router.push('/student?autoStart=true');
                             }}
-                            className="bg-[#85ea10] hover:bg-[#7dd30f] text-black font-black py-3 px-6 rounded-xl transition-all duration-300 text-sm md:text-base shadow-2xl hover:shadow-[#85ea10]/50 hover:scale-105 flex items-center justify-center gap-2"
+                            className="bg-[#1e3a8a] hover:bg-[#152a6a] text-white font-black py-3 px-6 rounded-xl transition-all duration-300 text-sm md:text-base shadow-lg hover:shadow-[#1e3a8a]/50 hover:scale-105 flex items-center justify-center gap-2"
                           >
-                            <Play className="w-4 h-4 md:w-5 md:h-5" />
-                            <span>{hasAvailableClass ? 'Tomar Clase Ahora' : 'Continuar Curso'}</span>
-              </button>
+                            <Play className="w-5 h-5" />
+                            <span>Toma tu Clase Ahora</span>
+                          </button>
                         </div>
                       </div>
-                    </div>
+                    ) : (
+                      /* Banner normal cuando no hay clase disponible */
+                      <div className="relative w-full h-[200px] bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 p-6 md:p-8">
+                        <div className="flex items-center justify-between h-full">
+                          <div>
+                            <h3 className="text-xl md:text-2xl font-black text-gray-900 dark:text-white mb-2">
+                              {purchase.course?.title || 'Curso'}
+                            </h3>
+                            <p className="text-gray-600 dark:text-gray-300 text-sm">
+                              Tu curso está en progreso
+                            </p>
+                          </div>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              router.push('/student');
+                            }}
+                            className="bg-[#85ea10] hover:bg-[#7dd30f] text-black font-black py-3 px-6 rounded-xl transition-all duration-300 text-sm md:text-base shadow-lg hover:scale-105 flex items-center justify-center gap-2"
+                          >
+                            <Play className="w-4 h-4 md:w-5 md:h-5" />
+                            <span>Continuar Curso</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })}
