@@ -72,14 +72,14 @@ export async function uploadImage(
   bucket: 'course-images' | 'lesson-images',
   folder: string,
   filename?: string,
-  convertToWebP: boolean = true,
+  shouldConvertToWebP: boolean = true,
   quality: number = 0.85
 ): Promise<UploadResult> {
   try {
     let fileToUpload = file;
     
     // Convertir a WebP si está habilitado y el archivo no es ya WebP
-    if (convertToWebP && !file.type.includes('webp')) {
+    if (shouldConvertToWebP && !file.type.includes('webp')) {
       console.log('🔄 Convirtiendo imagen a WebP...');
       try {
         fileToUpload = await convertToWebP(file, quality);

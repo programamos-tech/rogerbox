@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
@@ -24,7 +24,7 @@ import InsightsSection from '@/components/InsightsSection';
 import Footer from '@/components/Footer';
 import Hls from 'hls.js';
 
-export default function StudentPage() {
+function StudentPageContent() {
   const { data: session } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -576,7 +576,7 @@ export default function StudentPage() {
               error: data.error,
               url: data.url,
               response: data.response,
-              errorType: Hls.ErrorTypes[data.type]
+              errorType: data.type
             });
             
             // Mostrar error visible en la pantalla solo para errores fatales
@@ -585,7 +585,7 @@ export default function StudentPage() {
             errorDiv.innerHTML = `
               <div class="text-center text-white p-6">
                 <p class="text-xl font-bold mb-2">Error al cargar el video</p>
-                <p class="text-sm mb-4">${data.details || data.message || 'Error desconocido'}</p>
+                <p class="text-sm mb-4">${data.details || 'Error desconocido'}</p>
                 <p class="text-xs opacity-75">URL: ${videoUrl}</p>
               </div>
             `;
@@ -1255,5 +1255,20 @@ export default function StudentPage() {
 
       <Footer />
     </div>
+  );
+}
+
+export default function StudentPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#85ea10] mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-300">Cargando...</p>
+        </div>
+      </div>
+    }>
+      <StudentPageContent />
+    </Suspense>
   );
 }

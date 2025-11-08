@@ -10,6 +10,7 @@ interface UserPurchase {
   created_at: string;
   is_active: boolean;
   start_date?: string;
+  completed_lessons?: string[];
   course: {
     id: string;
     title: string;
@@ -56,6 +57,7 @@ export const useUserPurchases = (): UseUserPurchasesReturn => {
           order_id: 'order-sim-001',
           created_at: new Date().toISOString(),
           is_active: true,
+          completed_lessons: [],
           course: {
             id: '1',
             title: 'CARDIO HIIT 40 MIN ¡BAJA DE PESO!',
@@ -90,6 +92,7 @@ export const useUserPurchases = (): UseUserPurchasesReturn => {
           created_at,
           is_active,
           start_date,
+          completed_lessons,
           courses!inner (
             id,
             title,
@@ -123,6 +126,7 @@ export const useUserPurchases = (): UseUserPurchasesReturn => {
         created_at: purchase.created_at,
         is_active: purchase.is_active,
         start_date: purchase.start_date,
+        completed_lessons: purchase.completed_lessons || [],
         course: purchase.courses || null
       }));
 
