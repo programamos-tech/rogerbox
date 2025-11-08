@@ -16,6 +16,8 @@ interface UserPurchase {
     slug: string;
     preview_image: string;
     duration_days: number;
+    short_description?: string;
+    description?: string;
   } | null;
 }
 
@@ -93,7 +95,9 @@ export const useUserPurchases = (): UseUserPurchasesReturn => {
             title,
             slug,
             preview_image,
-            duration_days
+            duration_days,
+            short_description,
+            description
           )
         `)
         .eq('user_id', userId)

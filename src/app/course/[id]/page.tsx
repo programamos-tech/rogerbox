@@ -20,7 +20,7 @@ interface Course {
   original_price?: number;
   discount_percentage?: number;
   category?: string;
-  category_name?: stringimage.png;
+  category_name?: string;
   rating?: number;
   students_count?: number;
   lessons_count?: number;
@@ -103,12 +103,12 @@ export default function CourseDetailPage() {
   // Cargar perfil del usuario si está autenticado
   useEffect(() => {
     const fetchUserProfile = async () => {
-      if (session?.user?.id) {
+      if (session?.user && 'id' in session.user) {
         try {
           const { data, error } = await supabase
             .from('profiles')
             .select('*')
-            .eq('id', session.user.id)
+            .eq('id', (session.user as any).id)
             .maybeSingle();
 
           if (error) throw error;
