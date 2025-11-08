@@ -62,8 +62,8 @@ export default function CourseStartDateModal({ courseId, orderId, onClose }: Cou
         throw updateError;
       }
 
-      // Redirigir al dashboard
-      router.push('/dashboard');
+      // Redirigir al dashboard del estudiante
+      router.push('/student');
     } catch (err: any) {
       console.error('Error setting start date:', err);
       setError(err.message || 'Error al guardar la fecha de inicio');

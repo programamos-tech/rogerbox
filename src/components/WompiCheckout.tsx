@@ -145,8 +145,10 @@ export default function WompiCheckout({ course, onSuccess, onError, onClose }: W
         // Manejar diferentes estados de transacción
         if (result.transaction?.status === 'APPROVED') {
           console.log('✅ Pago aprobado inmediatamente!');
-          // Redirigir a página de resultado
-          window.location.href = `${window.location.origin}/payment/result?order_id=${orderId}&reference=${reference}&id=${result.transaction.id}`;
+          // Llamar callback de éxito si existe
+          onSuccess?.();
+          // Redirigir directamente al dashboard del estudiante
+          window.location.href = `${window.location.origin}/student`;
         } else if (result.transaction?.status === 'PENDING') {
           console.log('⏳ Pago pendiente de confirmación (PSE/Nequi)');
           // Redirigir a página de resultado para mostrar estado pendiente

@@ -304,7 +304,8 @@ function PaymentResultContent() {
       // Si no tiene fecha de inicio, mostrar modal
       setShowStartDateModal(true);
     } else if (order?.status === 'approved') {
-      router.push('/dashboard');
+      // Redirigir al dashboard del estudiante después de pago exitoso
+      router.push('/student');
     } else {
       router.push('/courses');
     }

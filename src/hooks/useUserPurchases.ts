@@ -76,61 +76,105 @@ export const useUserPurchases = (): UseUserPurchasesReturn => {
       // Obtener el user_id del usuario autenticado
       const userId = (session.user as any).id;
 
+      console.log('🔍 useUserPurchases: Session data:', {
+        email: session.user.email,
+        userId: userId,
+        hasUserId: !!userId
+      });
+
       if (!userId) {
-        console.warn('⚠️ useUserPurchases: No se pudo obtener el user_id');
+        console.warn('⚠️ useUserPurchases: No se pudo obtener el user_id de la sesión');
+        console.warn('⚠️ useUserPurchases: Session user object:', session.user);
+        setError('No se pudo obtener el ID del usuario');
         setLoading(false);
         return;
       }
 
-      // OPTIMIZACIÓN: Usar JOIN para obtener compras y cursos en una sola query
+      console.log('🔍 useUserPurchases: Buscando compras para user_id:', userId);
+
+      // Obtener compras directamente sin JOIN (más confiable)
       const { data: purchasesData, error: fetchError } = await supabase
         .from('course_purchases')
-        .select(`
-          id,
-          course_id,
-          order_id,
-          created_at,
-          is_active,
-          start_date,
-          completed_lessons,
-          courses!inner (
-            id,
-            title,
-            slug,
-            preview_image,
-            duration_days,
-            short_description,
-            description
-          )
-        `)
+        .select('id, course_id, order_id, created_at, is_active, start_date, completed_lessons')
         .eq('user_id', userId)
         .eq('is_active', true)
         .order('created_at', { ascending: false });
 
+      console.log('🔍 useUserPurchases: Compras encontradas:', {
+        count: purchasesData?.length || 0,
+        purchases: purchasesData,
+        error: fetchError
+      });
+
+      // Si hay error o no hay datos, terminar
       if (fetchError) {
-        console.error('❌ useUserPurchases: Error:', fetchError);
-        setError(fetchError.message);
+        console.error('❌ useUserPurchases: Error obteniendo compras:', fetchError);
+        setError(fetchError.message || 'Error al cargar las compras');
+        setLoading(false);
         return;
       }
 
+      // Si no hay compras, terminar
       if (!purchasesData || purchasesData.length === 0) {
+        console.log('ℹ️ useUserPurchases: No se encontraron compras activas');
         setPurchases([]);
+        setLoading(false);
         return;
       }
 
-      // Transformar los datos (el JOIN ya trae el curso)
-      const transformedData = purchasesData.map((purchase: any) => ({
-        id: purchase.id,
-        course_id: purchase.course_id,
-        order_id: purchase.order_id,
-        created_at: purchase.created_at,
-        is_active: purchase.is_active,
-        start_date: purchase.start_date,
-        completed_lessons: purchase.completed_lessons || [],
-        course: purchase.courses || null
-      }));
+      // Obtener los cursos por separado (más confiable que JOIN)
+      const courseIds = purchasesData.map(p => p.course_id).filter(Boolean);
+      
+      if (courseIds.length > 0) {
+        console.log('🔍 useUserPurchases: Obteniendo cursos para:', courseIds);
+        
+        const { data: coursesData, error: coursesError } = await supabase
+          .from('courses')
+          .select('id, title, slug, preview_image, duration_days, short_description, description')
+          .in('id', courseIds);
+        
+        console.log('🔍 useUserPurchases: Cursos obtenidos:', {
+          count: coursesData?.length || 0,
+          courses: coursesData,
+          error: coursesError
+        });
 
-      setPurchases(transformedData);
+        // Combinar compras con cursos
+        const purchasesWithCourses = purchasesData.map((purchase: any) => {
+          const course = coursesData?.find((c: any) => c.id === purchase.course_id) || null;
+          return {
+            id: purchase.id,
+            course_id: purchase.course_id,
+            order_id: purchase.order_id || '',
+            created_at: purchase.created_at || '',
+            is_active: purchase.is_active,
+            start_date: purchase.start_date || null,
+            completed_lessons: purchase.completed_lessons || [],
+            course: course
+          };
+        });
+
+        console.log('✅ useUserPurchases: Compras procesadas:', purchasesWithCourses.length);
+        console.log('✅ useUserPurchases: Datos finales:', purchasesWithCourses);
+        setPurchases(purchasesWithCourses);
+        setLoading(false);
+      } else {
+        // Si no hay courseIds, crear compras sin curso
+        console.warn('⚠️ useUserPurchases: No hay course IDs válidos');
+        const purchasesWithoutCourses = purchasesData.map((purchase: any) => ({
+          id: purchase.id,
+          course_id: purchase.course_id,
+          order_id: purchase.order_id || '',
+          created_at: purchase.created_at || '',
+          is_active: purchase.is_active,
+          start_date: purchase.start_date || null,
+          completed_lessons: purchase.completed_lessons || [],
+          course: null
+        }));
+        console.log('✅ useUserPurchases: Compras sin cursos:', purchasesWithoutCourses.length);
+        setPurchases(purchasesWithoutCourses);
+        setLoading(false);
+      }
 
     } catch (err) {
       console.error('❌ useUserPurchases: Error general:', err);

@@ -321,14 +321,11 @@ export default function CourseDetailPage() {
     // Actualizar el estado de inscripción
     setIsEnrolled(true);
         
-    // Mostrar mensaje de éxito y recargar datos
-    alert('¡Pago exitoso! Ya tienes acceso al curso.');
+    // Mostrar mensaje de éxito
+    alert('¡Pago exitoso! Ya tienes acceso al curso. Redirigiendo al dashboard...');
     
-    // Recargar los datos del curso para actualizar el estado de inscripción
-    await loadCourseData();
-    
-    // Opcional: redirigir al dashboard del estudiante
-    // router.push('/student/dashboard');
+    // Redirigir directamente al dashboard del estudiante
+    router.push('/student');
   };
 
   const handlePaymentError = (error: string) => {
