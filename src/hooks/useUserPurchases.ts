@@ -93,26 +93,100 @@ export const useUserPurchases = (): UseUserPurchasesReturn => {
       console.log('🔍 useUserPurchases: Buscando compras para user_id:', userId);
 
       // Obtener compras directamente sin JOIN (más confiable)
+      // Nota: completed_lessons no existe en course_purchases, se obtiene de otra tabla o se maneja diferente
       const { data: purchasesData, error: fetchError } = await supabase
         .from('course_purchases')
-        .select('id, course_id, order_id, created_at, is_active, start_date, completed_lessons')
+        .select('id, course_id, order_id, created_at, is_active, start_date')
         .eq('user_id', userId)
         .eq('is_active', true)
         .order('created_at', { ascending: false });
 
-      console.log('🔍 useUserPurchases: Compras encontradas:', {
-        count: purchasesData?.length || 0,
-        purchases: purchasesData,
-        error: fetchError
+      console.log('🔍 useUserPurchases: Resultado de la consulta:', {
+        hasData: !!purchasesData,
+        dataLength: purchasesData?.length || 0,
+        hasError: !!fetchError,
+        error: fetchError ? {
+          message: fetchError.message,
+          code: fetchError.code,
+          details: fetchError.details,
+          hint: fetchError.hint
+        } : null
       });
 
-      // Si hay error o no hay datos, terminar
+      // Si hay error, manejarlo apropiadamente
       if (fetchError) {
-        console.error('❌ useUserPurchases: Error obteniendo compras:', fetchError);
-        setError(fetchError.message || 'Error al cargar las compras');
+        // Verificar si el error tiene información útil
+        const hasErrorInfo = fetchError?.message || fetchError?.code || fetchError?.details || fetchError?.hint;
+        
+        // Si el error no tiene información útil (objeto vacío), tratarlo como si no hubiera compras
+        if (!hasErrorInfo) {
+          console.log('ℹ️ useUserPurchases: No se encontraron compras (error sin información)');
+          setPurchases([]);
+          setError(null);
+          setLoading(false);
+          return;
+        }
+        
+        // Verificar si es un error de permisos RLS (común cuando no hay compras o permisos)
+        const isRLSError = fetchError?.code === 'PGRST301' || 
+                          fetchError?.message?.includes('permission') || 
+                          fetchError?.message?.includes('RLS') ||
+                          fetchError?.message?.includes('row-level security');
+        
+        if (isRLSError) {
+          // Si es un error de RLS, probablemente no hay compras o el usuario no tiene permisos
+          // Tratar como si no hubiera compras en lugar de mostrar error
+          console.log('ℹ️ useUserPurchases: No se encontraron compras (posible error de permisos RLS)');
+          setPurchases([]);
+          setError(null);
+          setLoading(false);
+          return;
+        }
+        
+        // Para otros errores, construir objeto de detalles solo con valores que existen
+        const errorDetails: any = {};
+        let hasUsefulInfo = false;
+        
+        if (fetchError?.message && fetchError.message !== 'Error al cargar las compras') {
+          errorDetails.message = fetchError.message;
+          hasUsefulInfo = true;
+        }
+        if (fetchError?.details) {
+          errorDetails.details = fetchError.details;
+          hasUsefulInfo = true;
+        }
+        if (fetchError?.hint) {
+          errorDetails.hint = fetchError.hint;
+          hasUsefulInfo = true;
+        }
+        if (fetchError?.code) {
+          errorDetails.code = fetchError.code;
+          hasUsefulInfo = true;
+        }
+        
+        // Solo loguear si hay información útil
+        if (hasUsefulInfo) {
+          console.error('❌ useUserPurchases: Error obteniendo compras:', errorDetails);
+        } else {
+          // Si no hay información útil, solo loguear un mensaje simple sin objeto vacío
+          console.log('ℹ️ useUserPurchases: No se encontraron compras (error sin detalles útiles)');
+        }
+        
+        // Si no hay información útil, tratar como si no hubiera compras
+        if (!hasUsefulInfo) {
+          setPurchases([]);
+          setError(null);
+        } else {
+          setError(fetchError?.message || 'Error al cargar las compras');
+        }
         setLoading(false);
         return;
       }
+
+      console.log('🔍 useUserPurchases: Compras encontradas:', {
+        count: purchasesData?.length || 0,
+        purchases: purchasesData
+      });
 
       // Si no hay compras, terminar
       if (!purchasesData || purchasesData.length === 0) {
@@ -149,7 +223,7 @@ export const useUserPurchases = (): UseUserPurchasesReturn => {
             created_at: purchase.created_at || '',
             is_active: purchase.is_active,
             start_date: purchase.start_date || null,
-            completed_lessons: purchase.completed_lessons || [],
+            completed_lessons: [], // completed_lessons no existe en course_purchases, se inicializa como array vacío
             course: course
           };
         });
@@ -168,7 +242,7 @@ export const useUserPurchases = (): UseUserPurchasesReturn => {
           created_at: purchase.created_at || '',
           is_active: purchase.is_active,
           start_date: purchase.start_date || null,
-          completed_lessons: purchase.completed_lessons || [],
+          completed_lessons: [], // completed_lessons no existe en course_purchases, se inicializa como array vacío
           course: null
         }));
         console.log('✅ useUserPurchases: Compras sin cursos:', purchasesWithoutCourses.length);

@@ -6,9 +6,10 @@ import { Scale, X, Calendar } from 'lucide-react';
 interface WeeklyWeightReminderProps {
   onClose: () => void;
   onWeightSubmit: (weight: number) => void;
+  isWeeklyReminder?: boolean; // Para distinguir si es el recordatorio semanal o registro manual
 }
 
-export default function WeeklyWeightReminder({ onClose, onWeightSubmit }: WeeklyWeightReminderProps) {
+export default function WeeklyWeightReminder({ onClose, onWeightSubmit, isWeeklyReminder = false }: WeeklyWeightReminderProps) {
   const [weight, setWeight] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -34,15 +35,15 @@ export default function WeeklyWeightReminder({ onClose, onWeightSubmit }: Weekly
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-green-500 rounded-xl flex items-center justify-center">
-              <Scale className="w-5 h-5 text-white" />
+            <div className="w-10 h-10 bg-[#85ea10] rounded-xl flex items-center justify-center">
+              <Scale className="w-5 h-5 text-black" />
             </div>
             <div>
               <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-                ¡Es Viernes! 📅
+                {isWeeklyReminder ? '¡Es Viernes! 📅' : 'Registrar Peso'}
               </h3>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Hora de pesarte
+                {isWeeklyReminder ? 'Hora de pesarte' : 'Registra tu peso actual'}
               </p>
             </div>
           </div>
@@ -56,15 +57,15 @@ export default function WeeklyWeightReminder({ onClose, onWeightSubmit }: Weekly
 
         {/* Content */}
         <div className="mb-6">
-          <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 mb-4">
+          <div className="bg-[#85ea10]/10 border border-[#85ea10]/30 rounded-lg p-4 mb-4">
             <div className="flex items-center space-x-2 mb-2">
-              <Calendar className="w-4 h-4 text-blue-600" />
-              <span className="text-sm font-medium text-blue-800 dark:text-blue-300">
-                Recordatorio Semanal
+              <Calendar className="w-4 h-4 text-[#85ea10]" />
+              <span className="text-sm font-medium text-[#85ea10]">
+                Registro de Peso
               </span>
             </div>
-            <p className="text-sm text-blue-700 dark:text-blue-300">
-              Cada viernes te recordamos pesarte para registrar tus avances y mantener tu progreso actualizado.
+            <p className="text-sm text-gray-700 dark:text-gray-300">
+              Registra tu peso para mantener un seguimiento de tu progreso y alcanzar tus metas.
             </p>
           </div>
 
@@ -82,7 +83,7 @@ export default function WeeklyWeightReminder({ onClose, onWeightSubmit }: Weekly
                 step="0.1"
                 min="30"
                 max="300"
-                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#85ea10] focus:border-[#85ea10] bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                 required
               />
             </div>
@@ -98,11 +99,11 @@ export default function WeeklyWeightReminder({ onClose, onWeightSubmit }: Weekly
               <button
                 type="submit"
                 disabled={!weight || isSubmitting}
-                className="flex-1 px-4 py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+                className="flex-1 px-4 py-3 bg-[#85ea10] hover:bg-[#7dd30f] text-black font-bold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
               >
                 {isSubmitting ? (
                   <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
                     <span>Guardando...</span>
                   </>
                 ) : (

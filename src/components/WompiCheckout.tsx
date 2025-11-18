@@ -147,20 +147,21 @@ export default function WompiCheckout({ course, onSuccess, onError, onClose }: W
           console.log('✅ Pago aprobado inmediatamente!');
           // Llamar callback de éxito si existe
           onSuccess?.();
-          // Redirigir directamente al dashboard del estudiante
-          window.location.href = `${window.location.origin}/student`;
+          // Redirigir a página de resultado que luego redirigirá automáticamente al dashboard
+          // Esto asegura que el usuario vea el mensaje de éxito y la compra se registre correctamente
+          window.location.href = `${window.location.origin}/payment/result?order_id=${orderId}&reference=${reference}&id=${result.transaction.id}`;
         } else if (result.transaction?.status === 'PENDING') {
           console.log('⏳ Pago pendiente de confirmación (PSE/Nequi)');
           // Redirigir a página de resultado para mostrar estado pendiente
           window.location.href = `${window.location.origin}/payment/result?order_id=${orderId}&reference=${reference}&id=${result.transaction.id}`;
         } else if (result.transaction?.status === 'DECLINED') {
           console.log('❌ Pago rechazado');
-          alert('El pago fue rechazado. Por favor intenta nuevamente, te redirigiremos al dashboard.');
-          window.location.href = `${window.location.origin}/dashboard`;
+          // Redirigir a página de resultado para mostrar estado rechazado
+          window.location.href = `${window.location.origin}/payment/result?order_id=${orderId}&reference=${reference}&id=${result.transaction.id}`;
         } else if (result.transaction?.status === 'ERROR') {
           console.log('⚠️ Error en el pago');
-          alert('Hubo un error procesando el pago. Intenta nuevamente, te redirigiremos al dashboard.');
-          window.location.href = `${window.location.origin}/dashboard`;
+          // Redirigir a página de resultado para mostrar error
+          window.location.href = `${window.location.origin}/payment/result?order_id=${orderId}&reference=${reference}&id=${result.transaction.id}`;
         } else {
           console.log('ℹ️ Estado desconocido:', result.transaction?.status);
           // Por seguridad, redirigir a resultado con el orderId

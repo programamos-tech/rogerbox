@@ -407,7 +407,7 @@ export default function HomePage() {
           </div>
         ) : displayedCourses.length === 1 ? (
           // Un solo curso - Card original centrado con cursos en progreso a los lados
-          <div className="w-full pb-0 relative">
+          <div className="w-full pb-0 relative py-4 md:py-6">
             {/* Botón flecha izquierda */}
             <button
               onClick={() => scrollCarousel('left')}
@@ -432,10 +432,11 @@ export default function HomePage() {
               className="overflow-x-auto md:overflow-x-auto overflow-y-visible" 
               style={{ 
                 scrollbarWidth: 'none', 
-                msOverflowStyle: 'none'
+                msOverflowStyle: 'none',
+                WebkitOverflowScrolling: 'touch'
               }}
             >
-              <div className="flex gap-4 md:gap-6 lg:gap-8 xl:gap-12 px-4 md:px-6 lg:px-20 xl:px-32 justify-start md:justify-center md:items-stretch md:align-content-stretch">
+              <div className="flex gap-4 md:gap-6 lg:gap-8 xl:gap-12 px-4 md:px-6 lg:px-20 xl:px-32 justify-start md:justify-center md:items-stretch md:align-content-stretch min-h-[500px] md:min-h-[550px]">
                 {/* Curso en progreso a la izquierda */}
                 {inProgressCourses[0] && (
                   <div className="flex flex-shrink-0 opacity-50 pointer-events-none w-full md:w-auto" style={{ alignSelf: 'stretch', display: 'flex' }}>
@@ -540,7 +541,7 @@ export default function HomePage() {
                 )}
 
                 {/* Curso principal en el centro - Card original sin modificar */}
-                <div ref={mainCourseRef} className="flex-shrink-0 w-full md:w-auto">
+                <div ref={mainCourseRef} className="flex-shrink-0 w-full md:w-auto h-full flex items-stretch">
                   {displayedCourses.map(course => (
                       <div 
                         key={course.id} 
@@ -548,7 +549,7 @@ export default function HomePage() {
                           console.log('🖱️ Landing card clicked:', course.title);
                           router.push(`/course/${course.slug || course.id}`);
                         }}
-                        className="flex flex-col md:flex-row bg-gray-100 dark:bg-gray-800 hover:shadow-xl hover:shadow-[#85ea10]/5 transition-all duration-150 rounded-2xl cursor-pointer w-full md:max-w-[850px] mx-auto overflow-hidden"
+                        className="flex flex-col md:flex-row bg-gray-100 dark:bg-gray-800 hover:shadow-xl hover:shadow-[#85ea10]/5 transition-all duration-150 rounded-2xl cursor-pointer w-full md:max-w-[850px] mx-auto overflow-hidden h-auto md:h-[500px]"
                       >
                         {/* IMAGEN - Vertical en mobile, horizontal en desktop */}
                         <div className="w-full md:w-[320px] h-[250px] md:h-full flex-shrink-0 relative">

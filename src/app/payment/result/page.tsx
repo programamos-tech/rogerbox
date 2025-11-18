@@ -154,7 +154,14 @@ function PaymentResultContent() {
           .maybeSingle();
 
         if (profileError) {
-          console.error('❌ Error obteniendo perfil:', profileError);
+          // Solo loguear si hay información útil
+          if (profileError?.message || profileError?.code || profileError?.details) {
+            console.error('❌ Error obteniendo perfil:', {
+              message: profileError.message,
+              code: profileError.code,
+              details: profileError.details
+            });
+          }
         }
 
         if (profile) {
@@ -212,17 +219,60 @@ function PaymentResultContent() {
       // Si el pago está aprobado, verificar si tiene fecha de inicio
       if (data.status === 'approved' && data.course_id) {
         // Buscar la compra del curso
-        const { data: purchase } = await supabase
+        const { data: purchase, error: purchaseError } = await supabase
           .from('course_purchases')
-          .select('start_date')
+          .select('id, start_date')
           .eq('order_id', data.id)
           .eq('course_id', data.course_id)
           .maybeSingle();
 
-        if (purchase && !purchase.start_date) {
-          // No tiene fecha de inicio, mostrar modal
-          setShowStartDateModal(true);
-        } else if (purchase && purchase.start_date) {
+        console.log('🔍 PaymentResult: Verificando compra:', {
+          hasPurchase: !!purchase,
+          purchaseError: purchaseError,
+          orderId: data.id,
+          courseId: data.course_id,
+          userId: data.user_id
+        });
+
+        // Si no hay compra, crearla inmediatamente (no esperar al webhook)
+        if (!purchase && !purchaseError) {
+          console.log('⚠️ PaymentResult: No se encontró compra, creándola ahora...');
+          const { data: newPurchase, error: createError } = await supabase
+            .from('course_purchases')
+            .insert({
+              user_id: data.user_id,
+              course_id: data.course_id,
+              order_id: data.id,
+              purchase_price: data.amount,
+              is_active: true,
+              access_granted_at: new Date()
+            })
+            .select('id, start_date')
+            .single();
+
+          if (createError) {
+            console.error('❌ PaymentResult: Error creando compra:', createError);
+          } else {
+            console.log('✅ PaymentResult: Compra creada exitosamente:', newPurchase);
+            // Verificar si necesita fecha de inicio
+            if (!newPurchase.start_date) {
+              setShowStartDateModal(true);
+              setHasStartDate(false);
+            } else {
+              setHasStartDate(true);
+            }
+          }
+        } else if (purchase) {
+          // Ya existe la compra
+          if (!purchase.start_date) {
+            // No tiene fecha de inicio, mostrar modal
+            setShowStartDateModal(true);
+            setHasStartDate(false);
+          } else {
+            setHasStartDate(true);
+          }
+        } else {
+          // Si no hay compra aún, asumir que no necesita fecha de inicio y redirigir
           setHasStartDate(true);
         }
       }
@@ -310,6 +360,17 @@ function PaymentResultContent() {
       router.push('/courses');
     }
   };
+
+  // Redirección automática cuando el pago es aprobado y tiene fecha de inicio
+  useEffect(() => {
+    if (order?.status === 'approved' && hasStartDate && !showStartDateModal) {
+      // Redirigir automáticamente después de 2 segundos para que el usuario vea el mensaje de éxito
+      const timer = setTimeout(() => {
+        router.push('/student');
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [order?.status, hasStartDate, showStartDateModal, router]);
 
   const handleDownloadReceipt = () => {
     if (!order) return;
@@ -657,9 +718,11 @@ function PaymentResultContent() {
           orderId={orderId}
           onClose={() => {
             setShowStartDateModal(false);
-            // Verificar si ahora tiene fecha de inicio
+            // Verificar si ahora tiene fecha de inicio y redirigir automáticamente
             setTimeout(() => {
               setHasStartDate(true);
+              // Redirigir al dashboard después de seleccionar la fecha
+              router.push('/student');
             }, 1000);
           }}
         />

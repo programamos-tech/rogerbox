@@ -81,6 +81,9 @@ export default function OnboardingPage() {
         if (profile.dietaryHabits && profile.dietaryHabits.length > 0) {
           updateData.dietary_habits = profile.dietaryHabits;
         }
+        if (profile.targetWeight) {
+          updateData.target_weight = profile.targetWeight;
+        }
 
         const { error: updateError } = await supabase
           .from('profiles')
@@ -110,6 +113,9 @@ export default function OnboardingPage() {
         if (profile.dietaryHabits && profile.dietaryHabits.length > 0) {
           insertData.dietary_habits = profile.dietaryHabits;
         }
+        if (profile.targetWeight) {
+          insertData.target_weight = profile.targetWeight;
+        }
 
         const { error: insertError } = await supabase
           .from('profiles')
@@ -124,6 +130,67 @@ export default function OnboardingPage() {
       }
 
       console.log('Perfil guardado exitosamente');
+      
+      // Crear registro inicial de peso con la fecha/hora actual (opcional, no bloquea el flujo)
+      const now = new Date();
+      const today = now.toISOString().split('T')[0]; // YYYY-MM-DD para compatibilidad
+      
+      // Intentar guardar el registro de peso inicial (silenciosamente)
+      // Si falla, no es crítico - el usuario puede agregarlo después desde el dashboard
+      // Usar insert en lugar de upsert para permitir múltiples registros por día
+      try {
+        const { data: weightData, error: weightRecordError } = await supabase
+          .from('weight_records')
+          .insert({
+            user_id: (session as any).user.id,
+            weight: profile.weight,
+            record_date: today,
+            notes: 'Peso inicial del onboarding'
+          })
+          .select();
+        
+        if (weightRecordError) {
+          // Solo loguear en modo desarrollo, no mostrar alerta al usuario
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('⚠️ No se pudo crear registro inicial de peso (no crítico):', {
+              error: weightRecordError,
+              message: weightRecordError?.message,
+              code: weightRecordError?.code,
+              hint: 'Esto puede deberse a que la tabla weight_records no existe o falta configuración RLS'
+            });
+          }
+        } else {
+          console.log('✅ Registro inicial de peso creado:', profile.weight, 'kg');
+        }
+      } catch (weightError: any) {
+        // Error silencioso - no crítico para el flujo
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('⚠️ Error al guardar registro de peso (no crítico):', weightError?.message || weightError);
+        }
+      }
+      
+      // Intentar actualizar el peso en el perfil (también opcional)
+      try {
+        const { error: profileWeightError } = await supabase
+          .from('profiles')
+          .update({
+            current_weight: profile.weight,
+            last_weight_update: today
+          })
+          .eq('id', (session as any).user.id);
+        
+        if (profileWeightError) {
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('⚠️ No se pudo actualizar peso en perfil (no crítico):', profileWeightError?.message);
+          }
+        } else {
+          console.log('✅ Peso actualizado en perfil');
+        }
+      } catch (profileError: any) {
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('⚠️ Error al actualizar peso en perfil (no crítico):', profileError?.message);
+        }
+      }
       
       // Redirigir al dashboard
       router.push('/dashboard');

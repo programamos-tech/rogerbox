@@ -96,6 +96,7 @@ export default function InsightsSection({
   const [showBMIModal, setShowBMIModal] = useState(false);
   const [showGoalModal, setShowGoalModal] = useState(false);
   const [targetWeight, setTargetWeight] = useState<string>('');
+  const [hoveredPointIndex, setHoveredPointIndex] = useState<number | null>(null);
 
   // Calcular IMC
   useEffect(() => {
@@ -299,13 +300,11 @@ export default function InsightsSection({
       }
       
       if (!(session as any)?.user?.id) {
-        // Si no hay sesión, mostrar al menos el peso inicial del onboarding
-        const onboardingDate = userProfile.created_at 
-          ? new Date(userProfile.created_at).toISOString().split('T')[0]
-          : new Date().toISOString().split('T')[0];
+        // Si no hay sesión, mostrar al menos el peso inicial con fecha actual
+        const today = new Date().toISOString();
         
         setWeightHistory([{
-          date: onboardingDate,
+          date: today,
           weight: initialWeight
         }]);
         return;
@@ -314,49 +313,49 @@ export default function InsightsSection({
       try {
         const { data: records, error } = await supabase
           .from('weight_records')
-          .select('weight, record_date')
+          .select('weight, record_date, created_at')
           .eq('user_id', (session as any).user.id)
-          .order('record_date', { ascending: true });
+          .order('created_at', { ascending: true });
         
         if (error) {
           console.warn('⚠️ Error obteniendo historial de peso:', error.message);
-          // Mostrar peso inicial del onboarding
-          const onboardingDate = userProfile.created_at 
-            ? new Date(userProfile.created_at).toISOString().split('T')[0]
-            : new Date().toISOString().split('T')[0];
+          // Mostrar peso inicial con fecha actual si hay error
+          const today = new Date().toISOString();
           
           setWeightHistory([{
-            date: onboardingDate,
+            date: today,
             weight: initialWeight
           }]);
           return;
         }
         
         if (records && records.length > 0) {
+          // Usar created_at para ordenar y mostrar, pero record_date como fallback
           const history: WeightRecord[] = records.map(record => ({
-            date: record.record_date,
+            date: record.created_at || record.record_date,
             weight: Number(record.weight)
           }));
+          
+          // No agregar peso inicial del onboarding si ya hay registros
+          // Los registros en weight_records ya incluyen el peso inicial del onboarding
           setWeightHistory(history);
         } else {
-          // Si no hay registros, mostrar peso inicial del onboarding
-          const onboardingDate = userProfile.created_at 
-            ? new Date(userProfile.created_at).toISOString().split('T')[0]
-            : new Date().toISOString().split('T')[0];
+          // Si no hay registros en weight_records, mostrar peso inicial del perfil con fecha actual
+          // Esto solo debería pasar si el onboarding no guardó el registro inicial
+          const today = new Date().toISOString();
           
           setWeightHistory([{
-            date: onboardingDate,
+            date: today,
             weight: initialWeight
           }]);
         }
       } catch (error) {
         console.warn('⚠️ Error obteniendo historial de peso:', error);
-        const onboardingDate = userProfile.created_at 
-          ? new Date(userProfile.created_at).toISOString().split('T')[0]
-          : new Date().toISOString().split('T')[0];
+        // Mostrar peso inicial con fecha actual si hay error
+        const today = new Date().toISOString();
         
         setWeightHistory([{
-          date: onboardingDate,
+          date: today,
           weight: initialWeight
         }]);
       }
@@ -368,25 +367,46 @@ export default function InsightsSection({
   // Función para manejar el envío del peso (igual que en dashboard)
   const handleWeightSubmit = async (weight: number) => {
     try {
-      if (!(session as any)?.user?.id) return;
+      if (!(session as any)?.user?.id) {
+        throw new Error('No hay sesión de usuario');
+      }
       
-      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+      // Usar timestamp completo para permitir múltiples registros por día
+      const now = new Date();
+      const recordDate = now.toISOString().split('T')[0]; // YYYY-MM-DD para compatibilidad
+      const recordTimestamp = now.toISOString(); // Timestamp completo para ordenar
       
-      // Guardar registro de peso en weight_records
-      const { error: weightRecordError } = await supabase
+      // Guardar registro de peso en weight_records (siempre insertar nuevo, nunca actualizar)
+      const { data: weightData, error: weightRecordError } = await supabase
         .from('weight_records')
-        .upsert({
+        .insert({
           user_id: (session as any).user.id,
           weight: weight,
-          record_date: today,
-          updated_at: new Date().toISOString()
-        }, {
-          onConflict: 'user_id,record_date'
-        });
+          record_date: recordDate,
+          notes: `Registro del ${now.toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })}`
+        })
+        .select();
       
       if (weightRecordError) {
-        console.error('Error guardando registro de peso:', weightRecordError);
-        throw weightRecordError;
+        console.error('Error guardando registro de peso:', {
+          error: weightRecordError,
+          message: weightRecordError?.message,
+          details: weightRecordError?.details,
+          hint: weightRecordError?.hint,
+          code: weightRecordError?.code
+        });
+        
+        // Mensaje más amigable si la tabla no existe
+        let errorMessage = 'Error al guardar el registro de peso. Por favor, intenta de nuevo.';
+        if (weightRecordError?.message?.includes('Could not find the table') || 
+            weightRecordError?.message?.includes('relation') ||
+            weightRecordError?.code === 'PGRST116') {
+          errorMessage = 'La tabla de registros de peso no está configurada. Por favor, contacta al administrador.';
+        } else if (weightRecordError?.message) {
+          errorMessage = weightRecordError.message;
+        }
+        
+        throw new Error(errorMessage);
       }
       
       // Actualizar también el peso actual en el perfil
@@ -394,48 +414,79 @@ export default function InsightsSection({
         .from('profiles')
         .update({
           current_weight: weight,
-          last_weight_update: today,
-          updated_at: new Date().toISOString()
+          last_weight_update: recordDate
         })
         .eq('id', (session as any).user.id);
       
       if (profileError) {
-        console.error('Error actualizando perfil:', profileError);
+        console.error('Error actualizando perfil:', {
+          error: profileError,
+          message: profileError?.message
+        });
+        // No lanzar error aquí, el registro de peso ya se guardó
       }
       
-      // Recargar el historial de peso
+      // Recargar el historial completo de peso
       const { data: records } = await supabase
         .from('weight_records')
-        .select('weight, record_date')
+        .select('weight, record_date, created_at')
         .eq('user_id', (session as any).user.id)
-        .order('record_date', { ascending: true });
+        .order('created_at', { ascending: true });
 
       if (records && records.length > 0) {
+        // Usar created_at para ordenar y mostrar, pero record_date como fallback
         const history: WeightRecord[] = records.map(record => ({
-          date: record.record_date,
+          date: record.created_at || record.record_date,
           weight: Number(record.weight)
         }));
+        
+        // No agregar peso inicial del onboarding si ya hay registros
+        // Los registros en weight_records ya incluyen el peso inicial del onboarding
         setWeightHistory(history);
+        console.log('✅ Historial de peso actualizado:', history.length, 'registros');
+      } else {
+        // Si no hay registros, mostrar al menos el peso inicial con fecha actual
+        const initialWeight = userProfile?.weight || userProfile?.current_weight;
+        if (initialWeight) {
+          const today = new Date().toISOString();
+          
+          setWeightHistory([{
+            date: today,
+            weight: Number(initialWeight)
+          }]);
+        }
       }
       
-      console.log('Peso actualizado:', weight);
-    } catch (error) {
+      console.log('✅ Peso actualizado exitosamente:', weight, 'kg');
+    } catch (error: any) {
       console.error('Error al actualizar peso:', error);
+      // Mostrar mensaje de error más amigable
+      const errorMessage = error?.message || 'Error al guardar el peso. Por favor, intenta de nuevo.';
+      alert(errorMessage);
       throw error;
     }
   };
 
-  // Preparar datos para la gráfica
-  const hasWeightData = weightHistory.length > 0;
-  const hasWeightTrend = weightHistory.length >= 2;
+  // Limitar la cantidad de registros mostrados para mantener el gráfico limpio
+  const MAX_VISIBLE_RECORDS = 12; // Máximo de puntos a mostrar
+  const displayHistory = weightHistory.length > MAX_VISIBLE_RECORDS
+    ? [
+        weightHistory[0], // Siempre incluir el primer registro (peso inicial)
+        ...weightHistory.slice(-(MAX_VISIBLE_RECORDS - 1)) // Y los últimos N-1 registros
+      ]
+    : weightHistory;
+
+  // Preparar datos para la gráfica (usando displayHistory en lugar de weightHistory)
+  const hasWeightData = displayHistory.length > 0;
+  const hasWeightTrend = displayHistory.length >= 2;
   const initialWeight = hasWeightData
-    ? weightHistory[0].weight
+    ? displayHistory[0].weight
     : Number(userProfile?.current_weight || userProfile?.weight || 0);
   const latestWeight = hasWeightData
-    ? weightHistory[weightHistory.length - 1].weight
+    ? displayHistory[displayHistory.length - 1].weight
     : Number(userProfile?.current_weight || userProfile?.weight || 0);
   const weightDifference = latestWeight - initialWeight;
-  const weightValues = weightHistory.map(record => record.weight);
+  const weightValues = displayHistory.map(record => record.weight);
   
   // Calcular rango dinámico basado en el peso actual del usuario
   const currentWeightForRange = latestWeight || initialWeight || 70;
@@ -652,7 +703,7 @@ export default function InsightsSection({
               <div className="text-xl font-bold text-orange-600 dark:text-orange-400">
               {consecutiveDaysStreak}
               </div>
-              <div className="text-[10px] text-gray-600 dark:text-gray-400 mt-0.5">
+              <div className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
                 Días consecutivos sin perder una clase
               </div>
             </div>
@@ -668,7 +719,7 @@ export default function InsightsSection({
             <div className="text-xl font-bold text-purple-600 dark:text-purple-400">
               {totalMinutesExercised}
             </div>
-            <div className="text-[10px] text-gray-600 dark:text-gray-400 mt-0.5">
+            <div className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
               Ejercitados
               </div>
             </div>
@@ -698,7 +749,7 @@ export default function InsightsSection({
                   <div className="text-lg font-bold text-blue-600 dark:text-blue-400">
                     {latestWeight.toFixed(1)} kg
                   </div>
-                  <div className="text-[9px] text-gray-500 dark:text-gray-400 mt-0.5">
+                  <div className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
                     Peso actual
                   </div>
                 </div>
@@ -711,7 +762,7 @@ export default function InsightsSection({
                       <div className="text-lg font-bold text-[#1e3a8a] dark:text-[#85ea10]">
                         {userProfile.target_weight} kg
                       </div>
-                      <div className="text-[9px] text-gray-500 dark:text-gray-400 mt-0.5">
+                      <div className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
                         Peso meta
                       </div>
                     </div>
@@ -719,7 +770,7 @@ export default function InsightsSection({
                 ) : (
                   <button
                     onClick={handleOpenGoalModal}
-                    className="bg-[#1e3a8a] hover:bg-[#152a6a] text-white text-[9px] font-semibold px-2 py-1 rounded-md transition-colors shadow-md flex-shrink-0"
+                    className="bg-[#1e3a8a] hover:bg-[#152a6a] text-white text-xs font-semibold px-2 py-1 rounded-md transition-colors shadow-md flex-shrink-0"
                   >
                     Agregar meta
                   </button>
@@ -752,7 +803,7 @@ export default function InsightsSection({
               <div className={`text-xl font-bold ${bmiColors.text}`}>
                 {bmi.toFixed(1)}
               </div>
-              <div className="text-[10px] text-gray-600 dark:text-gray-400 mt-0.5">
+              <div className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
                 {bmiCategory.label}
               </div>
             </div>
@@ -783,11 +834,11 @@ export default function InsightsSection({
                 <svg className="w-full h-full" viewBox="0 0 600 360" preserveAspectRatio="xMidYMid meet">
                   {/* Líneas de referencia horizontales (eje Y) */}
                   {yAxisValues.map((weightValue, i) => {
-                    const y = 40 + (i * 65);
+                    const y = 60 + (i * 60); // Aumentado padding superior de 40 a 60
                     return (
                       <g key={`grid-${i}`}>
                         <line
-                          x1="60"
+                          x1="80" // Aumentado padding izquierdo de 60 a 80
                           y1={y}
                           x2="540"
                           y2={y}
@@ -809,32 +860,40 @@ export default function InsightsSection({
                     );
                   })}
                   
-                  {/* Etiquetas de semanas en el eje X */}
-                  {weightHistory.map((record, index) => {
-                    const x = weightHistory.length === 1 
+                  {/* Etiquetas de fechas en el eje X */}
+                  {displayHistory.map((record, index) => {
+                    const x = displayHistory.length === 1 
                       ? 300 // Centrado cuando solo hay un punto
-                      : 60 + (index / Math.max(weightHistory.length - 1, 1)) * 480;
-                    const weekNumber = index + 1;
+                      : 80 + (index / Math.max(displayHistory.length - 1, 1)) * 460; // Ajustado: empieza en 80, rango de 460
+                    
+                    // Formatear fecha para mostrar día y mes
+                    const date = new Date(record.date);
+                    const day = date.getDate();
+                    const month = date.toLocaleDateString('es-ES', { month: 'short' });
+                    const formattedLabel = `${day} ${month}`;
+                    
                     return (
                       <text
-                        key={`week-${index}`}
+                        key={`date-${index}`}
                         x={x}
                         y={330}
-                        className="text-[11px] fill-gray-500 dark:fill-gray-400"
+                        className="text-[10px] fill-gray-500 dark:fill-gray-400"
                         textAnchor="middle"
                         fontWeight="500"
                       >
-                        Semana {weekNumber}
+                        {formattedLabel}
                       </text>
                     );
                   })}
                   
                   {/* Línea de conexión entre puntos - solo si hay 2 o más */}
-                  {hasWeightTrend && (
+                  {hasWeightTrend && displayHistory.length >= 2 && (
                     <polyline
-                      points={weightHistory.map((record, index) => {
-                        const x = 60 + (index / Math.max(weightHistory.length - 1, 1)) * 480;
-                        const y = 320 - ((record.weight - minWeightValue) / weightRange) * 280;
+                      points={displayHistory.map((record, index) => {
+                        const x = displayHistory.length === 1 
+                          ? 300
+                          : 80 + (index / Math.max(displayHistory.length - 1, 1)) * 460; // Ajustado
+                        const y = 60 + ((maxWeightValue - record.weight) / weightRange) * 240; // Ajustado: empieza en 60, rango de 240
                         return `${x},${y}`;
                       }).join(' ')}
                       fill="none"
@@ -846,17 +905,20 @@ export default function InsightsSection({
                   )}
                   
                   {/* Puntos de datos con colores RogerBox */}
-                  {weightHistory.map((record, index) => {
-                    const x = weightHistory.length === 1 
+                  {displayHistory.map((record, index) => {
+                    const x = displayHistory.length === 1 
                       ? 300 // Centrado cuando solo hay un punto
-                      : 60 + (index / Math.max(weightHistory.length - 1, 1)) * 480;
-                    const y = 320 - ((record.weight - minWeightValue) / weightRange) * 280;
+                      : 80 + (index / Math.max(displayHistory.length - 1, 1)) * 460; // Ajustado: empieza en 80
+                    const y = 60 + ((maxWeightValue - record.weight) / weightRange) * 240; // Ajustado: empieza en 60, rango de 240
                     const isFirst = index === 0;
-                    const isLast = index === weightHistory.length - 1;
+                    const isLast = index === displayHistory.length - 1;
                     const formattedDate = formatDateLabel(record.date) || 'Inicio';
                     
                     // Color: azul oscuro para el primero, verde RogerBox para el último, azul oscuro para intermedios
                     const pointColor = isFirst ? "#1e3a8a" : isLast ? "#85ea10" : "#1e3a8a";
+                    
+                    // Siempre poner las etiquetas arriba del punto para mejor legibilidad
+                    const labelY = y - 32;
                     
                     return (
                       <g key={index}>
@@ -870,32 +932,31 @@ export default function InsightsSection({
                           strokeWidth="3"
                         />
                         
-                        {/* Etiqueta con fecha y peso */}
-                        <g transform={`translate(${x}, ${y - 28})`}>
+                        {/* Etiqueta con peso (fecha solo en hover) - card cuadrado */}
+                        <g 
+                          transform={`translate(${x}, ${labelY})`}
+                          className="cursor-pointer"
+                        >
+                          {/* Tooltip nativo de SVG para mostrar fecha en hover */}
+                          <title>{formattedDate}</title>
                           <rect
-                            x={-60}
-                            y={-8}
-                            width={120}
-                            height={32}
-                            rx="7"
+                            x={-30}
+                            y={-14}
+                            width={60}
+                            height={28}
+                            rx="6"
                             fill="white"
                             className="dark:fill-gray-900"
                             stroke={pointColor}
                             strokeWidth="2"
                           />
+                          {/* Peso - siempre visible, centrado verticalmente */}
                           <text
                             x={0}
-                            y={4}
+                            y={2}
                             textAnchor="middle"
-                            className="text-[10px] font-medium fill-gray-600 dark:fill-gray-300"
-                          >
-                            {formattedDate}
-                          </text>
-                          <text
-                            x={0}
-                            y={18}
-                            textAnchor="middle"
-                            className="text-[13px] font-bold"
+                            dominantBaseline="middle"
+                            className="text-[12px] font-bold"
                             fill={pointColor}
                           >
                             {record.weight.toFixed(1)}kg
@@ -911,7 +972,7 @@ export default function InsightsSection({
                   <div className="mt-2 text-center flex-shrink-0">
                     <p className="text-[10px] text-gray-600 dark:text-gray-400">
                       {weightDifference < 0 ? (
-                        <span className="text-[#85ea10] font-semibold">
+                        <span className="text-green-700 dark:text-green-400 font-semibold">
                           ↓ Has bajado {Math.abs(weightDifference).toFixed(1)}kg desde el inicio
                         </span>
                       ) : weightDifference > 0 ? (
@@ -935,6 +996,7 @@ export default function InsightsSection({
             <WeeklyWeightReminder
               onClose={() => setShowWeightModal(false)}
               onWeightSubmit={handleWeightSubmit}
+              isWeeklyReminder={false}
             />
           )}
 

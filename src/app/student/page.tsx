@@ -107,14 +107,29 @@ function StudentPageContent() {
     let isMounted = true; // Flag para evitar actualizaciones de estado después de desmontar
     
     const loadCourseWithLessons = async () => {
+      console.log('🔍 StudentPage: loadCourseWithLessons iniciado', {
+        hasEffectivePurchase: !!effectivePurchase,
+        effectivePurchase: effectivePurchase,
+        purchasesLoading,
+        purchasesCount: purchases?.length || 0
+      });
+
       if (!effectivePurchase) {
-        if (isMounted) setLoading(false);
+        console.log('⚠️ StudentPage: No hay compra efectiva, mostrando mensaje de no cursos');
+        if (isMounted) {
+          setLoading(false);
+          setShowNoCourses(true);
+        }
         return;
       }
 
       const courseId = effectivePurchase.course_id;
       if (!courseId) {
-        if (isMounted) setLoading(false);
+        console.error('❌ StudentPage: effectivePurchase no tiene course_id');
+        if (isMounted) {
+          setLoading(false);
+          setShowNoCourses(true);
+        }
         return;
       }
 
@@ -132,7 +147,14 @@ function StudentPageContent() {
           .maybeSingle();
 
         if (courseError) {
-            console.error('❌ Error cargando curso:', courseError);
+            console.error('❌ Error cargando curso:', {
+              error: courseError,
+              message: courseError.message || 'Error desconocido',
+              details: courseError.details,
+              hint: courseError.hint,
+              code: courseError.code,
+              courseId
+            });
           if (isMounted) setLoading(false);
             return;
           }
@@ -165,19 +187,34 @@ function StudentPageContent() {
         // Resetear el estado de video terminado cuando cambia la lección
         setLessonVideoEnded(false);
 
-        // Configurar intro según autoStart
+        // Configurar intro: siempre mostrar el intro primero, a menos que autoStart esté activo
+        // autoStart solo se activa cuando el usuario hace clic en "Tomar Clase Ahora" desde el dashboard
         if (autoStart && availableLesson) {
+          // Si viene con autoStart, saltar el intro y mostrar directamente la clase (sin preview)
+          console.log('🚀 AutoStart activo - saltando intro y preview, mostrando video directamente');
           setShowIntro(false);
           setShowCourseImage(false);
           setIntroEnded(true);
         } else {
+          // Por defecto, siempre mostrar el intro primero
+          console.log('🎬 Configurando para mostrar intro primero');
           setShowIntro(true);
           setShowCourseImage(false);
           setIntroEnded(false);
         }
 
-        } catch (error) {
-        console.error('❌ Error:', error);
+        } catch (error: any) {
+        console.error('❌ Error en loadCourseWithLessons:', {
+          error,
+          message: error?.message || 'Error desconocido',
+          details: error?.details,
+          hint: error?.hint,
+          code: error?.code,
+          stack: error?.stack,
+          courseId,
+          effectivePurchase
+        });
+        if (isMounted) setLoading(false);
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -192,13 +229,24 @@ function StudentPageContent() {
 
     // Solo iniciar la carga cuando las compras hayan terminado de cargar Y haya una compra efectiva
     if (!purchasesLoading) {
+      console.log('🔍 StudentPage: Compras cargadas', {
+        purchasesCount: purchases?.length || 0,
+        hasEffectivePurchase: !!effectivePurchase,
+        effectivePurchase: effectivePurchase
+      });
+      
       if (effectivePurchase) {
-    loadCourseWithLessons();
+        loadCourseWithLessons();
       } else {
-        if (isMounted) setLoading(false);
+        console.log('⚠️ StudentPage: No hay compras efectivas después de cargar');
+        if (isMounted) {
+          setLoading(false);
+          setShowNoCourses(true);
+        }
       }
     } else {
       // Mantener loading en true mientras se cargan las compras
+      console.log('⏳ StudentPage: Esperando que se carguen las compras...');
       if (isMounted) setLoading(true);
     }
 
@@ -302,19 +350,20 @@ function StudentPageContent() {
     const finalDaysDiff = isSameDay ? 0 : daysDiff;
     const lessonDay = index; // La primera clase es index 0, corresponde al día 0
     
-    // Debug para la primera clase
-    if (index === 0) {
-      console.log('🔍 Estado Clase 1:', {
-        startDateStr,
-        startDateLocal: startDateLocal.toDateString(),
-        todayLocal: todayLocal.toDateString(),
-        daysDiff,
-        isSameDay,
-        finalDaysDiff,
-        lessonDay: index,
-        willBeAvailable: lessonDay === finalDaysDiff
-      });
-    }
+    // Debug para la primera clase (solo una vez, no en cada render)
+    // Comentado para evitar logs repetidos
+    // if (index === 0) {
+    //   console.log('🔍 Estado Clase 1:', {
+    //     startDateStr,
+    //     startDateLocal: startDateLocal.toDateString(),
+    //     todayLocal: todayLocal.toDateString(),
+    //     daysDiff,
+    //     isSameDay,
+    //     finalDaysDiff,
+    //     lessonDay: index,
+    //     willBeAvailable: lessonDay === finalDaysDiff
+    //   });
+    // }
 
     // Completada - usar estado local actualizado
     const completedLessons = completedLessonsList.length > 0 ? completedLessonsList : (effectivePurchase?.completed_lessons || []);
@@ -341,9 +390,16 @@ function StudentPageContent() {
   // Manejar finalización del intro
   const handleIntroEnd = () => {
     console.log('🎬 Teaser terminado, mostrando imagen del curso');
+    console.log('📊 Estado antes de cambiar:', {
+      showIntro,
+      showCourseImage,
+      introEnded,
+      hasCourse: !!courseWithLessons
+    });
     setIntroEnded(true);
     setShowCourseImage(true);
     setShowIntro(false);
+    console.log('✅ Estado actualizado - showCourseImage debería ser true ahora');
   };
 
   // Marcar lección como completada en la base de datos
@@ -741,18 +797,45 @@ function StudentPageContent() {
   }, [autoStart, currentLesson?.id, showIntro, showCourseImage, lessonVideoEnded]);
 
   // Efecto adicional: inicializar video cuando currentLesson cambia y no hay intro/image
+  // IMPORTANTE: Solo inicializar si el intro ya terminó Y la imagen del curso también fue cerrada
+  // El flujo correcto es: Intro → Preview (imagen del curso) → Video de la lección
   useEffect(() => {
-    if (currentLesson && !showIntro && !showCourseImage && lessonVideoRef.current) {
-      // Inicializar el video cuando se oculta el intro y la imagen del curso
+    console.log('🔍 useEffect video initialization - Estado actual:', {
+      hasCurrentLesson: !!currentLesson,
+      showIntro,
+      showCourseImage,
+      introEnded,
+      autoStart,
+      hasVideoRef: !!lessonVideoRef.current
+    });
+    
+    // Solo inicializar el video si:
+    // 1. Hay una lección actual
+    // 2. El intro no se está mostrando
+    // 3. La imagen del curso NO se está mostrando (ya fue cerrada)
+    // 4. El intro ya terminó (introEnded) O fue saltado con autoStart
+    // 5. El elemento de video está disponible
+    // IMPORTANTE: NO inicializar si showCourseImage es true (debe mostrarse el preview primero)
+    if (currentLesson && !showIntro && !showCourseImage && introEnded && lessonVideoRef.current) {
+      // Inicializar el video cuando se oculta el intro Y la imagen del curso
+      // Solo si el intro ya terminó (y por lo tanto el preview ya se mostró y fue cerrado)
       const timer = setTimeout(() => {
-        console.log('🔄 Inicializando video - intro e imagen ocultos');
+        console.log('🔄 Inicializando video - intro terminado y preview cerrado');
+        initializeLessonVideo();
+      }, 200);
+      
+      return () => clearTimeout(timer);
+    } else if (autoStart && currentLesson && !showIntro && !showCourseImage && lessonVideoRef.current) {
+      // Si viene con autoStart, saltar todo y mostrar directamente el video
+      const timer = setTimeout(() => {
+        console.log('🔄 Inicializando video - autoStart activo');
         initializeLessonVideo();
       }, 200);
       
       return () => clearTimeout(timer);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentLesson?.id, showIntro, showCourseImage]);
+  }, [currentLesson?.id || null, showIntro, showCourseImage, introEnded, autoStart]);
 
   // Cerrar menú de usuario al hacer click fuera
   useEffect(() => {
@@ -779,26 +862,68 @@ function StudentPageContent() {
     };
   }, []);
 
-  // Controlar cuándo mostrar el mensaje "No tienes cursos"
-  // Solo mostrarlo después de un delay para evitar mostrarlo prematuramente
+  // Fallback: Si el video intro no se carga después de 3 segundos, mostrar el preview
   useEffect(() => {
-    if (!purchasesLoading && !effectivePurchase && purchases?.length === 0) {
-      // Esperar un momento antes de mostrar el mensaje para asegurar que los datos se cargaron
-      const timer = setTimeout(() => {
-        setShowNoCourses(true);
-      }, 1000); // Esperar 1 segundo antes de mostrar el mensaje
-      return () => clearTimeout(timer);
-    } else {
-      setShowNoCourses(false);
+    if (!showIntro || introEnded) return;
+    
+    const timer = setTimeout(() => {
+      if (introVideoRef.current && introVideoRef.current.readyState < 2) {
+        console.warn('⏰ Video intro no cargó en 3 segundos, mostrando preview automáticamente');
+        handleIntroEnd();
+      }
+    }, 3000);
+    
+    return () => clearTimeout(timer);
+  }, [showIntro, introEnded]);
+
+  // Controlar cuándo mostrar el mensaje "No tienes cursos"
+  useEffect(() => {
+    // Si las compras terminaron de cargar y no hay compra efectiva, mostrar el mensaje
+    if (!purchasesLoading) {
+      if (!effectivePurchase && (purchases?.length === 0 || !purchases)) {
+        // Usar un timeout más corto para mejor UX
+        const timer = setTimeout(() => {
+          setShowNoCourses(true);
+        }, 500);
+        return () => clearTimeout(timer);
+      } else {
+        setShowNoCourses(false);
+      }
     }
   }, [purchasesLoading, effectivePurchase, purchases]);
 
+  // Timeout de seguridad global para evitar loading infinito
+  useEffect(() => {
+    const globalTimeout = setTimeout(() => {
+      console.warn('⚠️ Timeout de seguridad: Forzando fin de carga después de 10 segundos');
+      setLoading(false);
+      if (!effectivePurchase && !purchasesLoading) {
+        setShowNoCourses(true);
+      }
+    }, 10000); // 10 segundos máximo
+
+    return () => clearTimeout(globalTimeout);
+  }, []);
+
   // Mostrar loading único mientras se cargan TODOS los datos (compras, curso, lecciones)
   // Solo mostrar contenido cuando TODO esté listo
+  // Lógica mejorada: solo mostrar loading si realmente estamos cargando algo
   const isLoading = purchasesLoading || 
-                    loading || 
-                    (!courseWithLessons && effectivePurchase) ||
-                    (!effectivePurchase && !showNoCourses);
+                    (loading && effectivePurchase) || 
+                    (!courseWithLessons && effectivePurchase && !purchasesLoading);
+
+  // Debug: Log del estado de carga
+  useEffect(() => {
+    console.log('🔍 Estado de carga:', {
+      purchasesLoading,
+      loading,
+      hasEffectivePurchase: !!effectivePurchase,
+      hasCourseWithLessons: !!courseWithLessons,
+      purchasesCount: purchases?.length || 0,
+      showNoCourses,
+      isLoading
+    });
+  }, [purchasesLoading, loading, effectivePurchase, courseWithLessons, purchases, showNoCourses, isLoading]);
 
   if (isLoading) {
     return (
@@ -812,7 +937,8 @@ function StudentPageContent() {
   }
 
   // Solo mostrar "No tienes cursos" si realmente no hay compras después de esperar
-  if (!effectivePurchase && !purchasesLoading && showNoCourses) {
+  // También mostrar si no hay compras y las compras ya terminaron de cargar
+  if (!effectivePurchase && !purchasesLoading && (showNoCourses || (purchases?.length === 0 || !purchases))) {
     return (
       <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
@@ -911,6 +1037,7 @@ function StudentPageContent() {
                     onEnded={handleIntroEnd}
                     onError={(e) => {
                       console.warn('⚠️ Video intro no disponible, saltando al contenido del curso');
+                      console.error('❌ Error del video:', e);
                       // Si el video no se puede cargar, saltar directamente a mostrar la imagen del curso
                       handleIntroEnd();
                     }}
@@ -918,12 +1045,15 @@ function StudentPageContent() {
                       console.log('🎬 Iniciando carga del teaser');
                     }}
                     onLoadedData={() => {
-                      console.log('✅ Teaser cargado correctamente');
+                      console.log('✅ Video intro cargado y listo para reproducir');
+                    }}
+                    onPlay={() => {
+                      console.log('▶️ Video intro comenzó a reproducirse');
                     }}
                 >
                   <source src="/roger-hero.mp4" type="video/mp4" />
-                    Tu navegador no soporta el elemento de video.
-                  </video>
+                  Tu navegador no soporta el elemento de video.
+                </video>
                   
                 {/* Botón "Iniciar Clase Ahora" - Esquina inferior derecha */}
                 <div className="absolute bottom-6 right-6 z-10">
@@ -939,6 +1069,17 @@ function StudentPageContent() {
             )}
 
             {/* Imagen del Curso - Después del teaser */}
+            {(() => {
+              console.log('🔍 Render: Verificando si mostrar preview:', {
+                showCourseImage,
+                hasCourse: !!courseWithLessons,
+                showIntro,
+                introEnded,
+                autoStart,
+                courseTitle: courseWithLessons?.title
+              });
+              return null;
+            })()}
             {showCourseImage && courseWithLessons && (
               <div className="relative w-full aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl">
                 {(() => {

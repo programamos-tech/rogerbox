@@ -510,6 +510,23 @@ export default function CourseCreator({ onClose, onSuccess, courseToEdit }: Cour
           // Actualizar lecciones existentes
           console.log('Actualizando lecciones existentes...');
           
+          // PASO 1: Primero, resetear todos los lesson_number a valores temporales negativos
+          // para evitar conflictos con la restricción única
+          const { data: existingLessons } = await supabaseAdmin
+            .from('course_lessons')
+            .select('id')
+            .eq('course_id', course.id);
+          
+          if (existingLessons && existingLessons.length > 0) {
+            for (let i = 0; i < existingLessons.length; i++) {
+              await supabaseAdmin
+                .from('course_lessons')
+                .update({ lesson_number: -(i + 1) }) // Valores temporales negativos
+                .eq('id', existingLessons[i].id);
+            }
+          }
+          
+          // PASO 2: Ahora actualizar/crear lecciones con los números correctos
           for (let i = 0; i < lessons.length; i++) {
             const lesson = lessons[i];
             const lessonData = {
@@ -536,7 +553,7 @@ export default function CourseCreator({ onClose, onSuccess, courseToEdit }: Cour
               }
             } else {
               // Crear nueva lección si no tiene ID
-              const { error: insertError } = await supabase
+              const { error: insertError } = await supabaseAdmin
                 .from('course_lessons')
                 .insert([{
                   ...lessonData,
@@ -546,6 +563,23 @@ export default function CourseCreator({ onClose, onSuccess, courseToEdit }: Cour
               if (insertError) {
                 console.error(`Error creando lección ${i + 1}:`, insertError);
                 throw new Error(`Error al crear la lección ${i + 1}: ${insertError.message}`);
+              }
+            }
+          }
+          
+          // PASO 3: Eliminar lecciones que ya no están en la lista
+          const currentLessonIds = lessons.filter(l => l.id).map(l => l.id);
+          if (existingLessons && existingLessons.length > 0) {
+            const lessonsToDelete = existingLessons.filter(el => !currentLessonIds.includes(el.id));
+            if (lessonsToDelete.length > 0) {
+              const { error: deleteError } = await supabaseAdmin
+                .from('course_lessons')
+                .delete()
+                .in('id', lessonsToDelete.map(l => l.id));
+              
+              if (deleteError) {
+                console.error('Error eliminando lecciones obsoletas:', deleteError);
+                // No lanzar error aquí, solo loguear
               }
             }
           }

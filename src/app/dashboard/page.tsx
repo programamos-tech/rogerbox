@@ -1009,10 +1009,13 @@ export default function DashboardPage() {
           <div className="mt-6 mb-8 bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 md:p-6">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                  Cursos Disponibles
-              </h2>
-                <p className="text-gray-600 dark:text-gray-300">
+                <div className="flex items-center space-x-2 mb-1">
+                  <BookOpen className="w-5 h-5 text-[#85ea10]" />
+                  <h2 className="text-lg font-bold text-gray-900 dark:text-white">
+                    Cursos Disponibles
+                  </h2>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
                   Transforma tu cuerpo con nuestros programas especializados
                 </p>
             </div>
@@ -1448,11 +1451,13 @@ export default function DashboardPage() {
           <div className="mt-6 mb-8 w-full bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 md:p-6">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-2 flex items-center space-x-2">
-                  <BookOpen className="w-6 h-6 text-[#85ea10]" />
-                  <span>Tips Nutricionales</span>
-            </h2>
-                <p className="text-gray-600 dark:text-gray-300">
+                <div className="flex items-center space-x-2 mb-1">
+                  <BookOpen className="w-5 h-5 text-[#85ea10]" />
+                  <h2 className="text-lg font-bold text-gray-900 dark:text-white">
+                    Tips Nutricionales
+                  </h2>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
                   Consejos y recomendaciones de nuestros expertos
                 </p>
           </div>

@@ -320,9 +320,6 @@ export default function CourseDetailPage() {
     
     // Actualizar el estado de inscripción
     setIsEnrolled(true);
-        
-    // Mostrar mensaje de éxito
-    alert('¡Pago exitoso! Ya tienes acceso al curso. Redirigiendo al dashboard...');
     
     // Redirigir directamente al dashboard del estudiante
     router.push('/student');
@@ -331,7 +328,8 @@ export default function CourseDetailPage() {
   const handlePaymentError = (error: string) => {
     console.error('❌ Error en el pago:', error);
     setShowPaymentWidget(false);
-    alert(`Error en el pago: ${error}`);
+    // Redirigir a la página de cursos en caso de error
+    router.push('/courses');
   };
 
   const handlePaymentClose = () => {
