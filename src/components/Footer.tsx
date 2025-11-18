@@ -31,19 +31,19 @@ export default function Footer() {
                 <Mail className="w-4 h-4 flex-shrink-0" />
                 <span>contacto@rogerbox.com</span>
               </div>
-              <div className="flex items-center justify-center md:justify-start space-x-2">
+              <div className="hidden md:flex items-center justify-center md:justify-start space-x-2">
                 <Phone className="w-4 h-4 flex-shrink-0" />
                 <span>3005009487</span>
               </div>
-              <div className="flex items-center justify-center md:justify-start space-x-2">
+              <div className="hidden md:flex items-center justify-center md:justify-start space-x-2">
                 <MapPin className="w-4 h-4 flex-shrink-0" />
                 <span>Sincelejo, Colombia</span>
               </div>
             </div>
           </div>
 
-          {/* Quick Links - Column 2 */}
-            <div className="text-center md:text-left">
+          {/* Quick Links - Column 2 - Solo visible en desktop */}
+            <div className="hidden md:block text-center md:text-left">
             <h4 className="text-base md:text-base font-semibold text-gray-900 dark:text-white mb-3 md:mb-3">
                 Enlaces Rápidos
               </h4>
@@ -100,7 +100,7 @@ export default function Footer() {
                   href="https://tiktok.com/@rogerbox"
                   target="_blank"
                   rel="noopener noreferrer"
-                className="flex items-center justify-center md:justify-start gap-2 text-gray-600 dark:text-gray-400 hover:text-[#85ea10] dark:hover:text-[#85ea10] transition-colors duration-300"
+                className="hidden md:flex items-center justify-center md:justify-start gap-2 text-gray-600 dark:text-gray-400 hover:text-[#85ea10] dark:hover:text-[#85ea10] transition-colors duration-300"
                 >
                 <svg className="w-4 h-4 md:w-4 md:h-4 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
                     <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
@@ -112,7 +112,7 @@ export default function Footer() {
                   href="https://linkedin.com/company/rogerbox"
                   target="_blank"
                   rel="noopener noreferrer"
-                className="flex items-center justify-center md:justify-start gap-2 text-gray-600 dark:text-gray-400 hover:text-[#85ea10] dark:hover:text-[#85ea10] transition-colors duration-300"
+                className="hidden md:flex items-center justify-center md:justify-start gap-2 text-gray-600 dark:text-gray-400 hover:text-[#85ea10] dark:hover:text-[#85ea10] transition-colors duration-300"
                 >
                 <svg className="w-4 h-4 md:w-4 md:h-4 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
                     <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/>
@@ -133,7 +133,7 @@ export default function Footer() {
               <p className="text-xs md:text-sm text-gray-500 dark:text-white/60 leading-relaxed">
                 © 2025 RogerBox. Todos los derechos reservados.
               </p>
-              <p className="text-xs md:text-sm text-gray-500 dark:text-white/60 mt-1">
+              <p className="hidden md:block text-xs md:text-sm text-gray-500 dark:text-white/60 mt-1">
                 Plataforma de fitness y bienestar integral
               </p>
             </div>
@@ -142,12 +142,12 @@ export default function Footer() {
             <div className="flex flex-wrap justify-center md:justify-center gap-x-4 gap-y-2 md:gap-x-6 text-xs md:text-sm text-gray-500 dark:text-white/60">
               <a href="/terms" className="hover:text-[#85ea10] transition-colors whitespace-nowrap">Términos</a>
               <a href="/privacy" className="hover:text-[#85ea10] transition-colors whitespace-nowrap">Privacidad</a>
-              <a href="/cookies" className="hover:text-[#85ea10] transition-colors whitespace-nowrap">Cookies</a>
-              <a href="/contact" className="hover:text-[#85ea10] transition-colors whitespace-nowrap">Contacto</a>
+              <a href="/cookies" className="hidden md:inline hover:text-[#85ea10] transition-colors whitespace-nowrap">Cookies</a>
+              <a href="/contact" className="hidden md:inline hover:text-[#85ea10] transition-colors whitespace-nowrap">Contacto</a>
             </div>
             
-            {/* Secure Payments - Right */}
-            <div className="flex items-center justify-center md:justify-end gap-2 text-xs md:text-sm text-gray-500 dark:text-white/60">
+            {/* Secure Payments - Right - Solo visible en desktop */}
+            <div className="hidden md:flex items-center justify-center md:justify-end gap-2 text-xs md:text-sm text-gray-500 dark:text-white/60">
               <Lock className="w-4 h-4 flex-shrink-0" />
               <span>Pagos seguros</span>
               <span className="text-gray-400 dark:text-white/40">•</span>
