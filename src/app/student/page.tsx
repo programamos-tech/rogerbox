@@ -958,42 +958,42 @@ function StudentPageContent() {
     <div className="min-h-screen bg-white dark:bg-gray-900">
       {/* Header - Mismo estilo que dashboard */}
       <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-gray-200 dark:border-white/20 sticky top-0 z-50">
-        <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
+        <div className="max-w-full mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-14 sm:h-16">
             {/* Logo - Alineado a la izquierda */}
             <button
               onClick={() => router.push('/dashboard')}
               className="flex items-center hover:opacity-80 transition-opacity"
             >
-              <h1 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tight">
+              <h1 className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tight">
                 ROGER<span className="text-[#85ea10]">BOX</span>
                  </h1>
             </button>
 
             {/* User Menu - Alineado a la derecha */}
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-2 sm:space-x-3">
               {/* Icono Home */}
               <button
                 onClick={() => router.push('/dashboard')}
-                className="w-8 h-8 bg-[#85ea10] rounded-full flex items-center justify-center hover:bg-[#7dd30f] transition-colors"
+                className="w-7 h-7 sm:w-8 sm:h-8 bg-[#85ea10] rounded-full flex items-center justify-center hover:bg-[#7dd30f] transition-colors"
                 title="Ir al Dashboard"
               >
-                <Home className="w-5 h-5 text-black" />
+                <Home className="w-4 h-4 sm:w-5 sm:h-5 text-black" />
               </button>
 
             {/* User Menu */}
             <div className="relative">
               <button
                 onClick={() => setShowUserMenu(!showUserMenu)}
-                className="flex items-center space-x-3 text-gray-700 dark:text-white hover:text-[#85ea10] transition-colors"
+                className="flex items-center space-x-2 sm:space-x-3 text-gray-700 dark:text-white hover:text-[#85ea10] transition-colors"
               >
-                <div className="w-8 h-8 bg-[#85ea10] rounded-full flex items-center justify-center">
-                    <User className="w-5 h-5 text-black" />
+                <div className="w-7 h-7 sm:w-8 sm:h-8 bg-[#85ea10] rounded-full flex items-center justify-center">
+                    <User className="w-4 h-4 sm:w-5 sm:h-5 text-black" />
                 </div>
                 <div className="hidden sm:block text-left">
                     <p className="text-sm font-medium">{userProfile?.name || session?.user?.name || 'Usuario'}</p>
                 </div>
-                <ChevronDown className="w-4 h-4" />
+                <ChevronDown className="w-3 h-3 sm:w-4 sm:h-4" />
               </button>
 
               {/* Dropdown Menu */}
@@ -1021,10 +1021,10 @@ function StudentPageContent() {
         </div>
       </header>
 
-      <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="w-full px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 md:py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
           {/* Contenido Principal - Video Player (YouTube Style) */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-4 sm:space-y-6">
             {/* Intro Video (estilo Netflix) - Mostrar si showIntro es true */}
             {showIntro && (
             <div className="relative w-full aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl">
@@ -1056,13 +1056,14 @@ function StudentPageContent() {
                 </video>
                   
                 {/* Botón "Iniciar Clase Ahora" - Esquina inferior derecha */}
-                <div className="absolute bottom-6 right-6 z-10">
+                <div className="absolute bottom-3 right-3 sm:bottom-6 sm:right-6 z-10">
                     <button
                     onClick={handleStartLesson}
-                    className="bg-[#85ea10] hover:bg-[#7dd30f] text-black font-semibold px-5 py-2.5 rounded-lg shadow-lg flex items-center space-x-2 text-sm transition-all duration-300 hover:scale-105"
+                    className="bg-[#85ea10] hover:bg-[#7dd30f] text-black font-semibold px-3 py-2 sm:px-5 sm:py-2.5 rounded-lg shadow-lg flex items-center space-x-2 text-xs sm:text-sm transition-all duration-300 hover:scale-105"
                     >
-                    <Play className="w-4 h-4" />
-                    <span>Iniciar Clase Ahora</span>
+                    <Play className="w-3 h-3 sm:w-4 sm:h-4" />
+                    <span className="hidden sm:inline">Iniciar Clase Ahora</span>
+                    <span className="sm:hidden">Iniciar</span>
                     </button>
                   </div>
                 </div>
@@ -1124,13 +1125,14 @@ function StudentPageContent() {
                 })()}
                 
                 {/* Botón "Iniciar Clase Ahora" - Esquina inferior derecha */}
-                <div className="absolute bottom-6 right-6 z-10">
+                <div className="absolute bottom-3 right-3 sm:bottom-6 sm:right-6 z-10">
                       <button
                     onClick={handleStartLesson}
-                    className="bg-[#85ea10] hover:bg-[#7dd30f] text-black font-semibold px-5 py-2.5 rounded-lg shadow-lg flex items-center space-x-2 text-sm transition-all duration-300 hover:scale-105"
+                    className="bg-[#85ea10] hover:bg-[#7dd30f] text-black font-semibold px-3 py-2 sm:px-5 sm:py-2.5 rounded-lg shadow-lg flex items-center space-x-2 text-xs sm:text-sm transition-all duration-300 hover:scale-105"
                       >
-                    <Play className="w-4 h-4" />
-                    <span>Iniciar Clase Ahora</span>
+                    <Play className="w-3 h-3 sm:w-4 sm:h-4" />
+                    <span className="hidden sm:inline">Iniciar Clase Ahora</span>
+                    <span className="sm:hidden">Iniciar</span>
                       </button>
                   </div>
                 </div>
@@ -1201,22 +1203,22 @@ function StudentPageContent() {
 
             {/* Nombre y Descripción de la Clase - Siempre visible cuando hay una clase */}
             {currentLesson && (
-              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 sm:p-6">
+                <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-3 sm:mb-4">
                   {currentLesson.title}
                 </h1>
                 {currentLesson.description ? (
-                  <p className="text-lg text-gray-700 dark:text-gray-300 leading-relaxed">
+                  <p className="text-sm sm:text-base md:text-lg text-gray-700 dark:text-gray-300 leading-relaxed">
                     {currentLesson.description}
                   </p>
                 ) : (
-                  <p className="text-lg text-gray-500 dark:text-gray-400 italic">
+                  <p className="text-sm sm:text-base md:text-lg text-gray-500 dark:text-gray-400 italic">
                     No hay descripción disponible para esta clase.
                   </p>
                 )}
                 {currentLesson.duration_minutes && (
-                  <div className="flex items-center space-x-2 mt-4 text-gray-600 dark:text-gray-400">
-                    <Clock className="w-5 h-5" />
+                  <div className="flex items-center space-x-2 mt-3 sm:mt-4 text-gray-600 dark:text-gray-400">
+                    <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
                     <span className="font-medium">{currentLesson.duration_minutes} minutos</span>
                   </div>
                 )}
@@ -1226,12 +1228,12 @@ function StudentPageContent() {
 
             {/* Sin lección disponible */}
             {!showIntro && !currentLesson && (
-              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-12 text-center">
-                <Lock className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 sm:p-12 text-center">
+                <Lock className="w-12 h-12 sm:w-16 sm:h-16 text-gray-400 mx-auto mb-3 sm:mb-4" />
+                <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-2">
                   No hay clases disponibles hoy
                 </h2>
-                <p className="text-gray-600 dark:text-gray-300">
+                <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300">
                   Tu próxima clase se desbloqueará según la fecha de inicio de tu curso.
                 </p>
               </div>
@@ -1240,17 +1242,17 @@ function StudentPageContent() {
               
           {/* Sidebar - Lista de Clases (YouTube Style) */}
           <div className="lg:col-span-1">
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 sticky top-8">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 sm:p-6 sticky top-20 sm:top-8">
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-3 sm:mb-4">
                 Clases del Curso
               </h2>
               {courseWithLessons && (
                 <>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                  <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-3 sm:mb-4 line-clamp-2">
                     {courseWithLessons.title}
                   </p>
 
-                <div className="space-y-3">
+                <div className="space-y-2 sm:space-y-3">
                     {courseWithLessons?.lessons?.map((lesson: any, index: number) => {
                       const lessonStatus = getLessonStatus(lesson, index);
                       const StatusIcon = lessonStatus.icon;
@@ -1287,7 +1289,7 @@ function StudentPageContent() {
                               }
                             }
                           }}
-                          className={`p-3 rounded-xl transition-all relative ${
+                          className={`p-2.5 sm:p-3 rounded-xl transition-all relative ${
                             lessonStatus.status === 'completed'
                               ? 'bg-white dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700/50 cursor-not-allowed hover:border-gray-200 dark:hover:border-gray-600'
                               : isCurrent
@@ -1299,22 +1301,22 @@ function StudentPageContent() {
                         >
                           {/* Check visible para clases completadas - ultra sutil */}
                           {lessonStatus.status === 'completed' && (
-                            <div className="absolute top-2 right-2 z-10">
-                              <CheckCircle className="w-4 h-4 text-green-500/70" strokeWidth={2} fill="none" />
+                            <div className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 z-10">
+                              <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 text-green-500/70" strokeWidth={2} fill="none" />
                           </div>
                           )}
                           
                           {/* Badge "Mañana disponible" para la próxima clase */}
                           {isNextClass && (
-                            <div className="absolute top-2 right-2 bg-gradient-to-r from-amber-400/95 to-orange-400/95 backdrop-blur-sm rounded-full px-2 py-1 z-10 shadow-sm border border-amber-300/30 flex items-center space-x-1">
-                              <Sunrise className="w-3 h-3 text-white" strokeWidth={2.5} />
-                              <span className="text-xs font-medium text-white">Mañana</span>
+                            <div className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 bg-gradient-to-r from-amber-400/95 to-orange-400/95 backdrop-blur-sm rounded-full px-1.5 py-0.5 sm:px-2 sm:py-1 z-10 shadow-sm border border-amber-300/30 flex items-center space-x-1">
+                              <Sunrise className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-white" strokeWidth={2.5} />
+                              <span className="text-[10px] sm:text-xs font-medium text-white">Mañana</span>
                           </div>
                           )}
                           
-                          <div className="flex items-start space-x-3">
+                          <div className="flex items-start space-x-2 sm:space-x-3">
                             {/* Thumbnail */}
-                            <div className="relative w-32 h-20 bg-gray-200 dark:bg-gray-600 rounded overflow-hidden flex-shrink-0">
+                            <div className="relative w-24 h-16 sm:w-32 sm:h-20 bg-gray-200 dark:bg-gray-600 rounded overflow-hidden flex-shrink-0">
                               {lesson.preview_image || lesson.thumbnail ? (
                                 <Image
                                   src={lesson.preview_image || lesson.thumbnail}
@@ -1341,13 +1343,13 @@ function StudentPageContent() {
                         )}
                               {lessonStatus.status === 'available' && (
                                 <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
-                                  <Play className="w-6 h-6 text-white" />
+                                  <Play className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
                       </div>
                               )}
                               {lessonStatus.status === 'completed' && (
-                                <div className="absolute top-2 right-2 z-10 pointer-events-none">
-                                  <div className="bg-white/90 backdrop-blur-sm rounded-full p-1.5 shadow-sm">
-                                    <CheckCircle className="w-4 h-4 text-green-500" strokeWidth={2.5} fill="none" />
+                                <div className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 z-10 pointer-events-none">
+                                  <div className="bg-white/90 backdrop-blur-sm rounded-full p-1 sm:p-1.5 shadow-sm">
+                                    <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 text-green-500" strokeWidth={2.5} fill="none" />
                     </div>
                 </div>
                               )}

@@ -776,42 +776,42 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
       {/* Header */}
       <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-gray-200 dark:border-white/20 sticky top-0 z-50">
-        <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
+        <div className="max-w-full mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-14 sm:h-16">
             {/* Logo - Alineado a la izquierda */}
             <button
               onClick={() => router.push('/dashboard')}
               className="flex items-center hover:opacity-80 transition-opacity"
             >
-              <h1 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tight">
+              <h1 className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tight">
                 ROGER<span className="text-[#85ea10]">BOX</span>
               </h1>
             </button>
 
             {/* User Menu - Alineado a la derecha */}
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-2 sm:space-x-3">
               {/* Icono Mi Curso */}
               <button
                 onClick={() => router.push('/student')}
-                className="w-8 h-8 bg-[#85ea10] rounded-full flex items-center justify-center hover:bg-[#7dd30f] transition-colors"
+                className="w-7 h-7 sm:w-8 sm:h-8 bg-[#85ea10] rounded-full flex items-center justify-center hover:bg-[#7dd30f] transition-colors"
                 title="Mi Curso"
               >
-                <Dumbbell className="w-5 h-5 text-black" />
+                <Dumbbell className="w-4 h-4 sm:w-5 sm:h-5 text-black" />
               </button>
 
             {/* User Menu */}
             <div className="relative">
               <button
                 onClick={() => setShowUserMenu(!showUserMenu)}
-                className="flex items-center space-x-3 text-gray-700 dark:text-white hover:text-[#85ea10] transition-colors"
+                className="flex items-center space-x-2 sm:space-x-3 text-gray-700 dark:text-white hover:text-[#85ea10] transition-colors"
               >
-                <div className="w-8 h-8 bg-[#85ea10] rounded-full flex items-center justify-center">
-                  <User className="w-5 h-5 text-black" />
+                <div className="w-7 h-7 sm:w-8 sm:h-8 bg-[#85ea10] rounded-full flex items-center justify-center">
+                  <User className="w-4 h-4 sm:w-5 sm:h-5 text-black" />
                 </div>
                 <div className="hidden sm:block text-left">
                   <p className="text-sm font-medium">{userProfile.name}</p>
                 </div>
-                <ChevronDown className="w-4 h-4" />
+                <ChevronDown className="w-3 h-3 sm:w-4 sm:h-4" />
               </button>
 
               {/* Dropdown Menu */}
@@ -849,13 +849,13 @@ export default function DashboardPage() {
       </header>
 
       {/* Main Content - Layout optimizado sin scroll */}
-      <main className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-4 relative">
+      <main className="max-w-full mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-3 sm:py-4 relative">
         {/* CURSOS COMPRADOS - Banner de ancho completo */}
         {hasActivePurchases && purchases.length > 0 && (
-          <div className="mb-8 -mx-4 sm:-mx-6 lg:-mx-8">
-            <div className="px-4 sm:px-6 lg:px-8 mb-4">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <BookOpen className="w-5 h-5 text-[#85ea10]" />
+          <div className="mb-4 sm:mb-6 md:mb-8 -mx-3 sm:-mx-4 md:-mx-6 lg:-mx-8">
+            <div className="px-3 sm:px-4 md:px-6 lg:px-8 mb-3 sm:mb-4">
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <BookOpen className="w-4 h-4 sm:w-5 sm:h-5 text-[#85ea10]" />
                 Mi Curso
                 </h2>
               </div>
@@ -896,57 +896,58 @@ export default function DashboardPage() {
                         {/* Barra lateral verde */}
                         <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b from-[#85ea10] to-[#1e3a8a]"></div>
                         
-                        <div className="pl-6 pr-6 md:pl-8 md:pr-8 py-6 md:py-8">
-                          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+                        <div className="pl-4 pr-4 sm:pl-6 sm:pr-6 md:pl-8 md:pr-8 py-4 sm:py-6 md:py-8">
+                          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 sm:gap-6">
                             {/* Contenido izquierdo */}
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-3 mb-4 flex-wrap">
-                                <div className="inline-flex items-center gap-2 bg-[#85ea10] rounded-full px-4 py-1.5">
+                            <div className="flex-1 min-w-0 w-full">
+                              <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4 flex-wrap">
+                                <div className="inline-flex items-center gap-2 bg-[#85ea10] rounded-full px-3 py-1 sm:px-4 sm:py-1.5">
                                   <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-                                  <span className="text-black text-xs font-bold uppercase">Nueva Clase Disponible</span>
+                                  <span className="text-black text-[10px] sm:text-xs font-bold uppercase">Nueva Clase Disponible</span>
                                 </div>
                                 {timeLeft.hours > 0 && (
-                                  <div className="inline-flex items-center gap-2 bg-[#1e3a8a] rounded-full px-4 py-1.5">
-                                    <Clock className="w-3.5 h-3.5 text-white" />
-                                    <span className="text-white text-xs font-bold">
+                                  <div className="inline-flex items-center gap-2 bg-[#1e3a8a] rounded-full px-3 py-1 sm:px-4 sm:py-1.5">
+                                    <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-white" />
+                                    <span className="text-white text-[10px] sm:text-xs font-bold">
                                       {timeLeft.hours}h {timeLeft.minutes}m restantes
                                     </span>
                                   </div>
                                 )}
                               </div>
 
-                              <h3 className="text-2xl md:text-3xl lg:text-4xl font-black text-gray-900 dark:text-white mb-3 leading-tight">
+                              <h3 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-black text-gray-900 dark:text-white mb-2 sm:mb-3 leading-tight">
                                 {purchase.course?.title || 'Nueva Clase'}
                               </h3>
 
-                              <p className="text-gray-600 dark:text-gray-300 text-base md:text-lg mb-5">
+                              <p className="text-gray-600 dark:text-gray-300 text-sm sm:text-base md:text-lg mb-4 sm:mb-5 line-clamp-2 sm:line-clamp-none">
                                 {purchase.course?.short_description || purchase.course?.description || '¡No te pierdas esta increíble clase!'}
                               </p>
 
-                              <div className="flex flex-wrap items-center gap-4">
-                                <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                                  <Clock className="w-4 h-4 text-[#85ea10]" />
+                              <div className="flex flex-wrap items-center gap-3 sm:gap-4 mb-4 sm:mb-0">
+                                <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+                                  <Clock className="w-3 h-3 sm:w-4 sm:h-4 text-[#85ea10]" />
                                   <span className="font-semibold">
                                     {purchase.course?.duration_days ? `${purchase.course.duration_days} días` : '30 días'}
                                   </span>
                                 </div>
-                                <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                                <div className="flex items-center gap-2 text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
                                   <Clock className="w-3 h-3" />
-                                  <span>Se bloquea antes de las 12:00 AM</span>
+                                  <span className="hidden sm:inline">Se bloquea antes de las 12:00 AM</span>
+                                  <span className="sm:hidden">Bloquea a las 12:00 AM</span>
                                 </div>
                               </div>
                             </div>
 
                             {/* Botón CTA */}
-                            <div className="flex-shrink-0">
+                            <div className="flex-shrink-0 w-full sm:w-auto">
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   router.push('/student?autoStart=true');
                                 }}
-                                className="bg-[#1e3a8a] hover:bg-[#152a6a] text-white font-bold py-4 px-8 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-105 flex items-center justify-center gap-2 whitespace-nowrap"
+                                className="bg-[#1e3a8a] hover:bg-[#152a6a] text-white font-bold py-3 px-6 sm:py-4 sm:px-8 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-105 flex items-center justify-center gap-2 w-full sm:w-auto whitespace-nowrap text-sm sm:text-base"
                               >
-                                <Play className="w-5 h-5" fill="currentColor" />
+                                <Play className="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" />
                                 <span>Tomar Clase Ahora</span>
                               </button>
                             </div>
@@ -955,13 +956,13 @@ export default function DashboardPage() {
                       </div>
                     ) : (
                       /* Banner normal cuando no hay clase disponible */
-                      <div className="relative w-full h-[200px] bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 p-6 md:p-8">
-                        <div className="flex items-center justify-between h-full">
-                          <div>
-                            <h3 className="text-xl md:text-2xl font-black text-gray-900 dark:text-white mb-2">
+                      <div className="relative w-full min-h-[160px] sm:h-[200px] bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 p-4 sm:p-6 md:p-8">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between h-full gap-4">
+                          <div className="flex-1">
+                            <h3 className="text-lg sm:text-xl md:text-2xl font-black text-gray-900 dark:text-white mb-2">
                               {purchase.course?.title || 'Curso'}
                             </h3>
-                            <p className="text-gray-600 dark:text-gray-300 text-sm">
+                            <p className="text-gray-600 dark:text-gray-300 text-xs sm:text-sm">
                               Tu curso está en progreso
                             </p>
                           </div>
@@ -970,9 +971,9 @@ export default function DashboardPage() {
                               e.stopPropagation();
                               router.push('/student');
                             }}
-                            className="bg-[#85ea10] hover:bg-[#7dd30f] text-black font-black py-3 px-6 rounded-xl transition-all duration-300 text-sm md:text-base shadow-lg hover:scale-105 flex items-center justify-center gap-2"
+                            className="bg-[#85ea10] hover:bg-[#7dd30f] text-black font-black py-2.5 px-5 sm:py-3 sm:px-6 rounded-xl transition-all duration-300 text-xs sm:text-sm md:text-base shadow-lg hover:scale-105 flex items-center justify-center gap-2 w-full sm:w-auto"
                           >
-                            <Play className="w-4 h-4 md:w-5 md:h-5" />
+                            <Play className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5" />
                             <span>Continuar Curso</span>
                           </button>
                         </div>
@@ -986,9 +987,9 @@ export default function DashboardPage() {
         )}
 
         {/* Layout Principal: 2 columnas + sección inferior compacta */}
-        <div className="flex flex-col h-[calc(100vh-180px)]">
+        <div className="flex flex-col min-h-0">
           {/* Layout de 2 columnas: Complementos e Insights */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1 min-h-0 mb-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 flex-1 min-h-0 mb-4 sm:mb-6">
             {/* COLUMNA 1: COMPLEMENTOS (STORIES) */}
             <div className="lg:col-span-1 flex flex-col min-h-0" data-section="complementos" id="complementos">
               <StoriesSection />
@@ -1006,12 +1007,12 @@ export default function DashboardPage() {
 
         {/* CARRUSEL DE CURSOS DESTACADO - Cards horizontales estilo landing */}
         {realCourses.length > 0 && (
-          <div className="mt-6 mb-8 bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 md:p-6">
-            <div className="flex items-center justify-between mb-6">
-              <div>
+          <div className="mt-4 sm:mt-6 mb-6 sm:mb-8 bg-white dark:bg-gray-800 rounded-xl shadow-lg p-3 sm:p-4 md:p-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 sm:mb-6 gap-3 sm:gap-0">
+              <div className="flex-1">
                 <div className="flex items-center space-x-2 mb-1">
-                  <BookOpen className="w-5 h-5 text-[#85ea10]" />
-                  <h2 className="text-lg font-bold text-gray-900 dark:text-white">
+                  <BookOpen className="w-4 h-4 sm:w-5 sm:h-5 text-[#85ea10]" />
+                  <h2 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
                     Cursos Disponibles
                   </h2>
                 </div>
@@ -1021,10 +1022,10 @@ export default function DashboardPage() {
             </div>
               <button
                 onClick={() => router.push('/courses')}
-                className="text-sm text-[#85ea10] hover:text-[#7dd30f] font-semibold flex items-center space-x-1"
+                className="text-xs sm:text-sm text-[#85ea10] hover:text-[#7dd30f] font-semibold flex items-center space-x-1"
               >
                 <span>Ver todos</span>
-                <ChevronRight className="w-4 h-4" />
+                <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4" />
               </button>
             </div>
 
@@ -1039,18 +1040,19 @@ export default function DashboardPage() {
                     const firstCard = container.querySelector('div > div') as HTMLElement;
                     if (firstCard) {
                       const cardWidth = firstCard.offsetWidth;
-                      const gap = 32; // gap-8 = 32px en desktop
+                      const gap = window.innerWidth < 640 ? 16 : 32; // gap-4 en mobile, gap-8 en desktop
                       const scrollAmount = cardWidth + gap;
                       container.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
                     } else {
                       // Fallback: usar el ancho del card + gap
-                      container.scrollBy({ left: -(850 + 32), behavior: 'smooth' });
+                      const scrollAmount = window.innerWidth < 640 ? window.innerWidth - 32 : 850 + 32;
+                      container.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
                     }
                   }
                 }}
-                className="absolute left-4 top-1/2 -translate-y-1/2 z-20 bg-white/95 dark:bg-gray-800/95 backdrop-blur-md hover:bg-white dark:hover:bg-gray-800 text-gray-900 dark:text-white rounded-full p-3 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-110 border border-gray-200 dark:border-gray-700"
+                className="hidden sm:flex absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-20 bg-white/95 dark:bg-gray-800/95 backdrop-blur-md hover:bg-white dark:hover:bg-gray-800 text-gray-900 dark:text-white rounded-full p-2 sm:p-3 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-110 border border-gray-200 dark:border-gray-700"
               >
-                <ChevronLeft className="w-6 h-6" />
+                <ChevronLeft className="w-4 h-4 sm:w-6 sm:h-6" />
               </button>
 
               <button
@@ -1061,35 +1063,36 @@ export default function DashboardPage() {
                     const firstCard = container.querySelector('div > div') as HTMLElement;
                     if (firstCard) {
                       const cardWidth = firstCard.offsetWidth;
-                      const gap = 32; // gap-8 = 32px en desktop
+                      const gap = window.innerWidth < 640 ? 16 : 32; // gap-4 en mobile, gap-8 en desktop
                       const scrollAmount = cardWidth + gap;
                       container.scrollBy({ left: scrollAmount, behavior: 'smooth' });
                     } else {
                       // Fallback: usar el ancho del card + gap
-                      container.scrollBy({ left: 850 + 32, behavior: 'smooth' });
+                      const scrollAmount = window.innerWidth < 640 ? window.innerWidth - 32 : 850 + 32;
+                      container.scrollBy({ left: scrollAmount, behavior: 'smooth' });
                     }
                   }
                 }}
-                className="absolute right-4 top-1/2 -translate-y-1/2 z-20 bg-white/95 dark:bg-gray-800/95 backdrop-blur-md hover:bg-white dark:hover:bg-gray-800 text-gray-900 dark:text-white rounded-full p-3 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-110 border border-gray-200 dark:border-gray-700"
+                className="hidden sm:flex absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-20 bg-white/95 dark:bg-gray-800/95 backdrop-blur-md hover:bg-white dark:hover:bg-gray-800 text-gray-900 dark:text-white rounded-full p-2 sm:p-3 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-110 border border-gray-200 dark:border-gray-700"
               >
-                <ChevronRight className="w-6 h-6" />
+                <ChevronRight className="w-4 h-4 sm:w-6 sm:h-6" />
               </button>
 
               {/* Contenedor del carrusel */}
               <div 
                 id="courses-carousel"
-                className="overflow-x-auto scrollbar-hide"
-                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                className="overflow-x-auto scrollbar-hide -mx-3 sm:-mx-4 md:mx-0"
+                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}
               >
-                <div className="flex gap-6 md:gap-8 px-4 md:px-6 lg:px-20 xl:px-32 justify-start md:justify-center">
-                  {/* Card Coming Soon Izquierda */}
-                  <div className="flex-shrink-0 w-full md:w-[850px]">
+                <div className="flex gap-4 sm:gap-6 md:gap-8 px-3 sm:px-4 md:px-6 lg:px-20 xl:px-32 justify-start md:justify-center">
+                  {/* Card Coming Soon Izquierda - Oculto en mobile */}
+                  <div className="hidden md:flex flex-shrink-0 w-[calc(100vw-2rem)] sm:w-[calc(100vw-4rem)] md:w-[850px]">
                     <div 
-                      className="flex flex-col md:flex-row bg-gray-100 dark:bg-gray-800 hover:shadow-xl hover:shadow-[#85ea10]/5 transition-all duration-150 rounded-2xl cursor-pointer w-full overflow-hidden h-full"
+                      className="flex flex-col md:flex-row bg-gray-100 dark:bg-gray-800 hover:shadow-xl hover:shadow-[#85ea10]/5 transition-all duration-150 rounded-2xl cursor-pointer w-full overflow-hidden h-auto md:h-full"
                       style={{ filter: 'grayscale(100%)' }}
                     >
                       {/* IMAGEN */}
-                      <div className="w-full md:w-[320px] h-[250px] md:h-full flex-shrink-0 relative">
+                      <div className="w-full md:w-[320px] h-[200px] sm:h-[250px] md:h-full flex-shrink-0 relative">
                         <div className="absolute inset-0 w-full h-full rounded-t-2xl md:rounded-l-2xl md:rounded-tr-none overflow-hidden">
                           <div className="absolute inset-0 w-full h-full bg-gradient-to-br from-gray-300 to-gray-400 dark:from-gray-600 dark:to-gray-700 flex items-center justify-center">
                             <Play className="w-16 h-16 text-gray-400 dark:text-gray-600" />
@@ -1189,16 +1192,16 @@ export default function DashboardPage() {
                       
                   {/* Cursos Reales - Cards horizontales estilo landing */}
                   {realCourses.map((course) => (
-                    <div key={course.id} className="flex-shrink-0 w-full md:w-[850px]">
+                    <div key={course.id} className="flex-shrink-0 w-[calc(100vw-2rem)] sm:w-[calc(100vw-4rem)] md:w-[850px]">
                       <div 
                   onClick={(e) => {
                           console.log('🖱️ Dashboard card clicked:', course.title);
                       router.push(`/course/${course.slug || course.id}`);
                   }}
-                        className="flex flex-col md:flex-row bg-gray-100 dark:bg-gray-800 hover:shadow-xl hover:shadow-[#85ea10]/5 transition-all duration-150 rounded-2xl cursor-pointer w-full overflow-hidden h-full"
+                        className="flex flex-col md:flex-row bg-gray-100 dark:bg-gray-800 hover:shadow-xl hover:shadow-[#85ea10]/5 transition-all duration-150 rounded-2xl cursor-pointer w-full overflow-hidden h-auto md:h-full"
                 >
                         {/* IMAGEN - Vertical en mobile, horizontal en desktop */}
-                        <div className="w-full md:w-[320px] h-[250px] md:h-full flex-shrink-0 relative">
+                        <div className="w-full md:w-[320px] h-[200px] sm:h-[250px] md:h-full flex-shrink-0 relative">
                           <div className="absolute inset-0 w-full h-full rounded-t-2xl md:rounded-l-2xl md:rounded-tr-none overflow-hidden">
                       <img 
                               src={course.thumbnail || course.preview_image || '/images/course-placeholder.jpg'} 
@@ -1235,12 +1238,12 @@ export default function DashboardPage() {
                   </div>
                         
                         {/* CONTENIDO - Resto del espacio */}
-                        <div className="flex-1 flex flex-col min-w-0 overflow-visible p-4 md:p-5 lg:p-6 md:justify-between">
-                          <div className="flex flex-col gap-3 md:gap-4 mb-4 md:mb-0">
-                            <h3 className="text-lg md:text-xl lg:text-2xl font-bold text-gray-900 dark:text-white break-words leading-tight">
+                        <div className="flex-1 flex flex-col min-w-0 overflow-visible p-3 sm:p-4 md:p-5 lg:p-6 md:justify-between">
+                          <div className="flex flex-col gap-2 sm:gap-3 md:gap-4 mb-4 md:mb-0">
+                            <h3 className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-gray-900 dark:text-white break-words leading-tight">
                               {course.title}
                             </h3>
-                            <p className="text-xs md:text-sm lg:text-base text-gray-700 dark:text-white/80 leading-relaxed break-words line-clamp-3">
+                            <p className="text-xs sm:text-sm md:text-base text-gray-700 dark:text-white/80 leading-relaxed break-words line-clamp-2 sm:line-clamp-3">
                               {course.short_description || course.description}
                             </p>
                             <div className="flex justify-center w-full">
@@ -1336,8 +1339,8 @@ export default function DashboardPage() {
             </div>
                   ))}
 
-                  {/* Card Coming Soon Derecha */}
-                  <div className="flex-shrink-0 w-full md:w-[850px]">
+                  {/* Card Coming Soon Derecha - Oculto en mobile */}
+                  <div className="hidden md:flex flex-shrink-0 w-full md:w-[850px]">
                     <div 
                       className="flex flex-col md:flex-row bg-gray-100 dark:bg-gray-800 hover:shadow-xl hover:shadow-[#85ea10]/5 transition-all duration-150 rounded-2xl cursor-pointer w-full overflow-hidden h-full"
                       style={{ filter: 'grayscale(100%)' }}
@@ -1576,8 +1579,8 @@ export default function DashboardPage() {
                 style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
               >
                 <div className="flex gap-6 md:gap-8 lg:gap-12 px-4 md:px-6 lg:px-20 xl:px-32 justify-start md:justify-center">
-                  {/* Card Coming Soon Izquierda */}
-                  <div className="flex-shrink-0 w-full md:w-[400px] lg:w-[500px]">
+                  {/* Card Coming Soon Izquierda - Oculto en mobile */}
+                  <div className="hidden md:flex flex-shrink-0 w-full md:w-[400px] lg:w-[500px]">
                     <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl overflow-hidden h-full" style={{ filter: 'grayscale(100%)' }}>
                       <div className="relative aspect-video">
                         <div className="w-full h-full bg-gradient-to-br from-gray-300 to-gray-400 dark:from-gray-600 dark:to-gray-700 flex items-center justify-center">
@@ -1679,8 +1682,8 @@ export default function DashboardPage() {
                         )}
               </div>
               
-                  {/* Card Coming Soon Derecha */}
-                  <div className="flex-shrink-0 w-full md:w-[400px] lg:w-[500px]">
+                  {/* Card Coming Soon Derecha - Oculto en mobile */}
+                  <div className="hidden md:flex flex-shrink-0 w-full md:w-[400px] lg:w-[500px]">
                     <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl overflow-hidden h-full" style={{ filter: 'grayscale(100%)' }}>
                       <div className="relative aspect-video">
                         <div className="w-full h-full bg-gradient-to-br from-gray-300 to-gray-400 dark:from-gray-600 dark:to-gray-700 flex items-center justify-center">
