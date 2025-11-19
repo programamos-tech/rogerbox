@@ -299,13 +299,13 @@ export default function HomePage() {
         <div className="relative z-10 w-full px-6 md:px-12 lg:px-20 xl:px-32 text-center max-w-[95%] lg:max-w-[90%] xl:max-w-full mx-auto">
           <div className="space-y-5 md:space-y-6">
             {/* Main Title */}
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-white mb-4 md:mb-5 uppercase tracking-tight leading-tight">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-white mb-4 md:mb-5 uppercase tracking-tight leading-[1.2]">
               <div className="drop-shadow-lg">QUEMA GRASA CON</div>
               <div className="text-[#85ea10] drop-shadow-lg">ENTRENAMIENTOS HIIT</div>
             </h1>
             
             {/* Subtitle */}
-            <p className="text-lg md:text-xl lg:text-xl text-white/95 mb-6 md:mb-7 font-medium leading-relaxed max-w-3xl mx-auto">
+            <p className="text-lg sm:text-xl md:text-xl lg:text-xl text-white/95 mb-6 md:mb-7 font-medium leading-relaxed max-w-3xl mx-auto line-clamp-3 sm:line-clamp-none">
               Transforma tu cuerpo con entrenamientos intensos de alta calidad. 
               <br className="hidden md:block" />
               <span className="text-[#85ea10] font-bold">¡Cada día una nueva clase te espera!</span>

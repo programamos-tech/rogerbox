@@ -1204,15 +1204,15 @@ function StudentPageContent() {
             {/* Nombre y Descripción de la Clase - Siempre visible cuando hay una clase */}
             {currentLesson && (
               <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 sm:p-6">
-                <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-3 sm:mb-4">
+                <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-3 sm:mb-4 line-clamp-2 sm:line-clamp-none">
                   {currentLesson.title}
                 </h1>
                 {currentLesson.description ? (
-                  <p className="text-sm sm:text-base md:text-lg text-gray-700 dark:text-gray-300 leading-relaxed">
+                  <p className="text-sm sm:text-base md:text-lg text-gray-700 dark:text-gray-300 leading-relaxed line-clamp-3 sm:line-clamp-none">
                     {currentLesson.description}
                   </p>
                 ) : (
-                  <p className="text-sm sm:text-base md:text-lg text-gray-500 dark:text-gray-400 italic">
+                  <p className="text-sm sm:text-base md:text-lg text-gray-500 dark:text-gray-400 italic line-clamp-3 sm:line-clamp-none">
                     No hay descripción disponible para esta clase.
                   </p>
                 )}
@@ -1377,7 +1377,7 @@ function StudentPageContent() {
                           </div>
                               <h3 className="text-sm font-medium text-gray-800 dark:text-gray-200 line-clamp-2 leading-snug">
                                 {lesson.title}
-              </h3>
+                              </h3>
                               {lesson.duration_minutes && (
                                 <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 font-normal">
                                   {lesson.duration_minutes} min

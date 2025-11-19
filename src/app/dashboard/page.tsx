@@ -915,11 +915,11 @@ export default function DashboardPage() {
                                 )}
                               </div>
 
-                              <h3 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-black text-gray-900 dark:text-white mb-2 sm:mb-3 leading-tight">
+                              <h3 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-black text-gray-900 dark:text-white mb-2 sm:mb-3 leading-tight line-clamp-2 sm:line-clamp-none">
                                 {purchase.course?.title || 'Nueva Clase'}
                               </h3>
 
-                              <p className="text-gray-600 dark:text-gray-300 text-sm sm:text-base md:text-lg mb-4 sm:mb-5 line-clamp-2 sm:line-clamp-none">
+                              <p className="text-gray-600 dark:text-gray-300 text-sm sm:text-base md:text-lg mb-4 sm:mb-5 line-clamp-3 sm:line-clamp-none">
                                 {purchase.course?.short_description || purchase.course?.description || '¡No te pierdas esta increíble clase!'}
                               </p>
 
@@ -959,10 +959,10 @@ export default function DashboardPage() {
                       <div className="relative w-full min-h-[160px] sm:h-[200px] bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 p-4 sm:p-6 md:p-8">
                         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between h-full gap-4">
                           <div className="flex-1">
-                            <h3 className="text-lg sm:text-xl md:text-2xl font-black text-gray-900 dark:text-white mb-2">
+                            <h3 className="text-lg sm:text-xl md:text-2xl font-black text-gray-900 dark:text-white mb-2 line-clamp-2 sm:line-clamp-none">
                               {purchase.course?.title || 'Curso'}
                             </h3>
-                            <p className="text-gray-600 dark:text-gray-300 text-xs sm:text-sm">
+                            <p className="text-gray-600 dark:text-gray-300 text-xs sm:text-sm line-clamp-3 sm:line-clamp-none">
                               Tu curso está en progreso
                             </p>
                           </div>
@@ -1109,10 +1109,10 @@ export default function DashboardPage() {
                       {/* CONTENIDO - Resto del espacio */}
                       <div className="flex-1 flex flex-col min-w-0 overflow-visible p-4 md:p-5 lg:p-6 md:justify-between">
                         <div className="flex flex-col gap-3 md:gap-4 mb-4 md:mb-0">
-                          <h3 className="text-lg md:text-xl lg:text-2xl font-bold text-gray-400 dark:text-gray-600 break-words leading-tight">
+                          <h3 className="text-lg md:text-xl lg:text-2xl font-bold text-gray-400 dark:text-gray-600 break-words leading-tight line-clamp-2 sm:line-clamp-none">
                             Curso en preparación
                           </h3>
-                          <p className="text-xs md:text-sm lg:text-base text-gray-400 dark:text-gray-600 leading-relaxed break-words line-clamp-3">
+                          <p className="text-xs md:text-sm lg:text-base text-gray-400 dark:text-gray-600 leading-relaxed break-words line-clamp-3 sm:line-clamp-none">
                             Estamos trabajando en este contenido...
                           </p>
                           <div className="flex justify-center w-full">
@@ -1240,10 +1240,10 @@ export default function DashboardPage() {
                         {/* CONTENIDO - Resto del espacio */}
                         <div className="flex-1 flex flex-col min-w-0 overflow-visible p-3 sm:p-4 md:p-5 lg:p-6 md:justify-between">
                           <div className="flex flex-col gap-2 sm:gap-3 md:gap-4 mb-4 md:mb-0">
-                            <h3 className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-gray-900 dark:text-white break-words leading-tight">
+                            <h3 className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-gray-900 dark:text-white break-words leading-tight line-clamp-2 sm:line-clamp-none">
                               {course.title}
                             </h3>
-                            <p className="text-xs sm:text-sm md:text-base text-gray-700 dark:text-white/80 leading-relaxed break-words line-clamp-2 sm:line-clamp-3">
+                            <p className="text-xs sm:text-sm md:text-base text-gray-700 dark:text-white/80 leading-relaxed break-words line-clamp-3 sm:line-clamp-none">
                               {course.short_description || course.description}
                             </p>
                             <div className="flex justify-center w-full">
@@ -1363,10 +1363,10 @@ export default function DashboardPage() {
                       {/* CONTENIDO - Resto del espacio */}
                       <div className="flex-1 flex flex-col min-w-0 overflow-visible p-4 md:p-5 lg:p-6 md:justify-between">
                         <div className="flex flex-col gap-3 md:gap-4 mb-4 md:mb-0">
-                          <h3 className="text-lg md:text-xl lg:text-2xl font-bold text-gray-400 dark:text-gray-600 break-words leading-tight">
+                          <h3 className="text-lg md:text-xl lg:text-2xl font-bold text-gray-400 dark:text-gray-600 break-words leading-tight line-clamp-2 sm:line-clamp-none">
                             Curso en preparación
                           </h3>
-                          <p className="text-xs md:text-sm lg:text-base text-gray-400 dark:text-gray-600 leading-relaxed break-words line-clamp-3">
+                          <p className="text-xs md:text-sm lg:text-base text-gray-400 dark:text-gray-600 leading-relaxed break-words line-clamp-3 sm:line-clamp-none">
                             Estamos trabajando en este contenido...
                           </p>
                           <div className="flex justify-center w-full">
@@ -1501,7 +1501,7 @@ export default function DashboardPage() {
                     {/* Contenido */}
                     <div className="flex-1 p-5 md:p-6 flex flex-col justify-between">
                       <div>
-                        <h3 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white mb-3 line-clamp-2 group-hover:text-[#85ea10] transition-colors">
+                        <h3 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white mb-3 line-clamp-2 sm:line-clamp-none group-hover:text-[#85ea10] transition-colors">
                           {blog.title}
                         </h3>
                         <p className="text-sm md:text-base text-gray-600 dark:text-gray-300 line-clamp-3 mb-4">
@@ -1642,10 +1642,10 @@ export default function DashboardPage() {
                       </div>
                     </div>
                         <div className="p-6">
-                          <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 line-clamp-2">
+                          <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 line-clamp-2 sm:line-clamp-none">
                             {realCourses[0]?.title}
                           </h3>
-                          <p className="text-sm text-gray-600 dark:text-gray-300 mb-4 line-clamp-2">
+                          <p className="text-sm text-gray-600 dark:text-gray-300 mb-4 line-clamp-3 sm:line-clamp-none">
                             {realCourses[0]?.short_description}
                           </p>
                           <div className="flex items-center justify-between mb-4">
@@ -1697,10 +1697,10 @@ export default function DashboardPage() {
                         </div>
                         </div>
                       <div className="p-6">
-                        <h3 className="text-xl font-bold text-gray-400 dark:text-gray-600 mb-2">
+                        <h3 className="text-xl font-bold text-gray-400 dark:text-gray-600 mb-2 line-clamp-2 sm:line-clamp-none">
                           Curso en preparación
                         </h3>
-                        <p className="text-sm text-gray-400 dark:text-gray-600 mb-4">
+                        <p className="text-sm text-gray-400 dark:text-gray-600 mb-4 line-clamp-3 sm:line-clamp-none">
                           Estamos trabajando en este contenido...
                         </p>
                 <button
