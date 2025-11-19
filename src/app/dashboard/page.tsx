@@ -80,6 +80,8 @@ export default function DashboardPage() {
     error: coursesError,
     refresh: refreshCourses
   } = useUnifiedCourses();
+
+  const BANNER_PLACEHOLDER = '/images/banner.jpeg';
   
   // Hook para compras del usuario
   const { purchases, loading: loadingPurchases, hasActivePurchases } = useUserPurchases();
@@ -860,7 +862,34 @@ export default function DashboardPage() {
                 </h2>
               </div>
             <div className="space-y-4">
-              {purchases.map((purchase) => {
+              {(() => {
+                // Encontrar el purchase con clase disponible, o el más reciente
+                const purchaseWithClass = purchases.find((p) => {
+                  if (!p.start_date) return false;
+                  const startDate = new Date(p.start_date);
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  startDate.setHours(0, 0, 0, 0);
+                  const daysDiff = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+                  return daysDiff >= 0;
+                });
+                
+                // Si no hay clase disponible, usar el primero
+                const purchase = purchaseWithClass || purchases[0];
+                
+                if (!purchase) return null;
+                
+                // Debug: Verificar datos del purchase
+                console.log('🔍 Dashboard Banner: Purchase data:', {
+                  purchase_id: purchase.id,
+                  course_id: purchase.course_id,
+                  has_course: !!purchase.course,
+                  course_title: purchase.course?.title || 'NO COURSE',
+                  course_preview_image: purchase.course?.preview_image ? (purchase.course.preview_image.substring(0, 100) + '...') : 'NO IMAGE',
+                  is_base64: purchase.course?.preview_image?.startsWith('data:image') || false,
+                  preview_image_length: purchase.course?.preview_image?.length || 0
+                });
+                
                 // Verificar si hay clase disponible hoy
                 const hasAvailableClass = (() => {
                   if (!purchase.start_date) return false;
@@ -885,19 +914,26 @@ export default function DashboardPage() {
 
                 const timeLeft = getTimeUntilMidnight();
 
+                // Determinar la URL de la imagen
+                const getImageUrl = () => {
+                  // Siempre usar la imagen fija del banner proporcionada en public/
+                  return BANNER_PLACEHOLDER;
+                };
+                
+                const imageUrl = getImageUrl();
+                console.log('🔍 Banner: URL final de imagen (siempre placeholder):', imageUrl);
+                
                 return (
                   <div
                     key={purchase.id}
                     className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden mx-4 sm:mx-6 lg:mx-8"
                   >
                     {hasAvailableClass ? (
-                      /* Banner elegante y moderno */
-                      <div className="relative w-full bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden">
-                        {/* Barra lateral verde */}
-                        <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b from-[#85ea10] to-[#1e3a8a]"></div>
-                        
-                        <div className="pl-4 pr-4 sm:pl-6 sm:pr-6 md:pl-8 md:pr-8 py-4 sm:py-6 md:py-8">
-                          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 sm:gap-6">
+                      /* Banner elegante y moderno con fondo blanco/dark */
+                      <div className="relative w-full min-h-[200px] sm:min-h-[240px] md:min-h-[280px] rounded-2xl shadow-lg overflow-hidden bg-white dark:bg-gray-800">
+                        {/* Contenido */}
+                        <div className="relative z-10 pl-4 pr-4 sm:pl-6 sm:pr-6 md:pl-8 md:pr-8 py-3 sm:py-4 md:py-5 h-full flex flex-col">
+                          <div className="flex-1">
                             {/* Contenido izquierdo */}
                             <div className="flex-1 min-w-0 w-full">
                               <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4 flex-wrap">
@@ -919,7 +955,7 @@ export default function DashboardPage() {
                                 {purchase.course?.title || 'Nueva Clase'}
                               </h3>
 
-                              <p className="text-gray-600 dark:text-gray-300 text-sm sm:text-base md:text-lg mb-4 sm:mb-5 line-clamp-3 sm:line-clamp-none">
+                              <p className="text-gray-700 dark:text-gray-300 text-sm sm:text-base md:text-lg mb-4 sm:mb-5 line-clamp-1">
                                 {purchase.course?.short_description || purchase.course?.description || '¡No te pierdas esta increíble clase!'}
                               </p>
 
@@ -930,39 +966,40 @@ export default function DashboardPage() {
                                     {purchase.course?.duration_days ? `${purchase.course.duration_days} días` : '30 días'}
                                   </span>
                                 </div>
-                                <div className="flex items-center gap-2 text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
+                                <div className="flex items-center gap-2 text-[10px] sm:text-xs text-gray-500 dark:text-gray-500">
                                   <Clock className="w-3 h-3" />
                                   <span className="hidden sm:inline">Se bloquea antes de las 12:00 AM</span>
                                   <span className="sm:hidden">Bloquea a las 12:00 AM</span>
                                 </div>
                               </div>
                             </div>
+                          </div>
 
-                            {/* Botón CTA */}
-                            <div className="flex-shrink-0 w-full sm:w-auto">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  router.push('/student?autoStart=true');
-                                }}
-                                className="bg-[#1e3a8a] hover:bg-[#152a6a] text-white font-bold py-3 px-6 sm:py-4 sm:px-8 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-105 flex items-center justify-center gap-2 w-full sm:w-auto whitespace-nowrap text-sm sm:text-base"
-                              >
-                                <Play className="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" />
-                                <span>Tomar Clase Ahora</span>
-                              </button>
-                            </div>
+                          {/* Botón CTA - Posicionado en la esquina inferior derecha */}
+                          <div className="flex justify-end mt-auto">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                router.push('/student?autoStart=true');
+                              }}
+                              className="bg-[#85ea10] hover:bg-[#7dd30f] text-black font-bold py-2 px-4 sm:py-2.5 sm:px-5 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-105 flex items-center justify-center gap-1.5 whitespace-nowrap text-xs sm:text-sm"
+                            >
+                              <Play className="w-3 h-3 sm:w-4 sm:h-4" fill="currentColor" />
+                              <span>Tomar Clase Ahora</span>
+                            </button>
                           </div>
                         </div>
                       </div>
                     ) : (
-                      /* Banner normal cuando no hay clase disponible */
-                      <div className="relative w-full min-h-[160px] sm:h-[200px] bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 p-4 sm:p-6 md:p-8">
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between h-full gap-4">
+                      /* Banner normal cuando no hay clase disponible - con fondo blanco/dark */
+                      <div className="relative w-full min-h-[200px] sm:min-h-[240px] md:min-h-[280px] rounded-2xl shadow-lg overflow-hidden bg-white dark:bg-gray-800">
+                        {/* Contenido */}
+                        <div className="relative z-10 p-4 sm:p-6 md:p-8 h-full flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                           <div className="flex-1">
                             <h3 className="text-lg sm:text-xl md:text-2xl font-black text-gray-900 dark:text-white mb-2 line-clamp-2 sm:line-clamp-none">
                               {purchase.course?.title || 'Curso'}
                             </h3>
-                            <p className="text-gray-600 dark:text-gray-300 text-xs sm:text-sm line-clamp-3 sm:line-clamp-none">
+                            <p className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm line-clamp-3 sm:line-clamp-none">
                               Tu curso está en progreso
                             </p>
                           </div>
@@ -981,7 +1018,7 @@ export default function DashboardPage() {
                     )}
                   </div>
                 );
-              })}
+              })()}
             </div>
           </div>
         )}
@@ -992,7 +1029,7 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 flex-1 min-h-0 mb-4 sm:mb-6">
             {/* COLUMNA 1: COMPLEMENTOS (STORIES) */}
             <div className="lg:col-span-1 flex flex-col min-h-0" data-section="complementos" id="complementos">
-              <StoriesSection />
+              <StoriesSection courseStartDate={purchases.find((p: any) => p.start_date)?.start_date || null} />
               </div>
 
             {/* COLUMNA 2: INSIGHTS */}

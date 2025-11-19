@@ -97,33 +97,45 @@ export async function uploadImage(
 
     console.log(`📤 Subiendo imagen a ${bucket}/${filePath} (${fileToUpload.size} bytes)`);
 
-    // Subir archivo a Supabase Storage
-    const { data, error } = await supabase.storage
-      .from(bucket)
-      .upload(filePath, fileToUpload, {
-        cacheControl: '31536000', // Cache por 1 año (WebP es estático)
-        upsert: false // No sobrescribir archivos existentes
-      });
+    // Subir archivo usando el endpoint API (más seguro, usa supabaseAdmin en el servidor)
+    const formData = new FormData();
+    formData.append('file', fileToUpload);
+    formData.append('bucket', bucket);
+    formData.append('folder', folder);
+    if (finalFilename) {
+      formData.append('filename', finalFilename);
+    }
 
-    if (error) {
-      console.error('❌ Error subiendo imagen:', error);
+    const response = await fetch('/api/storage/upload', {
+      method: 'POST',
+      body: formData
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
+      console.error('❌ Error subiendo imagen:', errorData.error);
       return {
         success: false,
-        error: error.message
+        error: errorData.error || 'Error al subir la imagen'
       };
     }
 
-    // Obtener URL pública
-    const { data: { publicUrl } } = supabase.storage
-      .from(bucket)
-      .getPublicUrl(data.path);
+    const result = await response.json();
 
-    console.log('✅ Imagen subida exitosamente:', publicUrl);
+    if (!result.success || !result.url) {
+      console.error('❌ Error en respuesta del servidor:', result.error);
+      return {
+        success: false,
+        error: result.error || 'Error al subir la imagen'
+      };
+    }
+
+    console.log('✅ Imagen subida exitosamente:', result.url);
 
     return {
       success: true,
-      url: publicUrl,
-      path: data.path
+      url: result.url,
+      path: result.path
     };
 
   } catch (error) {

@@ -374,57 +374,34 @@ export default function InsightsSection({
       // Usar timestamp completo para permitir múltiples registros por día
       const now = new Date();
       const recordDate = now.toISOString().split('T')[0]; // YYYY-MM-DD para compatibilidad
-      const recordTimestamp = now.toISOString(); // Timestamp completo para ordenar
+      const notes = `Registro del ${now.toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })}`;
       
-      // Guardar registro de peso en weight_records (siempre insertar nuevo, nunca actualizar)
-      const { data: weightData, error: weightRecordError } = await supabase
-        .from('weight_records')
-        .insert({
-          user_id: (session as any).user.id,
-          weight: weight,
+      // Guardar registro de peso usando el endpoint API (bypass RLS usando supabaseAdmin)
+      const response = await fetch('/api/weight/record', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          weight,
           record_date: recordDate,
-          notes: `Registro del ${now.toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })}`
+          notes
         })
-        .select();
-      
-      if (weightRecordError) {
-        console.error('Error guardando registro de peso:', {
-          error: weightRecordError,
-          message: weightRecordError?.message,
-          details: weightRecordError?.details,
-          hint: weightRecordError?.hint,
-          code: weightRecordError?.code
-        });
-        
-        // Mensaje más amigable si la tabla no existe
-        let errorMessage = 'Error al guardar el registro de peso. Por favor, intenta de nuevo.';
-        if (weightRecordError?.message?.includes('Could not find the table') || 
-            weightRecordError?.message?.includes('relation') ||
-            weightRecordError?.code === 'PGRST116') {
-          errorMessage = 'La tabla de registros de peso no está configurada. Por favor, contacta al administrador.';
-        } else if (weightRecordError?.message) {
-          errorMessage = weightRecordError.message;
-        }
-        
-        throw new Error(errorMessage);
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
+        console.error('Error guardando registro de peso:', errorData);
+        throw new Error(errorData.error || 'Error al guardar el registro de peso');
       }
+
+      const result = await response.json();
       
-      // Actualizar también el peso actual en el perfil
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({
-          current_weight: weight,
-          last_weight_update: recordDate
-        })
-        .eq('id', (session as any).user.id);
-      
-      if (profileError) {
-        console.error('Error actualizando perfil:', {
-          error: profileError,
-          message: profileError?.message
-        });
-        // No lanzar error aquí, el registro de peso ya se guardó
+      if (!result.success) {
+        throw new Error(result.error || 'Error al guardar el registro de peso');
       }
+
+      const weightData = result.data;
       
       // Recargar el historial completo de peso
       const { data: records } = await supabase

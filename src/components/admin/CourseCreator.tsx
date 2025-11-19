@@ -24,7 +24,7 @@ import {
 import { supabase, supabaseAdmin } from '@/lib/supabase';
 import CategoryManager from './CategoryManager';
 import RogerAlert from '../RogerAlert';
-// import { uploadImage, deleteImage, isSupabaseStorageUrl, getImagePathFromUrl, getBucketFromUrl } from '@/lib/storage'; // Temporalmente deshabilitado
+import { uploadImage, deleteImage, isSupabaseStorageUrl, getImagePathFromUrl, getBucketFromUrl } from '@/lib/storage';
 
 interface CourseData {
   title: string;
@@ -189,22 +189,34 @@ export default function CourseCreator({ onClose, onSuccess, courseToEdit }: Cour
     try {
       console.log(`📤 Procesando imagen ${type}:`, file.name);
       
-      // TEMPORAL: Usar Base64 hasta configurar Storage correctamente
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const base64String = e.target?.result as string;
-        
-        if (type === 'course') {
-          setCourseData(prev => ({ ...prev, preview_image: base64String }));
-        } else if (type === 'lesson' && lessonIndex !== undefined) {
-          const updatedLessons = [...lessons];
-          updatedLessons[lessonIndex].preview_image = base64String;
-          setLessons(updatedLessons);
-        }
-        
-        console.log('✅ Imagen procesada exitosamente (Base64)');
-      };
-      reader.readAsDataURL(file);
+      // Determinar el bucket y folder según el tipo
+      const bucket = type === 'course' ? 'course-images' : 'lesson-images';
+      const folder = type === 'course' ? 'courses' : 'lessons';
+      
+      // Generar nombre único para el archivo
+      const fileExtension = file.name.split('.').pop() || 'jpg';
+      const filename = type === 'course' 
+        ? `course-${Date.now()}.${fileExtension}`
+        : `lesson-${Date.now()}-${lessonIndex}.${fileExtension}`;
+      
+      // Subir imagen a Supabase Storage
+      console.log(`📤 Subiendo imagen a ${bucket}/${folder}/${filename}...`);
+      const uploadResult = await uploadImage(file, bucket, folder, filename);
+      
+      if (!uploadResult.success || !uploadResult.url) {
+        throw new Error(uploadResult.error || 'Error desconocido al subir la imagen');
+      }
+      
+      console.log('✅ Imagen subida exitosamente a Storage:', uploadResult.url);
+      
+      // Actualizar el estado con la URL de Storage
+      if (type === 'course') {
+        setCourseData(prev => ({ ...prev, preview_image: uploadResult.url! }));
+      } else if (type === 'lesson' && lessonIndex !== undefined) {
+        const updatedLessons = [...lessons];
+        updatedLessons[lessonIndex].preview_image = uploadResult.url!;
+        setLessons(updatedLessons);
+      }
       
     } catch (error) {
       console.error('❌ Error procesando imagen:', error);
@@ -212,11 +224,40 @@ export default function CourseCreator({ onClose, onSuccess, courseToEdit }: Cour
     }
   };
 
-  // Función para eliminar imagen (simplificada para Base64)
+  // Función para eliminar imagen de Storage
   const handleImageDelete = async (imageUrl: string, type: 'course' | 'lesson') => {
-    // Para Base64, no necesitamos eliminar nada del storage
-    // Solo se elimina del estado local
-    console.log('🗑️ Eliminando imagen del estado local (Base64)');
+    try {
+      // Si es una URL de Supabase Storage, eliminarla
+      if (isSupabaseStorageUrl(imageUrl)) {
+        const bucket = getBucketFromUrl(imageUrl);
+        const path = getImagePathFromUrl(imageUrl);
+        
+        if (bucket && path) {
+          console.log(`🗑️ Eliminando imagen de Storage: ${bucket}/${path}`);
+          const deleted = await deleteImage(bucket as 'course-images' | 'lesson-images', path);
+          
+          if (deleted) {
+            console.log('✅ Imagen eliminada de Storage');
+          } else {
+            console.warn('⚠️ No se pudo eliminar la imagen de Storage');
+          }
+        }
+      } else if (imageUrl.startsWith('data:image')) {
+        // Si es base64, no hay nada que eliminar en Storage
+        console.log('ℹ️ Imagen es base64, no se elimina de Storage');
+      }
+      
+      // Eliminar del estado local
+      if (type === 'course') {
+        setCourseData(prev => ({ ...prev, preview_image: null }));
+      } else if (type === 'lesson') {
+        // Necesitamos el índice de la lección, pero esta función no lo tiene
+        // Por ahora, solo logueamos
+        console.log('ℹ️ Para eliminar imagen de lección, usar la función específica de la lección');
+      }
+    } catch (error) {
+      console.error('❌ Error eliminando imagen:', error);
+    }
   };
 
   const handleDrag = (e: React.DragEvent) => {

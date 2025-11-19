@@ -48,31 +48,6 @@ export const useUserPurchases = (): UseUserPurchasesReturn => {
 
       console.log('🔄 useUserPurchases: Cargando compras del usuario...');
 
-      // SIMULACIÓN TEMPORAL: Solo para rogerboxtech@gmail.com
-      if (session.user.email === 'rogerboxtech@gmail.com') {
-        console.log('🎭 SIMULACIÓN: Usuario rogerbox detectado, simulando compra...');
-        const simulatedPurchase: UserPurchase = {
-          id: 'sim-001',
-          course_id: '1',
-          order_id: 'order-sim-001',
-          created_at: new Date().toISOString(),
-          is_active: true,
-          completed_lessons: [],
-          course: {
-            id: '1',
-            title: 'CARDIO HIIT 40 MIN ¡BAJA DE PESO!',
-            slug: 'cardio-hiit-40-min-baja-peso',
-            preview_image: '/images/courses/course-1.jpg',
-            duration_days: 84
-          }
-        };
-
-        console.log('✅ SIMULACIÓN: Compra simulada creada');
-        setPurchases([simulatedPurchase]);
-        setLoading(false);
-        return;
-      }
-
       // Obtener el user_id del usuario autenticado
       const userId = (session.user as any).id;
 
@@ -215,7 +190,38 @@ export const useUserPurchases = (): UseUserPurchasesReturn => {
 
         // Combinar compras con cursos
         const purchasesWithCourses = purchasesData.map((purchase: any) => {
-          const course = coursesData?.find((c: any) => c.id === purchase.course_id) || null;
+          console.log('🔍 useUserPurchases: Mapeando purchase:', {
+            purchase_id: purchase.id,
+            course_id: purchase.course_id,
+            course_id_type: typeof purchase.course_id,
+            available_course_ids: coursesData?.map((c: any) => ({ id: c.id, id_type: typeof c.id }))
+          });
+          
+          const course = coursesData?.find((c: any) => {
+            const match = c.id === purchase.course_id;
+            if (!match) {
+              // Intentar comparación como strings
+              const matchAsString = String(c.id) === String(purchase.course_id);
+              return matchAsString;
+            }
+            return match;
+          }) || null;
+          
+          if (!course) {
+            console.warn('⚠️ useUserPurchases: No se encontró curso para purchase:', {
+              purchase_id: purchase.id,
+              course_id: purchase.course_id,
+              available_courses: coursesData?.map((c: any) => c.id)
+            });
+          } else {
+            console.log('✅ useUserPurchases: Curso encontrado:', {
+              purchase_id: purchase.id,
+              course_id: purchase.course_id,
+              course_title: course.title,
+              course_preview_image: course.preview_image?.substring(0, 50) + '...'
+            });
+          }
+          
           return {
             id: purchase.id,
             course_id: purchase.course_id,
@@ -229,7 +235,13 @@ export const useUserPurchases = (): UseUserPurchasesReturn => {
         });
 
         console.log('✅ useUserPurchases: Compras procesadas:', purchasesWithCourses.length);
-        console.log('✅ useUserPurchases: Datos finales:', purchasesWithCourses);
+        console.log('✅ useUserPurchases: Datos finales:', purchasesWithCourses.map(p => ({
+          id: p.id,
+          course_id: p.course_id,
+          has_course: !!p.course,
+          course_title: p.course?.title || 'NO COURSE',
+          course_preview_image: p.course?.preview_image ? (p.course.preview_image.substring(0, 50) + '...') : 'NO IMAGE'
+        })));
         setPurchases(purchasesWithCourses);
         setLoading(false);
       } else {
