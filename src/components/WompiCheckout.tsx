@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
-import { CreditCard, Loader2, X } from 'lucide-react';
+import { CreditCard, Loader2, X, User, Mail, MapPin, FileText } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 
 interface WompiCheckoutProps {
   course: {
@@ -17,13 +18,31 @@ interface WompiCheckoutProps {
   onClose?: () => void;
 }
 
+interface BuyerData {
+  firstName: string;
+  lastName: string;
+  email: string;
+  documentId: string;
+  documentType: 'CC' | 'NIT' | 'CE' | 'PP';
+  address: string;
+}
+
 export default function WompiCheckout({ course, onSuccess, onError, onClose }: WompiCheckoutProps) {
   const { data: session } = useSession();
   const [isLoading, setIsLoading] = useState(false);
-  const [customerEmail, setCustomerEmail] = useState('');
-  const [customerName, setCustomerName] = useState('');
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [widgetReady, setWidgetReady] = useState(false);
   const [wompiPublicKey, setWompiPublicKey] = useState<string>('');
+  
+  // Datos del comprador
+  const [buyerData, setBuyerData] = useState<BuyerData>({
+    firstName: '',
+    lastName: '',
+    email: '',
+    documentId: '',
+    documentType: 'CC',
+    address: '',
+  });
 
   // Obtener la public key del servidor
   useEffect(() => {
@@ -62,15 +81,70 @@ export default function WompiCheckout({ course, onSuccess, onError, onClose }: W
 
   // Pre-cargar datos del usuario si existe sesión
   useEffect(() => {
-    if (session?.user) {
-      setCustomerEmail(session.user.email || '');
-      setCustomerName(session.user.name || '');
-    }
+    const loadUserProfile = async () => {
+      const userId = (session as any)?.user?.id;
+      if (!userId) {
+        setIsLoadingProfile(false);
+        return;
+      }
+
+      try {
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('first_name, last_name, name, email, document_id, document_type, address')
+          .eq('id', userId)
+          .single();
+
+        if (error) {
+          console.warn('⚠️ Error cargando perfil:', error);
+        } else if (profile) {
+          // Intentar dividir el nombre si no hay first_name/last_name
+          let firstName = profile.first_name || '';
+          let lastName = profile.last_name || '';
+          
+          if (!firstName && !lastName && profile.name) {
+            const nameParts = profile.name.trim().split(' ');
+            if (nameParts.length >= 2) {
+              firstName = nameParts.slice(0, Math.ceil(nameParts.length / 2)).join(' ');
+              lastName = nameParts.slice(Math.ceil(nameParts.length / 2)).join(' ');
+            } else {
+              firstName = profile.name;
+            }
+          }
+
+          setBuyerData({
+            firstName: firstName,
+            lastName: lastName,
+            email: profile.email || (session as any)?.user?.email || '',
+            documentId: profile.document_id || '',
+            documentType: (profile.document_type as 'CC' | 'NIT' | 'CE' | 'PP') || 'CC',
+            address: profile.address || '',
+          });
+        }
+      } catch (error) {
+        console.error('❌ Error cargando perfil:', error);
+      } finally {
+        setIsLoadingProfile(false);
+      }
+    };
+
+    loadUserProfile();
   }, [session]);
 
+  // Validar campos obligatorios
+  const isFormValid = () => {
+    return (
+      buyerData.firstName.trim() !== '' &&
+      buyerData.lastName.trim() !== '' &&
+      buyerData.email.trim() !== '' &&
+      buyerData.documentId.trim() !== '' &&
+      buyerData.address.trim() !== ''
+    );
+  };
+
   const handlePayment = async () => {
-    if (!customerEmail || !customerName) {
-      onError?.('Por favor ingresa tu nombre y correo');
+    if (!isFormValid()) {
+      onError?.('Por favor completa todos los campos obligatorios');
       return;
     }
 
@@ -87,7 +161,10 @@ export default function WompiCheckout({ course, onSuccess, onError, onClose }: W
     setIsLoading(true);
 
     try {
-      // 1. Crear la orden en el backend
+      // Construir nombre completo para el widget
+      const fullName = `${buyerData.firstName.trim()} ${buyerData.lastName.trim()}`;
+
+      // 1. Crear la orden en el backend (también guarda datos del comprador)
       console.log('📦 Creando orden...');
       const orderResponse = await fetch('/api/payments/create-order', {
         method: 'POST',
@@ -99,8 +176,16 @@ export default function WompiCheckout({ course, onSuccess, onError, onClose }: W
           amount: course.price,
           originalPrice: course.original_price,
           discountAmount: course.original_price ? course.original_price - course.price : 0,
-          customerEmail,
-          customerName,
+          customerEmail: buyerData.email,
+          customerName: fullName,
+          // Datos adicionales del comprador
+          buyerData: {
+            firstName: buyerData.firstName.trim(),
+            lastName: buyerData.lastName.trim(),
+            documentId: buyerData.documentId.trim(),
+            documentType: buyerData.documentType,
+            address: buyerData.address.trim(),
+          },
         }),
       });
 
@@ -131,8 +216,8 @@ export default function WompiCheckout({ course, onSuccess, onError, onClose }: W
           integrity: signature
         } : undefined,
         customerData: {
-          email: customerEmail,
-          fullName: customerName,
+          email: buyerData.email,
+          fullName: fullName,
         },
       });
 
@@ -236,41 +321,133 @@ export default function WompiCheckout({ course, onSuccess, onError, onClose }: W
         )}
       </div>
 
-      {/* Formulario de datos */}
+      {/* Formulario de datos del comprador */}
       <div className="space-y-4 mb-6">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Nombre completo
-          </label>
-          <input
-            type="text"
-            value={customerName}
-            onChange={(e) => setCustomerName(e.target.value)}
-            placeholder="Juan Pérez"
-            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#85ea10] dark:bg-gray-700 dark:text-white"
-            required
-          />
-        </div>
+        {isLoadingProfile ? (
+          <div className="flex items-center justify-center py-4">
+            <Loader2 className="w-5 h-5 animate-spin text-[#85ea10] mr-2" />
+            <span className="text-gray-600 dark:text-gray-400">Cargando datos...</span>
+          </div>
+        ) : (
+          <>
+            {/* Nombres y Apellidos */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Nombres <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="text"
+                    value={buyerData.firstName}
+                    onChange={(e) => setBuyerData({ ...buyerData, firstName: e.target.value })}
+                    placeholder="Juan Carlos"
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#85ea10] dark:bg-gray-700 dark:text-white text-sm"
+                    required
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Apellidos <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="text"
+                    value={buyerData.lastName}
+                    onChange={(e) => setBuyerData({ ...buyerData, lastName: e.target.value })}
+                    placeholder="Pérez García"
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#85ea10] dark:bg-gray-700 dark:text-white text-sm"
+                    required
+                  />
+                </div>
+              </div>
+            </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Correo electrónico
-          </label>
-          <input
-            type="email"
-            value={customerEmail}
-            onChange={(e) => setCustomerEmail(e.target.value)}
-            placeholder="tu@email.com"
-            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#85ea10] dark:bg-gray-700 dark:text-white"
-            required
-          />
-        </div>
+            {/* Cédula/NIT */}
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Tipo Doc <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={buyerData.documentType}
+                  onChange={(e) => setBuyerData({ ...buyerData, documentType: e.target.value as 'CC' | 'NIT' | 'CE' | 'PP' })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#85ea10] dark:bg-gray-700 dark:text-white text-sm"
+                >
+                  <option value="CC">C.C.</option>
+                  <option value="NIT">NIT</option>
+                  <option value="CE">C.E.</option>
+                  <option value="PP">Pasaporte</option>
+                </select>
+              </div>
+              <div className="col-span-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Número de Documento <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <FileText className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="text"
+                    value={buyerData.documentId}
+                    onChange={(e) => setBuyerData({ ...buyerData, documentId: e.target.value.replace(/[^0-9-]/g, '') })}
+                    placeholder="1234567890"
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#85ea10] dark:bg-gray-700 dark:text-white text-sm"
+                    required
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Correo electrónico */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Correo electrónico <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="email"
+                  value={buyerData.email}
+                  onChange={(e) => setBuyerData({ ...buyerData, email: e.target.value })}
+                  placeholder="tu@email.com"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#85ea10] dark:bg-gray-700 dark:text-white text-sm"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Dirección */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Dirección de residencia <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  value={buyerData.address}
+                  onChange={(e) => setBuyerData({ ...buyerData, address: e.target.value })}
+                  placeholder="Calle 123 # 45-67, Barrio, Ciudad"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#85ea10] dark:bg-gray-700 dark:text-white text-sm"
+                  required
+                />
+              </div>
+            </div>
+
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              <span className="text-red-500">*</span> Campos obligatorios. Esta información se usará para tu factura.
+            </p>
+          </>
+        )}
       </div>
 
       {/* Botón de pago */}
       <button
         onClick={handlePayment}
-        disabled={isLoading || !widgetReady || !wompiPublicKey || !customerEmail || !customerName}
+        disabled={isLoading || !widgetReady || !wompiPublicKey || !isFormValid() || isLoadingProfile}
         className="w-full bg-[#85ea10] hover:bg-[#7dd30f] text-black font-bold py-4 px-6 rounded-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center shadow-lg"
       >
         {isLoading ? (
@@ -287,6 +464,11 @@ export default function WompiCheckout({ course, onSuccess, onError, onClose }: W
           <>
             <Loader2 className="w-5 h-5 mr-2 animate-spin" />
             Cargando configuración...
+          </>
+        ) : isLoadingProfile ? (
+          <>
+            <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+            Cargando datos...
           </>
         ) : (
           <>

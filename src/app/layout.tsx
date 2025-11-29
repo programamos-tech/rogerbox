@@ -58,11 +58,28 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es">
+    <html lang="es" suppressHydrationWarning>
       <head>
         <Script
           src="https://checkout.wompi.co/widget.js"
           strategy="beforeInteractive"
+        />
+        {/* Script para detectar el tema del sistema y aplicar clase dark */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
+                  function updateTheme(e) {
+                    document.documentElement.classList.toggle('dark', e.matches);
+                  }
+                  updateTheme(darkQuery);
+                  darkQuery.addEventListener('change', updateTheme);
+                } catch (e) {}
+              })();
+            `,
+          }}
         />
       </head>
       <body
