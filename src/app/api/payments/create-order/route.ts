@@ -5,6 +5,14 @@ import { supabase } from '@/lib/supabase';
 import { wompiService } from '@/lib/wompi';
 import crypto from 'crypto';
 
+interface BuyerData {
+  firstName: string;
+  lastName: string;
+  documentId: string;
+  documentType: string;
+  address: string;
+}
+
 export async function POST(request: NextRequest) {
   try {
     // MANDATORY: Verificar autenticación - NO permitir compra como invitado
@@ -13,21 +21,26 @@ export async function POST(request: NextRequest) {
 
     if (!userId) {
       console.warn('⚠️ Intento de compra sin autenticación - RECHAZADO');
-      return NextResponse.json(
-        { error: 'Debe iniciar sesión para realizar una compra' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Debe iniciar sesión para realizar una compra' }, { status: 401 });
     }
 
     const body = await request.json();
-    const { courseId, amount, originalPrice, discountAmount, customerEmail, customerName } = body;
+    const { courseId, amount, originalPrice, discountAmount, customerEmail, customerName, buyerData } = body;
 
     // Validar datos requeridos
     if (!courseId || !amount || !customerEmail || !customerName) {
-      return NextResponse.json(
-        { error: 'Datos requeridos faltantes' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Datos requeridos faltantes' }, { status: 400 });
+    }
+
+    // Validar datos del comprador
+    if (buyerData) {
+      const { firstName, lastName, documentId, address } = buyerData as BuyerData;
+      if (!firstName || !lastName || !documentId || !address) {
+        return NextResponse.json(
+          { error: 'Datos del comprador incompletos. Todos los campos son obligatorios.' },
+          { status: 400 }
+        );
+      }
     }
 
     // Verificar que el curso existe
@@ -39,10 +52,35 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (courseError || !course) {
-      return NextResponse.json(
-        { error: 'Curso no encontrado' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Curso no encontrado' }, { status: 404 });
+    }
+
+    // Guardar/actualizar datos del comprador en el perfil
+    if (buyerData) {
+      const { firstName, lastName, documentId, documentType, address } = buyerData as BuyerData;
+
+      console.log('📝 Actualizando datos del comprador en perfil...');
+
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
+          first_name: firstName,
+          last_name: lastName,
+          name: `${firstName} ${lastName}`, // Mantener compatibilidad con campo name
+          document_id: documentId,
+          document_type: documentType || 'CC',
+          address: address,
+          email: customerEmail,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', userId);
+
+      if (profileError) {
+        console.warn('⚠️ Error actualizando perfil (no crítico):', profileError);
+        // No fallamos la orden por esto, solo logueamos
+      } else {
+        console.log('✅ Datos del comprador guardados en perfil');
+      }
     }
 
     // Generar referencia única
@@ -70,7 +108,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error: 'Error al crear la orden',
-          details: orderError.message
+          details: orderError.message,
         },
         { status: 500 }
       );
@@ -80,10 +118,7 @@ export async function POST(request: NextRequest) {
     const integrityKey = process.env.WOMPI_INTEGRITY_KEY;
     if (!integrityKey) {
       console.error('❌ WOMPI_INTEGRITY_KEY no configurado');
-      return NextResponse.json(
-        { error: 'Configuración de pagos incompleta' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Configuración de pagos incompleta' }, { status: 500 });
     }
 
     const amountInCents = Math.round(amount * 100);
@@ -100,15 +135,14 @@ export async function POST(request: NextRequest) {
       orderId: order.id,
       reference: reference,
       signature: signature,
-      amountInCents: amountInCents
+      amountInCents: amountInCents,
     });
-
   } catch (error) {
     console.error('❌ Error in create-order:', error);
     return NextResponse.json(
       {
         error: 'Error interno del servidor',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        details: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     );
