@@ -1,38 +1,46 @@
 'use client';
 
-import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { 
-  Users, 
-  BookOpen, 
-  ShoppingCart, 
-  Building2, 
-  BarChart3, 
-  Settings,
-  Plus,
-  Eye,
-  Edit,
-  Trash2,
-  DollarSign,
-  X,
+import QuickLoading from '@/components/QuickLoading';
+import BlogManagement from '@/components/admin/BlogManagement';
+import ConfirmDialog from '@/components/admin/ConfirmDialog';
+import CourseCreator from '@/components/admin/CourseCreator';
+import { supabase } from '@/lib/supabase';
+import {
+  BarChart3,
+  Bell,
+  BookOpen,
+  Calendar,
   CheckCircle,
-  Search,
-  Menu,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
-  Home,
+  CreditCard,
+  DollarSign,
+  Edit,
+  Eye,
   FileText,
+  Home,
+  Mail,
+  MapPin,
+  Menu,
+  Phone,
+  Plus,
+  Ruler,
+  Scale,
+  Search,
+  Settings,
+  ShoppingCart,
+  Target,
+  Trash2,
   TrendingUp,
-  Bell
+  User,
+  Users,
+  X,
 } from 'lucide-react';
-import QuickLoading from '@/components/QuickLoading';
-import CourseCreator from '@/components/admin/CourseCreator';
-import ConfirmDialog from '@/components/admin/ConfirmDialog';
-import BlogManagement from '@/components/admin/BlogManagement';
-import { supabase } from '@/lib/supabase';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 interface AdminStats {
   totalUsers: number;
@@ -41,6 +49,27 @@ interface AdminStats {
   totalRevenue: number;
   activeCourses: number;
   enterpriseLicenses: number;
+  // Nuevas estadísticas
+  newUsersThisMonth: number;
+  salesThisMonth: number;
+  revenueThisMonth: number;
+}
+
+interface RecentSale {
+  id: string;
+  customer_name: string;
+  customer_email: string;
+  amount: number;
+  status: string;
+  created_at: string;
+  course_title?: string;
+}
+
+interface RecentUser {
+  id: string;
+  name: string;
+  email: string;
+  created_at: string;
 }
 
 interface Course {
@@ -71,35 +100,100 @@ interface Course {
   }>;
 }
 
+interface Sale {
+  id: string;
+  user_id: string;
+  course_id: string;
+  amount: number;
+  currency: string;
+  status: string;
+  payment_method: string;
+  customer_email: string;
+  customer_name: string;
+  wompi_transaction_id: string;
+  created_at: string;
+  course?: {
+    id: string;
+    title: string;
+    preview_image: string;
+    price: number;
+  };
+  profile?: {
+    id: string;
+    name: string;
+    email: string;
+    phone: string;
+  };
+}
+
 // Definición de las secciones del sidebar
 const menuSections = [
   {
     title: 'Principal',
-    items: [
-      { id: 'overview', label: 'Dashboard', icon: BarChart3, description: 'Resumen general' },
-    ]
+    items: [{ id: 'overview', label: 'Dashboard', icon: BarChart3, description: 'Resumen general' }],
   },
   {
     title: 'Contenido',
     items: [
       { id: 'courses', label: 'Cursos', icon: BookOpen, description: 'Gestionar cursos' },
       { id: 'blogs', label: 'Blogs', icon: FileText, description: 'Artículos nutricionales' },
-    ]
+    ],
   },
   {
     title: 'Gestión',
     items: [
       { id: 'users', label: 'Usuarios', icon: Users, description: 'Clientes registrados' },
       { id: 'sales', label: 'Ventas', icon: ShoppingCart, description: 'Historial de compras' },
-    ]
+    ],
   },
   {
     title: 'Sistema',
     items: [
       { id: 'settings', label: 'Configuración', icon: Settings, description: 'Ajustes de la plataforma' },
-    ]
-  }
+    ],
+  },
 ];
+
+// Función para traducir los goals a español
+const translateGoal = (goal: string): string => {
+  const translations: Record<string, string> = {
+    lose_weight: 'Bajar de peso',
+    gain_muscle: 'Ganar músculo',
+    improve_health: 'Mejorar salud',
+    maintain_weight: 'Mantener peso',
+    increase_endurance: 'Aumentar resistencia',
+    flexibility: 'Flexibilidad',
+    stress_relief: 'Reducir estrés',
+    energy: 'Más energía',
+  };
+  return translations[goal] || goal;
+};
+
+// Función para formatear múltiples goals
+const formatGoals = (goals: string | string[] | null | undefined): string => {
+  if (!goals) return 'No especificada';
+
+  if (typeof goals === 'string') {
+    // Si es un string, puede ser un array serializado o un valor único
+    try {
+      const parsed = JSON.parse(goals);
+      if (Array.isArray(parsed)) {
+        return parsed.map(translateGoal).join(', ');
+      }
+    } catch {
+      // Si no es JSON, es un valor único
+      return translateGoal(goals);
+    }
+    return translateGoal(goals);
+  }
+
+  if (Array.isArray(goals)) {
+    if (goals.length === 0) return 'No especificada';
+    return goals.map(translateGoal).join(', ');
+  }
+
+  return 'No especificada';
+};
 
 export default function AdminDashboard() {
   const { data: session, status } = useSession();
@@ -116,8 +210,16 @@ export default function AdminDashboard() {
   const [userSearchTerm, setUserSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const usersPerPage = 10;
+  const [selectedUser, setSelectedUser] = useState<any | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [sales, setSales] = useState<Sale[]>([]);
+  const [loadingSales, setLoadingSales] = useState(false);
+  const [salesSearchTerm, setSalesSearchTerm] = useState('');
+  const [salesCurrentPage, setSalesCurrentPage] = useState(1);
+  const salesPerPage = 10;
+  const [recentSales, setRecentSales] = useState<RecentSale[]>([]);
+  const [recentUsers, setRecentUsers] = useState<RecentUser[]>([]);
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
     title: string;
@@ -131,7 +233,7 @@ export default function AdminDashboard() {
     message: '',
     type: 'danger',
     onConfirm: () => {},
-    isLoading: false
+    isLoading: false,
   });
 
   // Verificar si es admin
@@ -157,20 +259,104 @@ export default function AdminDashboard() {
       loadCourses();
     } else if (activeTab === 'users') {
       loadUsers();
+    } else if (activeTab === 'sales') {
+      loadSales();
     }
   }, [activeTab]);
 
   const loadAdminData = async () => {
     try {
       setLoading(true);
+
+      // Fecha de inicio del mes actual
+      const startOfMonth = new Date();
+      startOfMonth.setDate(1);
+      startOfMonth.setHours(0, 0, 0, 0);
+      const startOfMonthISO = startOfMonth.toISOString();
+
+      // Cargar usuarios totales
+      const { count: usersCount } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
+
+      // Cargar usuarios nuevos este mes
+      const { count: newUsersCount } = await supabase
+        .from('profiles')
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', startOfMonthISO);
+
+      // Cargar cursos
+      const { data: coursesData } = await supabase.from('courses').select('id, is_published');
+
+      // Cargar todas las ventas aprobadas
+      const { data: salesData } = await supabase
+        .from('orders')
+        .select('id, amount, status, created_at')
+        .in('status', ['approved', 'APPROVED']);
+
+      // Calcular ventas y revenue de este mes
+      const salesThisMonth = salesData?.filter((sale) => new Date(sale.created_at) >= startOfMonth) || [];
+
+      const totalRevenue = salesData?.reduce((sum, sale) => sum + (sale.amount || 0), 0) || 0;
+      const revenueThisMonth = salesThisMonth.reduce((sum, sale) => sum + (sale.amount || 0), 0);
+      const activeCourses = coursesData?.filter((c) => c.is_published).length || 0;
+
+      // Cargar ventas recientes (últimas 5)
+      const { data: recentSalesData } = await supabase
+        .from('orders')
+        .select(
+          `
+          id,
+          customer_name,
+          customer_email,
+          amount,
+          status,
+          created_at,
+          course:courses (title)
+        `
+        )
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      // Cargar usuarios recientes (últimos 5)
+      const { data: recentUsersData } = await supabase
+        .from('profiles')
+        .select('id, name, email, created_at')
+        .order('created_at', { ascending: false })
+        .limit(5);
+
       setStats({
-        totalUsers: 150,
-        totalCourses: 8,
-        totalSales: 45,
-        totalRevenue: 4500,
-        activeCourses: 6,
-        enterpriseLicenses: 2
+        totalUsers: usersCount || 0,
+        totalCourses: coursesData?.length || 0,
+        totalSales: salesData?.length || 0,
+        totalRevenue: totalRevenue,
+        activeCourses: activeCourses,
+        enterpriseLicenses: 0,
+        newUsersThisMonth: newUsersCount || 0,
+        salesThisMonth: salesThisMonth.length,
+        revenueThisMonth: revenueThisMonth,
       });
+
+      // Mapear ventas recientes
+      setRecentSales(
+        recentSalesData?.map((sale) => ({
+          id: sale.id,
+          customer_name: sale.customer_name || 'Sin nombre',
+          customer_email: sale.customer_email || '',
+          amount: sale.amount,
+          status: sale.status,
+          created_at: sale.created_at,
+          course_title: (sale.course as any)?.title || 'Curso eliminado',
+        })) || []
+      );
+
+      // Mapear usuarios recientes
+      setRecentUsers(
+        recentUsersData?.map((user) => ({
+          id: user.id,
+          name: user.name || 'Sin nombre',
+          email: user.email,
+          created_at: user.created_at,
+        })) || []
+      );
     } catch (error) {
       console.error('Error loading admin data:', error);
     } finally {
@@ -183,7 +369,8 @@ export default function AdminDashboard() {
       setLoadingCourses(true);
       const { data, error } = await supabase
         .from('courses')
-        .select(`
+        .select(
+          `
           *,
           course_lessons (
             id,
@@ -195,7 +382,8 @@ export default function AdminDashboard() {
             lesson_order,
             duration_minutes
           )
-        `)
+        `
+        )
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -224,6 +412,62 @@ export default function AdminDashboard() {
     }
   };
 
+  const loadSales = async () => {
+    try {
+      setLoadingSales(true);
+
+      // Primero obtenemos las órdenes con los cursos
+      const { data: ordersData, error: ordersError } = await supabase
+        .from('orders')
+        .select(
+          `
+          *,
+          course:courses (
+            id,
+            title,
+            preview_image,
+            price
+          )
+        `
+        )
+        .order('created_at', { ascending: false });
+
+      if (ordersError) throw ordersError;
+
+      // Luego obtenemos los perfiles de los usuarios
+      const userIds = [...new Set(ordersData?.map((order) => order.user_id).filter(Boolean))];
+
+      let profilesMap: Record<string, any> = {};
+
+      if (userIds.length > 0) {
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('id, name, email, phone')
+          .in('id', userIds);
+
+        if (profilesData) {
+          profilesMap = profilesData.reduce((acc, profile) => {
+            acc[profile.id] = profile;
+            return acc;
+          }, {} as Record<string, any>);
+        }
+      }
+
+      // Combinamos los datos
+      const salesWithProfiles =
+        ordersData?.map((order) => ({
+          ...order,
+          profile: order.user_id ? profilesMap[order.user_id] : null,
+        })) || [];
+
+      setSales(salesWithProfiles);
+    } catch (error) {
+      console.error('Error loading sales:', error);
+    } finally {
+      setLoadingSales(false);
+    }
+  };
+
   const toggleCoursePublish = async (courseId: string, currentStatus: boolean) => {
     try {
       const { error } = await supabase
@@ -232,22 +476,20 @@ export default function AdminDashboard() {
         .eq('id', courseId);
 
       if (error) throw error;
-      setCourses(prev => prev.map(course => 
-        course.id === courseId 
-          ? { ...course, is_published: !currentStatus }
-          : course
-      ));
+      setCourses((prev) =>
+        prev.map((course) => (course.id === courseId ? { ...course, is_published: !currentStatus } : course))
+      );
     } catch (error) {
       console.error('Error updating course status:', error);
     }
   };
 
   const editCourse = (courseId: string) => {
-    const course = courses.find(c => c.id === courseId);
+    const course = courses.find((c) => c.id === courseId);
     if (course) {
       const courseWithLessons = {
         ...course,
-        lessons: course.course_lessons || []
+        lessons: course.course_lessons || [],
       };
       setEditingCourse(courseWithLessons);
       setShowCourseCreator(true);
@@ -261,39 +503,32 @@ export default function AdminDashboard() {
       message: `¿Estás seguro de que quieres eliminar el curso "${courseTitle}"? Esta acción no se puede deshacer.`,
       type: 'danger',
       onConfirm: () => handleDeleteCourse(courseId, courseTitle),
-      isLoading: false
+      isLoading: false,
     });
   };
 
   const handleDeleteCourse = async (courseId: string, courseTitle: string) => {
     try {
-      setConfirmDialog(prev => ({ ...prev, isLoading: true }));
+      setConfirmDialog((prev) => ({ ...prev, isLoading: true }));
 
-      const { error: lessonsError } = await supabase
-        .from('course_lessons')
-        .delete()
-        .eq('course_id', courseId);
+      const { error: lessonsError } = await supabase.from('course_lessons').delete().eq('course_id', courseId);
 
       if (lessonsError) throw lessonsError;
 
-      const { error: courseError } = await supabase
-        .from('courses')
-        .delete()
-        .eq('id', courseId);
+      const { error: courseError } = await supabase.from('courses').delete().eq('id', courseId);
 
       if (courseError) throw courseError;
-      
-      setCourses(prev => prev.filter(course => course.id !== courseId));
-      
+
+      setCourses((prev) => prev.filter((course) => course.id !== courseId));
+
       setConfirmDialog({
         isOpen: true,
         title: 'Curso Eliminado',
         message: `El curso "${courseTitle}" ha sido eliminado exitosamente.`,
         type: 'success',
-        onConfirm: () => setConfirmDialog(prev => ({ ...prev, isOpen: false })),
-        isLoading: false
+        onConfirm: () => setConfirmDialog((prev) => ({ ...prev, isOpen: false })),
+        isLoading: false,
       });
-
     } catch (error) {
       console.error('Error deleting course:', error);
       setConfirmDialog({
@@ -301,8 +536,8 @@ export default function AdminDashboard() {
         title: 'Error',
         message: 'Error al eliminar el curso. Por favor, inténtalo de nuevo.',
         type: 'danger',
-        onConfirm: () => setConfirmDialog(prev => ({ ...prev, isOpen: false })),
-        isLoading: false
+        onConfirm: () => setConfirmDialog((prev) => ({ ...prev, isOpen: false })),
+        isLoading: false,
       });
     }
   };
@@ -310,7 +545,7 @@ export default function AdminDashboard() {
   // Obtener el item activo actual
   const getActiveItem = () => {
     for (const section of menuSections) {
-      const item = section.items.find(i => i.id === activeTab);
+      const item = section.items.find((i) => i.id === activeTab);
       if (item) return item;
     }
     return menuSections[0].items[0];
@@ -341,33 +576,39 @@ export default function AdminDashboard() {
     <div className="min-h-screen bg-gray-100 dark:bg-gray-950 flex">
       {/* Overlay para móvil */}
       {mobileMenuOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm z-40 lg:hidden"
           onClick={() => setMobileMenuOpen(false)}
         />
       )}
 
       {/* Sidebar */}
-      <aside className={`
+      <aside
+        className={`
         fixed lg:static inset-y-0 left-0 z-50
         ${sidebarCollapsed ? 'w-20' : 'w-72'}
         ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-white/10
         flex flex-col
         transition-all duration-300 ease-in-out
-      `}>
+      `}
+      >
         {/* Logo Header */}
-        <div className={`
+        <div
+          className={`
           h-16 flex items-center border-b border-gray-200 dark:border-white/10 px-4
           ${sidebarCollapsed ? 'justify-center' : 'justify-between'}
-        `}>
+        `}
+        >
           {!sidebarCollapsed && (
             <div className="flex items-center gap-3">
               <div>
                 <h1 className="text-gray-900 dark:text-white font-bold text-lg tracking-tight">
                   ROGER<span className="text-[#85ea10]">BOX</span>
                 </h1>
-                <span className="text-[10px] text-gray-500 dark:text-white/40 uppercase tracking-widest">Admin Panel</span>
+                <span className="text-[10px] text-gray-500 dark:text-white/40 uppercase tracking-widest">
+                  Admin Panel
+                </span>
               </div>
             </div>
           )}
@@ -407,9 +648,10 @@ export default function AdminDashboard() {
                       className={`
                         w-full flex items-center gap-3 px-3 py-2.5 rounded-xl
                         transition-all duration-200 group
-                        ${isActive 
-                          ? 'bg-[#85ea10] text-black' 
-                          : 'text-gray-600 dark:text-white/60 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5'
+                        ${
+                          isActive
+                            ? 'bg-[#85ea10] text-black'
+                            : 'text-gray-600 dark:text-white/60 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5'
                         }
                         ${sidebarCollapsed ? 'justify-center' : ''}
                       `}
@@ -423,9 +665,7 @@ export default function AdminDashboard() {
                           </span>
                         </div>
                       )}
-                      {!sidebarCollapsed && isActive && (
-                        <div className="w-1.5 h-1.5 rounded-full bg-black" />
-                      )}
+                      {!sidebarCollapsed && isActive && <div className="w-1.5 h-1.5 rounded-full bg-black" />}
                     </button>
                   );
                 })}
@@ -435,10 +675,12 @@ export default function AdminDashboard() {
         </nav>
 
         {/* User Section */}
-        <div className={`
+        <div
+          className={`
           border-t border-gray-200 dark:border-white/10 p-4
           ${sidebarCollapsed ? 'flex justify-center' : ''}
-        `}>
+        `}
+        >
           {!sidebarCollapsed ? (
             <div className="flex items-center gap-3">
               <div className="flex-1 min-w-0">
@@ -479,17 +721,19 @@ export default function AdminDashboard() {
             >
               <Menu className="w-5 h-5" />
             </button>
-            
+
             <div>
               <h1 className="text-xl font-bold text-gray-900 dark:text-white">{activeItem.label}</h1>
-              <p className="text-sm text-gray-500 dark:text-white/40 hidden sm:block">{activeItem.description}</p>
+              <p className="text-sm text-gray-500 dark:text-white/40 hidden sm:block">
+                {activeItem.description}
+              </p>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
             {/* Quick Actions */}
             {activeTab === 'courses' && (
-              <button 
+              <button
                 onClick={() => {
                   setEditingCourse(null);
                   setShowCourseCreator(true);
@@ -500,7 +744,7 @@ export default function AdminDashboard() {
                 <span className="hidden sm:inline">Crear Curso</span>
               </button>
             )}
-            
+
             {/* Notifications */}
             <button className="relative w-10 h-10 flex items-center justify-center rounded-xl hover:bg-gray-100 dark:hover:bg-white/10 text-gray-600 dark:text-white/60 hover:text-gray-900 dark:hover:text-white transition-colors">
               <Bell className="w-5 h-5" />
@@ -514,34 +758,34 @@ export default function AdminDashboard() {
           {/* Overview Tab */}
           {activeTab === 'overview' && (
             <div className="space-y-6">
-              {/* Stats Grid */}
+              {/* Stats Grid - Principales */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <StatCard
                   icon={Users}
                   label="Total Usuarios"
                   value={stats?.totalUsers || 0}
-                  trend="+12%"
+                  subtext={`+${stats?.newUsersThisMonth || 0} este mes`}
                   color="blue"
                 />
                 <StatCard
                   icon={BookOpen}
                   label="Cursos Activos"
                   value={stats?.activeCourses || 0}
-                  trend="+3"
+                  subtext={`${stats?.totalCourses || 0} totales`}
                   color="green"
                 />
                 <StatCard
                   icon={ShoppingCart}
                   label="Total Ventas"
                   value={stats?.totalSales || 0}
-                  trend="+8%"
+                  subtext={`${stats?.salesThisMonth || 0} este mes`}
                   color="yellow"
                 />
                 <StatCard
                   icon={DollarSign}
-                  label="Ingresos"
-                  value={`$${stats?.totalRevenue?.toLocaleString() || 0}`}
-                  trend="+15%"
+                  label="Ingresos Totales"
+                  value={`$${stats?.totalRevenue?.toLocaleString('es-CO') || 0}`}
+                  subtext={`$${stats?.revenueThisMonth?.toLocaleString('es-CO') || 0} este mes`}
                   color="purple"
                 />
               </div>
@@ -573,6 +817,119 @@ export default function AdminDashboard() {
                   onClick={() => setActiveTab('sales')}
                 />
               </div>
+
+              {/* Recent Activity Grid */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Ventas Recientes */}
+                <div className="bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl border border-gray-200 dark:border-white/10 overflow-hidden shadow-sm dark:shadow-none">
+                  <div className="p-5 border-b border-gray-200 dark:border-white/10 flex items-center justify-between">
+                    <h3 className="font-semibold text-gray-900 dark:text-white">Ventas Recientes</h3>
+                    <button
+                      onClick={() => setActiveTab('sales')}
+                      className="text-sm text-[#85ea10] hover:underline cursor-pointer"
+                    >
+                      Ver todas
+                    </button>
+                  </div>
+                  <div className="divide-y divide-gray-100 dark:divide-white/5">
+                    {recentSales.length === 0 ? (
+                      <div className="p-8 text-center">
+                        <ShoppingCart className="w-10 h-10 text-gray-300 dark:text-white/20 mx-auto mb-3" />
+                        <p className="text-sm text-gray-500 dark:text-white/40">No hay ventas aún</p>
+                      </div>
+                    ) : (
+                      recentSales.map((sale) => (
+                        <div
+                          key={sale.id}
+                          className="p-4 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
+                        >
+                          <div className="flex items-center justify-between gap-4">
+                            <div className="min-w-0 flex-1">
+                              <p className="font-medium text-gray-900 dark:text-white text-sm truncate">
+                                {sale.customer_name}
+                              </p>
+                              <p className="text-xs text-gray-500 dark:text-white/40 truncate">
+                                {sale.course_title}
+                              </p>
+                            </div>
+                            <div className="text-right flex-shrink-0">
+                              <p className="font-semibold text-gray-900 dark:text-white text-sm">
+                                ${sale.amount?.toLocaleString('es-CO')}
+                              </p>
+                              <span
+                                className={`inline-block text-xs px-2 py-0.5 rounded-full ${
+                                  sale.status === 'approved' || sale.status === 'APPROVED'
+                                    ? 'bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400'
+                                    : sale.status === 'pending' || sale.status === 'PENDING'
+                                    ? 'bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-400'
+                                    : 'bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400'
+                                }`}
+                              >
+                                {sale.status === 'approved' || sale.status === 'APPROVED'
+                                  ? 'Aprobada'
+                                  : sale.status === 'pending' || sale.status === 'PENDING'
+                                  ? 'Pendiente'
+                                  : 'Rechazada'}
+                              </span>
+                            </div>
+                          </div>
+                          <p className="text-xs text-gray-400 dark:text-white/30 mt-2">
+                            {new Date(sale.created_at).toLocaleDateString('es-CO', {
+                              day: '2-digit',
+                              month: 'short',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* Usuarios Recientes */}
+                <div className="bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl border border-gray-200 dark:border-white/10 overflow-hidden shadow-sm dark:shadow-none">
+                  <div className="p-5 border-b border-gray-200 dark:border-white/10 flex items-center justify-between">
+                    <h3 className="font-semibold text-gray-900 dark:text-white">Usuarios Recientes</h3>
+                    <button
+                      onClick={() => setActiveTab('users')}
+                      className="text-sm text-[#85ea10] hover:underline cursor-pointer"
+                    >
+                      Ver todos
+                    </button>
+                  </div>
+                  <div className="divide-y divide-gray-100 dark:divide-white/5">
+                    {recentUsers.length === 0 ? (
+                      <div className="p-8 text-center">
+                        <Users className="w-10 h-10 text-gray-300 dark:text-white/20 mx-auto mb-3" />
+                        <p className="text-sm text-gray-500 dark:text-white/40">No hay usuarios aún</p>
+                      </div>
+                    ) : (
+                      recentUsers.map((user) => (
+                        <div
+                          key={user.id}
+                          className="p-4 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="min-w-0 flex-1">
+                              <p className="font-medium text-gray-900 dark:text-white text-sm truncate">
+                                {user.name}
+                              </p>
+                              <p className="text-xs text-gray-500 dark:text-white/40 truncate">{user.email}</p>
+                            </div>
+                            <p className="text-xs text-gray-400 dark:text-white/30 flex-shrink-0">
+                              {new Date(user.created_at).toLocaleDateString('es-CO', {
+                                day: '2-digit',
+                                month: 'short',
+                              })}
+                            </p>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
@@ -587,11 +944,11 @@ export default function AdminDashboard() {
                   title="No hay cursos creados"
                   description="Crea tu primer curso para comenzar"
                   action={{
-                    label: "Crear Curso",
+                    label: 'Crear Curso',
                     onClick: () => {
                       setEditingCourse(null);
                       setShowCourseCreator(true);
-                    }
+                    },
                   }}
                 />
               ) : (
@@ -626,7 +983,7 @@ export default function AdminDashboard() {
                     value={userSearchTerm}
                     onChange={(e) => {
                       setUserSearchTerm(e.target.value);
-                      setCurrentPage(1); // Reset to first page on search
+                      setCurrentPage(1);
                     }}
                     className="w-full pl-12 pr-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 focus:border-[#85ea10]/50 transition-all"
                   />
@@ -643,247 +1000,565 @@ export default function AdminDashboard() {
                     title="No hay usuarios registrados"
                     description="Los usuarios aparecerán aquí cuando se registren"
                   />
-                ) : (() => {
-                  // Filter users based on search term
-                  const filteredUsers = users.filter(user => 
-                    user.name?.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
-                    user.email?.toLowerCase().includes(userSearchTerm.toLowerCase())
-                  );
-                  
-                  // Pagination calculations
-                  const totalUsers = filteredUsers.length;
-                  const totalPages = Math.ceil(totalUsers / usersPerPage);
-                  const startIndex = (currentPage - 1) * usersPerPage;
-                  const endIndex = startIndex + usersPerPage;
-                  const paginatedUsers = filteredUsers.slice(startIndex, endIndex);
-                  
-                  // Ensure current page is valid
-                  const validCurrentPage = Math.min(currentPage, Math.max(1, totalPages));
-                  if (validCurrentPage !== currentPage && totalPages > 0) {
-                    setCurrentPage(validCurrentPage);
-                  }
-                  
-                  if (filteredUsers.length === 0) {
-                    return (
-                      <EmptyState
-                        icon={Search}
-                        title="No se encontraron usuarios"
-                        description={`No hay usuarios que coincidan con "${userSearchTerm}"`}
-                      />
+                ) : (
+                  (() => {
+                    // Filter users based on search term
+                    const filteredUsers = users.filter(
+                      (user) =>
+                        user.name?.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
+                        user.email?.toLowerCase().includes(userSearchTerm.toLowerCase())
                     );
-                  }
-                  
-                  return (
-                    <>
-                      <div className="overflow-x-auto">
-                        <table className="w-full">
-                          <thead>
-                            <tr className="border-b border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-transparent">
-                              <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">Usuario</th>
-                              <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">Email</th>
-                              <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider hidden lg:table-cell">Meta</th>
-                              <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider hidden md:table-cell">Peso</th>
-                              <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider hidden lg:table-cell">Registro</th>
-                              <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">Estado</th>
-                              <th className="text-right px-6 py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">Acciones</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-gray-100 dark:divide-white/5">
-                            {paginatedUsers.map((user) => (
-                              <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
-                                <td className="px-6 py-4">
-                                  <div className="flex items-center gap-3">
-                                    <div className="min-w-0">
-                                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                                        {user.name || 'Sin nombre'}
-                                      </p>
-                                    </div>
-                                  </div>
-                                </td>
-                                <td className="px-6 py-4 text-sm text-gray-600 dark:text-white/70">{user.email}</td>
-                                <td className="px-6 py-4 text-sm text-gray-600 dark:text-white/70 hidden lg:table-cell">
-                                  {user.goals || user.goal || 'No especificada'}
-                                </td>
-                                <td className="px-6 py-4 text-sm text-gray-600 dark:text-white/70 hidden md:table-cell">
-                                  {user.current_weight ? `${user.current_weight} kg` : '-'}
-                                </td>
-                                <td className="px-6 py-4 text-sm text-gray-500 dark:text-white/40 hidden lg:table-cell">
-                                  {new Date(user.created_at).toLocaleDateString('es-ES')}
-                                </td>
-                                <td className="px-6 py-4">
-                                  <span className={`inline-flex px-2.5 py-1 text-xs font-medium rounded-full ${
-                                    user.subscription_status === 'active' 
-                                      ? 'bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400'
-                                      : 'bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-white/60'
-                                  }`}>
-                                    {user.subscription_status === 'active' ? 'Activo' : 'Inactivo'}
-                                  </span>
-                                </td>
-                                <td className="px-6 py-4">
-                                  <div className="flex items-center justify-end gap-1">
-                                    <button className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-gray-500 dark:text-white/40 hover:text-blue-500 dark:hover:text-blue-400 transition-colors cursor-pointer">
-                                      <Eye className="w-4 h-4" />
-                                    </button>
-                                    <button className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-gray-500 dark:text-white/40 hover:text-yellow-500 dark:hover:text-yellow-400 transition-colors cursor-pointer">
-                                      <Edit className="w-4 h-4" />
-                                    </button>
-                                    <button className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-gray-500 dark:text-white/40 hover:text-red-500 dark:hover:text-red-400 transition-colors cursor-pointer">
-                                      <Trash2 className="w-4 h-4" />
-                                    </button>
-                                  </div>
-                                </td>
+
+                    // Pagination calculations
+                    const totalUsers = filteredUsers.length;
+                    const totalPages = Math.ceil(totalUsers / usersPerPage);
+                    const startIndex = (currentPage - 1) * usersPerPage;
+                    const endIndex = startIndex + usersPerPage;
+                    const paginatedUsers = filteredUsers.slice(startIndex, endIndex);
+
+                    // Ensure current page is valid
+                    const validCurrentPage = Math.min(currentPage, Math.max(1, totalPages));
+                    if (validCurrentPage !== currentPage && totalPages > 0) {
+                      setCurrentPage(validCurrentPage);
+                    }
+
+                    if (filteredUsers.length === 0) {
+                      return (
+                        <EmptyState
+                          icon={Search}
+                          title="No se encontraron usuarios"
+                          description={`No hay usuarios que coincidan con "${userSearchTerm}"`}
+                        />
+                      );
+                    }
+
+                    return (
+                      <>
+                        <div className="overflow-x-auto">
+                          <table className="w-full">
+                            <thead>
+                              <tr className="border-b border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-transparent">
+                                <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
+                                  Usuario
+                                </th>
+                                <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
+                                  Email
+                                </th>
+                                <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider hidden lg:table-cell">
+                                  Meta
+                                </th>
+                                <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider hidden md:table-cell">
+                                  Peso
+                                </th>
+                                <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider hidden lg:table-cell">
+                                  Registro
+                                </th>
+                                <th className="text-right px-6 py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
+                                  Acciones
+                                </th>
                               </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                      
-                      {/* Pagination Controls */}
-                      <div className="px-6 py-4 border-t border-gray-200 dark:border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4">
-                        <div className="text-sm text-gray-500 dark:text-white/40">
-                          Mostrando <span className="text-gray-900 dark:text-white font-medium">{startIndex + 1}</span> a{' '}
-                          <span className="text-gray-900 dark:text-white font-medium">{Math.min(endIndex, totalUsers)}</span> de{' '}
-                          <span className="text-gray-900 dark:text-white font-medium">{totalUsers}</span> usuarios
+                            </thead>
+                            <tbody className="divide-y divide-gray-100 dark:divide-white/5">
+                              {paginatedUsers.map((user) => (
+                                <tr
+                                  key={user.id}
+                                  className="hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
+                                >
+                                  <td className="px-6 py-4">
+                                    <div className="flex items-center gap-3">
+                                      <div className="min-w-0">
+                                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                                          {user.name || 'Sin nombre'}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td className="px-6 py-4 text-sm text-gray-600 dark:text-white/70">
+                                    {user.email}
+                                  </td>
+                                  <td className="px-6 py-4 text-sm text-gray-600 dark:text-white/70 hidden lg:table-cell">
+                                    {formatGoals(user.goals || user.goal)}
+                                  </td>
+                                  <td className="px-6 py-4 text-sm text-gray-600 dark:text-white/70 hidden md:table-cell">
+                                    {user.current_weight || user.weight
+                                      ? `${user.current_weight || user.weight} kg`
+                                      : '-'}
+                                  </td>
+                                  <td className="px-6 py-4 text-sm text-gray-500 dark:text-white/40 hidden lg:table-cell">
+                                    {new Date(user.created_at).toLocaleDateString('es-ES')}
+                                  </td>
+                                  <td className="px-6 py-4">
+                                    <div className="flex items-center justify-end">
+                                      <button
+                                        onClick={() => setSelectedUser(user)}
+                                        className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[#85ea10]/20 text-gray-500 dark:text-white/40 hover:text-[#85ea10] transition-colors cursor-pointer"
+                                        title="Ver detalles"
+                                      >
+                                        <Eye className="w-4 h-4" />
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
                         </div>
-                        
-                        <div className="flex items-center gap-2">
-                          {/* First Page Button */}
-                          <button
-                            onClick={() => setCurrentPage(1)}
-                            disabled={currentPage === 1}
-                            className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${
-                              currentPage === 1
-                                ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
-                                : 'bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
-                            }`}
-                            title="Primera página"
-                          >
-                            <ChevronsLeft className="w-4 h-4" />
-                          </button>
-                          
-                          {/* Previous Page Button */}
-                          <button
-                            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                            disabled={currentPage === 1}
-                            className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${
-                              currentPage === 1
-                                ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
-                                : 'bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
-                            }`}
-                            title="Página anterior"
-                          >
-                            <ChevronLeft className="w-4 h-4" />
-                          </button>
-                          
-                          {/* Page Numbers */}
-                          <div className="flex items-center gap-1">
-                            {(() => {
-                              const pages = [];
-                              const maxVisiblePages = 5;
-                              let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-                              let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-                              
-                              if (endPage - startPage + 1 < maxVisiblePages) {
-                                startPage = Math.max(1, endPage - maxVisiblePages + 1);
-                              }
-                              
-                              if (startPage > 1) {
-                                pages.push(
-                                  <button
-                                    key={1}
-                                    onClick={() => setCurrentPage(1)}
-                                    className="w-9 h-9 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 transition-all cursor-pointer text-sm"
-                                  >
-                                    1
-                                  </button>
-                                );
-                                if (startPage > 2) {
-                                  pages.push(
-                                    <span key="ellipsis-start" className="px-2 text-gray-400 dark:text-white/40">...</span>
-                                  );
-                                }
-                              }
-                              
-                              for (let i = startPage; i <= endPage; i++) {
-                                pages.push(
-                                  <button
-                                    key={i}
-                                    onClick={() => setCurrentPage(i)}
-                                    className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all text-sm cursor-pointer ${
-                                      currentPage === i
-                                        ? 'bg-[#85ea10] text-black font-semibold'
-                                        : 'bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20'
-                                    }`}
-                                  >
-                                    {i}
-                                  </button>
-                                );
-                              }
-                              
-                              if (endPage < totalPages) {
-                                if (endPage < totalPages - 1) {
-                                  pages.push(
-                                    <span key="ellipsis-end" className="px-2 text-gray-400 dark:text-white/40">...</span>
-                                  );
-                                }
-                                pages.push(
-                                  <button
-                                    key={totalPages}
-                                    onClick={() => setCurrentPage(totalPages)}
-                                    className="w-9 h-9 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 transition-all cursor-pointer text-sm"
-                                  >
-                                    {totalPages}
-                                  </button>
-                                );
-                              }
-                              
-                              return pages;
-                            })()}
+
+                        {/* Pagination Controls */}
+                        <div className="px-6 py-4 border-t border-gray-200 dark:border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4">
+                          <div className="text-sm text-gray-500 dark:text-white/40">
+                            Mostrando{' '}
+                            <span className="text-gray-900 dark:text-white font-medium">{startIndex + 1}</span>{' '}
+                            a{' '}
+                            <span className="text-gray-900 dark:text-white font-medium">
+                              {Math.min(endIndex, totalUsers)}
+                            </span>{' '}
+                            de <span className="text-gray-900 dark:text-white font-medium">{totalUsers}</span>{' '}
+                            usuarios
                           </div>
-                          
-                          {/* Next Page Button */}
-                          <button
-                            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                            disabled={currentPage === totalPages || totalPages === 0}
-                            className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${
-                              currentPage === totalPages || totalPages === 0
-                                ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
-                                : 'bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
-                            }`}
-                            title="Página siguiente"
-                          >
-                            <ChevronRight className="w-4 h-4" />
-                          </button>
-                          
-                          {/* Last Page Button */}
-                          <button
-                            onClick={() => setCurrentPage(totalPages)}
-                            disabled={currentPage === totalPages || totalPages === 0}
-                            className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${
-                              currentPage === totalPages || totalPages === 0
-                                ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
-                                : 'bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
-                            }`}
-                            title="Última página"
-                          >
-                            <ChevronsRight className="w-4 h-4" />
-                          </button>
+
+                          <div className="flex items-center gap-2">
+                            {/* First Page Button */}
+                            <button
+                              onClick={() => setCurrentPage(1)}
+                              disabled={currentPage === 1}
+                              className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${
+                                currentPage === 1
+                                  ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
+                                  : 'bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
+                              }`}
+                              title="Primera página"
+                            >
+                              <ChevronsLeft className="w-4 h-4" />
+                            </button>
+
+                            {/* Previous Page Button */}
+                            <button
+                              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                              disabled={currentPage === 1}
+                              className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${
+                                currentPage === 1
+                                  ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
+                                  : 'bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
+                              }`}
+                              title="Página anterior"
+                            >
+                              <ChevronLeft className="w-4 h-4" />
+                            </button>
+
+                            {/* Page Numbers */}
+                            <div className="flex items-center gap-1">
+                              {(() => {
+                                const pages = [];
+                                const maxVisiblePages = 5;
+                                let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+                                let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+                                if (endPage - startPage + 1 < maxVisiblePages) {
+                                  startPage = Math.max(1, endPage - maxVisiblePages + 1);
+                                }
+
+                                if (startPage > 1) {
+                                  pages.push(
+                                    <button
+                                      key={1}
+                                      onClick={() => setCurrentPage(1)}
+                                      className="w-9 h-9 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 transition-all cursor-pointer text-sm"
+                                    >
+                                      1
+                                    </button>
+                                  );
+                                  if (startPage > 2) {
+                                    pages.push(
+                                      <span
+                                        key="ellipsis-start"
+                                        className="px-2 text-gray-400 dark:text-white/40"
+                                      >
+                                        ...
+                                      </span>
+                                    );
+                                  }
+                                }
+
+                                for (let i = startPage; i <= endPage; i++) {
+                                  pages.push(
+                                    <button
+                                      key={i}
+                                      onClick={() => setCurrentPage(i)}
+                                      className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all text-sm cursor-pointer ${
+                                        currentPage === i
+                                          ? 'bg-[#85ea10] text-black font-semibold'
+                                          : 'bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20'
+                                      }`}
+                                    >
+                                      {i}
+                                    </button>
+                                  );
+                                }
+
+                                if (endPage < totalPages) {
+                                  if (endPage < totalPages - 1) {
+                                    pages.push(
+                                      <span
+                                        key="ellipsis-end"
+                                        className="px-2 text-gray-400 dark:text-white/40"
+                                      >
+                                        ...
+                                      </span>
+                                    );
+                                  }
+                                  pages.push(
+                                    <button
+                                      key={totalPages}
+                                      onClick={() => setCurrentPage(totalPages)}
+                                      className="w-9 h-9 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 transition-all cursor-pointer text-sm"
+                                    >
+                                      {totalPages}
+                                    </button>
+                                  );
+                                }
+
+                                return pages;
+                              })()}
+                            </div>
+
+                            {/* Next Page Button */}
+                            <button
+                              onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                              disabled={currentPage === totalPages || totalPages === 0}
+                              className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${
+                                currentPage === totalPages || totalPages === 0
+                                  ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
+                                  : 'bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
+                              }`}
+                              title="Página siguiente"
+                            >
+                              <ChevronRight className="w-4 h-4" />
+                            </button>
+
+                            {/* Last Page Button */}
+                            <button
+                              onClick={() => setCurrentPage(totalPages)}
+                              disabled={currentPage === totalPages || totalPages === 0}
+                              className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${
+                                currentPage === totalPages || totalPages === 0
+                                  ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
+                                  : 'bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
+                              }`}
+                              title="Última página"
+                            >
+                              <ChevronsRight className="w-4 h-4" />
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    </>
-                  );
-                })()}
+                      </>
+                    );
+                  })()
+                )}
               </div>
             </div>
           )}
 
           {/* Sales Tab */}
           {activeTab === 'sales' && (
-            <EmptyState
-              icon={ShoppingCart}
-              title="Panel de Ventas"
-              description="El historial de ventas estará disponible próximamente"
-            />
+            <div className="bg-white dark:bg-white/5 dark:backdrop-blur-xl rounded-2xl border border-gray-200 dark:border-white/10 overflow-hidden">
+              {/* Header */}
+              <div className="p-6 border-b border-gray-200 dark:border-white/10">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">Historial de Ventas</h2>
+                    <p className="text-sm text-gray-500 dark:text-white/60 mt-1">
+                      {sales.length} {sales.length === 1 ? 'venta registrada' : 'ventas registradas'}
+                    </p>
+                  </div>
+
+                  {/* Search */}
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Buscar por cliente o curso..."
+                      value={salesSearchTerm}
+                      onChange={(e) => {
+                        setSalesSearchTerm(e.target.value);
+                        setSalesCurrentPage(1);
+                      }}
+                      className="w-full sm:w-80 pl-10 pr-4 py-2.5 bg-gray-50 dark:bg-white/10 border border-gray-200 dark:border-white/10 rounded-xl text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 focus:border-[#85ea10]"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Content */}
+              <div className="p-6">
+                {loadingSales ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="w-8 h-8 border-2 border-[#85ea10] border-t-transparent rounded-full animate-spin"></div>
+                  </div>
+                ) : (
+                  (() => {
+                    // Filtrar ventas
+                    const filteredSales = sales.filter((sale) => {
+                      const searchLower = salesSearchTerm.toLowerCase();
+                      return (
+                        sale.customer_name?.toLowerCase().includes(searchLower) ||
+                        sale.customer_email?.toLowerCase().includes(searchLower) ||
+                        sale.course?.title?.toLowerCase().includes(searchLower) ||
+                        sale.wompi_transaction_id?.toLowerCase().includes(searchLower)
+                      );
+                    });
+
+                    // Paginación
+                    const totalPages = Math.ceil(filteredSales.length / salesPerPage);
+                    const startIndex = (salesCurrentPage - 1) * salesPerPage;
+                    const paginatedSales = filteredSales.slice(startIndex, startIndex + salesPerPage);
+
+                    if (filteredSales.length === 0) {
+                      return (
+                        <div className="text-center py-12">
+                          <ShoppingCart className="w-12 h-12 text-gray-300 dark:text-white/20 mx-auto mb-4" />
+                          <p className="text-gray-500 dark:text-white/60">
+                            {salesSearchTerm
+                              ? 'No se encontraron ventas con esos criterios'
+                              : 'No hay ventas registradas aún'}
+                          </p>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <>
+                        {/* Sales Table */}
+                        <div className="overflow-x-auto">
+                          <table className="w-full">
+                            <thead>
+                              <tr className="border-b border-gray-200 dark:border-white/10">
+                                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
+                                  Cliente
+                                </th>
+                                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
+                                  Curso
+                                </th>
+                                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
+                                  Monto
+                                </th>
+                                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
+                                  Estado
+                                </th>
+                                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
+                                  Método
+                                </th>
+                                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
+                                  Fecha
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100 dark:divide-white/5">
+                              {paginatedSales.map((sale) => (
+                                <tr
+                                  key={sale.id}
+                                  className="hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
+                                >
+                                  {/* Cliente */}
+                                  <td className="py-4 px-4">
+                                    <div>
+                                      <p className="font-medium text-gray-900 dark:text-white text-sm">
+                                        {sale.customer_name || sale.profile?.name || 'Sin nombre'}
+                                      </p>
+                                      <p className="text-xs text-gray-500 dark:text-white/40">
+                                        {sale.customer_email || sale.profile?.email}
+                                      </p>
+                                    </div>
+                                  </td>
+
+                                  {/* Curso */}
+                                  <td className="py-4 px-4">
+                                    <div className="flex items-center gap-3">
+                                      {sale.course?.preview_image ? (
+                                        <img
+                                          src={sale.course.preview_image}
+                                          alt={sale.course.title}
+                                          className="w-10 h-10 rounded-lg object-cover"
+                                        />
+                                      ) : (
+                                        <div className="w-10 h-10 rounded-lg bg-gray-200 dark:bg-white/10 flex items-center justify-center">
+                                          <BookOpen className="w-5 h-5 text-gray-400" />
+                                        </div>
+                                      )}
+                                      <p className="font-medium text-gray-900 dark:text-white text-sm max-w-[200px] truncate">
+                                        {sale.course?.title || 'Curso eliminado'}
+                                      </p>
+                                    </div>
+                                  </td>
+
+                                  {/* Monto */}
+                                  <td className="py-4 px-4">
+                                    <p className="font-semibold text-gray-900 dark:text-white text-sm">
+                                      ${sale.amount?.toLocaleString('es-CO')}{' '}
+                                      <span className="text-xs font-normal text-gray-500 dark:text-white/40">
+                                        {sale.currency || 'COP'}
+                                      </span>
+                                    </p>
+                                  </td>
+
+                                  {/* Estado */}
+                                  <td className="py-4 px-4">
+                                    <span
+                                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
+                                        sale.status === 'approved' || sale.status === 'APPROVED'
+                                          ? 'bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400'
+                                          : sale.status === 'pending' || sale.status === 'PENDING'
+                                          ? 'bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-400'
+                                          : 'bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400'
+                                      }`}
+                                    >
+                                      {sale.status === 'approved' || sale.status === 'APPROVED' ? (
+                                        <CheckCircle className="w-3 h-3" />
+                                      ) : null}
+                                      {sale.status === 'approved' || sale.status === 'APPROVED'
+                                        ? 'Aprobado'
+                                        : sale.status === 'pending' || sale.status === 'PENDING'
+                                        ? 'Pendiente'
+                                        : sale.status === 'declined' || sale.status === 'DECLINED'
+                                        ? 'Rechazado'
+                                        : sale.status}
+                                    </span>
+                                  </td>
+
+                                  {/* Método de pago */}
+                                  <td className="py-4 px-4">
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-white/10 text-xs font-medium text-gray-700 dark:text-white/70">
+                                      <CreditCard className="w-3 h-3" />
+                                      {sale.payment_method || 'N/A'}
+                                    </span>
+                                  </td>
+
+                                  {/* Fecha */}
+                                  <td className="py-4 px-4">
+                                    <div>
+                                      <p className="text-sm text-gray-900 dark:text-white">
+                                        {new Date(sale.created_at).toLocaleDateString('es-CO', {
+                                          day: '2-digit',
+                                          month: 'short',
+                                          year: 'numeric',
+                                        })}
+                                      </p>
+                                      <p className="text-xs text-gray-500 dark:text-white/40">
+                                        {new Date(sale.created_at).toLocaleTimeString('es-CO', {
+                                          hour: '2-digit',
+                                          minute: '2-digit',
+                                        })}
+                                      </p>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        {/* Pagination */}
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-6 border-t border-gray-200 dark:border-white/10">
+                          <p className="text-sm text-gray-500 dark:text-white/60">
+                            Mostrando {startIndex + 1} -{' '}
+                            {Math.min(startIndex + salesPerPage, filteredSales.length)} de{' '}
+                            {filteredSales.length} ventas
+                          </p>
+
+                          <div className="flex items-center gap-2">
+                            {/* First Page Button */}
+                            <button
+                              onClick={() => setSalesCurrentPage(1)}
+                              disabled={salesCurrentPage === 1}
+                              className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${
+                                salesCurrentPage === 1
+                                  ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
+                                  : 'bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
+                              }`}
+                              title="Primera página"
+                            >
+                              <ChevronsLeft className="w-4 h-4" />
+                            </button>
+
+                            {/* Previous Page Button */}
+                            <button
+                              onClick={() => setSalesCurrentPage((prev) => Math.max(1, prev - 1))}
+                              disabled={salesCurrentPage === 1}
+                              className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${
+                                salesCurrentPage === 1
+                                  ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
+                                  : 'bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
+                              }`}
+                              title="Página anterior"
+                            >
+                              <ChevronLeft className="w-4 h-4" />
+                            </button>
+
+                            {/* Page Numbers */}
+                            <div className="flex items-center gap-1">
+                              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                                let pageNum;
+                                if (totalPages <= 5) {
+                                  pageNum = i + 1;
+                                } else if (salesCurrentPage <= 3) {
+                                  pageNum = i + 1;
+                                } else if (salesCurrentPage >= totalPages - 2) {
+                                  pageNum = totalPages - 4 + i;
+                                } else {
+                                  pageNum = salesCurrentPage - 2 + i;
+                                }
+
+                                return (
+                                  <button
+                                    key={pageNum}
+                                    onClick={() => setSalesCurrentPage(pageNum)}
+                                    className={`w-9 h-9 flex items-center justify-center rounded-lg text-sm font-medium transition-all cursor-pointer ${
+                                      salesCurrentPage === pageNum
+                                        ? 'bg-[#85ea10] text-black'
+                                        : 'bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20'
+                                    }`}
+                                  >
+                                    {pageNum}
+                                  </button>
+                                );
+                              })}
+                            </div>
+
+                            {/* Next Page Button */}
+                            <button
+                              onClick={() => setSalesCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                              disabled={salesCurrentPage === totalPages || totalPages === 0}
+                              className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${
+                                salesCurrentPage === totalPages || totalPages === 0
+                                  ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
+                                  : 'bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
+                              }`}
+                              title="Página siguiente"
+                            >
+                              <ChevronRight className="w-4 h-4" />
+                            </button>
+
+                            {/* Last Page Button */}
+                            <button
+                              onClick={() => setSalesCurrentPage(totalPages)}
+                              disabled={salesCurrentPage === totalPages || totalPages === 0}
+                              className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${
+                                salesCurrentPage === totalPages || totalPages === 0
+                                  ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
+                                  : 'bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
+                              }`}
+                              title="Última página"
+                            >
+                              <ChevronsRight className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </>
+                    );
+                  })()
+                )}
+              </div>
+            </div>
           )}
 
           {/* Settings Tab */}
@@ -917,7 +1592,7 @@ export default function AdminDashboard() {
       {/* Confirm Dialog */}
       <ConfirmDialog
         isOpen={confirmDialog.isOpen}
-        onClose={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+        onClose={() => setConfirmDialog((prev) => ({ ...prev, isOpen: false }))}
         onConfirm={confirmDialog.onConfirm}
         title={confirmDialog.title}
         message={confirmDialog.message}
@@ -926,6 +1601,238 @@ export default function AdminDashboard() {
         cancelText="Cancelar"
         isLoading={confirmDialog.isLoading}
       />
+
+      {/* User Details Modal */}
+      {selectedUser && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-[#85ea10] to-[#6bc20a] p-6">
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-4">
+                  <div>
+                    <h2 className="text-xl font-bold text-black">{selectedUser.name || 'Sin nombre'}</h2>
+                    <p className="text-black/70 text-sm">{selectedUser.email}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setSelectedUser(null)}
+                  className="w-8 h-8 rounded-full bg-black/20 hover:bg-black/30 flex items-center justify-center text-black transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Información Personal */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
+                    Información Personal
+                  </h3>
+
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
+                      <User className="w-5 h-5 text-gray-400" />
+                      <div>
+                        <p className="text-xs text-gray-500 dark:text-white/40">Nombre completo</p>
+                        <p className="text-sm font-medium text-gray-900 dark:text-white">
+                          {selectedUser.first_name && selectedUser.last_name
+                            ? `${selectedUser.first_name} ${selectedUser.last_name}`
+                            : selectedUser.name || 'No especificado'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
+                      <Mail className="w-5 h-5 text-gray-400" />
+                      <div>
+                        <p className="text-xs text-gray-500 dark:text-white/40">Email</p>
+                        <p className="text-sm font-medium text-gray-900 dark:text-white">
+                          {selectedUser.email}
+                        </p>
+                      </div>
+                    </div>
+
+                    {selectedUser.phone && (
+                      <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
+                        <Phone className="w-5 h-5 text-gray-400" />
+                        <div>
+                          <p className="text-xs text-gray-500 dark:text-white/40">Teléfono</p>
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">
+                            {selectedUser.phone}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedUser.document_id && (
+                      <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
+                        <CreditCard className="w-5 h-5 text-gray-400" />
+                        <div>
+                          <p className="text-xs text-gray-500 dark:text-white/40">Documento</p>
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">
+                            {selectedUser.document_type || 'CC'}: {selectedUser.document_id}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedUser.address && (
+                      <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
+                        <MapPin className="w-5 h-5 text-gray-400" />
+                        <div>
+                          <p className="text-xs text-gray-500 dark:text-white/40">Dirección</p>
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">
+                            {selectedUser.address}
+                            {selectedUser.city ? `, ${selectedUser.city}` : ''}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedUser.birth_year && (
+                      <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
+                        <Calendar className="w-5 h-5 text-gray-400" />
+                        <div>
+                          <p className="text-xs text-gray-500 dark:text-white/40">Año de nacimiento</p>
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">
+                            {selectedUser.birth_year} ({new Date().getFullYear() - selectedUser.birth_year}{' '}
+                            años)
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
+                      <Calendar className="w-5 h-5 text-gray-400" />
+                      <div>
+                        <p className="text-xs text-gray-500 dark:text-white/40">Fecha de registro</p>
+                        <p className="text-sm font-medium text-gray-900 dark:text-white">
+                          {new Date(selectedUser.created_at).toLocaleDateString('es-ES', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Información Fitness */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
+                    Información Fitness
+                  </h3>
+
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
+                      <Scale className="w-5 h-5 text-gray-400" />
+                      <div>
+                        <p className="text-xs text-gray-500 dark:text-white/40">Peso actual</p>
+                        <p className="text-sm font-medium text-gray-900 dark:text-white">
+                          {selectedUser.current_weight || selectedUser.weight
+                            ? `${selectedUser.current_weight || selectedUser.weight} kg`
+                            : 'No especificado'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {selectedUser.target_weight && (
+                      <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
+                        <Target className="w-5 h-5 text-gray-400" />
+                        <div>
+                          <p className="text-xs text-gray-500 dark:text-white/40">Peso objetivo</p>
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">
+                            {selectedUser.target_weight} kg
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
+                      <Ruler className="w-5 h-5 text-gray-400" />
+                      <div>
+                        <p className="text-xs text-gray-500 dark:text-white/40">Altura</p>
+                        <p className="text-sm font-medium text-gray-900 dark:text-white">
+                          {selectedUser.height ? `${selectedUser.height} cm` : 'No especificada'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
+                      <User className="w-5 h-5 text-gray-400" />
+                      <div>
+                        <p className="text-xs text-gray-500 dark:text-white/40">Género</p>
+                        <p className="text-sm font-medium text-gray-900 dark:text-white">
+                          {selectedUser.gender === 'male'
+                            ? 'Masculino'
+                            : selectedUser.gender === 'female'
+                            ? 'Femenino'
+                            : selectedUser.gender === 'other'
+                            ? 'Otro'
+                            : 'No especificado'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
+                      <Target className="w-5 h-5 text-gray-400 mt-0.5" />
+                      <div>
+                        <p className="text-xs text-gray-500 dark:text-white/40">Metas</p>
+                        <p className="text-sm font-medium text-gray-900 dark:text-white">
+                          {formatGoals(selectedUser.goals || selectedUser.goal)}
+                        </p>
+                      </div>
+                    </div>
+
+                    {selectedUser.dietary_habits && selectedUser.dietary_habits.length > 0 && (
+                      <div className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
+                        <BookOpen className="w-5 h-5 text-gray-400 mt-0.5" />
+                        <div>
+                          <p className="text-xs text-gray-500 dark:text-white/40">Hábitos alimenticios</p>
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">
+                            {selectedUser.dietary_habits.join(', ')}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Estadísticas de actividad */}
+                    <div className="grid grid-cols-2 gap-3 mt-4">
+                      <div className="p-3 bg-[#85ea10]/10 rounded-xl text-center">
+                        <p className="text-2xl font-bold text-[#85ea10]">{selectedUser.streak_days || 0}</p>
+                        <p className="text-xs text-gray-500 dark:text-white/40">Días de racha</p>
+                      </div>
+                      <div className="p-3 bg-blue-500/10 rounded-xl text-center">
+                        <p className="text-2xl font-bold text-blue-500">
+                          {selectedUser.weight_progress_percentage || 0}%
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-white/40">Progreso peso</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 border-t border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5">
+              <button
+                onClick={() => setSelectedUser(null)}
+                className="w-full bg-gray-200 dark:bg-white/10 hover:bg-gray-300 dark:hover:bg-white/20 text-gray-700 dark:text-white font-medium py-2.5 px-4 rounded-xl transition-colors"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -936,11 +1843,11 @@ interface StatCardProps {
   icon: any;
   label: string;
   value: string | number;
-  trend: string;
+  subtext?: string;
   color: 'blue' | 'green' | 'yellow' | 'purple';
 }
 
-function StatCard({ icon: Icon, label, value, trend, color }: StatCardProps) {
+function StatCard({ icon: Icon, label, value, subtext, color }: StatCardProps) {
   const iconColors = {
     blue: 'bg-blue-500 text-white',
     green: 'bg-[#85ea10] text-black',
@@ -954,9 +1861,11 @@ function StatCard({ icon: Icon, label, value, trend, color }: StatCardProps) {
         <div className={`w-12 h-12 rounded-xl ${iconColors[color]} flex items-center justify-center shadow-lg`}>
           <Icon className="w-6 h-6" />
         </div>
-        <span className="text-xs font-medium text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-400/10 px-2 py-1 rounded-full">
-          {trend}
-        </span>
+        {subtext && (
+          <span className="text-xs font-medium text-gray-500 dark:text-white/50 bg-gray-100 dark:bg-white/10 px-2 py-1 rounded-full">
+            {subtext}
+          </span>
+        )}
       </div>
       <div className="mt-4">
         <p className="text-2xl font-bold text-gray-900 dark:text-white">{value}</p>
@@ -987,7 +1896,7 @@ function QuickActionCard({ title, description, icon: Icon, color, onClick }: Qui
         <h3 className="text-base font-semibold text-gray-900 dark:text-white">{title}</h3>
         <p className="text-sm text-gray-500 dark:text-white/40 mt-1">{description}</p>
       </div>
-      <button 
+      <button
         onClick={onClick}
         className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${colors[color]}`}
       >
@@ -1038,19 +1947,19 @@ function CourseCard({ course, onEdit, onDelete, onTogglePublish }: CourseCardPro
         <h3 className="text-base font-semibold text-gray-900 dark:text-white line-clamp-2 flex-1 pr-3">
           {course.title}
         </h3>
-        <span className={`flex-shrink-0 px-2.5 py-1 text-xs font-medium rounded-full ${
-          course.is_published 
-            ? 'bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400' 
-            : 'bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-400'
-        }`}>
+        <span
+          className={`flex-shrink-0 px-2.5 py-1 text-xs font-medium rounded-full ${
+            course.is_published
+              ? 'bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400'
+              : 'bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-400'
+          }`}
+        >
           {course.is_published ? 'Publicado' : 'Borrador'}
         </span>
       </div>
-      
-      <p className="text-sm text-gray-500 dark:text-white/50 line-clamp-2 mb-4">
-        {course.short_description}
-      </p>
-      
+
+      <p className="text-sm text-gray-500 dark:text-white/50 line-clamp-2 mb-4">{course.short_description}</p>
+
       <div className="grid grid-cols-2 gap-3 mb-4">
         <div className="bg-gray-50 dark:bg-white/5 rounded-lg px-3 py-2">
           <p className="text-xs text-gray-500 dark:text-white/40">Precio</p>
@@ -1060,40 +1969,34 @@ function CourseCard({ course, onEdit, onDelete, onTogglePublish }: CourseCardPro
         </div>
         <div className="bg-gray-50 dark:bg-white/5 rounded-lg px-3 py-2">
           <p className="text-xs text-gray-500 dark:text-white/40">Duración</p>
-          <p className="text-sm font-semibold text-gray-900 dark:text-white">
-            {course.duration_days} días
-          </p>
+          <p className="text-sm font-semibold text-gray-900 dark:text-white">{course.duration_days} días</p>
         </div>
         <div className="bg-gray-50 dark:bg-white/5 rounded-lg px-3 py-2">
           <p className="text-xs text-gray-500 dark:text-white/40">Nivel</p>
-          <p className="text-sm font-semibold text-gray-900 dark:text-white capitalize">
-            {course.level}
-          </p>
+          <p className="text-sm font-semibold text-gray-900 dark:text-white capitalize">{course.level}</p>
         </div>
         <div className="bg-gray-50 dark:bg-white/5 rounded-lg px-3 py-2">
           <p className="text-xs text-gray-500 dark:text-white/40">Estudiantes</p>
-          <p className="text-sm font-semibold text-gray-900 dark:text-white">
-            {course.students_count}
-          </p>
+          <p className="text-sm font-semibold text-gray-900 dark:text-white">{course.students_count}</p>
         </div>
       </div>
-      
+
       <div className="flex gap-2">
-        <button 
+        <button
           onClick={onEdit}
           className="flex-1 bg-blue-100 dark:bg-blue-500/20 hover:bg-blue-200 dark:hover:bg-blue-500/30 text-blue-600 dark:text-blue-400 px-3 py-2 rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-1.5"
         >
           <Edit className="w-4 h-4" />
           Editar
         </button>
-        <button 
+        <button
           onClick={onDelete}
           className="flex-1 bg-red-100 dark:bg-red-500/20 hover:bg-red-200 dark:hover:bg-red-500/30 text-red-600 dark:text-red-400 px-3 py-2 rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-1.5"
         >
           <Trash2 className="w-4 h-4" />
           Eliminar
         </button>
-        <button 
+        <button
           onClick={onTogglePublish}
           className={`flex-1 px-3 py-2 rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-1.5 ${
             course.is_published
