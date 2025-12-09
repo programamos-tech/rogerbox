@@ -1,6 +1,6 @@
 'use client';
 
-import { useSession } from 'next-auth/react';
+import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, use } from 'react';
 import { supabase } from '@/lib/supabase';
@@ -50,7 +50,7 @@ interface Comment {
 
 export default function LessonPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
-  const { data: session, status } = useSession();
+  const { user, profile, loading: authLoading } = useSupabaseAuth();
   const router = useRouter();
   const [lesson, setLesson] = useState<Lesson | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
@@ -76,12 +76,12 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
     console.log('LessonPage mounted, params:', resolvedParams);
     console.log('Session status:', status);
     
-    if (status === 'unauthenticated') {
+    if (!loading && !user) {
       router.push('/login');
       return;
     }
     
-    if (status === 'authenticated') {
+    if (!!user) {
       loadLessonData();
       loadUserProgress();
     }

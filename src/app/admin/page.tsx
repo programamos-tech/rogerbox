@@ -1,10 +1,13 @@
 'use client';
 
 import QuickLoading from '@/components/QuickLoading';
+import BannerManagement from '@/components/admin/BannerManagement';
 import BlogManagement from '@/components/admin/BlogManagement';
+import ComplementManagement from '@/components/admin/ComplementManagement';
 import ConfirmDialog from '@/components/admin/ConfirmDialog';
 import CourseCreator from '@/components/admin/CourseCreator';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase-browser';
 import {
   BarChart3,
   Bell,
@@ -21,10 +24,12 @@ import {
   Eye,
   FileText,
   Home,
+  Image,
   Mail,
   MapPin,
   Menu,
   Phone,
+  Play,
   Plus,
   Ruler,
   Scale,
@@ -38,39 +43,37 @@ import {
   Users,
   X,
 } from 'lucide-react';
-import { useSession } from 'next-auth/react';
+import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 interface AdminStats {
-  totalUsers: number;
-  totalCourses: number;
-  totalSales: number;
-  totalRevenue: number;
-  activeCourses: number;
-  enterpriseLicenses: number;
-  // Nuevas estadísticas
-  newUsersThisMonth: number;
-  salesThisMonth: number;
-  revenueThisMonth: number;
+  kpis: {
+    totalUsers: number;
+    usersThisMonth: number;
+    totalCourses: number;
+    activeCourses: number;
+    totalSales: number;
+    salesThisMonth: number;
+    totalRevenue: number;
+    revenueThisMonth: number;
+  };
+  charts: {
+    usersByDay: { date: string; count: number }[];
+    salesByDay: { date: string; amount: number; count: number }[];
+  };
+  topCourses: { id: string; title: string; students: number }[];
+  goalsDistribution: { goal: string; count: number }[];
+  contentStatus: {
+    courses: { total: number; published: number };
+    blogs: { total: number; published: number };
+    complements: { total: number; published: number };
+    banners: { total: number; active: number };
+  };
+  recentUsers: { id: string; name: string; email: string; created_at: string }[];
+  recentSales: { id: string; customer_name: string; amount: number; status: string; created_at: string; course_title: string }[];
 }
 
-interface RecentSale {
-  id: string;
-  customer_name: string;
-  customer_email: string;
-  amount: number;
-  status: string;
-  created_at: string;
-  course_title?: string;
-}
-
-interface RecentUser {
-  id: string;
-  name: string;
-  email: string;
-  created_at: string;
-}
 
 interface Course {
   id: string;
@@ -136,6 +139,8 @@ const menuSections = [
     title: 'Contenido',
     items: [
       { id: 'courses', label: 'Cursos', icon: BookOpen, description: 'Gestionar cursos' },
+      { id: 'complements', label: 'Complementos', icon: Play, description: 'Videos semanales' },
+      { id: 'banners', label: 'Banners', icon: Image, description: 'Banners del dashboard' },
       { id: 'blogs', label: 'Blogs', icon: FileText, description: 'Artículos nutricionales' },
     ],
   },
@@ -196,7 +201,7 @@ const formatGoals = (goals: string | string[] | null | undefined): string => {
 };
 
 export default function AdminDashboard() {
-  const { data: session, status } = useSession();
+  const { user, profile, loading: authLoading } = useSupabaseAuth();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('overview');
   const [stats, setStats] = useState<AdminStats | null>(null);
@@ -218,8 +223,6 @@ export default function AdminDashboard() {
   const [salesSearchTerm, setSalesSearchTerm] = useState('');
   const [salesCurrentPage, setSalesCurrentPage] = useState(1);
   const salesPerPage = 10;
-  const [recentSales, setRecentSales] = useState<RecentSale[]>([]);
-  const [recentUsers, setRecentUsers] = useState<RecentUser[]>([]);
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
     title: string;
@@ -236,22 +239,35 @@ export default function AdminDashboard() {
     isLoading: false,
   });
 
+  const isAdmin = useMemo(() => {
+    if (!user) return false;
+    const envId = process.env.NEXT_PUBLIC_ADMIN_USER_ID;
+    const envEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'rogerbox@admin.com'; // fallback seguro
+    const matchId = envId && user.id === envId;
+    const matchEmail = envEmail && user.email === envEmail;
+    const matchRole = user.user_metadata?.role === 'admin';
+    return Boolean(matchId || matchEmail || matchRole);
+  }, [user]);
+
   // Verificar si es admin
   useEffect(() => {
-    if (status === 'unauthenticated') {
+    if (!authLoading && !user) {
       router.push('/login');
       return;
     }
 
-    if (status === 'authenticated' && (session?.user as any)?.id !== 'cdeaf7e0-c7fa-40a9-b6e9-288c9a677b5e') {
-      router.push('/dashboard');
-      return;
-    }
+    if (!authLoading) {
+      if (!isAdmin) {
+        setLoading(false);
+        router.push('/dashboard');
+        return;
+      }
 
-    if (status === 'authenticated') {
-      loadAdminData();
+      if (user) {
+        loadAdminData();
+      }
     }
-  }, [status, session, router]);
+  }, [authLoading, user, isAdmin, router]);
 
   // Cargar datos cuando se cambie de pestaña
   useEffect(() => {
@@ -267,96 +283,14 @@ export default function AdminDashboard() {
   const loadAdminData = async () => {
     try {
       setLoading(true);
-
-      // Fecha de inicio del mes actual
-      const startOfMonth = new Date();
-      startOfMonth.setDate(1);
-      startOfMonth.setHours(0, 0, 0, 0);
-      const startOfMonthISO = startOfMonth.toISOString();
-
-      // Cargar usuarios totales
-      const { count: usersCount } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
-
-      // Cargar usuarios nuevos este mes
-      const { count: newUsersCount } = await supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true })
-        .gte('created_at', startOfMonthISO);
-
-      // Cargar cursos
-      const { data: coursesData } = await supabase.from('courses').select('id, is_published');
-
-      // Cargar todas las ventas aprobadas
-      const { data: salesData } = await supabase
-        .from('orders')
-        .select('id, amount, status, created_at')
-        .in('status', ['approved', 'APPROVED']);
-
-      // Calcular ventas y revenue de este mes
-      const salesThisMonth = salesData?.filter((sale) => new Date(sale.created_at) >= startOfMonth) || [];
-
-      const totalRevenue = salesData?.reduce((sum, sale) => sum + (sale.amount || 0), 0) || 0;
-      const revenueThisMonth = salesThisMonth.reduce((sum, sale) => sum + (sale.amount || 0), 0);
-      const activeCourses = coursesData?.filter((c) => c.is_published).length || 0;
-
-      // Cargar ventas recientes (últimas 5)
-      const { data: recentSalesData } = await supabase
-        .from('orders')
-        .select(
-          `
-          id,
-          customer_name,
-          customer_email,
-          amount,
-          status,
-          created_at,
-          course:courses (title)
-        `
-        )
-        .order('created_at', { ascending: false })
-        .limit(5);
-
-      // Cargar usuarios recientes (últimos 5)
-      const { data: recentUsersData } = await supabase
-        .from('profiles')
-        .select('id, name, email, created_at')
-        .order('created_at', { ascending: false })
-        .limit(5);
-
-      setStats({
-        totalUsers: usersCount || 0,
-        totalCourses: coursesData?.length || 0,
-        totalSales: salesData?.length || 0,
-        totalRevenue: totalRevenue,
-        activeCourses: activeCourses,
-        enterpriseLicenses: 0,
-        newUsersThisMonth: newUsersCount || 0,
-        salesThisMonth: salesThisMonth.length,
-        revenueThisMonth: revenueThisMonth,
-      });
-
-      // Mapear ventas recientes
-      setRecentSales(
-        recentSalesData?.map((sale) => ({
-          id: sale.id,
-          customer_name: sale.customer_name || 'Sin nombre',
-          customer_email: sale.customer_email || '',
-          amount: sale.amount,
-          status: sale.status,
-          created_at: sale.created_at,
-          course_title: (sale.course as any)?.title || 'Curso eliminado',
-        })) || []
-      );
-
-      // Mapear usuarios recientes
-      setRecentUsers(
-        recentUsersData?.map((user) => ({
-          id: user.id,
-          name: user.name || 'Sin nombre',
-          email: user.email,
-          created_at: user.created_at,
-        })) || []
-      );
+      const response = await fetch('/api/admin/dashboard-stats');
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al cargar estadísticas');
+      }
+      
+      setStats(data);
     } catch (error) {
       console.error('Error loading admin data:', error);
     } finally {
@@ -398,13 +332,14 @@ export default function AdminDashboard() {
   const loadUsers = async () => {
     try {
       setLoadingUsers(true);
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setUsers(data || []);
+      const response = await fetch('/api/admin/users');
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al cargar usuarios');
+      }
+      
+      setUsers(data.users || []);
     } catch (error) {
       console.error('Error loading users:', error);
     } finally {
@@ -511,24 +446,49 @@ export default function AdminDashboard() {
     try {
       setConfirmDialog((prev) => ({ ...prev, isLoading: true }));
 
-      const { error: lessonsError } = await supabase.from('course_lessons').delete().eq('course_id', courseId);
+      console.log('🗑️ Intentando eliminar curso:', { courseId, courseTitle });
+      console.log('🔍 Configuración Supabase:', {
+        url: supabaseAdmin.supabaseUrl,
+        hasServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY || !!process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY
+      });
 
-      if (lessonsError) throw lessonsError;
+      // Primero eliminar lecciones relacionadas
+      console.log('📝 Eliminando lecciones del curso...');
+      const { data: lessonsData, error: lessonsError } = await supabaseAdmin
+        .from('course_lessons')
+        .delete()
+        .eq('course_id', courseId)
+        .select();
 
-      const { error: courseError } = await supabase.from('courses').delete().eq('id', courseId);
+      if (lessonsError) {
+        console.error('❌ Error eliminando lecciones:', lessonsError);
+        throw new Error(`Error al eliminar lecciones: ${lessonsError.message}`);
+      }
+      console.log(`✅ Lecciones eliminadas: ${lessonsData?.length || 0}`);
 
-      if (courseError) throw courseError;
+      // Usar API route del servidor (service_role key solo funciona en servidor)
+      console.log('📝 Eliminando curso vía API...');
+      
+      const response = await fetch(`/api/admin/courses/${courseId}`, {
+        method: 'DELETE',
+        credentials: 'include', // Asegurar que las cookies se envíen
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Error al eliminar el curso');
+      }
+
+      const result = await response.json();
+      console.log('✅ Curso eliminado exitosamente:', result);
 
       setCourses((prev) => prev.filter((course) => course.id !== courseId));
-
-      setConfirmDialog({
-        isOpen: true,
-        title: 'Curso Eliminado',
-        message: `El curso "${courseTitle}" ha sido eliminado exitosamente.`,
-        type: 'success',
-        onConfirm: () => setConfirmDialog((prev) => ({ ...prev, isOpen: false })),
-        isLoading: false,
-      });
+      
+      // Cerrar el diálogo de confirmación sin mostrar modal de éxito
+      setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
     } catch (error) {
       console.error('Error deleting course:', error);
       setConfirmDialog({
@@ -551,15 +511,15 @@ export default function AdminDashboard() {
     return menuSections[0].items[0];
   };
 
-  if (status === 'loading' || loading) {
+  if (authLoading || loading) {
     return <QuickLoading message="Cargando panel de administración..." duration={1000} />;
   }
 
-  if (status === 'unauthenticated') {
+  if (!loading && !user) {
     return null;
   }
 
-  if ((session?.user as any)?.id !== 'cdeaf7e0-c7fa-40a9-b6e9-288c9a677b5e') {
+  if (!isAdmin) {
     return (
       <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
@@ -573,7 +533,7 @@ export default function AdminDashboard() {
   const activeItem = getActiveItem();
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-950 flex">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 flex">
       {/* Overlay para móvil */}
       {mobileMenuOpen && (
         <div
@@ -603,10 +563,10 @@ export default function AdminDashboard() {
           {!sidebarCollapsed && (
             <div className="flex items-center gap-3">
               <div>
-                <h1 className="text-gray-900 dark:text-white font-bold text-lg tracking-tight">
+                <h1 className="text-gray-900 dark:text-white font-black text-xl tracking-tight">
                   ROGER<span className="text-[#85ea10]">BOX</span>
                 </h1>
-                <span className="text-[10px] text-gray-500 dark:text-white/40 uppercase tracking-widest">
+                <span className="text-[10px] text-gray-500 dark:text-white/40 uppercase tracking-widest font-semibold">
                   Admin Panel
                 </span>
               </div>
@@ -630,7 +590,7 @@ export default function AdminDashboard() {
           {menuSections.map((section, sectionIndex) => (
             <div key={section.title} className={sectionIndex > 0 ? 'mt-6' : ''}>
               {!sidebarCollapsed && (
-                <h3 className="px-3 mb-2 text-[11px] font-semibold text-gray-400 dark:text-white/30 uppercase tracking-wider">
+                <h3 className="px-3 mb-3 text-xs font-black text-gray-500 dark:text-white/50 uppercase tracking-widest">
                   {section.title}
                 </h3>
               )}
@@ -646,12 +606,12 @@ export default function AdminDashboard() {
                         setMobileMenuOpen(false);
                       }}
                       className={`
-                        w-full flex items-center gap-3 px-3 py-2.5 rounded-xl
+                        w-full flex items-center gap-3 px-4 py-3 rounded-xl
                         transition-all duration-200 group
                         ${
                           isActive
-                            ? 'bg-[#85ea10] text-black'
-                            : 'text-gray-600 dark:text-white/60 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5'
+                            ? 'bg-[#85ea10] text-black shadow-lg'
+                            : 'text-gray-700 dark:text-white/70 hover:text-gray-900 dark:hover:text-white hover:bg-[#85ea10]/10'
                         }
                         ${sidebarCollapsed ? 'justify-center' : ''}
                       `}
@@ -660,12 +620,12 @@ export default function AdminDashboard() {
                       <Icon className={`w-5 h-5 flex-shrink-0 ${isActive ? 'text-black' : ''}`} />
                       {!sidebarCollapsed && (
                         <div className="flex-1 text-left">
-                          <span className={`text-sm font-medium ${isActive ? 'text-black' : ''}`}>
+                          <span className={`text-xs font-black uppercase tracking-tight ${isActive ? 'text-black' : ''}`}>
                             {item.label}
                           </span>
                         </div>
                       )}
-                      {!sidebarCollapsed && isActive && <div className="w-1.5 h-1.5 rounded-full bg-black" />}
+                      {!sidebarCollapsed && isActive && <div className="w-2 h-2 rounded-full bg-black" />}
                     </button>
                   );
                 })}
@@ -683,15 +643,18 @@ export default function AdminDashboard() {
         >
           {!sidebarCollapsed ? (
             <div className="flex items-center gap-3">
+              <div className="w-9 h-9 bg-[#85ea10] rounded-full flex items-center justify-center">
+                <User className="w-4 h-4 text-black" />
+              </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                  {session?.user?.name || 'Admin'}
+                <p className="text-xs font-black text-gray-900 dark:text-white truncate uppercase">
+                  {user?.user_metadata?.name || profile?.name || 'Admin'}
                 </p>
-                <p className="text-xs text-gray-500 dark:text-white/40 truncate">Super Admin</p>
+                <p className="text-[10px] font-semibold text-[#85ea10] truncate">Super Admin</p>
               </div>
               <button
                 onClick={() => router.push('/dashboard')}
-                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-gray-500 dark:text-white/40 hover:text-gray-900 dark:hover:text-white transition-colors"
+                className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-[#85ea10]/10 text-gray-600 dark:text-white/60 hover:text-[#85ea10] transition-colors"
                 title="Ir al Dashboard"
               >
                 <Home className="w-4 h-4" />
@@ -700,7 +663,7 @@ export default function AdminDashboard() {
           ) : (
             <button
               onClick={() => router.push('/dashboard')}
-              className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-gray-500 dark:text-white/40 hover:text-gray-900 dark:hover:text-white transition-colors"
+              className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-[#85ea10]/10 text-gray-600 dark:text-white/60 hover:text-[#85ea10] transition-colors"
               title="Ir al Dashboard"
             >
               <Home className="w-5 h-5" />
@@ -712,19 +675,19 @@ export default function AdminDashboard() {
       {/* Main Content */}
       <main className="flex-1 flex flex-col min-h-screen overflow-hidden">
         {/* Top Header */}
-        <header className="h-16 bg-white/80 dark:bg-gray-900/50 backdrop-blur-xl border-b border-gray-200 dark:border-white/10 flex items-center justify-between px-4 lg:px-8 sticky top-0 z-30">
+        <header className="h-16 bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-gray-200 dark:border-white/20 flex items-center justify-between px-4 lg:px-8 sticky top-0 z-30">
           <div className="flex items-center gap-4">
             {/* Mobile menu button */}
             <button
               onClick={() => setMobileMenuOpen(true)}
-              className="lg:hidden w-10 h-10 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-gray-600 dark:text-white/60"
+              className="lg:hidden w-10 h-10 flex items-center justify-center rounded-lg hover:bg-[#85ea10]/10 text-gray-600 dark:text-white/60"
             >
               <Menu className="w-5 h-5" />
             </button>
 
             <div>
-              <h1 className="text-xl font-bold text-gray-900 dark:text-white">{activeItem.label}</h1>
-              <p className="text-sm text-gray-500 dark:text-white/40 hidden sm:block">
+              <h1 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight">{activeItem.label}</h1>
+              <p className="text-xs text-gray-600 dark:text-white/60 hidden sm:block font-medium">
                 {activeItem.description}
               </p>
             </div>
@@ -738,7 +701,7 @@ export default function AdminDashboard() {
                   setEditingCourse(null);
                   setShowCourseCreator(true);
                 }}
-                className="bg-[#85ea10] hover:bg-[#7dd30f] text-black font-semibold px-4 py-2 rounded-xl transition-all duration-200 flex items-center gap-2 text-sm"
+                className="bg-[#85ea10] hover:bg-[#7dd30f] text-black font-black px-5 py-2.5 rounded-xl transition-all duration-200 flex items-center gap-2 text-sm uppercase tracking-tight shadow-lg hover:shadow-xl"
               >
                 <Plus className="w-4 h-4" />
                 <span className="hidden sm:inline">Crear Curso</span>
@@ -746,9 +709,9 @@ export default function AdminDashboard() {
             )}
 
             {/* Notifications */}
-            <button className="relative w-10 h-10 flex items-center justify-center rounded-xl hover:bg-gray-100 dark:hover:bg-white/10 text-gray-600 dark:text-white/60 hover:text-gray-900 dark:hover:text-white transition-colors">
+            <button className="relative w-10 h-10 flex items-center justify-center rounded-xl hover:bg-[#85ea10]/10 text-gray-600 dark:text-white/60 hover:text-[#85ea10] transition-colors">
               <Bell className="w-5 h-5" />
-              <span className="absolute top-2 right-2 w-2 h-2 bg-[#85ea10] rounded-full"></span>
+              <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-[#85ea10] rounded-full border-2 border-white dark:border-gray-900"></span>
             </button>
           </div>
         </header>
@@ -756,172 +719,290 @@ export default function AdminDashboard() {
         {/* Page Content */}
         <div className="flex-1 overflow-y-auto p-4 lg:p-8">
           {/* Overview Tab */}
-          {activeTab === 'overview' && (
+          {activeTab === 'overview' && stats && (
             <div className="space-y-6">
-              {/* Stats Grid - Principales */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <StatCard
-                  icon={Users}
-                  label="Total Usuarios"
-                  value={stats?.totalUsers || 0}
-                  subtext={`+${stats?.newUsersThisMonth || 0} este mes`}
-                  color="blue"
-                />
-                <StatCard
-                  icon={BookOpen}
-                  label="Cursos Activos"
-                  value={stats?.activeCourses || 0}
-                  subtext={`${stats?.totalCourses || 0} totales`}
-                  color="green"
-                />
-                <StatCard
-                  icon={ShoppingCart}
-                  label="Total Ventas"
-                  value={stats?.totalSales || 0}
-                  subtext={`${stats?.salesThisMonth || 0} este mes`}
-                  color="yellow"
-                />
-                <StatCard
-                  icon={DollarSign}
-                  label="Ingresos Totales"
-                  value={`$${stats?.totalRevenue?.toLocaleString('es-CO') || 0}`}
-                  subtext={`$${stats?.revenueThisMonth?.toLocaleString('es-CO') || 0} este mes`}
-                  color="purple"
-                />
-              </div>
-
-              {/* Quick Actions */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <QuickActionCard
-                  title="Crear Curso"
-                  description="Añadir nuevo curso a la plataforma"
-                  icon={Plus}
-                  color="green"
-                  onClick={() => {
-                    setEditingCourse(null);
-                    setShowCourseCreator(true);
-                  }}
-                />
-                <QuickActionCard
-                  title="Ver Usuarios"
-                  description="Gestionar usuarios registrados"
-                  icon={Users}
-                  color="blue"
-                  onClick={() => setActiveTab('users')}
-                />
-                <QuickActionCard
-                  title="Ver Ventas"
-                  description="Historial de transacciones"
-                  icon={TrendingUp}
-                  color="purple"
-                  onClick={() => setActiveTab('sales')}
-                />
-              </div>
-
-              {/* Recent Activity Grid */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Ventas Recientes */}
-                <div className="bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl border border-gray-200 dark:border-white/10 overflow-hidden shadow-sm dark:shadow-none">
-                  <div className="p-5 border-b border-gray-200 dark:border-white/10 flex items-center justify-between">
-                    <h3 className="font-semibold text-gray-900 dark:text-white">Ventas Recientes</h3>
-                    <button
-                      onClick={() => setActiveTab('sales')}
-                      className="text-sm text-[#85ea10] hover:underline cursor-pointer"
-                    >
-                      Ver todas
-                    </button>
+              {/* KPIs Principales */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 p-5 shadow-lg">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="w-10 h-10 bg-[#85ea10] rounded-xl flex items-center justify-center">
+                      <Users className="w-5 h-5 text-black" />
+                    </div>
+                    <span className="text-xs font-bold text-[#85ea10] bg-[#85ea10]/10 px-2 py-1 rounded-full">
+                      +{stats.kpis.usersThisMonth} este mes
+                    </span>
                   </div>
-                  <div className="divide-y divide-gray-100 dark:divide-white/5">
-                    {recentSales.length === 0 ? (
-                      <div className="p-8 text-center">
-                        <ShoppingCart className="w-10 h-10 text-gray-300 dark:text-white/20 mx-auto mb-3" />
-                        <p className="text-sm text-gray-500 dark:text-white/40">No hay ventas aún</p>
-                      </div>
-                    ) : (
-                      recentSales.map((sale) => (
-                        <div
-                          key={sale.id}
-                          className="p-4 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
-                        >
-                          <div className="flex items-center justify-between gap-4">
-                            <div className="min-w-0 flex-1">
-                              <p className="font-medium text-gray-900 dark:text-white text-sm truncate">
-                                {sale.customer_name}
-                              </p>
-                              <p className="text-xs text-gray-500 dark:text-white/40 truncate">
-                                {sale.course_title}
-                              </p>
-                            </div>
-                            <div className="text-right flex-shrink-0">
-                              <p className="font-semibold text-gray-900 dark:text-white text-sm">
-                                ${sale.amount?.toLocaleString('es-CO')}
-                              </p>
-                              <span
-                                className={`inline-block text-xs px-2 py-0.5 rounded-full ${
-                                  sale.status === 'approved' || sale.status === 'APPROVED'
-                                    ? 'bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400'
-                                    : sale.status === 'pending' || sale.status === 'PENDING'
-                                    ? 'bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-400'
-                                    : 'bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400'
-                                }`}
-                              >
-                                {sale.status === 'approved' || sale.status === 'APPROVED'
-                                  ? 'Aprobada'
-                                  : sale.status === 'pending' || sale.status === 'PENDING'
-                                  ? 'Pendiente'
-                                  : 'Rechazada'}
-                              </span>
-                            </div>
-                          </div>
-                          <p className="text-xs text-gray-400 dark:text-white/30 mt-2">
-                            {new Date(sale.created_at).toLocaleDateString('es-CO', {
-                              day: '2-digit',
-                              month: 'short',
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
-                          </p>
+                  <p className="text-2xl font-black text-gray-900 dark:text-white">{stats.kpis.totalUsers}</p>
+                  <p className="text-xs font-semibold text-gray-600 dark:text-white/60 uppercase">Usuarios</p>
+                </div>
+
+                <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 p-5 shadow-lg">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="w-10 h-10 bg-[#85ea10] rounded-xl flex items-center justify-center">
+                      <BookOpen className="w-5 h-5 text-black" />
+                    </div>
+                    <span className="text-xs font-bold text-gray-600 dark:text-white/60 bg-gray-100 dark:bg-white/10 px-2 py-1 rounded-full">
+                      {stats.kpis.totalCourses} total
+                    </span>
+                  </div>
+                  <p className="text-2xl font-black text-gray-900 dark:text-white">{stats.kpis.activeCourses}</p>
+                  <p className="text-xs font-semibold text-gray-600 dark:text-white/60 uppercase">Cursos Activos</p>
+                </div>
+
+                <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 p-5 shadow-lg">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="w-10 h-10 bg-[#85ea10] rounded-xl flex items-center justify-center">
+                      <ShoppingCart className="w-5 h-5 text-black" />
+                    </div>
+                    <span className="text-xs font-bold text-[#85ea10] bg-[#85ea10]/10 px-2 py-1 rounded-full">
+                      +{stats.kpis.salesThisMonth} este mes
+                    </span>
+                  </div>
+                  <p className="text-2xl font-black text-gray-900 dark:text-white">{stats.kpis.totalSales}</p>
+                  <p className="text-xs font-semibold text-gray-600 dark:text-white/60 uppercase">Ventas</p>
+                </div>
+
+                <div className="bg-gradient-to-br from-[#85ea10] to-[#6bc20a] rounded-2xl p-5 shadow-lg">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="w-10 h-10 bg-black/20 rounded-xl flex items-center justify-center">
+                      <DollarSign className="w-5 h-5 text-black" />
+                    </div>
+                    <span className="text-xs font-bold text-black/70 bg-black/10 px-2 py-1 rounded-full">
+                      +${stats.kpis.revenueThisMonth?.toLocaleString('es-CO')} este mes
+                    </span>
+                  </div>
+                  <p className="text-2xl font-black text-black">${stats.kpis.totalRevenue?.toLocaleString('es-CO')}</p>
+                  <p className="text-xs font-semibold text-black/70 uppercase">Ingresos Totales</p>
+                </div>
+              </div>
+
+              {/* Gráficas */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* Gráfica de Usuarios */}
+                <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 p-5 shadow-lg">
+                  <h3 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight mb-4">
+                    Nuevos Usuarios (7 días)
+                  </h3>
+                  <div className="flex items-end justify-between h-32 gap-2">
+                    {stats.charts.usersByDay.map((day, i) => {
+                      const maxCount = Math.max(...stats.charts.usersByDay.map(d => d.count), 1);
+                      const height = (day.count / maxCount) * 100;
+                      return (
+                        <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                          <span className="text-xs font-bold text-[#85ea10]">{day.count}</span>
+                          <div 
+                            className="w-full bg-[#85ea10] rounded-t-lg transition-all duration-500"
+                            style={{ height: `${Math.max(height, 4)}%` }}
+                          />
+                          <span className="text-[10px] text-gray-500 dark:text-white/50">{day.date}</span>
                         </div>
-                      ))
-                    )}
+                      );
+                    })}
                   </div>
                 </div>
 
-                {/* Usuarios Recientes */}
-                <div className="bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl border border-gray-200 dark:border-white/10 overflow-hidden shadow-sm dark:shadow-none">
-                  <div className="p-5 border-b border-gray-200 dark:border-white/10 flex items-center justify-between">
-                    <h3 className="font-semibold text-gray-900 dark:text-white">Usuarios Recientes</h3>
-                    <button
-                      onClick={() => setActiveTab('users')}
-                      className="text-sm text-[#85ea10] hover:underline cursor-pointer"
-                    >
-                      Ver todos
+                {/* Gráfica de Ingresos */}
+                <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 p-5 shadow-lg">
+                  <h3 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight mb-4">
+                    Ingresos (7 días)
+                  </h3>
+                  <div className="flex items-end justify-between h-32 gap-2">
+                    {stats.charts.salesByDay.map((day, i) => {
+                      const maxAmount = Math.max(...stats.charts.salesByDay.map(d => d.amount), 1);
+                      const height = (day.amount / maxAmount) * 100;
+                      return (
+                        <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                          <span className="text-[10px] font-bold text-[#85ea10]">
+                            {day.amount > 0 ? `$${(day.amount / 1000).toFixed(0)}k` : '-'}
+                          </span>
+                          <div 
+                            className="w-full bg-gradient-to-t from-[#85ea10] to-[#a5f03a] rounded-t-lg transition-all duration-500"
+                            style={{ height: `${Math.max(height, 4)}%` }}
+                          />
+                          <span className="text-[10px] text-gray-500 dark:text-white/50">{day.date}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Estado del Contenido + Top Cursos */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                {/* Estado del Contenido */}
+                <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 p-5 shadow-lg">
+                  <h3 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight mb-4">
+                    Estado del Contenido
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <BookOpen className="w-4 h-4 text-[#85ea10]" />
+                        <span className="text-xs font-semibold text-gray-700 dark:text-white/70">Cursos</span>
+                      </div>
+                      <span className="text-xs font-black text-gray-900 dark:text-white">
+                        {stats.contentStatus.courses.published}/{stats.contentStatus.courses.total}
+                      </span>
+                    </div>
+                    <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-[#85ea10] rounded-full transition-all"
+                        style={{ width: `${stats.contentStatus.courses.total > 0 ? (stats.contentStatus.courses.published / stats.contentStatus.courses.total) * 100 : 0}%` }}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <FileText className="w-4 h-4 text-[#85ea10]" />
+                        <span className="text-xs font-semibold text-gray-700 dark:text-white/70">Blogs</span>
+                      </div>
+                      <span className="text-xs font-black text-gray-900 dark:text-white">
+                        {stats.contentStatus.blogs.published}/{stats.contentStatus.blogs.total}
+                      </span>
+                    </div>
+                    <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-[#85ea10] rounded-full transition-all"
+                        style={{ width: `${stats.contentStatus.blogs.total > 0 ? (stats.contentStatus.blogs.published / stats.contentStatus.blogs.total) * 100 : 0}%` }}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Play className="w-4 h-4 text-[#85ea10]" />
+                        <span className="text-xs font-semibold text-gray-700 dark:text-white/70">Complementos</span>
+                      </div>
+                      <span className="text-xs font-black text-gray-900 dark:text-white">
+                        {stats.contentStatus.complements.published}/{stats.contentStatus.complements.total}
+                      </span>
+                    </div>
+                    <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-[#85ea10] rounded-full transition-all"
+                        style={{ width: `${stats.contentStatus.complements.total > 0 ? (stats.contentStatus.complements.published / stats.contentStatus.complements.total) * 100 : 0}%` }}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Image className="w-4 h-4 text-[#85ea10]" />
+                        <span className="text-xs font-semibold text-gray-700 dark:text-white/70">Banners</span>
+                      </div>
+                      <span className="text-xs font-black text-gray-900 dark:text-white">
+                        {stats.contentStatus.banners.active}/{stats.contentStatus.banners.total}
+                      </span>
+                    </div>
+                    <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-[#85ea10] rounded-full transition-all"
+                        style={{ width: `${stats.contentStatus.banners.total > 0 ? (stats.contentStatus.banners.active / stats.contentStatus.banners.total) * 100 : 0}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Top Cursos */}
+                <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 p-5 shadow-lg">
+                  <h3 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight mb-4">
+                    Top Cursos
+                  </h3>
+                  {stats.topCourses.length === 0 ? (
+                    <div className="text-center py-6">
+                      <BookOpen className="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
+                      <p className="text-xs text-gray-500 dark:text-white/40">Sin cursos aún</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {stats.topCourses.map((course, i) => (
+                        <div key={course.id} className="flex items-center gap-3">
+                          <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black ${
+                            i === 0 ? 'bg-[#85ea10] text-black' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-white/60'
+                          }`}>
+                            {i + 1}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-bold text-gray-900 dark:text-white truncate">{course.title}</p>
+                          </div>
+                          <span className="text-xs font-black text-[#85ea10]">{course.students}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Metas de Usuarios */}
+                <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 p-5 shadow-lg">
+                  <h3 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight mb-4">
+                    Metas de Usuarios
+                  </h3>
+                  {stats.goalsDistribution.length === 0 ? (
+                    <div className="text-center py-6">
+                      <Target className="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
+                      <p className="text-xs text-gray-500 dark:text-white/40">Sin datos aún</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {stats.goalsDistribution.map((item) => {
+                        const goalNames: Record<string, string> = {
+                          lose_weight: 'Bajar de peso',
+                          gain_muscle: 'Ganar músculo',
+                          improve_health: 'Mejorar salud',
+                          maintain_weight: 'Mantener peso',
+                          increase_endurance: 'Resistencia',
+                          flexibility: 'Flexibilidad',
+                          stress_relief: 'Reducir estrés',
+                          energy: 'Más energía',
+                        };
+                        const maxCount = Math.max(...stats.goalsDistribution.map(g => g.count), 1);
+                        return (
+                          <div key={item.goal}>
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-xs font-semibold text-gray-700 dark:text-white/70">
+                                {goalNames[item.goal] || item.goal}
+                              </span>
+                              <span className="text-xs font-black text-[#85ea10]">{item.count}</span>
+                            </div>
+                            <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                              <div 
+                                className="h-full bg-[#85ea10] rounded-full transition-all"
+                                style={{ width: `${(item.count / maxCount) * 100}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Actividad Reciente */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* Ventas Recientes */}
+                <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 overflow-hidden shadow-lg">
+                  <div className="p-4 border-b border-gray-200 dark:border-white/20 flex items-center justify-between">
+                    <h3 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight">Ventas Recientes</h3>
+                    <button onClick={() => setActiveTab('sales')} className="text-xs font-bold text-[#85ea10] hover:text-[#7dd30f]">
+                      Ver todas →
                     </button>
                   </div>
                   <div className="divide-y divide-gray-100 dark:divide-white/5">
-                    {recentUsers.length === 0 ? (
+                    {stats.recentSales.length === 0 ? (
                       <div className="p-8 text-center">
-                        <Users className="w-10 h-10 text-gray-300 dark:text-white/20 mx-auto mb-3" />
-                        <p className="text-sm text-gray-500 dark:text-white/40">No hay usuarios aún</p>
+                        <ShoppingCart className="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
+                        <p className="text-xs text-gray-500 dark:text-white/40">No hay ventas aún</p>
                       </div>
                     ) : (
-                      recentUsers.map((user) => (
-                        <div
-                          key={user.id}
-                          className="p-4 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="min-w-0 flex-1">
-                              <p className="font-medium text-gray-900 dark:text-white text-sm truncate">
-                                {user.name}
-                              </p>
-                              <p className="text-xs text-gray-500 dark:text-white/40 truncate">{user.email}</p>
-                            </div>
-                            <p className="text-xs text-gray-400 dark:text-white/30 flex-shrink-0">
-                              {new Date(user.created_at).toLocaleDateString('es-CO', {
-                                day: '2-digit',
-                                month: 'short',
-                              })}
+                      stats.recentSales.map((sale) => (
+                        <div key={sale.id} className="p-3 hover:bg-gray-50 dark:hover:bg-white/5 flex items-center justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-bold text-gray-900 dark:text-white truncate">{sale.customer_name}</p>
+                            <p className="text-[10px] text-gray-500 dark:text-white/40 truncate">{sale.course_title}</p>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <p className="text-xs font-black text-[#85ea10]">${sale.amount?.toLocaleString('es-CO')}</p>
+                            <p className="text-[10px] text-gray-400">
+                              {new Date(sale.created_at).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })}
                             </p>
                           </div>
                         </div>
@@ -929,6 +1010,71 @@ export default function AdminDashboard() {
                     )}
                   </div>
                 </div>
+
+                {/* Usuarios Recientes */}
+                <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 overflow-hidden shadow-lg">
+                  <div className="p-4 border-b border-gray-200 dark:border-white/20 flex items-center justify-between">
+                    <h3 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight">Usuarios Recientes</h3>
+                    <button onClick={() => setActiveTab('users')} className="text-xs font-bold text-[#85ea10] hover:text-[#7dd30f]">
+                      Ver todos →
+                    </button>
+                  </div>
+                  <div className="divide-y divide-gray-100 dark:divide-white/5">
+                    {stats.recentUsers.length === 0 ? (
+                      <div className="p-8 text-center">
+                        <Users className="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
+                        <p className="text-xs text-gray-500 dark:text-white/40">No hay usuarios aún</p>
+                      </div>
+                    ) : (
+                      stats.recentUsers.map((user) => (
+                        <div key={user.id} className="p-3 hover:bg-gray-50 dark:hover:bg-white/5 flex items-center gap-3">
+                          <div className="w-8 h-8 bg-[#85ea10]/20 rounded-full flex items-center justify-center">
+                            <User className="w-4 h-4 text-[#85ea10]" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-bold text-gray-900 dark:text-white truncate">{user.name}</p>
+                            <p className="text-[10px] text-gray-500 dark:text-white/40 truncate">{user.email}</p>
+                          </div>
+                          <p className="text-[10px] text-gray-400 flex-shrink-0">
+                            {new Date(user.created_at).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })}
+                          </p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Acciones Rápidas */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <button
+                  onClick={() => { setEditingCourse(null); setShowCourseCreator(true); }}
+                  className="bg-[#85ea10] hover:bg-[#7dd30f] text-black font-black py-4 rounded-xl transition-all flex flex-col items-center gap-2 shadow-lg hover:shadow-xl"
+                >
+                  <Plus className="w-6 h-6" />
+                  <span className="text-xs uppercase tracking-tight">Crear Curso</span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('complements')}
+                  className="bg-white/80 dark:bg-gray-900/80 hover:bg-[#85ea10]/10 border border-gray-200 dark:border-white/20 text-gray-900 dark:text-white font-black py-4 rounded-xl transition-all flex flex-col items-center gap-2 shadow-lg"
+                >
+                  <Play className="w-6 h-6" />
+                  <span className="text-xs uppercase tracking-tight">Complementos</span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('banners')}
+                  className="bg-white/80 dark:bg-gray-900/80 hover:bg-[#85ea10]/10 border border-gray-200 dark:border-white/20 text-gray-900 dark:text-white font-black py-4 rounded-xl transition-all flex flex-col items-center gap-2 shadow-lg"
+                >
+                  <Image className="w-6 h-6" />
+                  <span className="text-xs uppercase tracking-tight">Banners</span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('blogs')}
+                  className="bg-white/80 dark:bg-gray-900/80 hover:bg-[#85ea10]/10 border border-gray-200 dark:border-white/20 text-gray-900 dark:text-white font-black py-4 rounded-xl transition-all flex flex-col items-center gap-2 shadow-lg"
+                >
+                  <FileText className="w-6 h-6" />
+                  <span className="text-xs uppercase tracking-tight">Blogs</span>
+                </button>
               </div>
             </div>
           )}
@@ -952,7 +1098,7 @@ export default function AdminDashboard() {
                   }}
                 />
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
                   {courses.map((course) => (
                     <CourseCard
                       key={course.id}
@@ -969,6 +1115,12 @@ export default function AdminDashboard() {
 
           {/* Blogs Tab */}
           {activeTab === 'blogs' && <BlogManagement />}
+
+          {/* Complements Tab */}
+          {activeTab === 'complements' && <ComplementManagement />}
+
+          {/* Banners Tab */}
+          {activeTab === 'banners' && <BannerManagement />}
 
           {/* Users Tab */}
           {activeTab === 'users' && (
@@ -1839,99 +1991,7 @@ export default function AdminDashboard() {
 
 // ===== Componentes Auxiliares =====
 
-interface StatCardProps {
-  icon: any;
-  label: string;
-  value: string | number;
-  subtext?: string;
-  color: 'blue' | 'green' | 'yellow' | 'purple';
-}
 
-function StatCard({ icon: Icon, label, value, subtext, color }: StatCardProps) {
-  const iconColors = {
-    blue: 'bg-blue-500 text-white',
-    green: 'bg-[#85ea10] text-black',
-    yellow: 'bg-yellow-500 text-white',
-    purple: 'bg-purple-500 text-white',
-  };
-
-  return (
-    <div className="bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl border border-gray-200 dark:border-white/10 p-5 shadow-sm dark:shadow-none">
-      <div className="flex items-start justify-between">
-        <div className={`w-12 h-12 rounded-xl ${iconColors[color]} flex items-center justify-center shadow-lg`}>
-          <Icon className="w-6 h-6" />
-        </div>
-        {subtext && (
-          <span className="text-xs font-medium text-gray-500 dark:text-white/50 bg-gray-100 dark:bg-white/10 px-2 py-1 rounded-full">
-            {subtext}
-          </span>
-        )}
-      </div>
-      <div className="mt-4">
-        <p className="text-2xl font-bold text-gray-900 dark:text-white">{value}</p>
-        <p className="text-sm text-gray-500 dark:text-white/40 mt-1">{label}</p>
-      </div>
-    </div>
-  );
-}
-
-interface QuickActionCardProps {
-  title: string;
-  description: string;
-  icon: any;
-  color: 'green' | 'blue' | 'purple';
-  onClick: () => void;
-}
-
-function QuickActionCard({ title, description, icon: Icon, color, onClick }: QuickActionCardProps) {
-  const colors = {
-    green: 'bg-[#85ea10] text-black hover:bg-[#7dd30f]',
-    blue: 'bg-blue-500 text-white hover:bg-blue-600',
-    purple: 'bg-purple-500 text-white hover:bg-purple-600',
-  };
-
-  return (
-    <div className="bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl border border-gray-200 dark:border-white/10 p-5 flex items-center justify-between shadow-sm dark:shadow-none">
-      <div>
-        <h3 className="text-base font-semibold text-gray-900 dark:text-white">{title}</h3>
-        <p className="text-sm text-gray-500 dark:text-white/40 mt-1">{description}</p>
-      </div>
-      <button
-        onClick={onClick}
-        className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${colors[color]}`}
-      >
-        <Icon className="w-5 h-5" />
-      </button>
-    </div>
-  );
-}
-
-interface ActivityItemProps {
-  icon: any;
-  text: string;
-  time: string;
-  color: 'green' | 'blue' | 'yellow';
-}
-
-function ActivityItem({ icon: Icon, text, time, color }: ActivityItemProps) {
-  const colors = {
-    green: 'bg-green-100 dark:bg-green-500/20 text-green-600 dark:text-green-400',
-    blue: 'bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400',
-    yellow: 'bg-yellow-100 dark:bg-yellow-500/20 text-yellow-600 dark:text-yellow-400',
-  };
-
-  return (
-    <div className="flex items-center gap-4">
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${colors[color]}`}>
-        <Icon className="w-5 h-5" />
-      </div>
-      <div className="flex-1">
-        <p className="text-sm text-gray-900 dark:text-white">{text}</p>
-        <p className="text-xs text-gray-500 dark:text-white/40">{time}</p>
-      </div>
-    </div>
-  );
-}
 
 interface CourseCardProps {
   course: Course;
@@ -1942,80 +2002,99 @@ interface CourseCardProps {
 
 function CourseCard({ course, onEdit, onDelete, onTogglePublish }: CourseCardProps) {
   return (
-    <div className="bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl border border-gray-200 dark:border-white/10 p-5 hover:border-gray-300 dark:hover:border-white/20 transition-all group shadow-sm dark:shadow-none">
-      <div className="flex items-start justify-between mb-4">
-        <h3 className="text-base font-semibold text-gray-900 dark:text-white line-clamp-2 flex-1 pr-3">
+    <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 hover:border-[#85ea10]/50 transition-all group shadow-lg hover:shadow-xl overflow-hidden">
+      {/* Imagen del curso */}
+      <div className="relative w-full aspect-video bg-gray-200 dark:bg-gray-800 overflow-hidden">
+        {course.preview_image ? (
+          <img
+            src={course.preview_image}
+            alt={course.title}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-800 dark:to-gray-900">
+            <BookOpen className="w-16 h-16 text-gray-400 dark:text-gray-600" />
+          </div>
+        )}
+        {/* Badge de estado sobre la imagen */}
+        <div className="absolute top-3 right-3">
+          <span
+            className={`px-3 py-1 text-xs font-black rounded-full ${
+              course.is_published
+                ? 'bg-[#85ea10] text-black'
+                : 'bg-gray-800/80 dark:bg-white/20 text-white dark:text-white/90 backdrop-blur-sm'
+            }`}
+          >
+            {course.is_published ? 'Publicado' : 'Borrador'}
+          </span>
+        </div>
+      </div>
+
+      {/* Contenido */}
+      <div className="p-5">
+        <h3 className="text-base font-black text-gray-900 dark:text-white line-clamp-2 mb-2 uppercase tracking-tight">
           {course.title}
         </h3>
-        <span
-          className={`flex-shrink-0 px-2.5 py-1 text-xs font-medium rounded-full ${
-            course.is_published
-              ? 'bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400'
-              : 'bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-400'
-          }`}
-        >
-          {course.is_published ? 'Publicado' : 'Borrador'}
-        </span>
-      </div>
 
-      <p className="text-sm text-gray-500 dark:text-white/50 line-clamp-2 mb-4">{course.short_description}</p>
+        <p className="text-xs font-medium text-gray-600 dark:text-white/60 line-clamp-2 mb-4">{course.short_description}</p>
 
-      <div className="grid grid-cols-2 gap-3 mb-4">
-        <div className="bg-gray-50 dark:bg-white/5 rounded-lg px-3 py-2">
-          <p className="text-xs text-gray-500 dark:text-white/40">Precio</p>
-          <p className="text-sm font-semibold text-gray-900 dark:text-white">
-            ${course.price?.toLocaleString('es-CO')}
-          </p>
+        <div className="grid grid-cols-2 gap-2 mb-4">
+          <div className="bg-[#85ea10]/10 rounded-lg px-3 py-2 border border-[#85ea10]/20">
+            <p className="text-[10px] font-bold text-gray-600 dark:text-white/60 uppercase tracking-wide mb-0.5">Precio</p>
+            <p className="text-sm font-black text-gray-900 dark:text-white">
+              ${course.price?.toLocaleString('es-CO')}
+            </p>
+          </div>
+          <div className="bg-[#85ea10]/10 rounded-lg px-3 py-2 border border-[#85ea10]/20">
+            <p className="text-[10px] font-bold text-gray-600 dark:text-white/60 uppercase tracking-wide mb-0.5">Duración</p>
+            <p className="text-sm font-black text-gray-900 dark:text-white">{course.duration_days} días</p>
+          </div>
+          <div className="bg-[#85ea10]/10 rounded-lg px-3 py-2 border border-[#85ea10]/20">
+            <p className="text-[10px] font-bold text-gray-600 dark:text-white/60 uppercase tracking-wide mb-0.5">Nivel</p>
+            <p className="text-sm font-black text-gray-900 dark:text-white capitalize">{course.level}</p>
+          </div>
+          <div className="bg-[#85ea10]/10 rounded-lg px-3 py-2 border border-[#85ea10]/20">
+            <p className="text-[10px] font-bold text-gray-600 dark:text-white/60 uppercase tracking-wide mb-0.5">Estudiantes</p>
+            <p className="text-sm font-black text-gray-900 dark:text-white">{course.students_count}</p>
+          </div>
         </div>
-        <div className="bg-gray-50 dark:bg-white/5 rounded-lg px-3 py-2">
-          <p className="text-xs text-gray-500 dark:text-white/40">Duración</p>
-          <p className="text-sm font-semibold text-gray-900 dark:text-white">{course.duration_days} días</p>
-        </div>
-        <div className="bg-gray-50 dark:bg-white/5 rounded-lg px-3 py-2">
-          <p className="text-xs text-gray-500 dark:text-white/40">Nivel</p>
-          <p className="text-sm font-semibold text-gray-900 dark:text-white capitalize">{course.level}</p>
-        </div>
-        <div className="bg-gray-50 dark:bg-white/5 rounded-lg px-3 py-2">
-          <p className="text-xs text-gray-500 dark:text-white/40">Estudiantes</p>
-          <p className="text-sm font-semibold text-gray-900 dark:text-white">{course.students_count}</p>
-        </div>
-      </div>
 
-      <div className="flex gap-2">
-        <button
-          onClick={onEdit}
-          className="flex-1 bg-blue-100 dark:bg-blue-500/20 hover:bg-blue-200 dark:hover:bg-blue-500/30 text-blue-600 dark:text-blue-400 px-3 py-2 rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-1.5"
-        >
-          <Edit className="w-4 h-4" />
-          Editar
-        </button>
-        <button
-          onClick={onDelete}
-          className="flex-1 bg-red-100 dark:bg-red-500/20 hover:bg-red-200 dark:hover:bg-red-500/30 text-red-600 dark:text-red-400 px-3 py-2 rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-1.5"
-        >
-          <Trash2 className="w-4 h-4" />
-          Eliminar
-        </button>
-        <button
-          onClick={onTogglePublish}
-          className={`flex-1 px-3 py-2 rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-1.5 ${
-            course.is_published
-              ? 'bg-orange-100 dark:bg-orange-500/20 hover:bg-orange-200 dark:hover:bg-orange-500/30 text-orange-600 dark:text-orange-400'
-              : 'bg-green-100 dark:bg-green-500/20 hover:bg-green-200 dark:hover:bg-green-500/30 text-green-600 dark:text-green-400'
-          }`}
-        >
-          {course.is_published ? (
-            <>
-              <X className="w-4 h-4" />
-              Ocultar
-            </>
-          ) : (
-            <>
-              <CheckCircle className="w-4 h-4" />
-              Publicar
-            </>
-          )}
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={onEdit}
+            className="flex-1 bg-[#85ea10]/10 hover:bg-[#85ea10]/20 border border-[#85ea10]/30 text-[#85ea10] px-3 py-2.5 rounded-lg text-xs font-black transition-colors flex items-center justify-center gap-1.5 uppercase tracking-tight"
+          >
+            <Edit className="w-3.5 h-3.5" />
+            Editar
+          </button>
+          <button
+            onClick={onDelete}
+            className="flex-1 bg-red-100 dark:bg-red-500/20 hover:bg-red-200 dark:hover:bg-red-500/30 border border-red-300 dark:border-red-500/30 text-red-600 dark:text-red-400 px-3 py-2.5 rounded-lg text-xs font-black transition-colors flex items-center justify-center gap-1.5 uppercase tracking-tight"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            Eliminar
+          </button>
+          <button
+            onClick={onTogglePublish}
+            className={`flex-1 px-3 py-2.5 rounded-lg text-xs font-black transition-colors flex items-center justify-center gap-1.5 uppercase tracking-tight ${
+              course.is_published
+                ? 'bg-orange-100 dark:bg-orange-500/20 hover:bg-orange-200 dark:hover:bg-orange-500/30 border border-orange-300 dark:border-orange-500/30 text-orange-600 dark:text-orange-400'
+                : 'bg-[#85ea10] hover:bg-[#7dd30f] text-black border border-[#85ea10]'
+            }`}
+          >
+            {course.is_published ? (
+              <>
+                <X className="w-3.5 h-3.5" />
+                Ocultar
+              </>
+            ) : (
+              <>
+                <CheckCircle className="w-3.5 h-3.5" />
+                Publicar
+              </>
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -2023,10 +2102,10 @@ function CourseCard({ course, onEdit, onDelete, onTogglePublish }: CourseCardPro
 
 function LoadingState({ message }: { message: string }) {
   return (
-    <div className="bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl border border-gray-200 dark:border-white/10 p-12 shadow-sm dark:shadow-none">
+    <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 p-10 shadow-lg">
       <div className="flex flex-col items-center justify-center">
-        <div className="w-12 h-12 border-4 border-[#85ea10]/30 border-t-[#85ea10] rounded-full animate-spin mb-4"></div>
-        <p className="text-gray-500 dark:text-white/60">{message}</p>
+        <div className="w-12 h-12 border-4 border-[#85ea10]/30 border-t-[#85ea10] rounded-full animate-spin mb-3"></div>
+        <p className="text-xs font-semibold text-gray-600 dark:text-white/70">{message}</p>
       </div>
     </div>
   );
@@ -2044,17 +2123,17 @@ interface EmptyStateProps {
 
 function EmptyState({ icon: Icon, title, description, action }: EmptyStateProps) {
   return (
-    <div className="bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl border border-gray-200 dark:border-white/10 p-12 shadow-sm dark:shadow-none">
+    <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 p-10 shadow-lg">
       <div className="flex flex-col items-center justify-center text-center">
-        <div className="w-16 h-16 rounded-2xl bg-gray-100 dark:bg-white/5 flex items-center justify-center mb-4">
-          <Icon className="w-8 h-8 text-gray-400 dark:text-white/30" />
+        <div className="w-16 h-16 rounded-2xl bg-[#85ea10]/10 flex items-center justify-center mb-4">
+          <Icon className="w-8 h-8 text-[#85ea10]" />
         </div>
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{title}</h3>
-        <p className="text-sm text-gray-500 dark:text-white/40 mb-6 max-w-sm">{description}</p>
+        <h3 className="text-lg font-black text-gray-900 dark:text-white mb-2 uppercase tracking-tight">{title}</h3>
+        <p className="text-xs font-medium text-gray-600 dark:text-white/60 mb-6 max-w-sm">{description}</p>
         {action && (
           <button
             onClick={action.onClick}
-            className="bg-[#85ea10] hover:bg-[#7dd30f] text-black font-semibold px-6 py-2.5 rounded-xl transition-all flex items-center gap-2"
+            className="bg-[#85ea10] hover:bg-[#7dd30f] text-black font-black px-6 py-2.5 rounded-xl transition-all flex items-center gap-2 text-sm uppercase tracking-tight shadow-lg hover:shadow-xl"
           >
             <Plus className="w-4 h-4" />
             {action.label}

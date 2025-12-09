@@ -1,10 +1,10 @@
 'use client';
 
-import { useSession } from 'next-auth/react';
+import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { Play, Clock, Users, Star, Search, User, LogOut, ChevronDown, ShoppingCart, Heart, BookOpen, Target, Zap, Utensils, ChefHat, Award, TrendingUp, Trophy, Weight, X, Info, Settings, RefreshCw, ChevronLeft, ChevronRight, Dumbbell, Sparkles } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { useEffect, useMemo, useState } from 'react';
+import { Play, Clock, Users, Star, Search, User, LogOut, ChevronDown, ShoppingCart, Heart, BookOpen, Target, Zap, Utensils, ChefHat, Award, TrendingUp, Trophy, Weight, X, Info, Settings, RefreshCw, ChevronLeft, ChevronRight, Dumbbell, Sparkles, Bell } from 'lucide-react';
+import { supabase } from '@/lib/supabase-browser';
 import { trackCourseView } from '@/lib/analytics';
 import Footer from '@/components/Footer';
 import QuickLoading from '@/components/QuickLoading';
@@ -66,13 +66,71 @@ interface Course {
 }
 
 export default function DashboardPage() {
-  const { data: session, status } = useSession();
+  const { user, profile: authProfile, loading: authLoading, signOut: handleSignOut } = useSupabaseAuth();
   const router = useRouter();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const isAdmin = useMemo(() => {
+    if (!user) return false;
+    const envId = process.env.NEXT_PUBLIC_ADMIN_USER_ID;
+    const envEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'rogerbox@admin.com'; // fallback seguro
+    const matchId = envId && user.id === envId;
+    const matchEmail = envEmail && user.email === envEmail;
+    const matchRole = user.user_metadata?.role === 'admin';
+    return Boolean(matchId || matchEmail || matchRole);
+  }, [user]);
+  const displayName = userProfile?.name || user?.email || 'RogerBox';
+  
+  // Verificar si es viernes para notificación de peso
+  const isFriday = new Date().getDay() === 5;
+  
+  // Notificaciones activas
+  const notifications = useMemo(() => {
+    const notifs: Array<{
+      id: string;
+      type: string;
+      title: string;
+      message: string;
+      icon: string;
+      action: () => void;
+      actionText: string;
+    }> = [];
+    
+    // Notificación de peso los viernes
+    if (isFriday) {
+      notifs.push({
+        id: 'weight-friday',
+        type: 'weight',
+        title: '¡Es viernes!',
+        message: 'Registra tu peso para ver tu progreso semanal',
+        icon: '⚖️',
+        action: () => setShowWeeklyWeightReminder(true),
+        actionText: 'Registrar peso'
+      });
+    }
+    
+    return notifs;
+  }, [isFriday]);
+
+  // Cerrar dropdowns al hacer clic fuera
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (showNotifications && !target.closest('[data-notifications-dropdown]')) {
+        setShowNotifications(false);
+      }
+      if (showUserMenu && !target.closest('[data-user-menu]')) {
+        setShowUserMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showNotifications, showUserMenu]);
   // Usar el hook simple para cursos
   const {
     courses: realCourses,
@@ -93,15 +151,41 @@ export default function DashboardPage() {
   console.log('📊 Dashboard: loadingCourses:', loadingCourses);
   console.log('📊 Dashboard: coursesError:', coursesError);
 
-  // Funciones de precios - usar datos directos de la BD
+  // Funciones de precios
   const calculateFinalPrice = (course: any) => {
-    // course.price ya tiene el descuento aplicado en la BD
-    return course.price || 0;
+    const price = course.price || 0;
+    const discount = course.discount_percentage || 0;
+    // Si hay descuento, price es el original y debemos calcular el final
+    if (discount > 0) {
+      return Math.round(price * (1 - discount / 100));
+    }
+    return price;
   };
 
   const calculateOriginalPrice = (course: any) => {
-    // course.original_price es el precio original sin descuento
-    return course.original_price || course.price || 0;
+    // El precio en la BD es el original (sin descuento)
+    return course.price || 0;
+  };
+
+  // Mapeo de categorías a nombres legibles
+  const categoryNames: { [key: string]: string } = {
+    'lose_weight': 'Bajar de Peso',
+    'gain_muscle': 'Ganar Músculo',
+    'flexibility': 'Flexibilidad',
+    'cardio': 'Cardio',
+    'strength': 'Fuerza',
+    'wellness': 'Bienestar',
+    'nutrition': 'Nutrición'
+  };
+
+  const getCategoryDisplayName = (course: any) => {
+    // Si ya tiene category_name del servicio, usarlo
+    if (course.category_name && !course.category_name.includes('_')) {
+      return course.category_name;
+    }
+    // Si no, mapear el código de categoría
+    const categoryCode = course.category_name || course.category || '';
+    return categoryNames[categoryCode] || categoryCode || 'General';
   };
 
 
@@ -214,12 +298,12 @@ export default function DashboardPage() {
             .order('lesson_order', { ascending: true });
 
           if (lessonsError) {
-            console.error('Error fetching lessons:', lessonsError);
+            console.log('ℹ️ Información: lessons:', lessonsError);
           } else {
             realLessons = lessonsData || [];
           }
         } catch (error) {
-          console.error('Error fetching lessons:', error);
+          console.log('ℹ️ Información: lessons:', error);
         }
       }
 
@@ -311,7 +395,7 @@ export default function DashboardPage() {
       // Si no hay próxima lección, usar la primera
       setNextLesson(nextAvailableLesson || mockLessons[0]);
     } catch (error) {
-      console.error('Error loading purchased courses:', error);
+      console.log('ℹ️ No se pudieron cargar cursos comprados (puede ser normal si no hay compras):', error);
     } finally {
       setLoadingPurchasedCourses(false);
     }
@@ -354,18 +438,25 @@ export default function DashboardPage() {
   //   loadPurchasedCourses();
   // }, []);
 
-  // Verificar si es viernes para mostrar recordatorio de peso
+  // Verificar recordatorio de peso solo cuando el perfil está cargado
   useEffect(() => {
+    if (authLoading || !userProfile) return;
+
     const today = new Date();
     const isFriday = today.getDay() === 5; // 5 = viernes
     const lastWeightReminder = localStorage.getItem('lastWeightReminder');
     const todayString = today.toDateString();
-    
-    // Mostrar recordatorio si es viernes y no se ha mostrado hoy
-    if (isFriday && lastWeightReminder !== todayString) {
+
+    // Usar la última fecha de peso registrada; si no existe, evitar mostrar de inmediato post-onboarding
+    const lastUpdateStr = userProfile.last_weight_update || userProfile.updated_at || userProfile.created_at;
+    const lastUpdate = lastUpdateStr ? new Date(lastUpdateStr) : null;
+    const daysSinceUpdate = lastUpdate ? (today.getTime() - lastUpdate.getTime()) / (1000 * 60 * 60 * 24) : Infinity;
+
+    // Mostrar recordatorio solo si es viernes, no se mostró hoy, y han pasado al menos 6 días desde el último registro
+    if (isFriday && lastWeightReminder !== todayString && daysSinceUpdate >= 6) {
       setShowWeeklyWeightReminder(true);
     }
-  }, []);
+  }, [authLoading, userProfile]);
 
   // Función para cargar blogs nutricionales
   const fetchNutritionalBlogs = async () => {
@@ -374,7 +465,7 @@ export default function DashboardPage() {
       const data = await response.json();
       setNutritionalBlogs(data.blogs || []);
     } catch (error) {
-      console.error('Error fetching nutritional blogs:', error);
+      console.log('ℹ️ Información: nutritional blogs:', error);
       setNutritionalBlogs([]);
     } finally {
       setLoadingBlogs(false);
@@ -389,25 +480,40 @@ export default function DashboardPage() {
   // Obtener datos del perfil desde Supabase
   useEffect(() => {
     const fetchUserProfile = async () => {
-      if ((session as any)?.user?.id) {
+      if (user?.id) {
         try {
-          console.log('Dashboard: Buscando perfil para ID:', (session as any).user.id);
+          console.log('Dashboard: Buscando perfil para ID:', user.id);
           
           const { data, error } = await supabase
             .from('profiles')
             .select('*')
-            .eq('id', (session as any).user.id)
+            .eq('id', user.id)
             .maybeSingle();
 
-          // Si no hay perfil o el perfil está incompleto, redirigir al onboarding
-          if (!data || !data.goals || data.goals.length === 0) {
-            console.log('Dashboard: Perfil incompleto o no encontrado, redirigiendo al onboarding');
+          // Si no hay perfil, redirigir al onboarding
+          if (!data) {
+            console.log('Dashboard: No hay perfil, redirigiendo al onboarding');
+            router.push('/onboarding');
+            return;
+          }
+          
+          // Verificar que height y weight sean números válidos
+          const hasValidHeight = typeof data.height === 'number' && data.height > 0;
+          const hasValidWeight = typeof data.weight === 'number' && data.weight > 0;
+          
+          if (!hasValidHeight || !hasValidWeight) {
+            console.log('Dashboard: Perfil incompleto', {
+              height: data.height,
+              weight: data.weight,
+              hasValidHeight,
+              hasValidWeight
+            });
             router.push('/onboarding');
             return;
           }
 
           if (error) {
-            console.error('Dashboard: Error fetching profile:', error);
+            console.error('❌ Error al cargar perfil de usuario:', error);
             setLoading(false);
             return;
           }
@@ -435,23 +541,23 @@ export default function DashboardPage() {
           
           setLoading(false);
         } catch (error) {
-          console.error('Dashboard: Error inesperado:', error);
+          console.error('❌ Error inesperado en dashboard:', error);
           setLoading(false);
         }
       }
     };
 
-    if (status === 'authenticated') {
+    if (!authLoading && user) {
       fetchUserProfile();
     }
-  }, [session, status, router]);
+  }, [user, authLoading, router]);
 
   // Redirigir si no está autenticado
   useEffect(() => {
-    if (status === 'unauthenticated') {
+    if (!authLoading && !user) {
       router.push('/');
     }
-  }, [status, router]);
+  }, [authLoading, router]);
 
   const [categories, setCategories] = useState([
     { id: 'all', name: 'Todos', icon: '🎯', color: '#85ea10' }
@@ -480,7 +586,8 @@ export default function DashboardPage() {
           }))
         ]);
       } catch (error) {
-        console.error('Error fetching categories:', error);
+        console.log('ℹ️ No se pudieron cargar categorías (puede ser normal si no hay categorías creadas):', error);
+        // No mostrar error, simplemente mantener las categorías por defecto
       }
     };
 
@@ -567,7 +674,7 @@ export default function DashboardPage() {
         .select();
 
       if (error) {
-        console.error('Error actualizando meta:', error);
+        console.error('❌ Error al actualizar meta:', error);
         throw new Error(`Error al establecer la meta: ${error.message || 'Error desconocido'}`);
       }
 
@@ -591,7 +698,7 @@ export default function DashboardPage() {
       setIsCustomizingGoal(false);
       
     } catch (error: any) {
-      console.error('Error aceptando meta:', error);
+      console.error('❌ Error al aceptar meta:', error);
       setGoalError(error.message || 'Error al establecer la meta. Inténtalo de nuevo.');
     } finally {
       setIsAcceptingGoal(false);
@@ -640,7 +747,7 @@ export default function DashboardPage() {
   // Función para manejar el envío del peso
   const handleWeightSubmit = async (weight: number) => {
     try {
-      if (!(session as any)?.user?.id) return;
+      if (!user?.id) return;
       
       const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
       
@@ -648,7 +755,7 @@ export default function DashboardPage() {
       const { error: weightRecordError } = await supabase
         .from('weight_records')
         .upsert({
-          user_id: (session as any).user.id,
+          user_id: user.id,
           weight: weight,
           record_date: today,
           updated_at: new Date().toISOString()
@@ -657,7 +764,7 @@ export default function DashboardPage() {
         });
       
       if (weightRecordError) {
-        console.error('Error guardando registro de peso:', weightRecordError);
+        console.error('❌ Error al guardar peso:', weightRecordError);
       }
       
       // Actualizar también el peso actual en el perfil
@@ -668,7 +775,7 @@ export default function DashboardPage() {
           last_weight_update: today,
           updated_at: new Date().toISOString()
         })
-        .eq('id', (session as any).user.id);
+        .eq('id', user.id);
       
       if (profileError) {
         console.error('Error actualizando perfil:', profileError);
@@ -753,18 +860,18 @@ export default function DashboardPage() {
       // Recargar la página para reflejar los cambios
       window.location.reload();
     } catch (error: any) {
-      console.error('Error actualizando meta:', error);
+      console.error('❌ Error al actualizar meta:', error);
       setGoalError(error.message || 'Error al actualizar la meta. Inténtalo de nuevo.');
     } finally {
       setGoalLoading(false);
     }
   };
 
-  if (status === 'loading' || loading) {
+  if (authLoading || loading) {
     return <QuickLoading message="Cargando tu dashboard..." duration={2000} />;
   }
 
-  if (status === 'unauthenticated') {
+  if (!user) {
     return null;
   }
 
@@ -801,8 +908,73 @@ export default function DashboardPage() {
                 <Dumbbell className="w-4 h-4 sm:w-5 sm:h-5 text-black" />
               </button>
 
+              {/* Notificaciones */}
+              <div className="relative" data-notifications-dropdown>
+                <button
+                  onClick={() => setShowNotifications(!showNotifications)}
+                  className="w-7 h-7 sm:w-8 sm:h-8 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors relative"
+                  title="Notificaciones"
+                >
+                  <Bell className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700 dark:text-gray-300" />
+                  {notifications.length > 0 && (
+                    <span className="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 bg-red-500 rounded-full flex items-center justify-center text-[10px] sm:text-xs text-white font-bold animate-pulse">
+                      {notifications.length}
+                    </span>
+                  )}
+                </button>
+
+                {/* Dropdown de notificaciones */}
+                {showNotifications && (
+                  <div className="absolute right-0 mt-2 w-72 sm:w-80 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 py-2 z-50 overflow-hidden">
+                    <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
+                      <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                        <Bell className="w-4 h-4 text-[#85ea10]" />
+                        Notificaciones
+                      </h3>
+                    </div>
+                    
+                    {notifications.length === 0 ? (
+                      <div className="px-4 py-6 text-center">
+                        <Bell className="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
+                        <p className="text-sm text-gray-500 dark:text-gray-400">No tienes notificaciones</p>
+                      </div>
+                    ) : (
+                      <div className="max-h-80 overflow-y-auto">
+                        {notifications.map((notif) => (
+                          <div
+                            key={notif.id}
+                            className="px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 border-b border-gray-100 dark:border-gray-700 last:border-0"
+                          >
+                            <div className="flex items-start gap-3">
+                              <span className="text-2xl">{notif.icon}</span>
+                              <div className="flex-1">
+                                <p className="font-semibold text-gray-900 dark:text-white text-sm">
+                                  {notif.title}
+                                </p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                  {notif.message}
+                                </p>
+                                <button
+                                  onClick={() => {
+                                    notif.action();
+                                    setShowNotifications(false);
+                                  }}
+                                  className="mt-2 text-xs font-semibold text-[#85ea10] hover:text-[#7dd30f] transition-colors"
+                                >
+                                  {notif.actionText} →
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
             {/* User Menu */}
-            <div className="relative">
+            <div className="relative" data-user-menu>
               <button
                 onClick={() => setShowUserMenu(!showUserMenu)}
                 className="flex items-center space-x-2 sm:space-x-3 text-gray-700 dark:text-white hover:text-[#85ea10] transition-colors"
@@ -811,7 +983,7 @@ export default function DashboardPage() {
                   <User className="w-4 h-4 sm:w-5 sm:h-5 text-black" />
                 </div>
                 <div className="hidden sm:block text-left">
-                  <p className="text-sm font-medium">{userProfile.name}</p>
+                  <p className="text-sm font-medium">{displayName}</p>
                 </div>
                 <ChevronDown className="w-3 h-3 sm:w-4 sm:h-4" />
               </button>
@@ -826,13 +998,13 @@ export default function DashboardPage() {
                     <User className="w-4 h-4" />
                     <span>Mi Perfil</span>
                   </a>
-                  {(session as any)?.user?.id === 'cdeaf7e0-c7fa-40a9-b6e9-288c9a677b5e' && (
+                  {isAdmin && (
                     <button
                       onClick={() => router.push('/admin')}
                       className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-gray-700 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
                     >
                       <Settings className="w-4 h-4" />
-                      <span>Admin Panel</span>
+                      <span>Panel Administrativo</span>
                     </button>
                   )}
                   <button
@@ -1028,16 +1200,29 @@ export default function DashboardPage() {
           {/* Layout de 2 columnas: Complementos e Insights */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 flex-1 min-h-0 mb-4 sm:mb-6">
             {/* COLUMNA 1: COMPLEMENTOS (STORIES) */}
-            <div className="lg:col-span-1 flex flex-col min-h-0" data-section="complementos" id="complementos">
+            <div className="lg:col-span-1 flex flex-col min-h-[400px] sm:min-h-[500px] lg:min-h-[600px]" data-section="complementos" id="complementos">
               <StoriesSection courseStartDate={purchases.find((p: any) => p.start_date)?.start_date || null} />
-              </div>
+            </div>
 
             {/* COLUMNA 2: INSIGHTS */}
             <div className="lg:col-span-1 flex flex-col min-h-0">
-              <InsightsSection 
-                userProfile={userProfile} 
-                completedLessons={purchases.flatMap((p: any) => p.completed_lessons || [])}
-              />
+              {(() => {
+                // Obtener el purchase principal (con clase disponible o el más reciente)
+                const effectivePurchase = purchases.find((p: any) => p.start_date) || purchases[0];
+                const courseWithLessons = effectivePurchase?.course ? {
+                  ...effectivePurchase.course,
+                  lessons: effectivePurchase.course.lessons || []
+                } : null;
+                
+                return (
+                  <InsightsSection 
+                    userProfile={userProfile} 
+                    completedLessons={purchases.flatMap((p: any) => p.completed_lessons || [])}
+                    courseWithLessons={courseWithLessons}
+                    effectivePurchase={effectivePurchase}
+                  />
+                );
+              })()}
             </div>
           </div>
         </div>
@@ -1187,12 +1372,6 @@ export default function DashboardPage() {
                       </div>
                         </div>
                           </div>
-                          <div className="flex items-center justify-center space-x-2 p-2 bg-gray-400/10 rounded-lg">
-                            <Zap className="w-3 h-3 md:w-4 md:h-4 text-gray-400 dark:text-gray-600 flex-shrink-0" />
-                            <span className="text-xs md:text-sm font-semibold text-gray-400 dark:text-gray-600">
-                              ¡Sin límites! Para todos los niveles
-                            </span>
-                      </div>
                     </div>
                         <div className="pt-3 border-t border-gray-200 dark:border-gray-700 mt-auto md:mt-0">
                           <div className="flex items-center justify-center flex-wrap gap-2 mb-3">
@@ -1235,7 +1414,7 @@ export default function DashboardPage() {
                           console.log('🖱️ Dashboard card clicked:', course.title);
                       router.push(`/course/${course.slug || course.id}`);
                   }}
-                        className="flex flex-col md:flex-row bg-gray-100 dark:bg-gray-800 hover:shadow-xl hover:shadow-[#85ea10]/5 transition-all duration-150 rounded-2xl cursor-pointer w-full overflow-hidden h-auto md:h-full"
+                        className="flex flex-col md:flex-row bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl hover:shadow-[#85ea10]/10 hover:border-[#85ea10]/30 transition-all duration-200 rounded-2xl cursor-pointer w-full overflow-hidden h-auto md:h-full"
                 >
                         {/* IMAGEN - Vertical en mobile, horizontal en desktop */}
                         <div className="w-full md:w-[320px] h-[200px] sm:h-[250px] md:h-full flex-shrink-0 relative">
@@ -1285,65 +1464,47 @@ export default function DashboardPage() {
                             </p>
                             <div className="flex justify-center w-full">
                               <span className="inline-flex items-center justify-center px-3 py-1.5 rounded-full text-sm font-medium bg-[#85ea10] text-black">
-                          {course.category_name || 'Sin categoría'}
+                          {getCategoryDisplayName(course)}
                         </span>
                       </div>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                              <div className="flex items-center justify-center space-x-2">
-                                <Play className="w-4 h-4 text-[#85ea10] flex-shrink-0" />
-                                <div className="flex flex-col items-center">
-                                  <div className="text-xs text-gray-500 dark:text-white/60 mb-0.5">Clases</div>
-                                  <div className="text-sm font-semibold text-gray-900 dark:text-white">{course.lessons_count || 1}</div>
-                                </div>
+                            <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 mb-4">
+                              <div className="flex items-center gap-1.5">
+                                <Play className="w-4 h-4 text-[#85ea10]" />
+                                <span className="text-sm text-gray-600 dark:text-white/80">{course.lessons_count || 0} clases</span>
                               </div>
-                              <div className="flex items-center justify-center space-x-2">
-                                <Clock className="w-4 h-4 text-[#85ea10] flex-shrink-0" />
-                                <div className="flex flex-col items-center">
-                                  <div className="text-xs text-gray-500 dark:text-white/60 mb-0.5">Duración</div>
-                                  <div className="text-sm font-semibold text-gray-900 dark:text-white">{course.duration || '30 min'}</div>
-                                </div>
+                              <div className="flex items-center gap-1.5">
+                                <Clock className="w-4 h-4 text-[#85ea10]" />
+                                <span className="text-sm text-gray-600 dark:text-white/80">{course.duration || '8 semanas'}</span>
                               </div>
-                              <div className="flex items-center justify-center space-x-2">
-                                <Users className="w-4 h-4 text-[#85ea10] flex-shrink-0" />
-                                <div className="flex flex-col items-center">
-                                  <div className="text-xs text-gray-500 dark:text-white/60 mb-0.5">Estudiantes</div>
-                                  <div className="text-sm font-semibold text-gray-900 dark:text-white">{course.students_count || 0}</div>
-                                </div>
+                              <div className="flex items-center gap-1.5">
+                                <Users className="w-4 h-4 text-[#85ea10]" />
+                                <span className="text-sm text-gray-600 dark:text-white/80">{course.students_count || 0} estudiantes</span>
                               </div>
-                              <div className="flex items-center justify-center space-x-2">
-                                <Zap className="w-4 h-4 text-[#85ea10] flex-shrink-0" />
-                                <div className="flex flex-col items-center">
-                                  <div className="text-xs text-gray-500 dark:text-white/60 mb-0.5">Nivel</div>
-                                  <div className="text-sm font-semibold text-gray-900 dark:text-white">{course.level || 'Intermedio'}</div>
-                                </div>
+                              <div className="flex items-center gap-1.5">
+                                <Zap className="w-4 h-4 text-[#85ea10]" />
+                                <span className="text-sm text-gray-600 dark:text-white/80">{course.level || 'Todos'}</span>
                               </div>
                             </div>
-                            <div className="flex items-center justify-center space-x-2 p-2 bg-[#85ea10]/10 rounded-lg">
-                              <Zap className="w-3 h-3 md:w-4 md:h-4 text-[#85ea10] flex-shrink-0" />
-                              <span className="text-xs md:text-sm font-semibold text-gray-900 dark:text-white">
-                          ¡Sin límites! Para todos los niveles
-                        </span>
                       </div>
-                      </div>
-                          <div className="pt-3 border-t border-gray-200 dark:border-gray-700 mt-auto md:mt-0">
+                          <div className="pt-4 border-t border-gray-200 dark:border-gray-700 mt-auto md:mt-0">
                             <div className="flex items-center justify-center flex-wrap gap-2 mb-3">
-                              {course.original_price ? (
+                              {course.discount_percentage > 0 ? (
                                 <>
                                   <span className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
-                                ${calculateFinalPrice(course).toLocaleString('es-CO')}
-                              </span>
+                                    ${calculateFinalPrice(course).toLocaleString('es-CO')}
+                                  </span>
                                   <span className="text-lg md:text-xl text-gray-500 dark:text-white/50 line-through">
-                                    ${course.original_price?.toLocaleString('es-CO')}
+                                    ${calculateOriginalPrice(course).toLocaleString('es-CO')}
                                   </span>
                                   <span className="text-xs md:text-sm text-[#85ea10] font-bold bg-[#85ea10]/10 px-2 py-1 rounded-lg">
                                     {course.discount_percentage}% de descuento
-                              </span>
-                            </>
-                          ) : (
+                                  </span>
+                                </>
+                              ) : (
                                 <span className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
-                              ${calculateFinalPrice(course).toLocaleString('es-CO')}
-                            </span>
-                          )}
+                                  ${calculateFinalPrice(course).toLocaleString('es-CO')}
+                                </span>
+                              )}
                         </div>
                       <button
                       onClick={async (e) => {
@@ -1441,12 +1602,6 @@ export default function DashboardPage() {
                           </div>
                         </div>
                       </div>
-                          <div className="flex items-center justify-center space-x-2 p-2 bg-gray-400/10 rounded-lg">
-                            <Zap className="w-3 h-3 md:w-4 md:h-4 text-gray-400 dark:text-gray-600 flex-shrink-0" />
-                            <span className="text-xs md:text-sm font-semibold text-gray-400 dark:text-gray-600">
-                              ¡Sin límites! Para todos los niveles
-                            </span>
-                        </div>
                           </div>
                         <div className="pt-3 border-t border-gray-200 dark:border-gray-700 mt-auto md:mt-0">
                           <div className="flex items-center justify-center flex-wrap gap-2 mb-3">

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { signOut } from 'next-auth/react';
+import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 import { Play, Clock, Users, Star, Filter, Search, ArrowRight, Trophy, Target, Zap, Utensils, BookOpen, ChefHat, User, LogOut, ChevronDown, Settings, Bookmark } from 'lucide-react';
 // ComplementSection removed - focusing on courses only
 
@@ -36,6 +36,7 @@ interface CourseDashboardProps {
 
 export default function CourseDashboard({ userProfile }: CourseDashboardProps) {
   const router = useRouter();
+  const { signOut: handleSignOut } = useSupabaseAuth();
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -55,7 +56,7 @@ export default function CourseDashboard({ userProfile }: CourseDashboardProps) {
 
   const handleLogout = async () => {
     try {
-      await signOut({ redirect: false });
+      await handleSignOut();
       router.push('/');
     } catch (error) {
       console.error('Error signing out:', error);

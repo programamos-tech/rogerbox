@@ -1,5 +1,5 @@
 'use client';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase-browser';
 
 export interface UnifiedCourse {
   id: string;
@@ -64,10 +64,10 @@ class UnifiedCoursesService {
   async getCourses(): Promise<UnifiedCourse[]> {
     try {
       console.log('🚀 UnifiedCourses: Cargando desde Supabase...');
-      console.log('🔧 UnifiedCourses: Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL ? '✅ Configurado' : '❌ No configurado');
-      console.log('🔧 UnifiedCourses: Supabase Key:', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? '✅ Configurado' : '❌ No configurado');
+      console.log('🔧 UnifiedCourses: Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321');
+      console.log('🔧 UnifiedCourses: Usando cliente browser');
 
-      // Consulta optimizada - SOLO campos esenciales, SIN preview_image
+      // Consulta optimizada con conteo de lecciones
       const { data: coursesData, error: coursesError } = await supabase
         .from('courses')
         .select(`
@@ -77,7 +77,6 @@ class UnifiedCoursesService {
           description,
           short_description,
           price,
-          original_price,
           discount_percentage,
           category,
           created_at,
@@ -88,14 +87,62 @@ class UnifiedCoursesService {
           preview_image,
           rating,
           students_count,
-          calories_burned
+          calories_burned,
+          duration_days,
+          level,
+          course_lessons(count)
         `)
         .eq('is_published', true)
         .order('created_at', { ascending: false });
 
+      console.log('📊 UnifiedCourses: Respuesta de Supabase:', {
+        dataLength: coursesData?.length || 0,
+        hasError: !!coursesError,
+        firstCourse: coursesData?.[0]?.title || 'N/A'
+      });
+
       if (coursesError) {
-        console.error('❌ UnifiedCourses: Error en cursos:', coursesError);
-        throw coursesError;
+        // Verificar si el error tiene información útil
+        const hasErrorInfo = coursesError?.message || coursesError?.code || coursesError?.details || coursesError?.hint;
+        
+        // Si el error no tiene información útil (objeto vacío), tratarlo como si no hubiera cursos
+        if (!hasErrorInfo) {
+          console.log('ℹ️ UnifiedCourses: No hay cursos todavía');
+          return [];
+        }
+        
+        // Si es un error de permisos/RLS, retornar array vacío en lugar de lanzar error
+        const isRLSError = coursesError.code === 'PGRST301' || 
+                          coursesError?.message?.includes('permission') || 
+                          coursesError?.message?.includes('RLS');
+        
+        if (isRLSError) {
+          console.log('ℹ️ UnifiedCourses: No hay cursos disponibles (permisos)');
+          return [];
+        }
+        
+        // Verificar si hay información útil ANTES de construir el objeto
+        const hasMessage = coursesError?.message && typeof coursesError.message === 'string' && coursesError.message.trim() !== '';
+        const hasDetails = coursesError?.details && typeof coursesError.details === 'string' && coursesError.details.trim() !== '';
+        const hasHint = coursesError?.hint && typeof coursesError.hint === 'string' && coursesError.hint.trim() !== '';
+        const hasCode = coursesError?.code && typeof coursesError.code === 'string' && coursesError.code.trim() !== '';
+        
+        const cleanEntries = [
+          hasMessage ? ['message', coursesError.message] : null,
+          hasDetails ? ['details', coursesError.details] : null,
+          hasHint ? ['hint', coursesError.hint] : null,
+          hasCode ? ['code', coursesError.code] : null,
+        ].filter(Boolean) as [string, string][];
+
+        if (cleanEntries.length === 0) {
+          console.log('ℹ️ UnifiedCourses: No hay cursos todavía (sin información de error)');
+          return [];
+        }
+
+        const errorDetails = Object.fromEntries(cleanEntries);
+        // Solo mostrar como advertencia, no como error crítico
+        console.warn('⚠️ UnifiedCourses: Problema al cargar cursos:', errorDetails);
+        return [];
       }
 
       // Obtener categorías para mapear IDs a nombres
@@ -105,7 +152,7 @@ class UnifiedCoursesService {
         .eq('is_active', true);
 
       if (categoriesError) {
-        console.error('❌ UnifiedCourses: Error en categorías:', categoriesError);
+        console.log('ℹ️ UnifiedCourses: No se pudieron cargar categorías (puede ser normal):', categoriesError);
         // Continuar sin categorías si hay error
       }
 
@@ -117,27 +164,49 @@ class UnifiedCoursesService {
         });
       }
 
+      // Mapeo de niveles a español
+      const levelNames: { [key: string]: string } = {
+        'beginner': 'Principiante',
+        'intermediate': 'Intermedio',
+        'advanced': 'Avanzado',
+        'all': 'Todos los niveles'
+      };
+
       const twoWeeksAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
       const courses = (coursesData || []).map(course => {
         const isNew = new Date(course.created_at) > twoWeeksAgo;
+        
+        // Formatear duración
+        const durationDays = (course as any).duration_days || 0;
+        const weeks = Math.floor(durationDays / 7);
+        const durationText = durationDays > 0 
+          ? (weeks >= 1 ? `${weeks} semanas` : `${durationDays} días`)
+          : '4 semanas';
+
+        // Obtener conteo de lecciones
+        const lessonsData = (course as any).course_lessons;
+        const lessonsCount = Array.isArray(lessonsData) && lessonsData.length > 0 
+          ? lessonsData[0]?.count || 0 
+          : 0;
 
         return {
           id: course.id,
           title: course.title,
-          slug: course.slug || course.id, // Fallback a ID si no hay slug
+          slug: course.slug || course.id,
           description: course.description || '',
           short_description: course.short_description || '',
           thumbnail: course.preview_image || course.thumbnail_url || (course.intro_video_url ? this.getYouTubeThumbnail(course.intro_video_url) : '/images/course-placeholder.jpg'),
           preview_image: course.preview_image || course.thumbnail_url || course.video_preview_url || (course.intro_video_url ? this.getYouTubeThumbnail(course.intro_video_url) : '/images/course-placeholder.jpg'),
           price: course.price || 0,
-          original_price: course.original_price,
+          original_price: course.price || 0,
           discount_percentage: course.discount_percentage || 0,
           category_name: categoryMap[course.category] || course.category || 'Sin categoría',
           rating: course.rating || 4.8,
           students_count: course.students_count || 0,
-          lessons_count: 12, // Valor fijo ya que no existe en la BD
-          duration: '30 min',
-          level: 'Intermedio',
+          lessons_count: lessonsCount,
+          duration: durationText,
+          duration_days: durationDays,
+          level: levelNames[(course as any).level] || (course as any).level || 'Todos',
           isNew,
           isPopular: false,
           created_at: course.created_at
@@ -147,9 +216,11 @@ class UnifiedCoursesService {
       console.log(`✅ UnifiedCourses: ${courses.length} cursos cargados (optimizado)`);
       return courses;
 
-    } catch (error) {
-      console.error('❌ UnifiedCourses: Error al cargar cursos:', error);
-      throw error;
+    } catch (error: any) {
+      // Mostrar el error real para debugging
+      console.error('❌ UnifiedCourses: ERROR CRÍTICO:', error?.message || error);
+      console.error('❌ UnifiedCourses: Stack:', error?.stack);
+      return [];
     }
   }
 

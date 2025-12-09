@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
+import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useRouter } from 'next/navigation';
 import { Play, Clock, Users, Star, Filter, Search, ShoppingCart, Heart, Zap, Target, Utensils, BookOpen, ChefHat, User, LogOut, ChevronDown, Settings, Bookmark, Calendar, Award, TrendingUp } from 'lucide-react';
 import SimpleLoading from '@/components/SimpleLoading';
@@ -215,7 +215,7 @@ const categories = [
 ];
 
 export default function HomePage() {
-  const { data: session, status } = useSession();
+  const { user, profile, loading: authLoading } = useSupabaseAuth();
   const router = useRouter();
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -224,7 +224,7 @@ export default function HomePage() {
 
   // Redirigir si ya está autenticado
   useEffect(() => {
-    if (status === 'authenticated') {
+    if (!!user) {
       router.push('/dashboard');
     }
   }, [status, router]);
@@ -256,11 +256,11 @@ export default function HomePage() {
     }
   });
 
-  if (status === 'loading') {
+  if (loading) {
     return <SimpleLoading />;
   }
 
-  if (status === 'authenticated') {
+  if (!!user) {
     return <SimpleLoading />;
   }
 

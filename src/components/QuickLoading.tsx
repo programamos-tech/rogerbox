@@ -4,13 +4,12 @@ import { useState, useEffect } from 'react';
 
 interface QuickLoadingProps {
   message?: string;
-  duration?: number; // en milisegundos
+  duration?: number;
   onComplete?: () => void;
 }
 
 export default function QuickLoading({ 
-  message = "Cargando...", 
-  duration = 3000,
+  duration = 4500,
   onComplete
 }: QuickLoadingProps) {
   const [isVisible, setIsVisible] = useState(true);
@@ -29,32 +28,28 @@ export default function QuickLoading({
   if (!isVisible) return null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
-      <div className="text-center">
-        {/* Logo con efecto de pulso */}
-        <div className="mb-12">
-          <div className="relative">
-            {/* Efecto de resplandor sutil */}
-            <div className="absolute inset-0 bg-[#85ea10]/20 blur-2xl rounded-full scale-110 animate-pulse"></div>
-            
-            {/* Logo principal */}
-            <h1 className="relative text-4xl md:text-5xl font-black text-gray-900 dark:text-white tracking-tight animate-pulse uppercase">
-              <span className="font-black">ROGER<span className="text-[#85ea10]">BOX</span></span>
-            </h1>
-          </div>
-        </div>
+    <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center">
+      <div className="flex flex-col items-center">
+        {/* Logo pequeño y minimalista */}
+        <h1 className="text-lg font-black text-gray-900 dark:text-white tracking-tight mb-4">
+          ROGER<span className="text-[#85ea10]">BOX</span>
+        </h1>
 
-        {/* Dots animados */}
-        <div className="flex justify-center space-x-3 mb-8">
-          <div className="w-3 h-3 bg-[#85ea10] rounded-full animate-bounce"></div>
-          <div className="w-3 h-3 bg-[#85ea10] rounded-full animate-bounce delay-200"></div>
-          <div className="w-3 h-3 bg-[#85ea10] rounded-full animate-bounce delay-400"></div>
+        {/* 3 puntitos cute animados */}
+        <div className="flex justify-center space-x-1">
+          <div 
+            className="w-1.5 h-1.5 bg-[#85ea10] rounded-full animate-pulse"
+            style={{ animationDelay: '0ms', animationDuration: '600ms' }}
+          />
+          <div 
+            className="w-1.5 h-1.5 bg-[#85ea10] rounded-full animate-pulse"
+            style={{ animationDelay: '200ms', animationDuration: '600ms' }}
+          />
+          <div 
+            className="w-1.5 h-1.5 bg-[#85ea10] rounded-full animate-pulse"
+            style={{ animationDelay: '400ms', animationDuration: '600ms' }}
+          />
         </div>
-
-        {/* Mensaje con efecto de escritura */}
-        <p className="text-gray-600 dark:text-white/80 text-xl font-medium animate-pulse">
-          {message}
-        </p>
       </div>
     </div>
   );

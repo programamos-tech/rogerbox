@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
-import { supabase } from '@/lib/supabase';
+import { getSession, createClient } from '@/lib/supabase-server';
 import { wompiService } from '@/lib/wompi';
 import crypto from 'crypto';
 
@@ -16,13 +14,17 @@ interface BuyerData {
 export async function POST(request: NextRequest) {
   try {
     // MANDATORY: Verificar autenticación - NO permitir compra como invitado
-    const session = await getServerSession(authOptions);
+    const { session } = await getSession();
+
     const userId = session?.user?.id;
 
     if (!userId) {
       console.warn('⚠️ Intento de compra sin autenticación - RECHAZADO');
       return NextResponse.json({ error: 'Debe iniciar sesión para realizar una compra' }, { status: 401 });
     }
+
+    // Crear cliente de Supabase con el contexto del usuario autenticado
+    const supabase = await createClient();
 
     const body = await request.json();
     const { courseId, amount, originalPrice, discountAmount, customerEmail, customerName, buyerData } = body;
@@ -64,9 +66,7 @@ export async function POST(request: NextRequest) {
       const { error: profileError } = await supabase
         .from('profiles')
         .update({
-          first_name: firstName,
-          last_name: lastName,
-          name: `${firstName} ${lastName}`, // Mantener compatibilidad con campo name
+          name: `${firstName} ${lastName}`.trim(),
           document_id: documentId,
           document_type: documentType || 'CC',
           address: address,

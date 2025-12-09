@@ -27,6 +27,17 @@ const nextConfig: NextConfig = {
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
     minimumCacheTTL: 60,
   },
+  // Configuraciones para estabilizar Next.js 15 en desarrollo
+  experimental: {
+    optimizePackageImports: ['@supabase/supabase-js', '@supabase/ssr'],
+  },
+  // Desactivar cache en desarrollo para evitar problemas de manifest
+  ...(process.env.NODE_ENV === 'development' && {
+    webpack: (config: any) => {
+      config.cache = false;
+      return config;
+    },
+  }),
 };
 
 export default nextConfig;

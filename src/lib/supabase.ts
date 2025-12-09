@@ -1,24 +1,53 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://localhost-placeholder';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'anon-key-placeholder';
-// Use non-public service role key name; never expose this in NEXT_PUBLIC vars
-const supabaseServiceKey = process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY || 'service-key-placeholder';
+// Fallbacks seguros para entorno local Supabase (dev services corriendo en 127.0.0.1:54321)
+const localSupabaseUrl = 'http://127.0.0.1:54321';
+// Clave pública por defecto de Supabase local (solo para desarrollo)
+const localAnonKey =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.'
+  + 'eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.'
+  + 'CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || localSupabaseUrl;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || localAnonKey;
+// Preferir la clave segura (no pública); fallback solo si está definida la pública
+// Para Supabase local, usar la service_role key por defecto
+const localServiceKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU';
+const supabaseServiceKey =
+  process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY ||
+  (supabaseUrl === localSupabaseUrl ? localServiceKey : 'service-key-placeholder');
 
 // Verificar que las variables estén cargadas
 if (
   !process.env.NEXT_PUBLIC_SUPABASE_URL ||
   !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-  !process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY
+  !(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY)
 ) {
   console.warn('⚠️ Missing Supabase environment variables. Using placeholders for build.');
-  console.warn('Set NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY');
+  console.warn('Set NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY (o NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY)');
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 // Cliente con SERVICE_ROLE_KEY para operaciones de escritura
-export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
+// IMPORTANTE: Usar auth: { persistSession: false } para evitar conflictos con sesiones
+export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+  auth: {
+    persistSession: false,
+    autoRefreshToken: false,
+  }
+})
+
+// Log para debugging en desarrollo
+if (process.env.NODE_ENV === 'development') {
+  console.log('🔧 Supabase Admin configurado:', {
+    url: supabaseUrl,
+    hasServiceKey: supabaseServiceKey !== 'service-key-placeholder',
+    serviceKeyLength: supabaseServiceKey?.length || 0,
+    isLocal: supabaseUrl.includes('127.0.0.1') || supabaseUrl.includes('localhost')
+  });
+}
 
 // Tipos para TypeScript
 export type Database = {

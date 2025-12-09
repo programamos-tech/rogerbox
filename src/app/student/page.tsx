@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
-import { useSession } from 'next-auth/react';
+import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { 
@@ -25,7 +25,7 @@ import Footer from '@/components/Footer';
 import Hls from 'hls.js';
 
 function StudentPageContent() {
-  const { data: session } = useSession();
+  const { user } = useSupabaseAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { purchases, loading: purchasesLoading } = useUserPurchases();
@@ -100,7 +100,7 @@ function StudentPageContent() {
 
     // Cargar perfil de forma asíncrona sin bloquear
     loadUserProfile();
-  }, [session]);
+  }, [user]);
 
   // Cargar curso con lecciones
   useEffect(() => {
@@ -409,83 +409,50 @@ function StudentPageContent() {
       return;
     }
 
-    const purchaseId = effectivePurchase.id;
-    if (!purchaseId) {
-      console.error('❌ Error: effectivePurchase no tiene id válido');
+    const courseId = effectivePurchase.course_id;
+    if (!courseId) {
+      console.error('❌ Error: effectivePurchase no tiene course_id válido');
       return;
     }
 
     try {
-      // Obtener las lecciones completadas actuales
-      const { data: purchase, error: fetchError } = await supabase
-        .from('course_purchases')
-        .select('completed_lessons')
-        .eq('id', purchaseId)
-        .single();
+      // Llamar a la API para marcar la lección como completada
+      const response = await fetch('/api/lessons/complete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          lesson_id: lessonId,
+          course_id: courseId,
+          duration_watched: currentLesson?.duration_minutes || 0
+        })
+      });
 
-      if (fetchError) {
-        console.error('❌ Error obteniendo compra:', {
-          message: fetchError.message,
-          details: fetchError.details,
-          hint: fetchError.hint,
-          code: fetchError.code,
-          purchaseId
-        });
-        // Intentar usar el estado actual de effectivePurchase como fallback
-        const currentCompleted = effectivePurchase.completed_lessons || [];
-        if (!currentCompleted.includes(lessonId)) {
-          const updatedCompletedLessons = [...currentCompleted, lessonId];
-          setCompletedLessonsList(updatedCompletedLessons);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
+        console.error('❌ Error marcando lección completada:', errorData);
+        // Aún así actualizar el estado local para feedback inmediato
+        if (!completedLessonsList.includes(lessonId)) {
+          setCompletedLessonsList(prev => [...prev, lessonId]);
         }
         return;
       }
 
-      const completedLessons = purchase?.completed_lessons || [];
-      
-      // Si la lección ya está completada, no hacer nada
-      if (completedLessons.includes(lessonId)) {
-        console.log('✅ Lección ya estaba marcada como completada');
-        // Aún así actualizar el estado local
-        setCompletedLessonsList(completedLessons);
-        return;
+      console.log('✅ Lección marcada como completada:', lessonId);
+      // Actualizar el estado local inmediatamente
+      if (!completedLessonsList.includes(lessonId)) {
+        setCompletedLessonsList(prev => [...prev, lessonId]);
       }
-
-      // Agregar la lección a la lista de completadas
-      const updatedCompletedLessons = [...completedLessons, lessonId];
-
-      // Actualizar en la base de datos
-      const { error: updateError } = await supabase
-        .from('course_purchases')
-        .update({ completed_lessons: updatedCompletedLessons })
-        .eq('id', purchaseId);
-
-      if (updateError) {
-        console.error('❌ Error actualizando lección completada:', {
-          message: updateError.message,
-          details: updateError.details,
-          hint: updateError.hint,
-          code: updateError.code,
-          purchaseId
-        });
-        // Aún así actualizar el estado local para feedback inmediato
-        setCompletedLessonsList(updatedCompletedLessons);
-      } else {
-        console.log('✅ Lección marcada como completada:', lessonId);
-        // Actualizar el estado local inmediatamente
-        setCompletedLessonsList(updatedCompletedLessons);
-      }
-      } catch (error: any) {
+    } catch (error: any) {
       console.error('❌ Error al marcar lección como completada:', {
         error: error?.message || error,
-        stack: error?.stack,
         lessonId,
-        purchaseId
+        courseId
       });
-      // Intentar actualizar el estado local como fallback
-      const currentCompleted = effectivePurchase.completed_lessons || [];
-      if (!currentCompleted.includes(lessonId)) {
-        const updatedCompletedLessons = [...currentCompleted, lessonId];
-        setCompletedLessonsList(updatedCompletedLessons);
+      // Actualizar el estado local como fallback
+      if (!completedLessonsList.includes(lessonId)) {
+        setCompletedLessonsList(prev => [...prev, lessonId]);
       }
     }
   };

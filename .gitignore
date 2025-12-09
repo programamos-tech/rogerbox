@@ -45,3 +45,20 @@ next-env.d.ts
 
 # Supabase local development
 supabase/
+
+# Archivos temporales y de respaldo
+*.bak
+*-old.*
+*-new.*
+*-backup.*
+*.tmp
+
+# Scripts temporales
+fix-*.sh
+update-*.sh
+*-migration.sh
+
+# Documentación temporal
+*MIGRATION*.md
+*SETUP*.md
+*INTEGRATION*.md

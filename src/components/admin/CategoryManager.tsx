@@ -49,13 +49,10 @@ export default function CategoryManager({ onClose, onCategorySelect }: CategoryM
 
   const fetchCategories = async () => {
     try {
-      const { data, error } = await supabase
-        .from('course_categories')
-        .select('*')
-        .order('sort_order', { ascending: true });
-
-      if (error) throw error;
-      setCategories(data || []);
+      const res = await fetch('/api/admin/categories');
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'No se pudieron cargar categorías');
+      setCategories(data.categories || []);
     } catch (error) {
       console.error('Error fetching categories:', error);
     } finally {
@@ -67,31 +64,34 @@ export default function CategoryManager({ onClose, onCategorySelect }: CategoryM
     try {
       if (editingCategory) {
         // Actualizar categoría existente
-        const { error } = await supabase
-          .from('course_categories')
-          .update({
+        const res = await fetch('/api/admin/categories', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: editingCategory.id,
             name: formData.name,
             description: formData.description,
             icon: formData.icon,
             color: formData.color,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', editingCategory.id);
-
-        if (error) throw error;
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'No se pudo actualizar');
       } else {
         // Crear nueva categoría
-        const { error } = await supabase
-          .from('course_categories')
-          .insert([{
+        const res = await fetch('/api/admin/categories', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
             name: formData.name,
             description: formData.description,
             icon: formData.icon,
             color: formData.color,
-            sort_order: categories.length
-          }]);
-
-        if (error) throw error;
+            sort_order: categories.length,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'No se pudo crear');
       }
 
       setEditingCategory(null);
@@ -119,12 +119,9 @@ export default function CategoryManager({ onClose, onCategorySelect }: CategoryM
     if (!confirm('¿Estás seguro de que quieres eliminar esta categoría?')) return;
 
     try {
-      const { error } = await supabase
-        .from('course_categories')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
+      const res = await fetch(`/api/admin/categories?id=${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'No se pudo eliminar');
       fetchCategories();
     } catch (error) {
       console.error('Error deleting category:', error);
@@ -134,12 +131,16 @@ export default function CategoryManager({ onClose, onCategorySelect }: CategoryM
 
   const handleToggleActive = async (category: Category) => {
     try {
-      const { error } = await supabase
-        .from('course_categories')
-        .update({ is_active: !category.is_active })
-        .eq('id', category.id);
-
-      if (error) throw error;
+      const res = await fetch('/api/admin/categories', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: category.id,
+          is_active: !category.is_active,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'No se pudo actualizar');
       fetchCategories();
     } catch (error) {
       console.error('Error toggling category:', error);

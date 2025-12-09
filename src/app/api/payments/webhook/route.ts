@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase';
 import { wompiService, WompiWebhookData } from '@/lib/wompi';
 
 export async function POST(request: NextRequest) {
@@ -49,8 +49,8 @@ export async function POST(request: NextRequest) {
       reference: transaction.reference
     });
 
-    // Buscar la orden por referencia
-    const { data: order, error: orderError } = await supabase
+    // Buscar la orden por referencia (usando admin para bypass RLS)
+    const { data: order, error: orderError } = await supabaseAdmin
       .from('orders')
       .select('*')
       .eq('wompi_reference', transaction.reference)
@@ -64,8 +64,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Crear o actualizar transacción en wompi_transactions (UPSERT)
-    const { error: transactionError } = await supabase
+    // Crear o actualizar transacción en wompi_transactions (UPSERT usando admin)
+    const { error: transactionError } = await supabaseAdmin
       .from('wompi_transactions')
       .upsert({
         wompi_transaction_id: transaction.id,
@@ -146,8 +146,8 @@ async function handleApprovedPayment(order: any, transaction: any) {
   try {
     console.log('✅ Processing approved payment for order:', order.id);
 
-    // Actualizar estado de la orden
-    const { error: orderUpdateError } = await supabase
+    // Actualizar estado de la orden (usando admin para bypass RLS)
+    const { error: orderUpdateError } = await supabaseAdmin
       .from('orders')
       .update({
         status: 'approved',
@@ -161,22 +161,22 @@ async function handleApprovedPayment(order: any, transaction: any) {
       return;
     }
 
-    // Verificar si ya existe una compra activa
-    const { data: existingPurchase } = await supabase
+    // Verificar si ya existe una compra activa (usando admin para bypass RLS)
+    const { data: existingPurchase } = await supabaseAdmin
       .from('course_purchases')
       .select('id')
       .eq('user_id', order.user_id)
       .eq('course_id', order.course_id)
       .eq('is_active', true)
-      .single();
+      .maybeSingle();
 
     if (existingPurchase) {
       console.log('ℹ️ Purchase already exists for this user and course');
       return;
     }
 
-    // Crear compra del curso
-    const { error: purchaseError } = await supabase
+    // Crear compra del curso (usando admin para bypass RLS)
+    const { error: purchaseError } = await supabaseAdmin
       .from('course_purchases')
       .insert({
         user_id: order.user_id,
@@ -192,8 +192,8 @@ async function handleApprovedPayment(order: any, transaction: any) {
       return;
     }
 
-    // Actualizar contador de estudiantes del curso
-    const { error: courseUpdateError } = await supabase.rpc('increment_course_students', {
+    // Actualizar contador de estudiantes del curso (usando admin)
+    const { error: courseUpdateError } = await supabaseAdmin.rpc('increment_course_students', {
       course_id: order.course_id
     });
 
@@ -212,7 +212,7 @@ async function handleDeclinedPayment(order: any, transaction: any) {
   try {
     console.log('❌ Processing declined payment for order:', order.id);
 
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
       .from('orders')
       .update({
         status: 'declined',
@@ -233,7 +233,7 @@ async function handleErrorPayment(order: any, transaction: any) {
   try {
     console.log('⚠️ Processing error payment for order:', order.id);
 
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
       .from('orders')
       .update({
         status: 'error',

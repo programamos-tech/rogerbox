@@ -1,6 +1,6 @@
 'use client';
 
-import { useSession } from 'next-auth/react';
+import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { User, Mail, Weight, Ruler, Target, Trophy, Calendar, Edit, ArrowLeft, X, Eye, EyeOff, Bookmark, Play, FileText, Heart, LogOut, ChevronDown, Utensils } from 'lucide-react';
@@ -26,7 +26,7 @@ interface UserProfile {
 }
 
 export default function ProfilePage() {
-  const { data: session, status } = useSession();
+  const { user, profile, loading: authLoading } = useSupabaseAuth();
   const router = useRouter();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -132,10 +132,10 @@ export default function ProfilePage() {
       }
     };
 
-    if (status === 'authenticated') {
+    if (!!user) {
       fetchUserProfile();
       fetchFavorites();
-    } else if (status === 'unauthenticated') {
+    } else if (!loading && !user) {
       router.push('/');
     }
   }, [session, status, router]);
@@ -331,11 +331,11 @@ export default function ProfilePage() {
     'strength': 'Fuerza'
   };
 
-  if (status === 'loading' || loading) {
+  if (loading || loading) {
     return <QuickLoading message="Cargando tu perfil..." duration={1500} />;
   }
 
-  if (status === 'unauthenticated') {
+  if (!loading && !user) {
     return null;
   }
 

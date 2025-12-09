@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
+import { supabaseAdmin } from '@/lib/supabase';
+import { getSession } from '@/lib/supabase-server';
 
 export async function POST(request: NextRequest) {
   try {
-  const session = (await getServerSession(authOptions)) as any;
+  const { session } = await getSession();
+    
     
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -18,20 +18,38 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Complement ID is required' }, { status: 400 });
     }
 
-    // Verificar que el complemento existe
-    const { data: complement, error: complementError } = await supabase
-      .from('complements')
+    // Verificar que el complemento existe (puede estar en complements o weekly_complements)
+    let complementExists = false;
+    
+    // Primero buscar en weekly_complements
+    const { data: weeklyComplement } = await supabaseAdmin
+      .from('weekly_complements')
       .select('id')
       .eq('id', complement_id)
-      .eq('is_active', true)
       .single();
+    
+    if (weeklyComplement) {
+      complementExists = true;
+    } else {
+      // Si no está en weekly_complements, buscar en complements
+      const { data: regularComplement } = await supabaseAdmin
+        .from('complements')
+        .select('id')
+        .eq('id', complement_id)
+        .eq('is_active', true)
+        .single();
+      
+      if (regularComplement) {
+        complementExists = true;
+      }
+    }
 
-    if (complementError || !complement) {
+    if (!complementExists) {
       return NextResponse.json({ error: 'Complement not found' }, { status: 404 });
     }
 
     // Obtener la interacción actual
-    const { data: currentInteraction } = await supabase
+    const { data: currentInteraction } = await supabaseAdmin
       .from('user_complement_interactions')
       .select('times_completed, last_completed_at')
       .eq('user_id', session.user.id)
@@ -43,7 +61,7 @@ export async function POST(request: NextRequest) {
     const newTimesCompleted = currentTimesCompleted + 1;
 
     // Insertar o actualizar la interacción
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('user_complement_interactions')
       .upsert({
         user_id: session.user.id,

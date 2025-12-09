@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
+import { getSession } from '@/lib/supabase-server';
 import { supabaseAdmin } from '@/lib/supabase';
 
 export async function POST(request: NextRequest) {
   try {
-    // Verificar autenticación
-    const session = await getServerSession(authOptions);
+    // Verificar autenticación con Supabase Auth
+    const { session } = await getSession();
+
     if (!session?.user?.id) {
       return NextResponse.json(
         { error: 'No autorizado' },
@@ -28,9 +28,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Validar que el bucket sea válido
-    if (bucket !== 'course-images' && bucket !== 'lesson-images') {
+    const validBuckets = ['course-images', 'lesson-images', 'banners'];
+    if (!validBuckets.includes(bucket)) {
       return NextResponse.json(
-        { error: 'Bucket inválido. Debe ser "course-images" o "lesson-images"' },
+        { error: `Bucket inválido. Debe ser uno de: ${validBuckets.join(', ')}` },
         { status: 400 }
       );
     }
@@ -45,6 +46,14 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(arrayBuffer);
 
     console.log(`📤 Subiendo imagen a ${bucket}/${filePath} (${buffer.length} bytes)`);
+    console.log('🔧 Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321');
+
+    // Primero verificar que el bucket existe
+    const { data: buckets, error: listError } = await supabaseAdmin.storage.listBuckets();
+    console.log('📦 Buckets disponibles:', buckets?.map(b => b.name) || 'Error listando');
+    if (listError) {
+      console.error('❌ Error listando buckets:', listError);
+    }
 
     // Subir archivo a Supabase Storage usando supabaseAdmin
     const { data, error } = await supabaseAdmin.storage
@@ -52,11 +61,12 @@ export async function POST(request: NextRequest) {
       .upload(filePath, buffer, {
         contentType: file.type || 'image/webp',
         cacheControl: '31536000', // Cache por 1 año
-        upsert: false // No sobrescribir archivos existentes
+        upsert: true // Permitir sobrescribir archivos existentes
       });
 
     if (error) {
       console.error('❌ Error subiendo imagen:', error);
+      console.error('❌ Detalles del error:', JSON.stringify(error, null, 2));
       return NextResponse.json(
         { error: error.message },
         { status: 500 }

@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
+import { getSession } from '@/lib/supabase-server';
 import { supabase } from '@/lib/supabase';
 import { generateUniqueSlug } from '@/lib/slugUtils';
 
 export async function POST(request: NextRequest) {
   try {
-    // Verificar autenticación
-    const session = await getServerSession(authOptions);
+    // Verificar autenticación con Supabase Auth
+    const { session } = await getSession();
+
     if (!session?.user?.id) {
       return NextResponse.json(
         { error: 'No autorizado' },

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { signIn } from 'next-auth/react';
+import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { Play, Users, Clock, MapPin, CheckCircle, Star, ArrowRight, Zap, Shield, Globe, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
@@ -12,6 +12,7 @@ interface LandingPageProps {
 
 export default function LandingPage({ onLogin }: LandingPageProps) {
   const router = useRouter();
+  const { signInWithEmail } = useSupabaseAuth();
   const [activePlan, setActivePlan] = useState<'basic' | 'pro'>('basic');
   const [isRegistering, setIsRegistering] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -159,15 +160,14 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
           return;
         }
 
-        // Hacer login automático con NextAuth
-        const result = await signIn('credentials', {
-          email: formData.email.trim(),
-          password: formData.password,
-          redirect: false,
-        });
+        // Hacer login automático con Supabase Auth
+        const { error: loginError } = await signInWithEmail(
+          formData.email.trim(),
+          formData.password
+        );
 
-        if (result?.error) {
-          console.error('NextAuth login error:', result.error);
+        if (loginError) {
+          console.error('Supabase login error:', loginError);
           setRegisterError('Error al iniciar sesión automáticamente');
           return;
         }

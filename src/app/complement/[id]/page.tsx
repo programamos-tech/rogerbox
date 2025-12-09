@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
+import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { ArrowLeft, Heart, Clock, Star, Play, Eye, CheckCircle, Calendar, Target, TrendingUp } from 'lucide-react';
 import SimpleLoading from '@/components/SimpleLoading';
 
@@ -38,7 +38,7 @@ interface Complement {
 export default function ComplementDetail() {
   const params = useParams();
   const router = useRouter();
-  const { data: session, status } = useSession();
+  const { user, profile, loading: authLoading } = useSupabaseAuth();
   const [complement, setComplement] = useState<Complement | null>(null);
   const [loading, setLoading] = useState(true);
   const [isFavorite, setIsFavorite] = useState(false);
@@ -54,13 +54,13 @@ export default function ComplementDetail() {
 
   // Función separada para cargar interacciones
   const loadUserInteractions = async (complementId: string) => {
-    if (!(session?.user as any)?.id) {
+    if (!user?.id) {
       console.log('⚠️ Usuario no autenticado, no se cargan interacciones');
       return;
     }
 
     try {
-      const userId = (session as any)?.user?.id as string | undefined;
+      const userId = user?.id;
       console.log('🔍 Cargando interacciones para usuario:', userId);
       if (!userId) return;
       
@@ -142,7 +142,7 @@ export default function ComplementDetail() {
         setLoading(false);
         
         // Cargar interacciones inmediatamente después de cargar el complemento
-        if ((session?.user as any)?.id && status === 'authenticated') {
+        if (user?.id && !!user) {
           console.log('🔄 Cargando interacciones inmediatamente después del complemento...');
           setTimeout(() => {
             loadUserInteractions(complementId);
@@ -155,27 +155,27 @@ export default function ComplementDetail() {
     };
 
     fetchComplement();
-  }, [params.id, (session as any)?.user?.id, status]);
+  }, [params.id, (user as any)?.user?.id, authLoading]);
 
   // useEffect para cargar interacciones cuando esté todo listo
   useEffect(() => {
-    console.log('🔍 useEffect interacciones - complement:', !!complement, 'session:', !!(session as any)?.user?.id, 'status:', status);
+    console.log('🔍 useEffect interacciones - complement:', !!complement, 'user:', !!(user as any)?.user?.id, 'authLoading:', authLoading);
     
-    if (complement && (session as any)?.user?.id && status === 'authenticated') {
+    if (complement && (user as any)?.user?.id && !!user) {
       console.log('🔄 Cargando interacciones del usuario...');
       loadUserInteractions(complement.id);
     } else {
       console.log('⚠️ No se cumplen las condiciones para cargar interacciones:', {
         hasComplement: !!complement,
-        hasUserId: !!(session as any)?.user?.id,
-        status: status
+        hasUserId: !!(user as any)?.user?.id,
+        authLoading: authLoading
       });
     }
-  }, [complement, (session as any)?.user?.id, status]);
+  }, [complement, (user as any)?.user?.id, authLoading]);
 
   // useEffect adicional como respaldo - se ejecuta después de que todo esté cargado
   useEffect(() => {
-    if (complement && status === 'authenticated' && (session as any)?.user?.id) {
+    if (complement && !!user && (user as any)?.user?.id) {
       console.log('⏰ Respaldo: Cargando interacciones después de 1 segundo...');
       const timer = setTimeout(() => {
         console.log('🔄 Respaldo: Ejecutando carga de interacciones...');
@@ -184,15 +184,15 @@ export default function ComplementDetail() {
       
       return () => clearTimeout(timer);
     }
-  }, [complement, status, (session as any)?.user?.id]);
+  }, [complement, authLoading, (user as any)?.user?.id]);
 
   // useEffect adicional que se ejecuta cuando la página está completamente cargada
   useEffect(() => {
-    console.log('🔍 useEffect de montaje - complement:', !!complement, 'session:', !!(session as any)?.user?.id, 'status:', status);
+    console.log('🔍 useEffect de montaje - complement:', !!complement, 'user:', !!(user as any)?.user?.id, 'authLoading:', authLoading);
     
     const loadDataOnMount = () => {
       console.log('🚀 Intentando carga inicial...');
-      if (complement && (session as any)?.user?.id && status === 'authenticated') {
+      if (complement && (user as any)?.user?.id && !!user) {
         console.log('🚀 Carga inicial: Ejecutando loadUserInteractions...');
         loadUserInteractions(complement.id);
       } else {
@@ -213,8 +213,8 @@ export default function ComplementDetail() {
   }, []); // Solo se ejecuta una vez al montar
 
   const handleFavorite = async () => {
-    if (!complement || !(session as any)?.user?.id || isFavoriting) {
-      if (!(session as any)?.user?.id) {
+    if (!complement || !(user as any)?.user?.id || isFavoriting) {
+      if (!(user as any)?.user?.id) {
         console.log('Usuario no autenticado - redirigiendo al login');
         router.push('/');
       }
@@ -276,8 +276,8 @@ export default function ComplementDetail() {
   };
 
   const handleComplete = async () => {
-    if (!complement || !(session as any)?.user?.id || isCompleting) {
-      if (!(session as any)?.user?.id) {
+    if (!complement || !(user as any)?.user?.id || isCompleting) {
+      if (!(user as any)?.user?.id) {
         console.log('Usuario no autenticado - redirigiendo al login');
         router.push('/');
       }
@@ -320,8 +320,8 @@ export default function ComplementDetail() {
   };
 
   const handleRating = async (rating: number) => {
-    if (!complement || !(session as any)?.user?.id || isRating) {
-      if (!(session as any)?.user?.id) {
+    if (!complement || !(user as any)?.user?.id || isRating) {
+      if (!(user as any)?.user?.id) {
         console.log('Usuario no autenticado - redirigiendo al login');
         router.push('/');
       }
@@ -357,7 +357,7 @@ export default function ComplementDetail() {
 
 
   const handleAddNote = async () => {
-    if (!complement || !(session as any)?.user?.id || !newNote.trim() || isAddingNote) {
+    if (!complement || !(user as any)?.user?.id || !newNote.trim() || isAddingNote) {
       return;
     }
 
@@ -387,11 +387,11 @@ export default function ComplementDetail() {
     }
   };
 
-  if (loading || status === 'loading') {
+  if (loading || loading) {
     return <SimpleLoading message="Cargando complemento..." />;
   }
 
-  if (status === 'unauthenticated') {
+  if (!loading && !user) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#164151]/80 via-[#29839c]/70 to-[#29839c]/60 text-white flex items-center justify-center">
         <div className="text-center">

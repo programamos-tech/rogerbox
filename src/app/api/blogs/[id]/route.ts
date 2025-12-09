@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase';
 
 // GET - Obtener un blog específico por ID
 export async function GET(
@@ -8,7 +8,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const { data: blog, error } = await supabase
+    const { data: blog, error } = await supabaseAdmin
       .from('nutritional_blogs')
       .select('*')
       .eq('id', id)
@@ -72,7 +72,7 @@ export async function PUT(
 
     // Si se está publicando por primera vez, establecer published_at
     if (is_published) {
-      const { data: existingBlog } = await supabase
+      const { data: existingBlog } = await supabaseAdmin
         .from('nutritional_blogs')
         .select('published_at')
         .eq('id', id)
@@ -83,7 +83,7 @@ export async function PUT(
       }
     }
 
-    const { data: blog, error } = await supabase
+    const { data: blog, error } = await supabaseAdmin
       .from('nutritional_blogs')
       .update(updateData)
       .eq('id', id)
@@ -115,7 +115,7 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
       .from('nutritional_blogs')
       .delete()
       .eq('id', id);

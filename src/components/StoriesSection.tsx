@@ -1,423 +1,343 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Video, CheckCircle, Clock, X, ChevronLeft, ChevronRight } from 'lucide-react';
-import { useSession } from 'next-auth/react';
+import { Play, Video, CheckCircle, X, Calendar } from 'lucide-react';
+import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import MuxPlayer from '@mux/mux-player-react';
 
-interface Complement {
+interface WeeklyComplement {
   id: string;
-  dayOfWeek: number; // 1=Lunes, 2=Martes, 3=Miércoles, 4=Jueves, 5=Viernes
-  video: string;
+  week_number: number;
+  year: number;
+  day_of_week: number | string;
   title: string;
-  dayName: string;
+  description: string | null;
+  mux_playback_id: string | null;
+  thumbnail_url: string | null;
+  is_published: boolean;
 }
 
 interface StoriesSectionProps {
   courseStartDate?: string | null;
 }
 
+// Mapeo de número de día a nombre en español
+const dayNumberToName: Record<number, string> = {
+  1: 'Lunes',
+  2: 'Martes',
+  3: 'Miércoles',
+  4: 'Jueves',
+  5: 'Viernes',
+  6: 'Sábado',
+  7: 'Domingo',
+};
+
 export default function StoriesSection({ courseStartDate }: StoriesSectionProps) {
-  const { data: session } = useSession();
-  const [completedComplements, setCompletedComplements] = useState<Set<string>>(new Set());
-  const [selectedComplement, setSelectedComplement] = useState<Complement | null>(null);
+  const { user } = useSupabaseAuth();
+  const [todayComplement, setTodayComplement] = useState<WeeklyComplement | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [isCompleted, setIsCompleted] = useState(false);
   const [showModal, setShowModal] = useState(false);
-  const [timerActive, setTimerActive] = useState(false);
-  const [timeRemaining, setTimeRemaining] = useState(600); // 10 minutos en segundos
-  const [timerInterval, setTimerInterval] = useState<NodeJS.Timeout | null>(null);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
 
-  // Nombres de los días
-  const dayNames = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'];
-
-  // 5 complementos diarios (uno por cada día de la semana laboral)
-  const allComplements: Complement[] = [
-    { id: '1', dayOfWeek: 1, video: '/complementos/1.mp4', title: 'Complemento Lunes', dayName: 'Lunes' },
-    { id: '2', dayOfWeek: 2, video: '/complementos/2.mp4', title: 'Complemento Martes', dayName: 'Martes' },
-    { id: '3', dayOfWeek: 3, video: '/complementos/3.mp4', title: 'Complemento Miércoles', dayName: 'Miércoles' },
-    { id: '4', dayOfWeek: 4, video: '/complementos/4.mp4', title: 'Complemento Jueves', dayName: 'Jueves' },
-    { id: '5', dayOfWeek: 5, video: '/complementos/4.mp4', title: 'Complemento Viernes', dayName: 'Viernes' },
-  ];
-
-  // Obtener el día de la semana actual (1=Lunes, 2=Martes, etc.)
+  // Obtener el día de la semana actual (1=Lunes, ..., 7=Domingo)
   const getCurrentDayOfWeek = () => {
     const today = new Date();
     let day = today.getDay(); // 0=Domingo, 1=Lunes, ..., 6=Sábado
-    // Convertir a formato donde 1=Lunes, 2=Martes, etc.
-    day = day === 0 ? 7 : day; // Domingo = 7
-    day = day - 1; // Ahora 0=Lunes, 1=Martes, etc.
-    return day + 1; // 1=Lunes, 2=Martes, etc.
+    return day === 0 ? 7 : day;
   };
 
   const currentDayOfWeek = getCurrentDayOfWeek();
-  
-  // Inicializar el índice al complemento del día actual
-  useEffect(() => {
-    const todayIndex = allComplements.findIndex(c => c.dayOfWeek === currentDayOfWeek);
-    if (todayIndex !== -1) {
-      setCurrentIndex(todayIndex);
-    }
-  }, [currentDayOfWeek]);
+  const displayDayName = dayNumberToName[currentDayOfWeek];
+  const isWeekend = currentDayOfWeek >= 6;
 
-  // Calcular qué complementos están disponibles
-  const getAvailableComplements = () => {
-    return allComplements.map(complement => ({
-      ...complement,
-      isAvailable: true,
-      isToday: complement.dayOfWeek === currentDayOfWeek,
-      isCompleted: completedComplements.has(complement.id),
-      isDisabled: complement.dayOfWeek !== currentDayOfWeek // Días que no son hoy están inhabilitados
-    }));
-  };
-
-  // Cargar complementos completados del usuario
+  // Cargar el complemento del día desde la API
   useEffect(() => {
-    const loadCompletedComplements = async () => {
-      if (!session?.user?.id) return;
+    const loadTodayComplement = async () => {
+      try {
+        setLoading(true);
+        
+        const response = await fetch('/api/complements/today');
+        const result = await response.json();
+        
+        console.log('🔍 API Response:', result);
+        
+        if (result.complement) {
+          setTodayComplement(result.complement);
+        } else {
+          console.log('❌ No hay complemento para hoy');
+          setTodayComplement(null);
+        }
+      } catch (error) {
+        console.error('Error loading complement:', error);
+        setTodayComplement(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadTodayComplement();
+  }, []);
+
+  // Cargar estado de completado
+  useEffect(() => {
+    const loadCompletionStatus = async () => {
+      if (!user?.id || !todayComplement) return;
 
       try {
         const response = await fetch('/api/user-interactions?type=completed');
         if (response.ok) {
           const data = await response.json();
-          const completed = new Set(
-            data.interactions
-              .filter((i: any) => i.is_completed)
-              .map((i: any) => i.complement_id)
+          const completed = data.interactions?.some(
+            (i: any) => i.complement_id === todayComplement.id && i.is_completed
           );
-          setCompletedComplements(completed);
+          setIsCompleted(completed || false);
         }
       } catch (error) {
-        console.error('Error loading completed complements:', error);
+        console.error('Error loading completion status:', error);
       }
     };
 
-    loadCompletedComplements();
-  }, [session]);
+    loadCompletionStatus();
+  }, [user?.id, todayComplement]);
 
-  // Manejar el cronómetro
-  useEffect(() => {
-    if (timerActive && timeRemaining > 0) {
-      const interval = setInterval(() => {
-        setTimeRemaining((prev) => {
-          if (prev <= 1) {
-            setTimerActive(false);
-            handleTimerComplete();
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-      setTimerInterval(interval);
-      return () => clearInterval(interval);
-    } else if (timerInterval) {
-      clearInterval(timerInterval);
-      setTimerInterval(null);
-    }
-  }, [timerActive, timeRemaining]);
-
-  // Formatear tiempo del cronómetro
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  // Iniciar cronómetro
-  const handleStartTimer = () => {
-    setTimerActive(true);
-  };
-
-  // Pausar cronómetro
-  const handlePauseTimer = () => {
-    setTimerActive(false);
-  };
-
-  // Resetear cronómetro
-  const handleResetTimer = () => {
-    setTimerActive(false);
-    setTimeRemaining(600);
-  };
-
-  // Cuando el cronómetro termina
-  const handleTimerComplete = async () => {
-    if (!selectedComplement || !session?.user?.id) return;
-
-    try {
-      // Solo permitir completar el complemento del día actual
-      if (selectedComplement.dayOfWeek === currentDayOfWeek) {
-        const response = await fetch('/api/user-interactions/complete', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ complement_id: selectedComplement.id }),
-        });
-
-        if (response.ok) {
-          setCompletedComplements((prev) => new Set([...prev, selectedComplement.id]));
-          // Cerrar modal después de un momento
-          setTimeout(() => {
-            setShowModal(false);
-            setSelectedComplement(null);
-            setTimerActive(false);
-            setTimeRemaining(600);
-          }, 2000);
-        }
-      }
-    } catch (error) {
-      console.error('Error completing complement:', error);
-    }
-  };
-
-  // Abrir modal al hacer click en un complemento
-  const handleComplementClick = (complement: Complement) => {
-    const availableComplements = getAvailableComplements();
-    const complementData = availableComplements.find(c => c.id === complement.id);
-    
-    if (complementData?.isAvailable) {
-      setSelectedComplement(complement);
+  // Abrir modal de video
+  const handlePlayClick = () => {
+    if (todayComplement?.mux_playback_id) {
       setShowModal(true);
-      setTimeRemaining(600);
-      setTimerActive(false);
     }
   };
 
   // Cerrar modal
   const handleCloseModal = () => {
-    if (timerActive) {
-      if (confirm('¿Estás seguro de que quieres cerrar? El cronómetro se detendrá.')) {
-        setTimerActive(false);
-        setShowModal(false);
-        setSelectedComplement(null);
-        setTimeRemaining(600);
+    setShowModal(false);
+  };
+
+  // Marcar como completado
+  const [isCompleting, setIsCompleting] = useState(false);
+  
+  const handleMarkComplete = async () => {
+    if (!todayComplement || !user?.id || isCompleting) return;
+
+    setIsCompleting(true);
+    
+    try {
+      const response = await fetch('/api/user-interactions/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ complement_id: todayComplement.id }),
+      });
+
+      if (response.ok) {
+        setIsCompleted(true);
+        // Pequeño delay para mostrar el estado completado antes de cerrar
+        setTimeout(() => {
+          handleCloseModal();
+        }, 800);
       }
-    } else {
-      setShowModal(false);
-      setSelectedComplement(null);
-      setTimeRemaining(600);
+    } catch (error) {
+      console.error('Error completing complement:', error);
+    } finally {
+      setIsCompleting(false);
     }
   };
 
-  // Navegar carrusel
-  const handlePrev = () => {
-    setCurrentIndex((prev) => (prev - 1 + allComplements.length) % allComplements.length);
-  };
+  if (loading) {
+    return (
+      <div className="w-full h-full min-h-[380px] sm:min-h-[480px] flex flex-col bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden animate-pulse">
+        <div className="p-4 sm:p-5 flex-shrink-0">
+          <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-48 mb-2"></div>
+          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-36"></div>
+        </div>
+        <div className="flex-1 min-h-[300px] sm:min-h-[400px] bg-gray-100 dark:bg-gray-700 mx-4 mb-4 rounded-xl"></div>
+      </div>
+    );
+  }
 
-  const handleNext = () => {
-    setCurrentIndex((prev) => (prev + 1) % allComplements.length);
-  };
-
-  const availableComplements = getAvailableComplements();
-  const currentComplement = availableComplements[currentIndex];
+  // Sin complemento para hoy - ocultar la sección
+  if (!todayComplement) {
+    return null;
+  }
 
   return (
     <>
-      <div className="w-full h-full flex flex-col bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 md:p-6 min-h-0">
-        {/* Header */}
-        <div className="mb-3 flex-shrink-0">
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center space-x-2 mb-1">
-            <Video className="w-4 h-4 text-[#85ea10]" />
-            <span>Complementos Diarios</span>
+      <div className="w-full h-full min-h-[380px] sm:min-h-[480px] flex flex-col bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden">
+        {/* Header - Mismo estilo que Tu Progreso */}
+        <div className="p-4 sm:p-5 flex-shrink-0">
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <Video className="w-5 h-5 text-[#85ea10]" />
+            <span>Complemento del Día</span>
           </h3>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            Nuevo contenido todos los días
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            {displayDayName} {isWeekend && '• Fin de semana'}
           </p>
         </div>
 
-        {/* Carrusel de complementos */}
-        <div className="flex-1 min-h-0 flex flex-col">
-          <div className="relative flex-1 min-h-0">
-            {/* Botones de navegación */}
-            {allComplements.length > 1 && (
-              <>
-                <button
-                  onClick={handlePrev}
-                  className="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-full p-1.5 shadow-lg hover:scale-110 transition-all"
-                >
-                  <ChevronLeft className="w-4 h-4 text-gray-900 dark:text-white" />
-                </button>
-                <button
-                  onClick={handleNext}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-full p-1.5 shadow-lg hover:scale-110 transition-all"
-                >
-                  <ChevronRight className="w-4 h-4 text-gray-900 dark:text-white" />
-                </button>
-              </>
-            )}
-
-            {/* Card del complemento actual */}
-            {currentComplement && (
-              <button
-                onClick={() => handleComplementClick(currentComplement)}
-                disabled={currentComplement.isDisabled && !currentComplement.isCompleted}
-                className={`
-                  relative w-full h-full rounded-xl overflow-hidden
-                  transition-all duration-200
-                  ${currentComplement.isCompleted 
-                    ? 'bg-[#85ea10]/20 border-2 border-[#85ea10] cursor-default' 
-                    : currentComplement.isToday
-                      ? 'bg-gray-100 dark:bg-gray-700 border-2 border-[#85ea10] hover:scale-[1.02] cursor-pointer shadow-lg'
-                      : 'bg-gray-100 dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 cursor-pointer'
-                  }
-                `}
-              >
-                {/* Video thumbnail */}
-                <video
-                  src={currentComplement.video}
-                  muted
-                  playsInline
-                  className={`w-full h-full object-cover ${
-                    currentComplement.isCompleted || currentComplement.isDisabled 
-                      ? 'grayscale opacity-50' 
-                      : ''
-                  }`}
+        {/* Video Card */}
+        <div className="flex-1 relative min-h-[300px] sm:min-h-[400px] px-3 pb-3">
+          <div
+            onClick={handlePlayClick}
+            className={`
+              relative w-full h-full cursor-pointer overflow-hidden rounded-xl
+              ${!todayComplement.mux_playback_id ? 'cursor-not-allowed' : ''}
+            `}
+          >
+            {/* Thumbnail de Mux */}
+            <div className={`absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 transition-all duration-500 ${isCompleted ? 'grayscale' : ''}`}>
+              {todayComplement.mux_playback_id ? (
+                <img
+                  src={`https://image.mux.com/${todayComplement.mux_playback_id}/thumbnail.jpg?time=1`}
+                  alt={todayComplement.title}
+                  className={`w-full h-full object-cover transition-all duration-500 ${isCompleted ? 'grayscale opacity-70' : ''}`}
+                  onError={(e) => {
+                    // Si falla el thumbnail, mostrar placeholder
+                    (e.target as HTMLImageElement).style.display = 'none';
+                  }}
                 />
-
-                {/* Overlay con información */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent">
-                  <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        {currentComplement.isToday && (
-                          <div className="inline-flex items-center gap-1 bg-[#85ea10] rounded-full px-2 py-0.5 mb-1">
-                            <span className="text-black text-[10px] font-bold uppercase">Hoy</span>
-                          </div>
-                        )}
-                        <h4 className="text-base sm:text-lg font-bold text-white mb-0.5">
-                          {currentComplement.dayName}
-                        </h4>
-                        <p className="text-white/90 text-xs">
-                          {currentComplement.title}
-                        </p>
-                      </div>
-                      {currentComplement.isCompleted ? (
-                        <CheckCircle className="w-6 h-6 sm:w-8 sm:h-8 text-[#85ea10] bg-white rounded-full flex-shrink-0" />
-                      ) : currentComplement.isDisabled ? (
-                        <div className="bg-gray-500/50 backdrop-blur-sm rounded-full p-2 sm:p-3 shadow-lg flex-shrink-0">
-                          <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-                        </div>
-                      ) : (
-                        <div className="bg-white/90 backdrop-blur-sm rounded-full p-2 sm:p-3 shadow-2xl flex-shrink-0">
-                          <Play className="w-4 h-4 sm:w-5 sm:h-5 text-gray-900 ml-0.5" />
-                        </div>
-                      )}
-                    </div>
-                  </div>
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <Video className="w-16 h-16 text-gray-600" />
                 </div>
-              </button>
-            )}
-          </div>
+              )}
+            </div>
 
-          {/* Indicadores de posición */}
-          <div className="flex justify-center gap-1.5 mt-3 flex-shrink-0">
-            {allComplements.map((_, index) => {
-              const complement = availableComplements[index];
-              return (
-                <div
-                  key={index}
-                  className={`h-1.5 rounded-full transition-all duration-300 ${
-                    index === currentIndex
-                      ? complement?.isToday
-                        ? 'bg-[#85ea10] w-6'
-                        : 'bg-gray-400 w-6'
-                      : 'bg-gray-300 dark:bg-gray-600 w-1.5'
-                  }`}
-                />
-              );
-            })}
+            {/* Gradiente overlay */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
+
+            {/* Contenido */}
+            <div className="absolute inset-0 flex flex-col justify-between p-4">
+              {/* Top - Espacio reservado */}
+              <div className="flex items-center justify-end">
+                {/* Check ahora está en el centro */}
+              </div>
+
+              {/* Center - Botón de play o check si completado */}
+              <div className="flex-1 flex items-center justify-center">
+                {todayComplement.mux_playback_id ? (
+                  isCompleted ? (
+                    <div className="bg-[#85ea10] rounded-full p-5 shadow-2xl shadow-[#85ea10]/30">
+                      <CheckCircle className="w-10 h-10 text-black" />
+                    </div>
+                  ) : (
+                    <div className="bg-[#85ea10] rounded-full p-5 shadow-2xl shadow-[#85ea10]/30 hover:scale-110 transition-transform">
+                      <Play className="w-10 h-10 text-black ml-1" fill="currentColor" />
+                    </div>
+                  )
+                ) : (
+                  <div className="text-center">
+                    <div className="bg-gray-700/80 backdrop-blur-sm rounded-full p-4">
+                      <Video className="w-8 h-8 text-gray-500" />
+                    </div>
+                    <p className="text-gray-500 text-sm mt-2">Video no disponible</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Bottom - Título y descripción */}
+              <div className="space-y-2">
+                <h4 className="text-xl font-black text-white leading-tight">
+                  {isWeekend ? 'Complemento Fin de Semana' : todayComplement.title}
+                </h4>
+                {todayComplement.description && (
+                  <p className="text-sm text-gray-300 line-clamp-2">
+                    {todayComplement.description}
+                  </p>
+                )}
+                
+                {/* Indicador */}
+                {todayComplement.mux_playback_id && !isCompleted && (
+                  <div className="flex items-center gap-2 mt-2">
+                    <div className="w-2 h-2 bg-[#85ea10] rounded-full animate-pulse" />
+                    <span className="text-[#85ea10] text-xs font-bold uppercase">Toca para ver</span>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Modal con video y cronómetro */}
-      {showModal && selectedComplement && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col lg:flex-row">
-            {/* Botón cerrar */}
-            <button
-              onClick={handleCloseModal}
-              className="absolute top-4 right-4 z-20 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-full p-2 shadow-lg hover:scale-110 transition-all"
-            >
-              <X className="w-5 h-5 text-gray-900 dark:text-white" />
-            </button>
+      {/* Modal de Video - Estilo RogerBox */}
+      {showModal && todayComplement?.mux_playback_id && (
+        <div className="fixed inset-0 z-50 bg-black">
+          {/* Video - Protagonista a pantalla completa */}
+          <MuxPlayer
+            playbackId={todayComplement.mux_playback_id}
+            streamType="on-demand"
+            autoPlay
+            accentColor="#85ea10"
+            className="absolute inset-0 w-full h-full"
+            style={{ 
+              '--controls': 'auto',
+            } as React.CSSProperties}
+            envKey={process.env.NEXT_PUBLIC_MUX_DATA_ENV_KEY}
+            metadata={{
+              video_id: todayComplement.id,
+              video_title: todayComplement.title,
+              viewer_user_id: user?.id || 'anonymous',
+              video_content_type: 'complement',
+              video_series: `Semana ${todayComplement.week_number}`,
+            }}
+          />
 
-            {/* Video explicativo */}
-            <div className="flex-1 lg:w-1/2 bg-black flex items-center justify-center">
-              <video
-                ref={videoRef}
-                src={selectedComplement.video}
-                controls
-                autoPlay
-                className="w-1/2 h-1/2 max-h-[25vh] lg:max-h-[45vh] object-contain"
-              />
+          {/* Header - Encima del video */}
+          <div className="absolute top-0 left-0 right-0 z-20 pt-12 px-4 pb-6 bg-gradient-to-b from-black/80 via-black/40 to-transparent">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <span className="text-white font-black text-sm">ROGER</span>
+                <span className="text-[#85ea10] font-black text-sm">BOX</span>
+              </div>
+              <button
+                onClick={handleCloseModal}
+                className="w-8 h-8 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white/30 transition-all"
+              >
+                <X className="w-5 h-5 text-white" />
+              </button>
             </div>
+          </div>
 
-            {/* Cronómetro */}
-            <div className="flex-1 lg:w-1/2 p-6 sm:p-8 flex flex-col items-center justify-center space-y-6">
-              <div className="text-center">
-                <h3 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                  {selectedComplement.title}
-                </h3>
-                <p className="text-gray-600 dark:text-gray-400">
-                  {selectedComplement.dayOfWeek === currentDayOfWeek 
-                    ? 'Mira el video y luego inicia tu rutina de 10 minutos'
-                    : 'Este es el complemento de otro día. Solo puedes completar el complemento del día actual.'}
-                </p>
+          {/* Footer con info y botón */}
+          <div className="absolute bottom-0 left-0 right-0 z-20 bg-gradient-to-t from-black via-black/80 to-transparent">
+            <div className="p-4 pb-6 safe-area-bottom">
+              {/* Tags */}
+              <div className="flex items-center gap-2 mb-2">
+                <span className="bg-[#85ea10] text-black text-[10px] font-bold px-2 py-0.5 rounded-full">
+                  {displayDayName}
+                </span>
+                {isWeekend && (
+                  <span className="text-[#85ea10] text-[10px] font-medium">Fin de Semana</span>
+                )}
               </div>
-
-              {/* Cronómetro grande */}
-              <div className="relative">
-                <div className="w-48 h-48 sm:w-64 sm:h-64 rounded-full border-8 border-[#85ea10] flex items-center justify-center bg-gradient-to-br from-[#85ea10]/10 to-[#7dd30f]/5">
-                  <div className="text-center">
-                    <div className="text-5xl sm:text-6xl font-black text-[#85ea10] mb-2">
-                      {formatTime(timeRemaining)}
-                    </div>
-                    {timeRemaining === 0 && (
-                      <div className="text-lg font-bold text-green-600 dark:text-green-400">
-                        ¡Completado!
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Controles del cronómetro */}
-              {selectedComplement.dayOfWeek === currentDayOfWeek && (
-                <div className="flex items-center gap-4">
-                  {!timerActive && timeRemaining > 0 && (
-                    <button
-                      onClick={handleStartTimer}
-                      className="bg-[#85ea10] hover:bg-[#7dd30f] text-black font-bold py-3 px-8 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-105 flex items-center gap-2"
-                    >
-                      <Play className="w-5 h-5" />
-                      <span>Iniciar</span>
-                    </button>
-                  )}
-
-                  {timerActive && (
-                    <button
-                      onClick={handlePauseTimer}
-                      className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-8 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-105 flex items-center gap-2"
-                    >
-                      <Clock className="w-5 h-5" />
-                      <span>Pausar</span>
-                    </button>
-                  )}
-
-                  {timeRemaining < 600 && (
-                    <button
-                      onClick={handleResetTimer}
-                      className="bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-105"
-                    >
-                      Reiniciar
-                    </button>
-                  )}
-                </div>
+              
+              {/* Título y descripción */}
+              <h3 className="text-white font-bold text-lg mb-1">{todayComplement.title}</h3>
+              {todayComplement.description && (
+                <p className="text-white/70 text-sm mb-4 line-clamp-2">{todayComplement.description}</p>
               )}
-
-              {/* Mensaje de instrucciones */}
-              {!timerActive && timeRemaining === 600 && selectedComplement.dayOfWeek === currentDayOfWeek && (
-                <p className="text-sm text-gray-500 dark:text-gray-400 text-center max-w-md">
-                  Primero mira el video explicativo, luego presiona "Iniciar" para comenzar tu rutina de 10 minutos
-                </p>
+              
+              {/* Botón de completar */}
+              {!isCompleted ? (
+                <button
+                  onClick={handleMarkComplete}
+                  disabled={isCompleting}
+                  className="w-full bg-[#85ea10] hover:bg-[#7dd30f] disabled:bg-[#85ea10]/70 text-black font-bold py-3 px-6 rounded-xl transition-all flex items-center justify-center gap-2 active:scale-[0.98] disabled:scale-100"
+                >
+                  {isCompleting ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                      <span>Guardando...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="w-5 h-5" />
+                      <span>Marcar como Completado</span>
+                    </>
+                  )}
+                </button>
+              ) : (
+                <div className="w-full bg-[#85ea10] text-black font-bold py-3 px-6 rounded-xl flex items-center justify-center gap-2 animate-pulse">
+                  <CheckCircle className="w-5 h-5 fill-current" />
+                  <span>¡Lo lograste! 💪</span>
+                </div>
               )}
             </div>
           </div>

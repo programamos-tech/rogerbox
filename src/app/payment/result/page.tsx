@@ -2,8 +2,8 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
-import { supabase } from '@/lib/supabase';
+import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { supabase } from '@/lib/supabase-browser';
 import { CheckCircle, XCircle, Clock, ArrowRight, CheckCircle2, Sparkles, Download } from 'lucide-react';
 import CourseStartDateModal from '@/components/CourseStartDateModal';
 
@@ -20,7 +20,7 @@ interface OrderResult {
 function PaymentResultContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { data: session } = useSession();
+  const { user } = useSupabaseAuth();
   const [order, setOrder] = useState<OrderResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -48,12 +48,12 @@ function PaymentResultContent() {
   useEffect(() => {
     const fetchBuyerInfo = async () => {
       // Solo obtener del perfil si no tenemos nombre del comprador
-      if ((session as any)?.user?.id && !buyerName) {
+      if (user?.id && !buyerName) {
         try {
           const { data: profile } = await supabase
             .from('profiles')
             .select('name, document_id')
-            .eq('id', (session as any).user.id)
+            .eq('id', user.id)
             .maybeSingle();
 
           if (profile) {
@@ -71,7 +71,7 @@ function PaymentResultContent() {
     };
 
     fetchBuyerInfo();
-  }, [session, buyerName, buyerDocument]);
+  }, [user, buyerName, buyerDocument]);
 
   const loadOrderResult = async () => {
     try {
@@ -132,7 +132,7 @@ function PaymentResultContent() {
       console.log('👤 Datos de la orden:', {
         customer_name: data.customer_name,
         user_id: data.user_id,
-        session_user_id: (session as any)?.user?.id
+        current_user_id: user?.id
       });
 
       let foundName = data.customer_name || '';
@@ -179,13 +179,13 @@ function PaymentResultContent() {
         }
       }
       
-      // Si aún no tenemos nombre, intentar obtenerlo de la sesión actual
-      if (!foundName && (session as any)?.user?.id) {
-        console.log('🔍 Buscando perfil de sesión actual:', (session as any).user.id);
+      // Si aún no tenemos nombre, intentar obtenerlo del usuario actual
+      if (!foundName && user?.id) {
+        console.log('🔍 Buscando perfil del usuario actual:', user.id);
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('name, document_id')
-          .eq('id', (session as any).user.id)
+          .eq('id', user.id)
           .maybeSingle();
 
         if (profileError) {

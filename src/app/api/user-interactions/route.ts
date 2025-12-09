@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
+import { supabaseAdmin } from '@/lib/supabase';
+import { getSession } from '@/lib/supabase-server';
 
 export async function GET(request: NextRequest) {
   try {
     console.log('🔍 Debug API: Iniciando user-interactions');
-  const session = (await getServerSession(authOptions)) as any;
+    const { session } = await getSession();
     console.log('🔍 Debug API: Session:', session ? 'existe' : 'no existe');
     console.log('🔍 Debug API: User ID:', session?.user?.id);
-    
+
     if (!session?.user?.id) {
       console.log('❌ Debug API: No hay sesión, devolviendo 401');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -18,27 +17,10 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type'); // 'favorites', 'completed', 'rated'
 
-    let query = supabase
+    // Consulta simple sin JOIN (el complement_id puede ser de complements o weekly_complements)
+    let query = supabaseAdmin
       .from('user_complement_interactions')
-      .select(`
-        *,
-        complements (
-          id,
-          title,
-          description,
-          thumbnail_url,
-          duration,
-          category,
-          difficulty,
-          is_new,
-          complement_stats (
-            total_views,
-            total_favorites,
-            average_rating,
-            total_ratings
-          )
-        )
-      `)
+      .select('*')
       .eq('user_id', session.user.id);
 
     if (type === 'favorites') {
@@ -56,10 +38,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch interactions' }, { status: 500 });
     }
 
-    console.log('✅ Debug API: Interacciones encontradas:', data.length);
-    console.log('📊 Debug API: Datos:', data);
+    console.log('✅ Debug API: Interacciones encontradas:', data?.length || 0);
 
-    return NextResponse.json({ interactions: data });
+    return NextResponse.json({ interactions: data || [] });
   } catch (error) {
     console.error('Error in GET /api/user-interactions:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

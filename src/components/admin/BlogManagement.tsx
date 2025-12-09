@@ -151,8 +151,8 @@ export default function BlogManagement() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight">
           Gestión de Blogs Nutricionales
         </h2>
         <button
@@ -160,7 +160,7 @@ export default function BlogManagement() {
             resetForm();
             setShowForm(true);
           }}
-          className="bg-[#85ea10] text-white px-4 py-2 rounded-lg hover:bg-[#6bc20a] transition-colors flex items-center gap-2"
+          className="bg-[#85ea10] hover:bg-[#7dd30f] text-black font-black px-5 py-2.5 rounded-xl transition-all duration-200 flex items-center gap-2 text-sm uppercase tracking-tight shadow-lg hover:shadow-xl"
         >
           <Plus className="w-4 h-4" />
           Nuevo Blog
@@ -295,90 +295,77 @@ export default function BlogManagement() {
       )}
 
       {/* Grid de blogs */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
         {blogs.map((blog) => (
-          <div key={blog.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 hover:scale-105">
+          <div key={blog.id} className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 hover:border-[#85ea10]/50 transition-all group shadow-lg hover:shadow-xl overflow-hidden">
             {/* Imagen del blog */}
-            <div className="relative h-48 bg-gray-200 dark:bg-gray-700">
+            <div className="relative w-full aspect-video bg-gray-200 dark:bg-gray-800 overflow-hidden">
               {blog.featured_image_url ? (
                 <img
                   src={blog.featured_image_url}
                   alt={blog.title}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   onError={(e) => {
                     e.currentTarget.src = '/images/course-placeholder.jpg';
                   }}
                 />
               ) : (
-                <div className="w-full h-full bg-gradient-to-br from-[#85ea10]/20 to-[#85ea10]/40 flex items-center justify-center">
-                  <BookOpen className="w-16 h-16 text-[#85ea10]" />
+                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-800 dark:to-gray-900">
+                  <BookOpen className="w-16 h-16 text-gray-400 dark:text-gray-600" />
                 </div>
               )}
-              
-              {/* Estado del blog */}
+              {/* Badge de estado sobre la imagen */}
               <div className="absolute top-3 right-3">
-                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                  blog.is_published
-                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                    : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-                }`}>
-                  {blog.is_published ? (
-                    <>
-                      <Eye className="w-3 h-3 mr-1" />
-                      Publicado
-                    </>
-                  ) : (
-                    <>
-                      <EyeOff className="w-3 h-3 mr-1" />
-                      Borrador
-                    </>
-                  )}
+                <span
+                  className={`px-3 py-1 text-xs font-black rounded-full ${
+                    blog.is_published
+                      ? 'bg-[#85ea10] text-black'
+                      : 'bg-gray-800/80 dark:bg-white/20 text-white dark:text-white/90 backdrop-blur-sm'
+                  }`}
+                >
+                  {blog.is_published ? 'Publicado' : 'Borrador'}
                 </span>
               </div>
             </div>
 
-            {/* Contenido del blog */}
-            <div className="p-4">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 line-clamp-2">
+            {/* Contenido */}
+            <div className="p-5">
+              <h3 className="text-base font-black text-gray-900 dark:text-white line-clamp-2 mb-2 uppercase tracking-tight">
                 {blog.title}
               </h3>
-              
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">
-                {blog.excerpt}
-              </p>
 
-              {/* Meta información */}
-              <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400 mb-4">
-                <div className="flex items-center gap-1">
-                  <User className="w-4 h-4" />
-                  <span>{blog.author}</span>
+              <p className="text-xs font-medium text-gray-600 dark:text-white/60 line-clamp-2 mb-4">{blog.excerpt}</p>
+
+              <div className="grid grid-cols-2 gap-2 mb-4">
+                <div className="bg-[#85ea10]/10 rounded-lg px-3 py-2 border border-[#85ea10]/20">
+                  <p className="text-[10px] font-bold text-gray-600 dark:text-white/60 uppercase tracking-wide mb-0.5">Autor</p>
+                  <p className="text-sm font-black text-gray-900 dark:text-white line-clamp-1">
+                    {blog.author}
+                  </p>
                 </div>
-                <div className="flex items-center gap-1">
-                  <Clock className="w-4 h-4" />
-                  <span>{blog.reading_time} min</span>
+                <div className="bg-[#85ea10]/10 rounded-lg px-3 py-2 border border-[#85ea10]/20">
+                  <p className="text-[10px] font-bold text-gray-600 dark:text-white/60 uppercase tracking-wide mb-0.5">Lectura</p>
+                  <p className="text-sm font-black text-gray-900 dark:text-white">{blog.reading_time} min</p>
+                </div>
+                <div className="bg-[#85ea10]/10 rounded-lg px-3 py-2 border border-[#85ea10]/20 col-span-2">
+                  <p className="text-[10px] font-bold text-gray-600 dark:text-white/60 uppercase tracking-wide mb-0.5">Fecha</p>
+                  <p className="text-sm font-black text-gray-900 dark:text-white">{formatDate(blog.created_at)}</p>
                 </div>
               </div>
 
-              {/* Fecha */}
-              <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 mb-4">
-                <Calendar className="w-3 h-3" />
-                <span>{formatDate(blog.created_at)}</span>
-              </div>
-
-              {/* Botones de acción */}
               <div className="flex gap-2">
                 <button
                   onClick={() => handleEdit(blog)}
-                  className="flex-1 bg-[#85ea10] hover:bg-[#6bc20a] text-black font-medium py-2 px-3 rounded-lg transition-colors flex items-center justify-center gap-2"
+                  className="flex-1 bg-[#85ea10]/10 hover:bg-[#85ea10]/20 border border-[#85ea10]/30 text-[#85ea10] px-3 py-2.5 rounded-lg text-xs font-black transition-colors flex items-center justify-center gap-1.5 uppercase tracking-tight"
                 >
-                  <Edit className="w-4 h-4" />
+                  <Edit className="w-3.5 h-3.5" />
                   Editar
                 </button>
                 <button
                   onClick={() => handleDeleteClick(blog)}
-                  className="flex-1 bg-red-500 hover:bg-red-600 text-white font-medium py-2 px-3 rounded-lg transition-colors flex items-center justify-center gap-2"
+                  className="flex-1 bg-red-100 dark:bg-red-500/20 hover:bg-red-200 dark:hover:bg-red-500/30 border border-red-300 dark:border-red-500/30 text-red-600 dark:text-red-400 px-3 py-2.5 rounded-lg text-xs font-black transition-colors flex items-center justify-center gap-1.5 uppercase tracking-tight"
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <Trash2 className="w-3.5 h-3.5" />
                   Eliminar
                 </button>
               </div>

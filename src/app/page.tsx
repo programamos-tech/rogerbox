@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useSession } from 'next-auth/react';
+import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useRouter } from 'next/navigation';
 import { Play, Clock, Users, Star, Search, ArrowRight, User, BookOpen, Award, TrendingUp, Zap, Utensils, Target, CheckCircle, ShoppingCart, Flame, Dumbbell, Home, ChevronLeft, ChevronRight } from 'lucide-react';
 import QuickLoading from '@/components/QuickLoading';
@@ -41,7 +41,7 @@ interface Course {
 
 
 export default function HomePage() {
-  const { data: session, status } = useSession();
+  const { user, loading: authLoading } = useSupabaseAuth();
   const router = useRouter();
   // Usar el hook ULTRA RÁPIDO
   const { courses, loading: loadingCourses, error: coursesError } = useUnifiedCourses();
@@ -61,10 +61,10 @@ export default function HomePage() {
 
   // Redirigir al dashboard si el usuario está autenticado
   useEffect(() => {
-    if (status === 'authenticated') {
+    if (!authLoading && user) {
       router.push('/dashboard');
     }
-  }, [status, router]);
+  }, [authLoading, user, router]);
 
   // Efecto para detectar scroll y cambiar navbar
   useEffect(() => {
@@ -163,13 +163,13 @@ export default function HomePage() {
     }
   };
 
-  // Si está cargando la sesión, mostrar loading
-  if (status === 'loading') {
+  // Si está cargando la autenticación, mostrar loading
+  if (authLoading) {
     return <QuickLoading message="Cargando..." duration={3000} />;
   }
 
   // Si el usuario está autenticado, mostrar loading mientras redirige
-  if (status === 'authenticated') {
+  if (user) {
     return <QuickLoading message="Redirigiendo al dashboard..." duration={3000} />;
   }
 

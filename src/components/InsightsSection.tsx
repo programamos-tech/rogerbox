@@ -3,9 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
+import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { CheckCircle, Zap, Award, Play, Calendar, Clock, ArrowRight, Pill, Weight, TrendingUp, Activity, Plus, Info, X, Edit } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase-browser';
 import { getBMIColor } from '@/lib/goalSuggestion';
 import WeeklyWeightReminder from '@/components/WeeklyWeightReminder';
 
@@ -85,10 +85,11 @@ export default function InsightsSection({
   effectivePurchase
 }: InsightsSectionProps) {
   const router = useRouter();
-  const { data: session } = useSession();
+  const { user } = useSupabaseAuth();
   const [classStreak, setClassStreak] = useState(0);
   const [consecutiveDaysStreak, setConsecutiveDaysStreak] = useState(0);
   const [totalMinutesExercised, setTotalMinutesExercised] = useState(0);
+  const [completedComplementsCount, setCompletedComplementsCount] = useState(0);
   const [nextLesson, setNextLesson] = useState<any>(null);
   const [weightHistory, setWeightHistory] = useState<WeightRecord[]>([]);
   const [bmi, setBmi] = useState<number>(0);
@@ -97,15 +98,52 @@ export default function InsightsSection({
   const [showGoalModal, setShowGoalModal] = useState(false);
   const [targetWeight, setTargetWeight] = useState<string>('');
   const [hoveredPointIndex, setHoveredPointIndex] = useState<number | null>(null);
+  const [localTargetWeight, setLocalTargetWeight] = useState<number | null>(userProfile?.target_weight || null);
+  const [savingGoal, setSavingGoal] = useState(false);
 
-  // Calcular IMC
+  // Cargar complementos completados del usuario
+  useEffect(() => {
+    const loadCompletedComplements = async () => {
+      if (!user?.id) {
+        setCompletedComplementsCount(0);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('user_complement_interactions')
+          .select('id, is_completed, last_completed_at')
+          .eq('user_id', user.id)
+          .eq('is_completed', true);
+
+        if (error) {
+          console.warn('Error cargando complementos:', error);
+          setCompletedComplementsCount(0);
+          return;
+        }
+
+        setCompletedComplementsCount(data?.length || 0);
+      } catch (error) {
+        console.error('Error:', error);
+        setCompletedComplementsCount(0);
+      }
+    };
+
+    loadCompletedComplements();
+  }, [user?.id]);
+
+  // Calcular IMC y sincronizar meta de peso
   useEffect(() => {
     if (userProfile?.weight && userProfile?.height) {
       const currentWeight = userProfile.current_weight || userProfile.weight;
       const calculatedBMI = calculateBMI(currentWeight, userProfile.height);
       setBmi(calculatedBMI);
     }
-  }, [userProfile]);
+    // Sincronizar meta de peso del perfil
+    if (userProfile?.target_weight && localTargetWeight === null) {
+      setLocalTargetWeight(userProfile.target_weight);
+    }
+  }, [userProfile, localTargetWeight]);
 
   // Calcular peso meta seguro según OMS
   const calculateSafeTargetWeight = (): number => {
@@ -134,20 +172,22 @@ export default function InsightsSection({
   // Abrir modal de meta con sugerencia pre-llenada
   const handleOpenGoalModal = () => {
     // Si ya hay una meta, usar esa. Si no, usar la sugerencia según OMS
-    const weightToUse = userProfile?.target_weight || calculateSafeTargetWeight();
+    const weightToUse = localTargetWeight || calculateSafeTargetWeight();
     setTargetWeight(weightToUse.toString());
     setShowGoalModal(true);
   };
 
   // Guardar meta de peso
   const handleSaveGoal = async () => {
-    const userId = (session as any)?.user?.id;
+    const userId = user?.id;
     if (!userId || !targetWeight) return;
 
     try {
+      setSavingGoal(true);
       const weightValue = parseFloat(targetWeight);
       if (isNaN(weightValue) || weightValue < 30 || weightValue > 300) {
         alert('Por favor ingresa un peso válido entre 30 y 300 kg');
+        setSavingGoal(false);
         return;
       }
 
@@ -161,104 +201,58 @@ export default function InsightsSection({
 
       if (error) throw error;
 
-      // Actualizar el perfil local
+      // Actualizar el estado local inmediatamente (sin recargar)
+      setLocalTargetWeight(weightValue);
+      
+      // También actualizar userProfile si existe
       if (userProfile) {
         userProfile.target_weight = weightValue;
       }
 
       setShowGoalModal(false);
-      // Recargar la página para actualizar los datos
-      window.location.reload();
     } catch (error) {
       console.error('Error al guardar meta:', error);
       alert('Error al guardar la meta. Por favor intenta de nuevo.');
+    } finally {
+      setSavingGoal(false);
     }
   };
 
-  // Calcular racha de días consecutivos
+  // Calcular racha de días consecutivos (clases + complementos)
   useEffect(() => {
-    const calculateConsecutiveDaysStreak = async () => {
-      if (!effectivePurchase?.start_date || !courseWithLessons?.lessons || !completedLessons?.length) {
-        setConsecutiveDaysStreak(0);
-        return;
-      }
+    // Racha = clases completadas + complementos completados
+    const lessonsCompleted = completedLessons?.length || 0;
+    const totalStreak = lessonsCompleted + completedComplementsCount;
+    setConsecutiveDaysStreak(totalStreak);
+  }, [completedLessons, completedComplementsCount]);
 
-      try {
-        // Obtener start_date del curso
-        const startDate = new Date(effectivePurchase.start_date);
-        startDate.setHours(0, 0, 0, 0);
-        
-        // Crear un mapa de días con clases completadas
-        // Cada clase corresponde a un día desde el inicio (basado en lesson_order)
-        const daysWithClasses = new Set<number>();
-        
-        courseWithLessons.lessons.forEach((lesson: any) => {
-          if (completedLessons.includes(lesson.id)) {
-            // El lesson_order indica qué día corresponde (0 = primer día, 1 = segundo día, etc.)
-            const dayIndex = lesson.lesson_order !== undefined ? lesson.lesson_order : 
-                           courseWithLessons.lessons.findIndex((l: any) => l.id === lesson.id);
-            daysWithClasses.add(dayIndex);
-          }
-        });
-
-        if (daysWithClasses.size === 0) {
-          setConsecutiveDaysStreak(0);
-          return;
-        }
-
-        // Obtener el día más reciente con clase completada
-        const maxDay = Math.max(...Array.from(daysWithClasses));
-        
-        // Calcular racha consecutiva desde el día más reciente hacia atrás
-        let streak = 0;
-        for (let day = maxDay; day >= 0; day--) {
-          if (daysWithClasses.has(day)) {
-            streak++;
-          } else {
-            // Si encontramos un día sin clase, la racha se rompe
-            break;
-          }
-        }
-
-        setConsecutiveDaysStreak(streak);
-      } catch (error) {
-        console.error('Error calculando racha de días:', error);
-        setConsecutiveDaysStreak(0);
-      }
-    };
-
-    calculateConsecutiveDaysStreak();
-  }, [completedLessons, courseWithLessons, effectivePurchase]);
-
-  // Calcular minutos totales ejercitados
+  // Calcular minutos totales ejercitados (clases + complementos)
+  // Cada complemento = 10 minutos
+  const COMPLEMENT_DURATION_MINUTES = 10;
+  
   useEffect(() => {
     const calculateTotalMinutes = async () => {
-      if (!completedLessons?.length || !courseWithLessons?.lessons) {
-        setTotalMinutesExercised(0);
-        return;
-      }
-
-      try {
-        let totalMinutes = 0;
-        
-        // Sumar duration_minutes de todas las clases completadas
+      let totalMinutes = 0;
+      
+      // Sumar duration_minutes de todas las clases completadas
+      if (completedLessons?.length && courseWithLessons?.lessons) {
         courseWithLessons.lessons.forEach((lesson: any) => {
           if (completedLessons.includes(lesson.id) && lesson.duration_minutes) {
             totalMinutes += Number(lesson.duration_minutes);
           }
         });
-
-        setTotalMinutesExercised(totalMinutes);
-      } catch (error) {
-        console.error('Error calculando minutos totales:', error);
-        setTotalMinutesExercised(0);
       }
+
+      // Sumar minutos de complementos completados (10 min c/u)
+      totalMinutes += completedComplementsCount * COMPLEMENT_DURATION_MINUTES;
+
+      setTotalMinutesExercised(totalMinutes);
     };
 
     calculateTotalMinutes();
-  }, [completedLessons, courseWithLessons]);
+  }, [completedLessons, courseWithLessons, completedComplementsCount]);
 
-  // Calcular número total de clases completadas
+  // Calcular número total de clases + complementos completados
   useEffect(() => {
     let allCompleted = [...(completedLessons || [])];
     
@@ -268,8 +262,9 @@ export default function InsightsSection({
       }
     }
     
-    setClassStreak(allCompleted.length);
-  }, [completedLessons, lessonVideoEnded, currentLesson]);
+    // Total = clases + complementos
+    setClassStreak(allCompleted.length + completedComplementsCount);
+  }, [completedLessons, lessonVideoEnded, currentLesson, completedComplementsCount]);
 
   // Obtener la próxima clase
   useEffect(() => {
@@ -299,7 +294,7 @@ export default function InsightsSection({
         return;
       }
       
-      if (!(session as any)?.user?.id) {
+      if (!user?.id) {
         // Si no hay sesión, mostrar al menos el peso inicial con fecha actual
         const today = new Date().toISOString();
         
@@ -314,7 +309,7 @@ export default function InsightsSection({
         const { data: records, error } = await supabase
           .from('weight_records')
           .select('weight, record_date, created_at')
-          .eq('user_id', (session as any).user.id)
+          .eq('user_id', user.id)
           .order('created_at', { ascending: true });
         
         if (error) {
@@ -362,12 +357,12 @@ export default function InsightsSection({
     };
     
     fetchWeightHistory();
-  }, [userProfile, session]);
+  }, [userProfile, user]);
 
   // Función para manejar el envío del peso (igual que en dashboard)
   const handleWeightSubmit = async (weight: number) => {
     try {
-      if (!(session as any)?.user?.id) {
+      if (!user?.id) {
         throw new Error('No hay sesión de usuario');
       }
       
@@ -407,7 +402,7 @@ export default function InsightsSection({
       const { data: records } = await supabase
         .from('weight_records')
         .select('weight, record_date, created_at')
-        .eq('user_id', (session as any).user.id)
+        .eq('user_id', user.id)
         .order('created_at', { ascending: true });
 
       if (records && records.length > 0) {
@@ -661,15 +656,15 @@ export default function InsightsSection({
               <div className="text-xl font-bold text-[#85ea10]">
                 {classStreak}
               </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400 capitalize">
-                {classStreak === 1 ? 'clase' : 'clases'} completadas
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                {classStreak === 1 ? 'Sesión completada' : 'Sesiones completadas'}
               </div>
             </div>
           </div>
 
         {/* Stats Grid - 4 tarjetas */}
           <div className="grid grid-cols-2 gap-3 flex-shrink-0">
-          {/* Racha de días consecutivos */}
+          {/* Racha (clases + complementos) */}
             <div className="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 rounded-lg p-3 border border-orange-200 dark:border-orange-800">
               <div className="flex items-center space-x-1.5 mb-1.5">
                 <Zap className="w-4 h-4 text-orange-600 dark:text-orange-400" />
@@ -681,11 +676,11 @@ export default function InsightsSection({
               {consecutiveDaysStreak}
               </div>
               <div className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
-                Días consecutivos sin perder una clase
+                Clases y complementos completados
               </div>
             </div>
 
-          {/* Minutos ejercitados */}
+          {/* Minutos ejercitados (clases + complementos) */}
           <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-lg p-3 border border-purple-200 dark:border-purple-800">
             <div className="flex items-center space-x-1.5 mb-1.5">
               <Activity className="w-4 h-4 text-purple-600 dark:text-purple-400" />
@@ -697,7 +692,7 @@ export default function InsightsSection({
               {totalMinutesExercised}
             </div>
             <div className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
-              Ejercitados
+              Ejercitados en total
               </div>
             </div>
 
@@ -713,7 +708,7 @@ export default function InsightsSection({
                 </div>
                 <button
                   onClick={handleOpenGoalModal}
-                  className="bg-[#85ea10] hover:bg-[#7dd30f] text-white rounded-full p-1.5 transition-colors shadow-sm"
+                  className="bg-[#85ea10] hover:bg-[#7dd30f] text-black rounded-full p-1.5 transition-colors shadow-sm"
                   title="Actualizar meta"
                 >
                   <Edit className="w-4 h-4" />
@@ -732,12 +727,12 @@ export default function InsightsSection({
                 </div>
 
                 {/* Meta de peso con flecha */}
-                {userProfile.target_weight ? (
+                {localTargetWeight ? (
                   <>
                     <ArrowRight className="w-4 h-4 text-[#85ea10] flex-shrink-0 mt-1" />
                     <div className="flex flex-col">
                       <div className="text-lg font-bold text-[#1e3a8a] dark:text-[#85ea10]">
-                        {userProfile.target_weight} kg
+                        {localTargetWeight} kg
                       </div>
                       <div className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
                         Peso meta
@@ -771,7 +766,7 @@ export default function InsightsSection({
                 </div>
                 <button
                   onClick={() => setShowBMIModal(true)}
-                  className="bg-[#85ea10] hover:bg-[#7dd30f] text-white rounded-full p-1.5 transition-colors shadow-sm"
+                  className="bg-[#85ea10] hover:bg-[#7dd30f] text-black rounded-full p-1.5 transition-colors shadow-sm"
                   title="Información sobre IMC"
                 >
                   <Info className="w-5 h-5" />
@@ -1059,15 +1054,24 @@ export default function InsightsSection({
                 <div className="mt-6 flex space-x-3">
                   <button
                     onClick={() => setShowGoalModal(false)}
-                    className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                    disabled={savingGoal}
+                    className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
                   >
                     Cancelar
                   </button>
                   <button
                     onClick={handleSaveGoal}
-                    className="flex-1 px-4 py-3 bg-[#85ea10] hover:bg-[#7dd30f] text-black font-semibold rounded-lg transition-colors"
+                    disabled={savingGoal}
+                    className="flex-1 px-4 py-3 bg-[#85ea10] hover:bg-[#7dd30f] text-black font-semibold rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                   >
-                    Guardar Meta
+                    {savingGoal ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin"></div>
+                        Guardando...
+                      </>
+                    ) : (
+                      'Guardar Meta'
+                    )}
                   </button>
                 </div>
               </div>

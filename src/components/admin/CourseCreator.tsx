@@ -18,11 +18,9 @@ import {
   Calendar,
   DollarSign,
   Tag,
-  Target,
-  Settings
+  Target
 } from 'lucide-react';
-import { supabase, supabaseAdmin } from '@/lib/supabase';
-import CategoryManager from './CategoryManager';
+import { supabase } from '@/lib/supabase-browser';
 import RogerAlert from '../RogerAlert';
 import { uploadImage, deleteImage, isSupabaseStorageUrl, getImagePathFromUrl, getBucketFromUrl } from '@/lib/storage';
 
@@ -71,17 +69,78 @@ interface CourseCreatorProps {
   courseToEdit?: any; // Curso existente para editar
 }
 
+// Categorías hardcoded - Las 6 categorías exactas del onboarding
+const HARDCODED_CATEGORIES: Category[] = [
+  {
+    id: 'lose_weight',
+    name: 'Bajar de peso',
+    description: 'Rutinas enfocadas en pérdida de peso',
+    icon: '🔥',
+    color: '#85ea10',
+    is_active: true,
+    sort_order: 1
+  },
+  {
+    id: 'gain_muscle',
+    name: 'Ganar músculo',
+    description: 'Entrenamientos para aumentar masa muscular',
+    icon: '🏋️',
+    color: '#85ea10',
+    is_active: true,
+    sort_order: 2
+  },
+  {
+    id: 'flexibility',
+    name: 'Flexibilidad',
+    description: 'Ejercicios para mejorar la flexibilidad',
+    icon: '🧘',
+    color: '#85ea10',
+    is_active: true,
+    sort_order: 3
+  },
+  {
+    id: 'tone',
+    name: 'Tonificar',
+    description: 'Rutinas para tonificar y definir',
+    icon: '💪',
+    color: '#85ea10',
+    is_active: true,
+    sort_order: 4
+  },
+  {
+    id: 'endurance',
+    name: 'Resistencia',
+    description: 'Entrenamientos para mejorar la resistencia',
+    icon: '🏃',
+    color: '#85ea10',
+    is_active: true,
+    sort_order: 5
+  },
+  {
+    id: 'strength',
+    name: 'Fuerza',
+    description: 'Ejercicios para desarrollar fuerza',
+    icon: '⚡',
+    color: '#85ea10',
+    is_active: true,
+    sort_order: 6
+  }
+];
+
+// Key para localStorage
+const STORAGE_KEY = 'rogerbox_course_draft';
+
 export default function CourseCreator({ onClose, onSuccess, courseToEdit }: CourseCreatorProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [showCategoryManager, setShowCategoryManager] = useState(false);
-  const [loadingCategories, setLoadingCategories] = useState(true);
+  const [categories] = useState<Category[]>(HARDCODED_CATEGORIES);
   const [dragActive, setDragActive] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [formattedPrice, setFormattedPrice] = useState<string>('');
   const [formattedIvaPrice, setFormattedIvaPrice] = useState<string>('');
+  const [expandedLessons, setExpandedLessons] = useState<Set<number>>(new Set());
+  const [bulkAddCount, setBulkAddCount] = useState<number>(10);
   const [courseData, setCourseData] = useState<CourseData>({
     title: '',
     slug: '',
@@ -100,10 +159,44 @@ export default function CourseCreator({ onClose, onSuccess, courseToEdit }: Cour
   });
   const [lessons, setLessons] = useState<LessonData[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const lessonsContainerRef = useRef<HTMLDivElement>(null);
 
-  // Cargar categorías al montar el componente
+  // Guardar en localStorage cuando cambia el estado (solo si no es edición)
   useEffect(() => {
-    fetchCategories();
+    if (!courseToEdit && (courseData.title || lessons.length > 0)) {
+      const draft = { courseData, lessons, currentStep };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
+    }
+  }, [courseData, lessons, currentStep, courseToEdit]);
+
+  // Cargar del localStorage al iniciar (solo si no es edición)
+  useEffect(() => {
+    if (!courseToEdit) {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        try {
+          const draft = JSON.parse(saved);
+          if (draft.courseData) setCourseData(draft.courseData);
+          if (draft.lessons) setLessons(draft.lessons);
+          if (draft.currentStep) setCurrentStep(draft.currentStep);
+          if (draft.courseData?.price) setFormattedPrice(formatPrice(draft.courseData.price));
+        } catch (e) {
+          console.warn('Error cargando borrador:', e);
+        }
+      }
+    }
+  }, [courseToEdit]);
+
+  // Limpiar localStorage al guardar exitosamente
+  const clearDraft = () => {
+    localStorage.removeItem(STORAGE_KEY);
+  };
+
+  // Inicializar categoría por defecto si no hay una seleccionada
+  useEffect(() => {
+    if (!courseData.category && categories.length > 0) {
+      setCourseData(prev => ({ ...prev, category: categories[0].id }));
+    }
   }, []);
 
   // Cargar datos del curso a editar
@@ -162,28 +255,6 @@ export default function CourseCreator({ onClose, onSuccess, courseToEdit }: Cour
     }
   }, [courseToEdit, categories]);
 
-  const fetchCategories = async () => {
-    try {
-      setLoadingCategories(true);
-      const { data, error } = await supabase
-        .from('course_categories')
-        .select('*')
-        .eq('is_active', true)
-        .order('sort_order', { ascending: true });
-
-      if (error) throw error;
-      setCategories(data || []);
-      
-      // Si hay categorías y no hay una seleccionada, seleccionar la primera
-      if (data && data.length > 0 && !courseData.category) {
-        setCourseData(prev => ({ ...prev, category: data[0].id }));
-      }
-    } catch (error) {
-      console.error('Error fetching categories:', error);
-    } finally {
-      setLoadingCategories(false);
-    }
-  };
 
   const handleImageUpload = async (file: File, type: 'course' | 'lesson', lessonIndex?: number) => {
     try {
@@ -285,17 +356,24 @@ export default function CourseCreator({ onClose, onSuccess, courseToEdit }: Cour
   };
 
   const addLesson = () => {
+    // Agregar al inicio y reordenar
     const newLesson: LessonData = {
-      title: '',
+      title: `Día ${lessons.length + 1}`,
       description: '',
       preview_image: null,
       video_url: '',
-      lesson_number: lessons.length + 1,
-      lesson_order: lessons.length + 1,
+      lesson_number: 1,
+      lesson_order: 1,
       duration_minutes: 30,
       is_preview: false
     };
-    setLessons([...lessons, newLesson]);
+    // Actualizar los números de las lecciones existentes
+    const updatedLessons = lessons.map((l, i) => ({
+      ...l,
+      lesson_number: i + 2,
+      lesson_order: i + 2
+    }));
+    setLessons([newLesson, ...updatedLessons]);
   };
 
   const removeLesson = (index: number) => {
@@ -507,7 +585,7 @@ export default function CourseCreator({ onClose, onSuccess, courseToEdit }: Cour
         await new Promise(resolve => setTimeout(resolve, 3000));
         
         // Actualizar curso existente
-        const { data, error } = await supabaseAdmin
+        const { data, error } = await supabase
           .from('courses')
           .update(courseDataToSubmit)
           .eq('id', courseToEdit.id)
@@ -520,7 +598,7 @@ export default function CourseCreator({ onClose, onSuccess, courseToEdit }: Cour
         await new Promise(resolve => setTimeout(resolve, 3000));
         
         // Crear nuevo curso
-        const { data, error } = await supabaseAdmin
+        const { data, error } = await supabase
           .from('courses')
           .insert([courseDataToSubmit])
           .select()
@@ -553,14 +631,14 @@ export default function CourseCreator({ onClose, onSuccess, courseToEdit }: Cour
           
           // PASO 1: Primero, resetear todos los lesson_number a valores temporales negativos
           // para evitar conflictos con la restricción única
-          const { data: existingLessons } = await supabaseAdmin
+          const { data: existingLessons } = await supabase
             .from('course_lessons')
             .select('id')
             .eq('course_id', course.id);
           
           if (existingLessons && existingLessons.length > 0) {
             for (let i = 0; i < existingLessons.length; i++) {
-              await supabaseAdmin
+              await supabase
                 .from('course_lessons')
                 .update({ lesson_number: -(i + 1) }) // Valores temporales negativos
                 .eq('id', existingLessons[i].id);
@@ -583,7 +661,7 @@ export default function CourseCreator({ onClose, onSuccess, courseToEdit }: Cour
 
             if (lesson.id) {
               // Actualizar lección existente
-              const { error: updateError } = await supabaseAdmin
+              const { error: updateError } = await supabase
                 .from('course_lessons')
                 .update(lessonData)
                 .eq('id', lesson.id);
@@ -594,7 +672,7 @@ export default function CourseCreator({ onClose, onSuccess, courseToEdit }: Cour
               }
             } else {
               // Crear nueva lección si no tiene ID
-              const { error: insertError } = await supabaseAdmin
+              const { error: insertError } = await supabase
                 .from('course_lessons')
                 .insert([{
                   ...lessonData,
@@ -613,7 +691,7 @@ export default function CourseCreator({ onClose, onSuccess, courseToEdit }: Cour
           if (existingLessons && existingLessons.length > 0) {
             const lessonsToDelete = existingLessons.filter(el => !currentLessonIds.includes(el.id));
             if (lessonsToDelete.length > 0) {
-              const { error: deleteError } = await supabaseAdmin
+              const { error: deleteError } = await supabase
                 .from('course_lessons')
                 .delete()
                 .in('id', lessonsToDelete.map(l => l.id));
@@ -651,6 +729,7 @@ export default function CourseCreator({ onClose, onSuccess, courseToEdit }: Cour
       }
 
       setShowSuccessModal(true);
+      clearDraft(); // Limpiar borrador al guardar exitosamente
       onSuccess();
     } catch (error: any) {
       console.error('Error creating course:', error);
@@ -843,46 +922,29 @@ export default function CourseCreator({ onClose, onSuccess, courseToEdit }: Cour
 
               {/* Categoría */}
               <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Categoría *
-                  </label>
-                  <button
-                    onClick={() => setShowCategoryManager(true)}
-                    className="text-[#85ea10] hover:text-[#7dd30f] text-sm font-medium flex items-center space-x-1 transition-colors"
-                  >
-                    <Settings className="w-4 h-4" />
-                    <span>Gestionar</span>
-                  </button>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Categoría *
+                </label>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {categories.map(category => (
+                    <button
+                      key={category.id}
+                      onClick={() => setCourseData(prev => ({ ...prev, category: category.id }))}
+                      className={`flex items-center space-x-2 p-3 rounded-lg border-2 transition-all ${
+                        courseData.category === category.id
+                          ? 'border-[#85ea10] bg-[#85ea10]/10 text-[#85ea10]'
+                          : 'border-gray-300 dark:border-gray-600 hover:border-[#85ea10]/50'
+                      }`}
+                      style={{
+                        borderColor: courseData.category === category.id ? category.color : undefined,
+                        backgroundColor: courseData.category === category.id ? category.color + '20' : undefined
+                      }}
+                    >
+                      <span className="text-lg">{category.icon}</span>
+                      <span className="text-sm font-medium">{category.name}</span>
+                    </button>
+                  ))}
                 </div>
-                
-                {loadingCategories ? (
-                  <div className="flex items-center justify-center py-8">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#85ea10]"></div>
-                    <span className="ml-2 text-gray-600 dark:text-white/60">Cargando categorías...</span>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {categories.map(category => (
-                      <button
-                        key={category.id}
-                        onClick={() => setCourseData(prev => ({ ...prev, category: category.id }))}
-                        className={`flex items-center space-x-2 p-3 rounded-lg border-2 transition-all ${
-                          courseData.category === category.id
-                            ? 'border-[#85ea10] bg-[#85ea10]/10 text-[#85ea10]'
-                            : 'border-gray-300 dark:border-gray-600 hover:border-[#85ea10]/50'
-                        }`}
-                        style={{
-                          borderColor: courseData.category === category.id ? category.color : undefined,
-                          backgroundColor: courseData.category === category.id ? category.color + '20' : undefined
-                        }}
-                      >
-                        <span className="text-lg">{category.icon}</span>
-                        <span className="text-sm font-medium">{category.name}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
               </div>
             </div>
           )}
@@ -1121,204 +1183,320 @@ export default function CourseCreator({ onClose, onSuccess, courseToEdit }: Cour
           )}
 
           {currentStep === 3 && (
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
-                  Lecciones del Curso
-                </h3>
-                <button
-                  onClick={addLesson}
-                  className="bg-[#85ea10] hover:bg-[#7dd30f] text-black px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Agregar Lección</span>
-                </button>
+            <div className="space-y-4">
+              {/* Header con controles */}
+              <div className="flex flex-wrap items-center justify-between gap-4 sticky top-0 bg-white dark:bg-gray-900 py-2 z-10">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                    Lecciones ({lessons.length})
+                  </h3>
+                  {lessons.length > 0 && (
+                    <button
+                      onClick={() => {
+                        if (expandedLessons.size === lessons.length) {
+                          setExpandedLessons(new Set());
+                        } else {
+                          setExpandedLessons(new Set(lessons.map((_, i) => i)));
+                        }
+                      }}
+                      className="text-sm text-[#85ea10] hover:underline"
+                    >
+                      {expandedLessons.size === lessons.length ? 'Colapsar todo' : 'Expandir todo'}
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  {/* Agregar una lección */}
+                  <button
+                    onClick={() => {
+                      addLesson();
+                      // Expandir la nueva lección y scroll
+                      setTimeout(() => {
+                        setExpandedLessons(prev => new Set([...prev, lessons.length]));
+                        lessonsContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+                      }, 100);
+                    }}
+                    className="bg-[#85ea10] hover:bg-[#7dd30f] text-black px-3 py-2 rounded-lg transition-colors flex items-center gap-1 text-sm"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>+1</span>
+                  </button>
+                  {/* Agregar en bloque */}
+                  <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+                    <input
+                      type="number"
+                      value={bulkAddCount}
+                      onChange={(e) => setBulkAddCount(Math.max(1, Math.min(100, parseInt(e.target.value) || 1)))}
+                      className="w-12 px-2 py-1 text-center text-sm border-0 bg-transparent text-gray-900 dark:text-white focus:ring-0"
+                      min="1"
+                      max="100"
+                    />
+                    <button
+                      onClick={() => {
+                        const newLessons: LessonData[] = [];
+                        for (let i = 0; i < bulkAddCount; i++) {
+                          newLessons.push({
+                            title: `Día ${lessons.length + i + 1}`,
+                            description: '',
+                            preview_image: null,
+                            video_url: '',
+                            lesson_number: lessons.length + i + 1,
+                            lesson_order: lessons.length + i + 1,
+                            duration_minutes: 30,
+                            is_preview: false
+                          });
+                        }
+                        setLessons([...newLessons, ...lessons]); // Agregar al inicio
+                        setExpandedLessons(new Set([0])); // Expandir la primera
+                      }}
+                      className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm transition-colors"
+                    >
+                      Agregar {bulkAddCount}
+                    </button>
+                  </div>
+                </div>
               </div>
 
               {lessons.length === 0 ? (
                 <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-                  <Play className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                  <p className="text-lg font-medium mb-2">No hay lecciones agregadas</p>
-                  <p className="text-sm">Agrega al menos una lección para tu curso</p>
+                  <Play className="w-20 h-20 mx-auto mb-6 text-[#85ea10]" />
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white mb-2">¿Cuántas clases tendrá tu curso?</p>
+                  <p className="text-sm mb-8 text-gray-500">Ingresa el número de lecciones y las crearemos por ti</p>
+                  
+                  <div className="flex items-center justify-center gap-4 mb-6">
+                    <input
+                      type="number"
+                      value={bulkAddCount}
+                      onChange={(e) => setBulkAddCount(Math.max(1, Math.min(365, parseInt(e.target.value) || 1)))}
+                      className="w-24 px-4 py-3 text-center text-2xl font-bold border-2 border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#85ea10] focus:border-[#85ea10]"
+                      min="1"
+                      max="365"
+                      placeholder="30"
+                    />
+                    <span className="text-lg text-gray-600 dark:text-gray-400">lecciones</span>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      const newLessons: LessonData[] = [];
+                      for (let i = 0; i < bulkAddCount; i++) {
+                        newLessons.push({
+                          title: `Día ${i + 1}`,
+                          description: '',
+                          preview_image: null,
+                          video_url: '',
+                          lesson_number: i + 1,
+                          lesson_order: i + 1,
+                          duration_minutes: 30,
+                          is_preview: i === 0 // Primera lección como preview
+                        });
+                      }
+                      setLessons(newLessons);
+                      setExpandedLessons(new Set([0])); // Expandir la primera
+                    }}
+                    className="bg-[#85ea10] hover:bg-[#7dd30f] text-black px-8 py-4 rounded-xl transition-colors text-lg font-bold"
+                  >
+                    Crear {bulkAddCount} {bulkAddCount === 1 ? 'lección' : 'lecciones'}
+                  </button>
+
+                  <div className="mt-8 flex justify-center gap-3">
+                    <button
+                      onClick={() => setBulkAddCount(7)}
+                      className={`px-4 py-2 rounded-lg text-sm transition-colors ${bulkAddCount === 7 ? 'bg-[#85ea10] text-black' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'}`}
+                    >
+                      1 semana
+                    </button>
+                    <button
+                      onClick={() => setBulkAddCount(30)}
+                      className={`px-4 py-2 rounded-lg text-sm transition-colors ${bulkAddCount === 30 ? 'bg-[#85ea10] text-black' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'}`}
+                    >
+                      1 mes
+                    </button>
+                    <button
+                      onClick={() => setBulkAddCount(60)}
+                      className={`px-4 py-2 rounded-lg text-sm transition-colors ${bulkAddCount === 60 ? 'bg-[#85ea10] text-black' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'}`}
+                    >
+                      2 meses
+                    </button>
+                    <button
+                      onClick={() => setBulkAddCount(90)}
+                      className={`px-4 py-2 rounded-lg text-sm transition-colors ${bulkAddCount === 90 ? 'bg-[#85ea10] text-black' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'}`}
+                    >
+                      3 meses
+                    </button>
+                  </div>
                 </div>
               ) : (
-                <div className="space-y-4">
-                  {lessons.map((lesson, index) => (
-                    <div key={index} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-4">
-                        <h4 className="font-medium text-gray-900 dark:text-white">
-                          Lección {lesson.lesson_order}
-                        </h4>
-                        <button
-                          onClick={() => removeLesson(index)}
-                          className="text-red-500 hover:text-red-700"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            Título de la Lección * ({lesson.title.length}/100)
-                          </label>
-                          <input
-                            type="text"
-                            value={lesson.title}
-                            onChange={(e) => updateLesson(index, 'title', e.target.value)}
-                            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#85ea10] focus:border-[#85ea10] bg-white dark:bg-gray-800 text-gray-900 dark:text-white ${
-                              lesson.title.length > 100 
-                                ? 'border-red-500 dark:border-red-500' 
-                                : 'border-gray-300 dark:border-gray-600'
-                            }`}
-                            placeholder="Ej: Introducción al HIIT (máx. 100 caracteres)"
-                            maxLength={100}
-                          />
-                          {lesson.title.length > 100 && (
-                            <p className="text-red-500 text-sm mt-1">El título no puede exceder 100 caracteres</p>
-                          )}
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            Duración (minutos)
-                          </label>
-                          <input
-                            type="number"
-                            value={lesson.duration_minutes}
-                            onChange={(e) => updateLesson(index, 'duration_minutes', parseInt(e.target.value) || 0)}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#85ea10] focus:border-[#85ea10] bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                            placeholder="30"
-                            min="1"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="mt-4">
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                          Descripción * ({lesson.description.length}/300)
-                        </label>
-                        <textarea
-                          value={lesson.description}
-                          onChange={(e) => updateLesson(index, 'description', e.target.value)}
-                          rows={2}
-                          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#85ea10] focus:border-[#85ea10] bg-white dark:bg-gray-800 text-gray-900 dark:text-white ${
-                            lesson.description.length > 300 
-                              ? 'border-red-500 dark:border-red-500' 
-                              : 'border-gray-300 dark:border-gray-600'
-                          }`}
-                          placeholder="Describe qué incluye esta lección... (máx. 300 caracteres)"
-                          maxLength={300}
-                        />
-                        {lesson.description.length > 300 && (
-                          <p className="text-red-500 text-sm mt-1">La descripción no puede exceder 300 caracteres</p>
-                        )}
-                      </div>
-
-                      <div className="mt-4">
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                          Playback ID de Mux
-                        </label>
-                        <input
-                          type="text"
-                          value={lesson.video_url}
-                          onChange={(e) => updateLesson(index, 'video_url', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#85ea10] focus:border-[#85ea10] bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                          placeholder="Ej: abc123def456ghi789"
-                        />
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                          Ingresa el Playback ID de Mux (sin la URL completa)
-                        </p>
-                      </div>
-
-                      <div className="mt-4">
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                          Imagen de Preview
-                        </label>
-                        <div
-                          className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors cursor-pointer hover:border-[#85ea10] ${
-                            dragActive
-                              ? 'border-[#85ea10] bg-[#85ea10]/10'
-                              : 'border-gray-300 dark:border-gray-600'
-                          }`}
-                          onDragEnter={handleDrag}
-                          onDragLeave={handleDragLeave}
-                          onDragOver={handleDrag}
-                          onDrop={(e) => handleDrop(e, 'lesson', index)}
+                <div ref={lessonsContainerRef} className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
+                  {lessons.map((lesson, index) => {
+                    const isExpanded = expandedLessons.has(index);
+                    return (
+                      <div key={index} className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                        {/* Header compacto - siempre visible */}
+                        <div 
+                          className={`flex items-center justify-between p-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 ${isExpanded ? 'bg-gray-50 dark:bg-gray-800' : ''}`}
                           onClick={() => {
-                            const input = document.createElement('input');
-                            input.type = 'file';
-                            input.accept = 'image/*';
-                            input.onchange = (e) => {
-                              const file = (e.target as HTMLInputElement).files?.[0];
-                              if (file) {
-                                handleImageUpload(file, 'lesson', index);
+                            setExpandedLessons(prev => {
+                              const newSet = new Set(prev);
+                              if (newSet.has(index)) {
+                                newSet.delete(index);
+                              } else {
+                                newSet.add(index);
                               }
-                            };
-                            input.click();
+                              return newSet;
+                            });
                           }}
                         >
-                          {lesson.preview_image ? (
-                            <div className="relative">
-                              <img
-                                src={lesson.preview_image}
-                                alt="Preview"
-                                className="w-full max-h-48 rounded-lg object-contain"
-                              />
-                              <button
-                                onClick={async () => {
-                                  if (lesson.preview_image) {
-                                    await handleImageDelete(lesson.preview_image, 'lesson');
-                                  }
-                                  updateLesson(index, 'preview_image', null);
-                                }}
-                                className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
-                              >
-                                <X className="w-4 h-4" />
-                              </button>
-                            </div>
-                          ) : (
-                            <div>
-                              <ImageIcon className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                              <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                                Arrastra una imagen aquí o haz clic para seleccionar
-                              </p>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const input = document.createElement('input');
-                                  input.type = 'file';
-                                  input.accept = 'image/*';
-                                  input.onchange = (e) => {
-                                    const file = (e.target as HTMLInputElement).files?.[0];
-                                    if (file) {
-                                      handleImageUpload(file, 'lesson', index);
-                                    }
-                                  };
-                                  input.click();
-                                }}
-                                className="bg-[#85ea10] hover:bg-[#7dd30f] text-black px-3 py-1 rounded text-sm transition-colors"
-                              >
-                                Seleccionar
-                              </button>
-                            </div>
-                          )}
+                          <div className="flex items-center gap-3 flex-1 min-w-0">
+                            <span className="flex-shrink-0 w-8 h-8 bg-[#85ea10] text-black rounded-full flex items-center justify-center text-sm font-bold">
+                              {lesson.lesson_order}
+                            </span>
+                            <input
+                              type="text"
+                              value={lesson.title}
+                              onChange={(e) => {
+                                e.stopPropagation();
+                                updateLesson(index, 'title', e.target.value);
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                              className="flex-1 min-w-0 px-2 py-1 border-0 bg-transparent text-gray-900 dark:text-white focus:ring-1 focus:ring-[#85ea10] rounded"
+                              placeholder={`Título de lección ${lesson.lesson_order}`}
+                            />
+                            <span className="flex-shrink-0 text-xs text-gray-500">
+                              {lesson.duration_minutes}min
+                            </span>
+                            {lesson.preview_image && (
+                              <ImageIcon className="flex-shrink-0 w-4 h-4 text-blue-500" title="Tiene imagen" />
+                            )}
+                            {lesson.video_url && (
+                              <Video className="flex-shrink-0 w-4 h-4 text-green-500" title="Tiene video" />
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 ml-2">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removeLesson(index);
+                              }}
+                              className="text-red-500 hover:text-red-700 p-1"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                            <span className={`transform transition-transform ${isExpanded ? 'rotate-180' : ''}`}>
+                              ▼
+                            </span>
+                          </div>
                         </div>
-                      </div>
 
-                      <div className="mt-4 flex items-center">
-                        <input
-                          type="checkbox"
-                          id={`preview-${index}`}
-                          checked={lesson.is_preview}
-                          onChange={(e) => updateLesson(index, 'is_preview', e.target.checked)}
-                          className="h-4 w-4 text-[#85ea10] focus:ring-[#85ea10] border-gray-300 rounded"
-                        />
-                        <label htmlFor={`preview-${index}`} className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                          Esta lección es de preview (gratuita)
-                        </label>
+                        {/* Contenido expandido */}
+                        {isExpanded && (
+                          <div className="p-4 pt-2 border-t border-gray-200 dark:border-gray-700 space-y-3">
+                            {/* Título de la lección */}
+                            <div>
+                              <label className="block text-xs font-medium text-gray-500 mb-1">Título de la Lección * ({lesson.title.length}/100)</label>
+                              <input
+                                type="text"
+                                value={lesson.title}
+                                onChange={(e) => updateLesson(index, 'title', e.target.value)}
+                                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#85ea10] focus:border-[#85ea10] bg-white dark:bg-gray-800 text-gray-900 dark:text-white ${
+                                  lesson.title.length > 100 
+                                    ? 'border-red-500' 
+                                    : 'border-gray-300 dark:border-gray-600'
+                                }`}
+                                placeholder="Ej: Día 1 - Introducción al HIIT"
+                                maxLength={100}
+                              />
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <label className="block text-xs font-medium text-gray-500 mb-1">Duración (min)</label>
+                                <input
+                                  type="number"
+                                  value={lesson.duration_minutes}
+                                  onChange={(e) => updateLesson(index, 'duration_minutes', parseInt(e.target.value) || 0)}
+                                  className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-[#85ea10] bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-gray-500 mb-1">Playback ID (Mux)</label>
+                                <input
+                                  type="text"
+                                  value={lesson.video_url}
+                                  onChange={(e) => updateLesson(index, 'video_url', e.target.value)}
+                                  className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-[#85ea10] bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                                  placeholder="abc123def456"
+                                />
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-500 mb-1">Descripción</label>
+                              <textarea
+                                value={lesson.description}
+                                onChange={(e) => updateLesson(index, 'description', e.target.value)}
+                                rows={2}
+                                className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-[#85ea10] bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                                placeholder="Descripción de la lección..."
+                              />
+                            </div>
+                            {/* Imagen de preview */}
+                            <div>
+                              <label className="block text-xs font-medium text-gray-500 mb-1">Imagen de Preview</label>
+                              {lesson.preview_image ? (
+                                <div className="relative inline-block">
+                                  <img
+                                    src={lesson.preview_image}
+                                    alt="Preview"
+                                    className="w-32 h-20 object-cover rounded border border-gray-300"
+                                  />
+                                  <button
+                                    onClick={async () => {
+                                      if (lesson.preview_image) {
+                                        await handleImageDelete(lesson.preview_image, 'lesson');
+                                      }
+                                      updateLesson(index, 'preview_image', null);
+                                    }}
+                                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              ) : (
+                                <div
+                                  onClick={() => {
+                                    const input = document.createElement('input');
+                                    input.type = 'file';
+                                    input.accept = 'image/*';
+                                    input.onchange = (e) => {
+                                      const file = (e.target as HTMLInputElement).files?.[0];
+                                      if (file) handleImageUpload(file, 'lesson', index);
+                                    };
+                                    input.click();
+                                  }}
+                                  className="w-32 h-20 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded flex flex-col items-center justify-center cursor-pointer hover:border-[#85ea10] transition-colors"
+                                >
+                                  <ImageIcon className="w-6 h-6 text-gray-400 mb-1" />
+                                  <span className="text-xs text-gray-500">Subir imagen</span>
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="flex items-center">
+                              <label className="flex items-center gap-2 text-sm">
+                                <input
+                                  type="checkbox"
+                                  checked={lesson.is_preview}
+                                  onChange={(e) => updateLesson(index, 'is_preview', e.target.checked)}
+                                  className="h-4 w-4 text-[#85ea10] focus:ring-[#85ea10] border-gray-300 rounded"
+                                />
+                                <span className="text-gray-700 dark:text-gray-300">Preview gratuito</span>
+                              </label>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -1485,17 +1663,6 @@ export default function CourseCreator({ onClose, onSuccess, courseToEdit }: Cour
           </div>
         </div>
       </div>
-
-      {/* Category Manager Modal */}
-      {showCategoryManager && (
-        <CategoryManager
-          onClose={() => setShowCategoryManager(false)}
-          onCategorySelect={(category) => {
-            setCourseData(prev => ({ ...prev, category: category.id }));
-            setShowCategoryManager(false);
-          }}
-        />
-      )}
 
       {/* Success Modal */}
       <RogerAlert

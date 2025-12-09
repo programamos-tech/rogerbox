@@ -18,6 +18,10 @@ export const MUX_CONFIG = {
   ENABLE_MP4: true,
 };
 
+// Mux Data - Video Analytics & Engagement Tracking
+// Environment key from Mux Dashboard > Data > Get Started
+export const MUX_DATA_ENV_KEY = process.env.NEXT_PUBLIC_MUX_DATA_ENV_KEY || '';
+
 // Función para generar URL de video de Mux
 export function getMuxVideoUrl(playbackId: string, quality: string = 'auto') {
   const baseUrl = `${MUX_CONFIG.STREAM_URL}/${playbackId}`;
