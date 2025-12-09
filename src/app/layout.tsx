@@ -61,7 +61,27 @@ export default function RootLayout({
       <head>
         <Script
           src="https://checkout.wompi.co/widget.js"
-          strategy="beforeInteractive"
+          strategy="afterInteractive"
+        />
+        {/* Script para verificar cuando Wompi se carga */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                var checkWompi = setInterval(function() {
+                  if (typeof window.WidgetCheckout !== 'undefined') {
+                    console.log('✅ Script de Wompi cargado correctamente');
+                    console.log('🔍 window.WidgetCheckout disponible:', typeof window.WidgetCheckout);
+                    clearInterval(checkWompi);
+                  }
+                }, 100);
+                // Limpiar después de 10 segundos
+                setTimeout(function() {
+                  clearInterval(checkWompi);
+                }, 10000);
+              })();
+            `,
+          }}
         />
         {/* Script para detectar el tema del sistema y aplicar clase dark */}
         <script

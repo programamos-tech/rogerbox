@@ -75,30 +75,48 @@ export default function WompiCheckout({ course, onSuccess, onError, onClose }: W
   // Verificar si el widget está disponible
   useEffect(() => {
     let attempts = 0;
-    const maxAttempts = 50; // 5 segundos máximo
+    const maxAttempts = 100; // 10 segundos máximo (aumentado para dar más tiempo)
 
     const checkWidget = () => {
       attempts++;
-      console.log(`🔍 Verificando widget (intento ${attempts}/${maxAttempts})...`);
-      console.log('🪟 typeof window:', typeof window);
-      console.log('🔧 window.WidgetCheckout:', window.WidgetCheckout);
+      if (attempts % 10 === 0) {
+        console.log(`🔍 Verificando widget (intento ${attempts}/${maxAttempts})...`);
+      }
 
-      if (typeof window !== 'undefined' && window.WidgetCheckout) {
+      if (typeof window !== 'undefined' && typeof window.WidgetCheckout === 'function') {
         console.log('✅ Widget de Wompi encontrado y listo!');
         console.log('📦 window.WidgetCheckout:', window.WidgetCheckout);
-        setWidgetReady(true);
-      } else if (attempts < maxAttempts) {
+        console.log('🔍 Verificando que sea una función constructora...');
+        
+        // Verificar que se puede instanciar (sin crear realmente una instancia)
+        try {
+          // Solo verificar que es una función, no crear instancia aún
+          if (typeof window.WidgetCheckout === 'function') {
+            setWidgetReady(true);
+            return;
+          }
+        } catch (e) {
+          console.warn('⚠️ Error verificando widget:', e);
+        }
+      }
+      
+      if (attempts < maxAttempts) {
         setTimeout(checkWidget, 100);
       } else {
-        console.error('❌ Widget de Wompi no se cargó después de 5 segundos');
+        console.error('❌ Widget de Wompi no se cargó después de 10 segundos');
         console.error('💡 Verifica que el script de Wompi se esté cargando desde https://checkout.wompi.co/widget.js');
-        console.error('🔍 Scripts cargados:', Array.from(document.scripts).map(s => s.src).filter(src => src.includes('wompi')));
+        const wompiScripts = Array.from(document.scripts).map(s => s.src).filter(src => src.includes('wompi'));
+        console.error('🔍 Scripts cargados:', wompiScripts);
+        if (wompiScripts.length === 0) {
+          console.error('❌ No se encontró el script de Wompi. Intenta recargar la página.');
+          onError?.('El widget de pago no se cargó correctamente. Por favor recarga la página.');
+        }
       }
     };
 
-    // Verificar inmediatamente
-    checkWidget();
-  }, []);
+    // Esperar un momento antes de empezar a verificar (dar tiempo al script para cargar)
+    setTimeout(checkWidget, 200);
+  }, [onError]);
 
   // Pre-cargar datos del usuario si existe sesión
   useEffect(() => {
@@ -285,54 +303,191 @@ export default function WompiCheckout({ course, onSuccess, onError, onClose }: W
       }
 
       console.log('📦 Configuración del widget:', JSON.stringify(widgetConfig, null, 2));
+      console.log('🌐 Base URL:', baseUrl);
+      console.log('🔍 Verificando URL de redirección...');
+      
+      // Validar que la URL de redirección sea válida
+      try {
+        const redirectUrlObj = new URL(widgetConfig.redirectUrl);
+        console.log('✅ URL de redirección válida:', redirectUrlObj.href);
+      } catch (urlError) {
+        console.error('❌ URL de redirección inválida:', widgetConfig.redirectUrl);
+        throw new Error('URL de redirección inválida');
+      }
 
       const checkout = new window.WidgetCheckout(widgetConfig);
 
       console.log('✅ Widget instanciado correctamente');
       console.log('📂 Checkout object:', checkout);
       console.log('📂 Tipo de checkout.open:', typeof checkout.open);
+      console.log('📂 Métodos disponibles:', Object.keys(checkout));
 
       // 3. Abrir el widget
       console.log('🎭 Abriendo modal del widget...');
 
+      // Esperar un momento para asegurar que el widget esté completamente inicializado
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      // Agregar listeners para errores de red (puede ayudar a diagnosticar el 403)
+      const errorListener = (event: ErrorEvent) => {
+        const target = event.target as HTMLElement;
+        const isWompiError = 
+          (event.message && event.message.includes('wompi')) ||
+          (target && (target.tagName === 'SCRIPT' || target.tagName === 'IFRAME') && 
+           (target.getAttribute('src')?.includes('wompi') || target.getAttribute('src')?.includes('checkout.wompi')));
+        
+        if (isWompiError) {
+          console.error('🚨 Error relacionado con Wompi:', event);
+          console.error('🚨 Error target:', target);
+          console.error('🚨 Error message:', event.message);
+          
+          // Si es un error 403 y estamos en localhost, mostrar mensaje útil
+          if (event.message?.includes('403') || event.message?.includes('Forbidden')) {
+            if (baseUrl.includes('127.0.0.1') || baseUrl.includes('localhost')) {
+              console.error('❌ Wompi está bloqueando localhost (Error 403)');
+              console.error('💡 Solución: Usa ngrok para desarrollo local');
+              setIsLoading(false);
+              onError?.('Wompi bloquea localhost. Configura ngrok y NEXT_PUBLIC_BASE_URL. Ver consola para instrucciones.');
+            }
+          }
+        }
+      };
+      
+      // Listener para errores de recursos (scripts, iframes, etc.)
+      window.addEventListener('error', errorListener, true);
+      
+      // También escuchar errores de fetch/XMLHttpRequest
+      const originalFetch = window.fetch;
+      window.fetch = async (...args) => {
+        try {
+          const response = await originalFetch(...args);
+          if (!response.ok && response.status === 403 && args[0]?.toString().includes('wompi')) {
+            console.error('🚨 Error 403 en fetch a Wompi:', args[0]);
+            if (baseUrl.includes('127.0.0.1') || baseUrl.includes('localhost')) {
+              setIsLoading(false);
+              onError?.('Wompi bloquea localhost. Configura ngrok y NEXT_PUBLIC_BASE_URL.');
+            }
+          }
+          return response;
+        } catch (error) {
+          throw error;
+        }
+      };
+
       // Intentar abrir el widget
       try {
-        checkout.open((result: any) => {
-        console.log('📊 Resultado del Widget:', result);
-        
-        setIsLoading(false);
-
-        // Manejar diferentes estados de transacción
-        if (result.transaction?.status === 'APPROVED') {
-          console.log('✅ Pago aprobado inmediatamente!');
-          // Llamar callback de éxito si existe
-          onSuccess?.();
-          // Redirigir a página de resultado que luego redirigirá automáticamente al dashboard
-          // Esto asegura que el usuario vea el mensaje de éxito y la compra se registre correctamente
-          window.location.href = `${window.location.origin}/payment/result?order_id=${orderId}&reference=${reference}&id=${result.transaction.id}`;
-        } else if (result.transaction?.status === 'PENDING') {
-          console.log('⏳ Pago pendiente de confirmación (PSE/Nequi)');
-          // Redirigir a página de resultado para mostrar estado pendiente
-          window.location.href = `${window.location.origin}/payment/result?order_id=${orderId}&reference=${reference}&id=${result.transaction.id}`;
-        } else if (result.transaction?.status === 'DECLINED') {
-          console.log('❌ Pago rechazado');
-          // Redirigir a página de resultado para mostrar estado rechazado
-          window.location.href = `${window.location.origin}/payment/result?order_id=${orderId}&reference=${reference}&id=${result.transaction.id}`;
-        } else if (result.transaction?.status === 'ERROR') {
-          console.log('⚠️ Error en el pago');
-          // Redirigir a página de resultado para mostrar error
-          window.location.href = `${window.location.origin}/payment/result?order_id=${orderId}&reference=${reference}&id=${result.transaction.id}`;
-        } else {
-          console.log('ℹ️ Estado desconocido:', result.transaction?.status);
-          // Por seguridad, redirigir a resultado con el orderId
-          window.location.href = `${window.location.origin}/payment/result?order_id=${orderId}&reference=${reference}`;
+        // Verificar que el método open existe y es una función
+        if (typeof checkout.open !== 'function') {
+          throw new Error('El método open() no está disponible en el widget de Wompi');
         }
+
+        console.log('🔓 Llamando a checkout.open()...');
+        
+        // Timeout para detectar si el widget no se abre
+        const openTimeout = setTimeout(() => {
+          console.warn('⚠️ El widget no se ha abierto después de 5 segundos');
+          console.warn('💡 Esto puede indicar un problema con la configuración o que Wompi está bloqueando la solicitud');
+          
+          // Verificar si hay errores de red relacionados con Wompi
+          const wompiErrors = [];
+          window.addEventListener('error', (e) => {
+            if (e.message && e.message.includes('wompi')) {
+              wompiErrors.push(e);
+            }
+          }, { once: true });
+          
+          // Si estamos en localhost sin ngrok, mostrar mensaje útil
+          if (baseUrl.includes('127.0.0.1') || baseUrl.includes('localhost')) {
+            console.error('❌ Wompi está bloqueando localhost. Soluciones:');
+            console.error('1. Usa ngrok: ngrok http 3001');
+            console.error('2. Configura NEXT_PUBLIC_BASE_URL con la URL de ngrok');
+            console.error('3. O contacta a Wompi para habilitar localhost en modo test');
+            
+            setIsLoading(false);
+            onError?.('Wompi no permite localhost. Por favor usa ngrok o contacta al soporte. Ver consola para más detalles.');
+          }
+        }, 5000);
+        
+        // Llamar a open() con el callback
+        checkout.open((result: any) => {
+          clearTimeout(openTimeout);
+          // Restaurar fetch original y remover listeners cuando se complete
+          window.fetch = originalFetch;
+          window.removeEventListener('error', errorListener, true);
+          console.log('📊 Resultado del Widget:', result);
+          
+          setIsLoading(false);
+
+          // Manejar diferentes estados de transacción
+          if (result?.transaction?.status === 'APPROVED') {
+            console.log('✅ Pago aprobado inmediatamente!');
+            // Llamar callback de éxito si existe
+            onSuccess?.();
+            // Redirigir a página de resultado que luego redirigirá automáticamente al dashboard
+            // Esto asegura que el usuario vea el mensaje de éxito y la compra se registre correctamente
+            window.location.href = `${baseUrl}/payment/result?order_id=${orderId}&reference=${reference}&id=${result.transaction.id}`;
+          } else if (result?.transaction?.status === 'PENDING') {
+            console.log('⏳ Pago pendiente de confirmación (PSE/Nequi)');
+            // Redirigir a página de resultado para mostrar estado pendiente
+            window.location.href = `${baseUrl}/payment/result?order_id=${orderId}&reference=${reference}&id=${result.transaction.id}`;
+          } else if (result?.transaction?.status === 'DECLINED') {
+            console.log('❌ Pago rechazado');
+            // Redirigir a página de resultado para mostrar estado rechazado
+            window.location.href = `${baseUrl}/payment/result?order_id=${orderId}&reference=${reference}&id=${result.transaction.id}`;
+          } else if (result?.transaction?.status === 'ERROR') {
+            console.log('⚠️ Error en el pago');
+            // Redirigir a página de resultado para mostrar error
+            window.location.href = `${baseUrl}/payment/result?order_id=${orderId}&reference=${reference}&id=${result.transaction.id}`;
+          } else if (result?.error) {
+            console.error('❌ Error del widget:', result.error);
+            setIsLoading(false);
+            onError?.(result.error.message || 'Error al procesar el pago');
+          } else {
+            console.log('ℹ️ Estado desconocido:', result?.transaction?.status);
+            // Por seguridad, redirigir a resultado con el orderId
+            window.location.href = `${baseUrl}/payment/result?order_id=${orderId}&reference=${reference}`;
+          }
         });
 
         console.log('✅ checkout.open() llamado exitosamente');
+        console.log('⏳ Esperando respuesta del widget...');
+        
+        // Restaurar fetch y remover listeners después de un tiempo si no hay respuesta
+        setTimeout(() => {
+          window.fetch = originalFetch;
+          window.removeEventListener('error', errorListener, true);
+        }, 30000);
       } catch (openError) {
+        // Restaurar fetch y remover listeners en caso de error
+        window.fetch = originalFetch;
+        window.removeEventListener('error', errorListener, true);
         console.error('❌ Error al abrir el widget:', openError);
-        throw openError;
+        console.error('❌ Error details:', {
+          message: openError instanceof Error ? openError.message : 'Unknown error',
+          stack: openError instanceof Error ? openError.stack : undefined,
+          checkout: checkout,
+          config: widgetConfig,
+          publicKey: wompiPublicKey.substring(0, 20) + '...',
+          redirectUrl: widgetConfig.redirectUrl
+        });
+        
+        // Si el error está relacionado con localhost, dar instrucciones
+        const errorMessage = openError instanceof Error ? openError.message : String(openError);
+        if (errorMessage.includes('403') || errorMessage.includes('Forbidden')) {
+          if (baseUrl.includes('127.0.0.1') || baseUrl.includes('localhost')) {
+            console.error('🔧 Solución: Usa ngrok para exponer tu servidor local');
+            console.error('   1. Instala ngrok: npm install -g ngrok');
+            console.error('   2. Ejecuta: ngrok http 3001');
+            console.error('   3. Configura NEXT_PUBLIC_BASE_URL con la URL de ngrok (ej: https://abc123.ngrok.io)');
+            onError?.('Wompi bloquea localhost. Configura ngrok y NEXT_PUBLIC_BASE_URL. Ver consola.');
+          } else {
+            onError?.('Error 403: Wompi rechazó la solicitud. Verifica la configuración.');
+          }
+        } else {
+          onError?.(errorMessage || 'Error al abrir el widget de pago');
+        }
+        
+        setIsLoading(false);
       }
 
     } catch (error) {
