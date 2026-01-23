@@ -110,7 +110,9 @@ export async function DELETE(
 
     if (!isAdminUser(user)) {
       // Fallback dev bypass: si no hay user pero estamos en dev y hay service key, permitir
-      if (process.env.NODE_ENV !== 'production' && process.env.SUPABASE_SERVICE_ROLE_KEY && !user) {
+      const nodeEnv = String(process.env.NODE_ENV || 'development');
+      const isNotProduction = nodeEnv !== 'production' && nodeEnv !== 'prod';
+      if (isNotProduction && process.env.SUPABASE_SERVICE_ROLE_KEY && !user) {
         console.warn('⚠️ Bypassing admin check in dev for courses DELETE (no user found)');
         // Continuar con la eliminación usando supabaseAdmin
       } else {

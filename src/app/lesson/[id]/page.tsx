@@ -74,9 +74,8 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
 
   useEffect(() => {
     console.log('LessonPage mounted, params:', resolvedParams);
-    console.log('Session status:', status);
     
-    if (!loading && !user) {
+    if (!authLoading && !user) {
       router.push('/login');
       return;
     }
@@ -85,7 +84,7 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
       loadLessonData();
       loadUserProgress();
     }
-  }, [resolvedParams.id, status, router]);
+  }, [resolvedParams.id, authLoading, user, router]);
 
   // Cargar lecciones cuando la lección actual esté disponible
   useEffect(() => {
@@ -96,26 +95,26 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
 
   const loadUserProgress = async () => {
     try {
-      if (!(session as any)?.user?.id) {
-        console.log('No user ID found in session');
+      if (!user?.id) {
+        console.log('No user ID found');
         return;
       }
 
-      console.log('Loading user progress for user:', (session as any).user.id);
+      console.log('Loading user progress for user:', user.id);
 
       // Obtener perfil del usuario
       const { data: profileData, error: profileError } = await supabase
         .from('user_profiles')
         .select('*')
-        .eq('user_id', (session as any).user.id)
+        .eq('user_id', user.id)
         .single();
 
       if (profileError) {
         console.error('Error fetching user profile:', profileError);
         // Usar datos por defecto si no hay perfil en la DB
         const defaultProfile = {
-          user_id: (session as any).user.id,
-          name: (session as any).user.name || 'Usuario',
+          user_id: user.id,
+          name: user.email?.split('@')[0] || 'Usuario',
           weight: 0,
           target_weight: 0,
           streak_days: 0
@@ -135,7 +134,7 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
       const { data: courseProgressData, error: courseProgressError } = await supabase
         .from('user_course_progress')
         .select('*')
-        .eq('user_id', (session as any).user.id)
+        .eq('user_id', user.id)
         .eq('course_id', lesson?.course_id || '1')
         .single();
 
@@ -161,7 +160,7 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
           const { data: caloriesData, error: caloriesError } = await supabase
             .from('user_lesson_completions')
             .select('calories_burned')
-            .eq('user_id', (session as any).user.id);
+            .eq('user_id', user.id);
 
           let totalCaloriesBurned = 0;
           if (!caloriesError && caloriesData) {
@@ -193,8 +192,8 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
       console.error('Error loading user progress:', error);
       // En caso de error, usar datos por defecto
       const defaultProfile = {
-        user_id: (session as any)?.user?.id || 'default-user',
-        name: (session as any)?.user?.name || 'Usuario',
+        user_id: user?.id || 'default-user',
+        name: user?.email?.split('@')[0] || 'Usuario',
         weight: 0,
         target_weight: 0,
         streak_days: 0
@@ -239,13 +238,13 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
 
   const loadCourseStats = async () => {
     try {
-      if (!(session as any)?.user?.id) return;
+      if (!user?.id) return;
 
       // Obtener estadísticas completas del curso
       const { data: completionsData, error: completionsError } = await supabase
         .from('user_lesson_completions')
         .select('calories_burned, lesson_id')
-        .eq('user_id', (session as any).user.id);
+        .eq('user_id', user.id);
 
       if (completionsError) {
         console.error('Error fetching course stats:', completionsError);
@@ -440,7 +439,7 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
 
   const handleCommentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newComment.trim() || !(session as any)?.user?.id) return;
+    if (!newComment.trim() || !user?.id) return;
 
     try {
       // Guardar comentario en la base de datos
@@ -448,7 +447,7 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
         .from('lesson_comments')
         .insert({
           lesson_id: resolvedParams.id,
-          user_id: (session as any).user.id,
+          user_id: user.id,
           content: newComment.trim(),
           likes_count: 0,
           is_liked: false
@@ -465,11 +464,11 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
         const fallbackComment: Comment = {
           id: Date.now().toString(),
           lesson_id: resolvedParams.id,
-          user_id: (session as any).user.id,
+          user_id: user.id,
           content: newComment.trim(),
           created_at: new Date().toISOString(),
-          user_name: (session as any).user.name || 'Usuario',
-          user_avatar: (session as any).user.image || null,
+          user_name: user.email?.split('@')[0] || 'Usuario',
+          user_avatar: null,
           likes_count: 0,
           is_liked: false
         };
@@ -553,7 +552,7 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
     return `Hace ${Math.floor(diffInMinutes / 1440)}d`;
   };
 
-  console.log('Render state:', { loading, error, lesson: !!lesson, session: !!session });
+  console.log('Render state:', { loading, error, lesson: !!lesson, user: !!user });
 
   if (loading) {
     console.log('Showing loading...');
@@ -601,7 +600,7 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
     );
   }
 
-  console.log('Render state:', { session: !!session, userProfile: !!userProfile, courseProgress, goalProgress, streakDays, caloriesBurned });
+  console.log('Render state:', { user: !!user, userProfile: !!userProfile, courseProgress, goalProgress, streakDays, caloriesBurned });
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -822,7 +821,7 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
 
             {/* Progress Section - Moved to sidebar below comments */}
             {(() => {
-              console.log('Rendering progress section in sidebar:', { session: !!session, courseProgress, goalProgress, streakDays, caloriesBurned });
+              console.log('Rendering progress section in sidebar:', { user: !!user, courseProgress, goalProgress, streakDays, caloriesBurned });
               return true;
             })() && (
               <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4">

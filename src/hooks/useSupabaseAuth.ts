@@ -107,7 +107,7 @@ export function useSupabaseAuth() {
   const signInWithEmail = async (email: string, password: string) => {
     setLoading(true);
     try {
-      console.log('🔐 Intentando login con:', { email, url: supabase.supabaseUrl });
+      console.log('🔐 Intentando login con:', { email });
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim().toLowerCase(),
         password,

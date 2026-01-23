@@ -11,7 +11,10 @@ const localAnonKey =
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || (process.env.NODE_ENV === 'production' ? '' : localSupabaseUrl);
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || (process.env.NODE_ENV === 'production' ? '' : localAnonKey);
 
-if (process.env.NODE_ENV === 'production') {
+// Solo validar en tiempo de ejecución, no durante el build
+// Durante el build, Next.js puede estar usando .env.production con localhost
+const isBuildPhase = process.env.NEXT_PHASE === 'phase-production-build';
+if (process.env.NODE_ENV === 'production' && !isBuildPhase) {
   if (!supabaseUrl || !supabaseAnonKey) {
     throw new Error('❌ Missing required Supabase environment variables in production: NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY must be set');
   }

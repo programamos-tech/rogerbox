@@ -448,7 +448,7 @@ export default function DashboardPage() {
     const todayString = today.toDateString();
 
     // Usar la última fecha de peso registrada; si no existe, evitar mostrar de inmediato post-onboarding
-    const lastUpdateStr = userProfile.last_weight_update || userProfile.updated_at || userProfile.created_at;
+    const lastUpdateStr = userProfile.last_weight_update;
     const lastUpdate = lastUpdateStr ? new Date(lastUpdateStr) : null;
     const daysSinceUpdate = lastUpdate ? (today.getTime() - lastUpdate.getTime()) / (1000 * 60 * 60 * 24) : Infinity;
 
@@ -1488,7 +1488,7 @@ export default function DashboardPage() {
                       </div>
                           <div className="pt-4 border-t border-gray-200 dark:border-gray-700 mt-auto md:mt-0">
                             <div className="flex items-center justify-center flex-wrap gap-2 mb-3">
-                              {course.discount_percentage > 0 ? (
+                              {(course.discount_percentage ?? 0) > 0 ? (
                                 <>
                                   <span className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
                                     ${calculateFinalPrice(course).toLocaleString('es-CO')}
@@ -1497,7 +1497,7 @@ export default function DashboardPage() {
                                     ${calculateOriginalPrice(course).toLocaleString('es-CO')}
                                   </span>
                                   <span className="text-xs md:text-sm text-[#85ea10] font-bold bg-[#85ea10]/10 px-2 py-1 rounded-lg">
-                                    {course.discount_percentage}% de descuento
+                                    {course.discount_percentage ?? 0}% de descuento
                                   </span>
                                 </>
                               ) : (

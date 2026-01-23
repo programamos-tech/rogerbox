@@ -639,8 +639,7 @@ export default function CourseDetailPage() {
       {/* Payment Widget */}
       {course && user && showPaymentWidget && (
         <WompiCheckout
-          course={{ id: course.id, title: course.title, price: finalPrice, thumbnail: course.preview_image || course.thumbnail }}
-          userEmail={user.email || ''}
+          course={{ id: course.id, title: course.title, price: finalPrice }}
           onSuccess={handlePaymentSuccess}
           onClose={() => setShowPaymentWidget(false)}
         />

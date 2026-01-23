@@ -8,7 +8,7 @@ import { useUserPurchases } from '@/hooks/useUserPurchases';
 
 interface CourseStartDateModalProps {
   courseId: string;
-  orderId: string;
+  orderId?: string | null; // Opcional: puede ser null si viene de searchParams
   purchaseId?: string; // Opcional: si se pasa, se usa directamente sin buscar
   onClose?: () => void;
 }
@@ -44,6 +44,12 @@ export default function CourseStartDateModal({ courseId, orderId, purchaseId, on
 
       // Si no se pasó purchaseId, buscarlo
       if (!purchaseIdToUse) {
+        if (!orderId) {
+          setError('No se pudo identificar la orden de compra');
+          setIsSubmitting(false);
+          return;
+        }
+        
         console.log('🔍 CourseStartDateModal: Buscando compra...', { orderId, courseId });
         
         // Buscar la compra del curso

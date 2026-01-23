@@ -323,7 +323,7 @@ function PaymentResultContent() {
                 is_active: true,
                 access_granted_at: new Date().toISOString()
               })
-              .select('id, start_date, created_at')
+              .select('id, user_id, start_date, created_at')
               .single();
 
             if (createError) {

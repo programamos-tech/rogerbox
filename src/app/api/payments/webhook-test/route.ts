@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
   // Solo permitir en desarrollo
-  if (process.env.NODE_ENV === 'production') {
+  const nodeEnv = String(process.env.NODE_ENV || 'development');
+  const isProduction = nodeEnv === 'production' || nodeEnv === 'prod';
+  
+  if (isProduction) {
     return NextResponse.json({ error: 'Not available in production' }, { status: 403 });
   }
 

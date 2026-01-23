@@ -103,7 +103,7 @@ function LoginForm() {
       console.error('Error en login:', error);
       console.error('Error details:', {
         message: error.message,
-        status: error.status,
+        status: 'status' in error ? error.status : undefined,
         name: error.name
       });
       

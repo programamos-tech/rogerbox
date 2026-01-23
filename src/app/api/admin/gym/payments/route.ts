@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
     // Verificar que la membresía existe
     const { data: membership, error: membershipError } = await supabaseAdmin
       .from('gym_memberships')
-      .select('id, client_info_id, user_id')
+      .select('id, client_info_id, user_id, status')
       .eq('id', membership_id)
       .single();
 

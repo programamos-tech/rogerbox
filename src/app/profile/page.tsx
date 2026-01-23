@@ -67,7 +67,7 @@ export default function ProfilePage() {
 
   // Cargar favoritos del usuario
   const fetchFavorites = async () => {
-    if (!((session as any)?.user?.id)) return;
+    if (!user?.id) return;
     
     setFavoritesLoading(true);
     try {
@@ -103,12 +103,12 @@ export default function ProfilePage() {
   // Cargar perfil del usuario
   useEffect(() => {
     const fetchUserProfile = async () => {
-      if (((session as any)?.user?.id)) {
+      if (user?.id) {
         try {
           const { data, error } = await supabase
             .from('profiles')
             .select('*')
-            .eq('id', (session as any).user.id)
+            .eq('id', user.id)
             .single();
 
           if (error) {
@@ -138,7 +138,7 @@ export default function ProfilePage() {
     } else if (!loading && !user) {
       router.push('/');
     }
-  }, [session, status, router]);
+  }, [user, authLoading, router]);
 
   const handleEditProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -168,7 +168,7 @@ export default function ProfilePage() {
           email: editForm.email,
           updated_at: new Date().toISOString()
         })
-        .eq('id', (session as any)?.user?.id);
+        .eq('id', user?.id);
 
       if (profileError) {
         setEditError('Error al actualizar el perfil');

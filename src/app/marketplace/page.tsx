@@ -227,7 +227,7 @@ export default function HomePage() {
     if (!!user) {
       router.push('/dashboard');
     }
-  }, [status, router]);
+  }, [user, router]);
 
   const filteredCourses = sampleCourses.filter(course => {
     const matchesSearch = course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -256,7 +256,7 @@ export default function HomePage() {
     }
   });
 
-  if (loading) {
+  if (authLoading) {
     return <SimpleLoading />;
   }
 

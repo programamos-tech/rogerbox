@@ -1366,10 +1366,10 @@ export default function CourseCreator({ onClose, onSuccess, courseToEdit }: Cour
                               {lesson.duration_minutes}min
                             </span>
                             {lesson.preview_image && (
-                              <ImageIcon className="flex-shrink-0 w-4 h-4 text-blue-500" title="Tiene imagen" />
+                              <ImageIcon className="flex-shrink-0 w-4 h-4 text-blue-500" aria-label="Tiene imagen" />
                             )}
                             {lesson.video_url && (
-                              <Video className="flex-shrink-0 w-4 h-4 text-green-500" title="Tiene video" />
+                              <Video className="flex-shrink-0 w-4 h-4 text-green-500" aria-label="Tiene video" />
                             )}
                           </div>
                           <div className="flex items-center gap-2 ml-2">

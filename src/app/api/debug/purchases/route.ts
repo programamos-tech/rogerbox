@@ -17,11 +17,6 @@ function isAdminUser(user: { id?: string; email?: string; user_metadata?: any } 
 }
 
 export async function GET(request: NextRequest) {
-  // Solo permitir en desarrollo o para admins
-  if (process.env.NODE_ENV === 'production') {
-    return NextResponse.json({ error: 'Not available in production' }, { status: 403 });
-  }
-
   try {
     const { session } = await getSession();
     
@@ -30,8 +25,11 @@ export async function GET(request: NextRequest) {
     }
 
     // En producción, solo admins pueden acceder
-    if (process.env.NODE_ENV === 'production' && !isAdminUser(session.user)) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    const nodeEnv = String(process.env.NODE_ENV || 'development');
+    const isProduction = nodeEnv === 'production' || nodeEnv === 'prod';
+    
+    if (isProduction && !isAdminUser(session.user)) {
+      return NextResponse.json({ error: 'Not available in production' }, { status: 403 });
     }
 
     const userId = session.user.id;

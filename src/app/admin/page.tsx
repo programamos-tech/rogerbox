@@ -62,7 +62,7 @@ import {
 } from 'lucide-react';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useMemo, useState, useRef } from 'react';
+import { useEffect, useMemo, useState, useRef, Suspense } from 'react';
 
 interface AdminStats {
   kpis: {
@@ -227,7 +227,7 @@ const formatGoals = (goals: string | string[] | null | undefined): string => {
   return 'No especificada';
 };
 
-export default function AdminDashboard() {
+function AdminDashboardContent() {
   const { user, profile, loading: authLoading } = useSupabaseAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -2778,6 +2778,14 @@ export default function AdminDashboard() {
       />
 
     </div>
+  );
+}
+
+export default function AdminDashboard() {
+  return (
+    <Suspense fallback={<QuickLoading />}>
+      <AdminDashboardContent />
+    </Suspense>
   );
 }
 

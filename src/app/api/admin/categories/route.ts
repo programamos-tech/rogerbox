@@ -135,7 +135,9 @@ export async function PUT(request: NextRequest) {
   const user = await getSessionUser();
 
   if (!isAdminUser(user)) {
-    if (process.env.NODE_ENV !== 'production' && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    const nodeEnv = String(process.env.NODE_ENV || 'development');
+    const isNotProduction = nodeEnv !== 'production' && nodeEnv !== 'prod';
+    if (isNotProduction && process.env.SUPABASE_SERVICE_ROLE_KEY) {
       console.warn('Bypassing admin check in dev for categories PUT');
     } else {
       console.error('Categories PUT unauthorized', {
@@ -172,7 +174,9 @@ export async function DELETE(request: NextRequest) {
   const user = await getSessionUser();
 
   if (!isAdminUser(user)) {
-    if (process.env.NODE_ENV !== 'production' && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    const nodeEnv = String(process.env.NODE_ENV || 'development');
+    const isNotProduction = nodeEnv !== 'production' && nodeEnv !== 'prod';
+    if (isNotProduction && process.env.SUPABASE_SERVICE_ROLE_KEY) {
       console.warn('Bypassing admin check in dev for categories DELETE');
     } else {
       console.error('Categories DELETE unauthorized', {
