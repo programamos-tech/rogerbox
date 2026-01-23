@@ -22,15 +22,18 @@ const supabaseServiceKey =
 // En producción, las variables son obligatorias
 // Solo validar en tiempo de ejecución, no durante el build
 // Durante el build, Next.js puede estar usando .env.production con localhost
+// Permitir localhost si estamos en desarrollo local
 const isBuildPhase = process.env.NEXT_PHASE === 'phase-production-build';
-if (process.env.NODE_ENV === 'production' && !isBuildPhase) {
+const isVercelProduction = process.env.VERCEL && process.env.VERCEL_ENV === 'production';
+
+if (process.env.NODE_ENV === 'production' && !isBuildPhase && isVercelProduction) {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
     throw new Error('❌ Missing required Supabase environment variables in production: NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY must be set');
   }
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY && !process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY) {
     throw new Error('❌ Missing required Supabase service role key in production: SUPABASE_SERVICE_ROLE_KEY or NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY must be set');
   }
-  // En producción, no permitir usar localhost
+  // Solo bloquear localhost en producción real (Vercel), no en desarrollo local
   if (supabaseUrl.includes('127.0.0.1') || supabaseUrl.includes('localhost')) {
     throw new Error('❌ Invalid Supabase URL in production: Cannot use localhost. Set NEXT_PUBLIC_SUPABASE_URL to your production Supabase project URL');
   }
