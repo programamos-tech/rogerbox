@@ -166,8 +166,10 @@ export async function GET(request: NextRequest) {
           endDate.setHours(0, 0, 0, 0);
           daysOverdue = Math.floor((today.getTime() - endDate.getTime()) / (1000 * 60 * 60 * 24));
           membershipEndDate = latestMembership.end_date;
-          planName = latestMembership.plan?.name || 'Plan desconocido';
-          planPrice = latestMembership.plan?.price || 0;
+          // plan puede ser un array o un objeto, manejamos ambos casos
+          const plan = Array.isArray(latestMembership.plan) ? latestMembership.plan[0] : latestMembership.plan;
+          planName = plan?.name || 'Plan desconocido';
+          planPrice = plan?.price || 0;
         } else if (lastPayment) {
           // Si no tiene membresía pero tiene pagos, calcular días desde el último período
           const periodEnd = new Date(lastPayment.period_end);
