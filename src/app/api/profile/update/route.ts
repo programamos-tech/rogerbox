@@ -81,6 +81,14 @@ export async function POST(request: NextRequest) {
         updateData.target_weight = profile.targetWeight;
       }
 
+      // Agregar document_id si está presente
+      if (profile.document_id) {
+        updateData.document_id = profile.document_id;
+      }
+      if (profile.document_type) {
+        updateData.document_type = profile.document_type;
+      }
+
       const { data, error } = await supabaseAdmin
         .from('profiles')
         .update(updateData)
@@ -97,6 +105,62 @@ export async function POST(request: NextRequest) {
       }
 
       result = data;
+
+      // VINCULACIÓN AUTOMÁTICA: Si se actualizó document_id, buscar cliente físico y vincular
+      if (profile.document_id) {
+        try {
+          console.log('🔗 Buscando cliente físico con cédula:', profile.document_id);
+          
+          // Buscar cliente físico por cédula
+          const { data: gymClient, error: clientError } = await supabaseAdmin
+            .from('gym_client_info')
+            .select('id, user_id')
+            .eq('document_id', profile.document_id.trim())
+            .maybeSingle();
+
+          if (clientError) {
+            console.error('Error buscando cliente físico:', clientError);
+          } else if (gymClient && !gymClient.user_id) {
+            // Cliente físico encontrado y no está vinculado
+            console.log('✅ Cliente físico encontrado, vinculando...');
+            
+            // Vincular user_id en gym_client_info
+            const { error: linkError } = await supabaseAdmin
+              .from('gym_client_info')
+              .update({ user_id: userId, updated_at: new Date().toISOString() })
+              .eq('id', gymClient.id);
+
+            if (linkError) {
+              console.error('Error vinculando cliente físico:', linkError);
+            } else {
+              console.log('✅ Cliente físico vinculado exitosamente');
+              
+              // Actualizar user_id en membresías relacionadas
+              await supabaseAdmin
+                .from('gym_memberships')
+                .update({ user_id: userId, updated_at: new Date().toISOString() })
+                .eq('client_info_id', gymClient.id)
+                .is('user_id', null);
+
+              // Actualizar user_id en pagos relacionados
+              await supabaseAdmin
+                .from('gym_payments')
+                .update({ user_id: userId, updated_at: new Date().toISOString() })
+                .eq('client_info_id', gymClient.id)
+                .is('user_id', null);
+
+              console.log('✅ Membresías y pagos actualizados');
+            }
+          } else if (gymClient && gymClient.user_id) {
+            console.log('ℹ️ Cliente físico ya está vinculado a otro usuario');
+          } else {
+            console.log('ℹ️ No se encontró cliente físico con esa cédula');
+          }
+        } catch (linkError) {
+          // Error no crítico - solo loguear
+          console.warn('⚠️ Error en vinculación automática (no crítico):', linkError);
+        }
+      }
     } else {
       // Crear nuevo perfil
       const insertData: any = {
@@ -118,6 +182,12 @@ export async function POST(request: NextRequest) {
       if (profile.targetWeight) {
         insertData.target_weight = profile.targetWeight;
       }
+      if (profile.document_id) {
+        insertData.document_id = profile.document_id;
+      }
+      if (profile.document_type) {
+        insertData.document_type = profile.document_type;
+      }
 
       const { data, error } = await supabaseAdmin
         .from('profiles')
@@ -134,6 +204,62 @@ export async function POST(request: NextRequest) {
       }
 
       result = data;
+
+      // VINCULACIÓN AUTOMÁTICA: Si se creó perfil con document_id, buscar cliente físico y vincular
+      if (profile.document_id) {
+        try {
+          console.log('🔗 Buscando cliente físico con cédula:', profile.document_id);
+          
+          // Buscar cliente físico por cédula
+          const { data: gymClient, error: clientError } = await supabaseAdmin
+            .from('gym_client_info')
+            .select('id, user_id')
+            .eq('document_id', profile.document_id.trim())
+            .maybeSingle();
+
+          if (clientError) {
+            console.error('Error buscando cliente físico:', clientError);
+          } else if (gymClient && !gymClient.user_id) {
+            // Cliente físico encontrado y no está vinculado
+            console.log('✅ Cliente físico encontrado, vinculando...');
+            
+            // Vincular user_id en gym_client_info
+            const { error: linkError } = await supabaseAdmin
+              .from('gym_client_info')
+              .update({ user_id: userId, updated_at: new Date().toISOString() })
+              .eq('id', gymClient.id);
+
+            if (linkError) {
+              console.error('Error vinculando cliente físico:', linkError);
+            } else {
+              console.log('✅ Cliente físico vinculado exitosamente');
+              
+              // Actualizar user_id en membresías relacionadas
+              await supabaseAdmin
+                .from('gym_memberships')
+                .update({ user_id: userId, updated_at: new Date().toISOString() })
+                .eq('client_info_id', gymClient.id)
+                .is('user_id', null);
+
+              // Actualizar user_id en pagos relacionados
+              await supabaseAdmin
+                .from('gym_payments')
+                .update({ user_id: userId, updated_at: new Date().toISOString() })
+                .eq('client_info_id', gymClient.id)
+                .is('user_id', null);
+
+              console.log('✅ Membresías y pagos actualizados');
+            }
+          } else if (gymClient && gymClient.user_id) {
+            console.log('ℹ️ Cliente físico ya está vinculado a otro usuario');
+          } else {
+            console.log('ℹ️ No se encontró cliente físico con esa cédula');
+          }
+        } catch (linkError) {
+          // Error no crítico - solo loguear
+          console.warn('⚠️ Error en vinculación automática (no crítico):', linkError);
+        }
+      }
     }
 
     // Intentar crear registro inicial de peso (opcional, no crítico)

@@ -1,0 +1,72 @@
+# ============================================
+# VARIABLES DE ENTORNO PARA VERCEL
+# ============================================
+# Copia y pega estas variables en Vercel Dashboard → Settings → Environment Variables
+# ============================================
+
+# ============================================
+# SUPABASE (REQUERIDAS)
+# ============================================
+NEXT_PUBLIC_SUPABASE_URL=https://lrwiyqodwzqdlzkczvge.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_iy7prMijl6-WfPXQW6kSHg_Clwtt650
+SUPABASE_SERVICE_ROLE_KEY=TU_SERVICE_ROLE_KEY_AQUI
+
+# ============================================
+# ADMIN (REQUERIDAS)
+# ============================================
+NEXT_PUBLIC_ADMIN_USER_ID=TU_USER_ID_DE_ADMIN_AQUI
+NEXT_PUBLIC_ADMIN_EMAIL=rogerbox@admin.com
+
+# ============================================
+# PRODUCCIÓN (REQUERIDAS)
+# ============================================
+NEXT_PUBLIC_MOCK_PAYMENTS=false
+NODE_ENV=production
+
+# ============================================
+# WOMPI - PAGOS (Si usas pagos)
+# ============================================
+WOMPI_PUBLIC_KEY=TU_WOMPI_PUBLIC_KEY
+WOMPI_PRIVATE_KEY=TU_WOMPI_PRIVATE_KEY
+WOMPI_INTEGRITY_KEY=TU_WOMPI_INTEGRITY_KEY
+WOMPI_ENVIRONMENT=production
+
+# ============================================
+# MUX - VIDEOS (Si usas videos)
+# ============================================
+NEXT_PUBLIC_MUX_TOKEN_ID=TU_MUX_TOKEN_ID
+NEXT_PUBLIC_MUX_PLAYBACK_ID=TU_MUX_PLAYBACK_ID
+NEXT_PUBLIC_MUX_DATA_ENV_KEY=TU_MUX_DATA_ENV_KEY
+
+# ============================================
+# NEXTAUTH (Si usas autenticación)
+# ============================================
+NEXTAUTH_URL=https://tu-app.vercel.app
+NEXTAUTH_SECRET=GENERA_UN_SECRETO_SEGURO_AQUI
+
+# ============================================
+# NOTAS IMPORTANTES:
+# ============================================
+# 1. SUPABASE_SERVICE_ROLE_KEY: 
+#    - Ve a Supabase Dashboard → Settings → API
+#    - Busca "service_role" key (NO la anon key)
+#    - Márcala como "Sensitive" en Vercel
+#
+# 2. NEXT_PUBLIC_ADMIN_USER_ID:
+#    - Es el ID del usuario admin en Supabase
+#    - Lo puedes obtener ejecutando: scripts/create-admin.js
+#    - O desde Supabase Dashboard → Authentication → Users
+#
+# 3. NEXTAUTH_URL:
+#    - Reemplaza "tu-app.vercel.app" con tu URL real de Vercel
+#    - Ejemplo: https://rogerbox.vercel.app
+#
+# 4. NEXTAUTH_SECRET:
+#    - Genera un secreto seguro con: openssl rand -base64 32
+#    - O usa: https://generate-secret.vercel.app/32
+#
+# 5. Variables marcadas como "Sensitive" en Vercel:
+#    - SUPABASE_SERVICE_ROLE_KEY
+#    - WOMPI_PRIVATE_KEY
+#    - NEXTAUTH_SECRET
+# ============================================

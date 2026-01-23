@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { supabase } from '@/lib/supabase-browser';
+import { useUserPurchases } from '@/hooks/useUserPurchases';
 import { CheckCircle, XCircle, Clock, ArrowRight, CheckCircle2, Sparkles, Download } from 'lucide-react';
 import CourseStartDateModal from '@/components/CourseStartDateModal';
 
@@ -21,11 +22,13 @@ function PaymentResultContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { user } = useSupabaseAuth();
+  const { refresh: refreshPurchases } = useUserPurchases();
   const [order, setOrder] = useState<OrderResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showStartDateModal, setShowStartDateModal] = useState(false);
   const [courseId, setCourseId] = useState<string | null>(null);
+  const [purchaseId, setPurchaseId] = useState<string | null>(null);
   const [hasStartDate, setHasStartDate] = useState(false);
   const [buyerName, setBuyerName] = useState<string>('');
   const [buyerDocument, setBuyerDocument] = useState<string>('');
@@ -218,52 +221,186 @@ function PaymentResultContent() {
 
       // Si el pago está aprobado, verificar si tiene fecha de inicio
       if (data.status === 'approved' && data.course_id) {
-        // Buscar la compra del curso
-        const { data: purchase, error: purchaseError } = await supabase
+        console.log('🔍 PaymentResult: Buscando compra del curso...', {
+          orderId: data.id,
+          courseId: data.course_id,
+          userId: data.user_id,
+          currentUserId: user?.id
+        });
+
+        // Esperar un momento para asegurar que la compra se haya creado (en modo mock)
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        // Buscar la compra del curso - primero por order_id, luego por user_id si no se encuentra
+        let purchase = null;
+        let purchaseError = null;
+        
+        // Intentar buscar por order_id y course_id
+        const { data: purchaseByOrder, error: errorByOrder } = await supabase
           .from('course_purchases')
-          .select('id, start_date')
+          .select('id, start_date, created_at, order_id, course_id, user_id, is_active')
           .eq('order_id', data.id)
           .eq('course_id', data.course_id)
           .maybeSingle();
+        
+        if (purchaseByOrder) {
+          purchase = purchaseByOrder;
+          console.log('✅ PaymentResult: Compra encontrada por order_id');
+        } else if (errorByOrder && errorByOrder.code !== 'PGRST116') {
+          purchaseError = errorByOrder;
+        } else {
+          // Si no se encuentra por order_id, intentar buscar por user_id y course_id
+          const purchaseUserId = data.user_id || user?.id;
+          if (purchaseUserId) {
+            console.log('🔍 PaymentResult: Buscando compra por user_id y course_id...', {
+              userId: purchaseUserId,
+              courseId: data.course_id
+            });
+            
+            const { data: purchaseByUser, error: errorByUser } = await supabase
+              .from('course_purchases')
+              .select('id, start_date, created_at, order_id, course_id, user_id, is_active')
+              .eq('user_id', purchaseUserId)
+              .eq('course_id', data.course_id)
+              .eq('is_active', true)
+              .maybeSingle();
+            
+            if (purchaseByUser) {
+              purchase = purchaseByUser;
+              console.log('✅ PaymentResult: Compra encontrada por user_id y course_id');
+            } else if (errorByUser && errorByUser.code !== 'PGRST116') {
+              purchaseError = errorByUser;
+            }
+          }
+        }
 
-        console.log('🔍 PaymentResult: Verificando compra:', {
+        console.log('🔍 PaymentResult: Resultado de búsqueda de compra:', {
           hasPurchase: !!purchase,
-          purchaseError: purchaseError,
+          purchaseError: purchaseError ? {
+            message: purchaseError.message,
+            code: purchaseError.code,
+            details: purchaseError.details,
+            hint: purchaseError.hint
+          } : null,
+          purchase: purchase ? {
+            id: purchase.id,
+            hasStartDate: !!purchase.start_date,
+            orderId: purchase.order_id,
+            courseId: purchase.course_id,
+            userId: purchase.user_id,
+            isActive: purchase.is_active
+          } : null,
           orderId: data.id,
           courseId: data.course_id,
-          userId: data.user_id
+          userId: data.user_id,
+          currentUserId: user?.id
         });
 
         // Si no hay compra, crearla inmediatamente (no esperar al webhook)
-        if (!purchase && !purchaseError) {
-          console.log('⚠️ PaymentResult: No se encontró compra, creándola ahora...');
-          const { data: newPurchase, error: createError } = await supabase
-            .from('course_purchases')
-            .insert({
-              user_id: data.user_id,
-              course_id: data.course_id,
-              order_id: data.id,
-              purchase_price: data.amount,
-              is_active: true,
-              access_granted_at: new Date()
-            })
-            .select('id, start_date')
-            .single();
-
-          if (createError) {
-            console.error('❌ PaymentResult: Error creando compra:', createError);
+        if (!purchase) {
+          if (purchaseError && purchaseError.code !== 'PGRST116') {
+            // Error real, no solo "no encontrado"
+            console.error('❌ PaymentResult: Error buscando compra:', purchaseError);
           } else {
-            console.log('✅ PaymentResult: Compra creada exitosamente:', newPurchase);
-            // Verificar si necesita fecha de inicio
-            if (!newPurchase.start_date) {
-              setShowStartDateModal(true);
-              setHasStartDate(false);
+            console.log('⚠️ PaymentResult: No se encontró compra, creándola ahora...');
+            
+            // Intentar crear la compra con el usuario actual si no hay user_id en la orden
+            const purchaseUserId = data.user_id || user?.id;
+            
+            if (!purchaseUserId) {
+              console.error('❌ PaymentResult: No hay user_id disponible para crear la compra');
+              setError('No se pudo identificar al usuario para crear la compra');
+              return;
+            }
+
+            const { data: newPurchase, error: createError } = await supabase
+              .from('course_purchases')
+              .insert({
+                user_id: purchaseUserId,
+                course_id: data.course_id,
+                order_id: data.id,
+                purchase_price: data.amount,
+                is_active: true,
+                access_granted_at: new Date().toISOString()
+              })
+              .select('id, start_date, created_at')
+              .single();
+
+            if (createError) {
+              console.error('❌ PaymentResult: Error creando compra:', {
+                message: createError.message,
+                code: createError.code,
+                details: createError.details,
+                hint: createError.hint
+              });
+              setError('No se pudo crear la compra del curso. Por favor, contacta al soporte.');
             } else {
-              setHasStartDate(true);
+              console.log('✅ PaymentResult: Compra creada exitosamente:', newPurchase);
+              console.log('🔍 PaymentResult: Verificando que la compra sea visible...', {
+                purchaseId: newPurchase.id,
+                userId: newPurchase.user_id || purchaseUserId,
+                currentUserId: user?.id
+              });
+              
+              // Verificar inmediatamente que la compra sea visible
+              const { data: verifyPurchase, error: verifyError } = await supabase
+                .from('course_purchases')
+                .select('id, user_id, course_id, is_active')
+                .eq('id', newPurchase.id)
+                .single();
+              
+              if (verifyError) {
+                console.error('❌ PaymentResult: La compra no es visible después de crearla:', verifyError);
+              } else {
+                console.log('✅ PaymentResult: La compra es visible:', {
+                  purchaseId: verifyPurchase?.id,
+                  userId: verifyPurchase?.user_id,
+                  matchesCurrentUser: verifyPurchase?.user_id === user?.id
+                });
+              }
+              
+              // Guardar el purchaseId para pasarlo al modal
+              setPurchaseId(newPurchase.id);
+              // Refrescar las compras múltiples veces para asegurar que se actualicen
+              refreshPurchases();
+              setTimeout(() => {
+                refreshPurchases();
+                console.log('🔄 PaymentResult: Compras refrescadas (intento 1)');
+              }, 500);
+              setTimeout(() => {
+                refreshPurchases();
+                console.log('🔄 PaymentResult: Compras refrescadas (intento 2)');
+              }, 1500);
+              // Verificar si necesita fecha de inicio
+              if (!newPurchase.start_date) {
+                setShowStartDateModal(true);
+                setHasStartDate(false);
+              } else {
+                setHasStartDate(true);
+              }
             }
           }
-        } else if (purchase) {
+        } else {
           // Ya existe la compra
+          console.log('✅ PaymentResult: Compra encontrada:', purchase.id);
+          console.log('🔍 PaymentResult: Detalles de la compra encontrada:', {
+            purchaseId: purchase.id,
+            userId: purchase.user_id,
+            courseId: purchase.course_id,
+            isActive: purchase.is_active,
+            hasStartDate: !!purchase.start_date,
+            currentUserId: user?.id,
+            matchesCurrentUser: purchase.user_id === user?.id
+          });
+          
+          // Guardar el purchaseId para pasarlo al modal
+          setPurchaseId(purchase.id);
+          // Refrescar las compras para asegurar que estén actualizadas
+          refreshPurchases();
+          setTimeout(() => {
+            refreshPurchases();
+            console.log('🔄 PaymentResult: Compras refrescadas');
+          }, 500);
           if (!purchase.start_date) {
             // No tiene fecha de inicio, mostrar modal
             setShowStartDateModal(true);
@@ -271,9 +408,6 @@ function PaymentResultContent() {
           } else {
             setHasStartDate(true);
           }
-        } else {
-          // Si no hay compra aún, asumir que no necesita fecha de inicio y redirigir
-          setHasStartDate(true);
         }
       }
 
@@ -712,10 +846,11 @@ function PaymentResultContent() {
       </div>
 
       {/* Modal de selección de fecha de inicio */}
-      {showStartDateModal && courseId && orderId && (
+      {showStartDateModal && courseId && (purchaseId || orderId) && (
         <CourseStartDateModal
           courseId={courseId}
           orderId={orderId}
+          purchaseId={purchaseId || undefined}
           onClose={() => {
             setShowStartDateModal(false);
             // Verificar si ahora tiene fecha de inicio y redirigir automáticamente

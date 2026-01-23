@@ -7,8 +7,18 @@ const localAnonKey =
   + 'eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.'
   + 'CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || localSupabaseUrl;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || localAnonKey;
+// En producción, las variables son obligatorias
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || (process.env.NODE_ENV === 'production' ? '' : localSupabaseUrl);
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || (process.env.NODE_ENV === 'production' ? '' : localAnonKey);
+
+if (process.env.NODE_ENV === 'production') {
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error('❌ Missing required Supabase environment variables in production: NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY must be set');
+  }
+  if (supabaseUrl.includes('127.0.0.1') || supabaseUrl.includes('localhost')) {
+    throw new Error('❌ Invalid Supabase URL in production: Cannot use localhost. Set NEXT_PUBLIC_SUPABASE_URL to your production Supabase project URL');
+  }
+}
 
 // Cliente de navegador con SSR que maneja cookies correctamente
 export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey)

@@ -4,15 +4,18 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Calendar, X, AlertCircle, CheckCircle, Clock } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { useUserPurchases } from '@/hooks/useUserPurchases';
 
 interface CourseStartDateModalProps {
   courseId: string;
   orderId: string;
+  purchaseId?: string; // Opcional: si se pasa, se usa directamente sin buscar
   onClose?: () => void;
 }
 
-export default function CourseStartDateModal({ courseId, orderId, onClose }: CourseStartDateModalProps) {
+export default function CourseStartDateModal({ courseId, orderId, purchaseId, onClose }: CourseStartDateModalProps) {
   const router = useRouter();
+  const { refresh: refreshPurchases } = useUserPurchases();
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,16 +40,48 @@ export default function CourseStartDateModal({ courseId, orderId, onClose }: Cou
     setError(null);
 
     try {
-      // Actualizar la compra con la fecha de inicio
-      const { data: purchase, error: purchaseError } = await supabase
-        .from('course_purchases')
-        .select('id')
-        .eq('order_id', orderId)
-        .eq('course_id', courseId)
-        .single();
+      let purchaseIdToUse = purchaseId;
 
-      if (purchaseError || !purchase) {
-        throw new Error('No se encontró la compra del curso');
+      // Si no se pasó purchaseId, buscarlo
+      if (!purchaseIdToUse) {
+        console.log('🔍 CourseStartDateModal: Buscando compra...', { orderId, courseId });
+        
+        // Buscar la compra del curso
+        const { data: purchase, error: purchaseError } = await supabase
+          .from('course_purchases')
+          .select('id, order_id, course_id, user_id')
+          .eq('order_id', orderId)
+          .eq('course_id', courseId)
+          .maybeSingle();
+
+        console.log('🔍 CourseStartDateModal: Resultado de búsqueda:', {
+          hasPurchase: !!purchase,
+          purchaseError: purchaseError ? {
+            message: purchaseError.message,
+            code: purchaseError.code,
+            details: purchaseError.details
+          } : null,
+          purchase: purchase ? {
+            id: purchase.id,
+            orderId: purchase.order_id,
+            courseId: purchase.course_id
+          } : null
+        });
+
+        if (purchaseError && purchaseError.code !== 'PGRST116') {
+          // Error real, no solo "no encontrado"
+          console.error('❌ CourseStartDateModal: Error buscando compra:', purchaseError);
+          throw new Error(`Error al buscar la compra: ${purchaseError.message}`);
+        }
+
+        if (!purchase) {
+          console.error('❌ CourseStartDateModal: No se encontró la compra');
+          throw new Error('No se encontró la compra del curso. Por favor, recarga la página o contacta al soporte.');
+        }
+
+        purchaseIdToUse = purchase.id;
+      } else {
+        console.log('✅ CourseStartDateModal: Usando purchaseId proporcionado:', purchaseIdToUse);
       }
 
       // Actualizar la fecha de inicio del curso
@@ -56,11 +91,17 @@ export default function CourseStartDateModal({ courseId, orderId, onClose }: Cou
           start_date: selectedDate,
           updated_at: new Date().toISOString()
         })
-        .eq('id', purchase.id);
+        .eq('id', purchaseIdToUse);
 
       if (updateError) {
         throw updateError;
       }
+
+      console.log('✅ Fecha de inicio guardada exitosamente:', selectedDate);
+
+      // Refrescar las compras antes de redirigir
+      await refreshPurchases();
+      console.log('🔄 CourseStartDateModal: Compras refrescadas');
 
       // Redirigir al dashboard del estudiante
       router.push('/student');
