@@ -28,7 +28,7 @@ function StudentPageContent() {
   const { user } = useSupabaseAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { purchases, loading: purchasesLoading } = useUserPurchases();
+  const { purchases, loading: purchasesLoading, refresh: refreshPurchases } = useUserPurchases();
   
   // Estados
   const [userProfile, setUserProfile] = useState<any>(null);
@@ -70,10 +70,10 @@ function StudentPageContent() {
   // Cargar perfil del usuario (de forma lazy, no bloquea la carga del curso)
   useEffect(() => {
     const loadUserProfile = async () => {
-      if (!session?.user?.email) return;
+      if (!user?.email) return;
       
       try {
-        const userId = (session.user as any).id;
+        const userId = (user as any).id;
         if (!userId) return;
 
         const { data, error } = await supabase
@@ -258,10 +258,14 @@ function StudentPageContent() {
 
   // Función para obtener la clase disponible
   const getAvailableLesson = (course: any, purchase: any) => {
-    if (!course?.lessons || !purchase?.start_date) return null;
-
-    // Parsear la fecha de inicio (puede venir como string YYYY-MM-DD)
-    const startDateStr = purchase.start_date;
+    // Usar start_date si existe, sino usar created_at como fecha de inicio
+    let startDateStr = purchase?.start_date || purchase?.created_at;
+    if (!course?.lessons || !startDateStr) return null;
+    
+    // Si created_at viene como timestamp ISO, convertir a YYYY-MM-DD
+    if (startDateStr.includes('T')) {
+      startDateStr = startDateStr.split('T')[0];
+    }
     
     // Crear fechas en hora local para evitar problemas de zona horaria
     const today = new Date();
@@ -319,12 +323,16 @@ function StudentPageContent() {
 
   // Función para obtener estado de las clases
   const getLessonStatus = (lesson: any, index: number) => {
-    if (!effectivePurchase?.start_date) {
+    // Usar start_date si existe, sino usar created_at como fecha de inicio
+    let startDateStr = effectivePurchase?.start_date || effectivePurchase?.created_at;
+    if (!startDateStr) {
       return { status: 'locked', text: 'Bloqueada', icon: Lock };
     }
     
-    // Parsear la fecha de inicio
-    const startDateStr = effectivePurchase.start_date;
+    // Si created_at viene como timestamp ISO, convertir a YYYY-MM-DD
+    if (startDateStr.includes('T')) {
+      startDateStr = startDateStr.split('T')[0];
+    }
     
     // Crear fechas en hora local para evitar problemas de zona horaria
     const today = new Date();
@@ -404,8 +412,8 @@ function StudentPageContent() {
 
   // Marcar lección como completada en la base de datos
   const markLessonAsCompleted = async (lessonId: string) => {
-    if (!effectivePurchase || !session?.user) {
-      console.warn('⚠️ No se puede marcar lección como completada: falta effectivePurchase o session');
+    if (!effectivePurchase || !user) {
+      console.warn('⚠️ No se puede marcar lección como completada: falta effectivePurchase o user');
       return;
     }
 
@@ -906,16 +914,57 @@ function StudentPageContent() {
   // Solo mostrar "No tienes cursos" si realmente no hay compras después de esperar
   // También mostrar si no hay compras y las compras ya terminaron de cargar
   if (!effectivePurchase && !purchasesLoading && (showNoCourses || (purchases?.length === 0 || !purchases))) {
+    const handleDebug = async () => {
+      try {
+        const response = await fetch('/api/debug/purchases');
+        const data = await response.json();
+        console.log('🔍 Debug de compras:', data);
+        alert(`Compras con RLS: ${data.purchases?.withRLS?.count || 0}\nCompras con Admin: ${data.purchases?.withAdmin?.count || 0}\nÓrdenes: ${data.orders?.count || 0}\n\nRevisa la consola para más detalles.`);
+      } catch (error) {
+        console.error('Error en debug:', error);
+      }
+    };
+
+    const handleRefresh = async () => {
+      await refreshPurchases();
+      console.log('🔄 Compras refrescadas manualmente');
+    };
+
     return (
       <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">No tienes cursos comprados</h1>
-          <button
-            onClick={() => router.push('/dashboard')}
-            className="bg-[#85ea10] hover:bg-[#7dd30f] text-black font-bold px-6 py-3 rounded-xl transition-all"
-          >
-            Ver Cursos Disponibles
-          </button>
+          <div className="flex flex-col gap-3 items-center">
+            <button
+              onClick={() => router.push('/dashboard')}
+              className="bg-[#85ea10] hover:bg-[#7dd30f] text-black font-bold px-6 py-3 rounded-xl transition-all"
+            >
+              Ver Cursos Disponibles
+            </button>
+            {/* Botones de debug temporal */}
+            <div className="flex gap-2 mt-4">
+              <button
+                onClick={handleDebug}
+                className="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg transition-all text-sm"
+              >
+                🔍 Debug Compras
+              </button>
+              <button
+                onClick={handleRefresh}
+                className="bg-gray-500 hover:bg-gray-600 text-white font-semibold px-4 py-2 rounded-lg transition-all text-sm"
+              >
+                🔄 Refrescar Compras
+              </button>
+              <button
+                onClick={() => {
+                  window.location.reload();
+                }}
+                className="bg-gray-500 hover:bg-gray-600 text-white font-semibold px-4 py-2 rounded-lg transition-all text-sm"
+              >
+                🔄 Recargar Página
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -958,7 +1007,7 @@ function StudentPageContent() {
                     <User className="w-4 h-4 sm:w-5 sm:h-5 text-black" />
                 </div>
                 <div className="hidden sm:block text-left">
-                    <p className="text-sm font-medium">{userProfile?.name || session?.user?.name || 'Usuario'}</p>
+                    <p className="text-sm font-medium">{userProfile?.name || user?.email?.split('@')[0] || 'Usuario'}</p>
                 </div>
                 <ChevronDown className="w-3 h-3 sm:w-4 sm:h-4" />
               </button>

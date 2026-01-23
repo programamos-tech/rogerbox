@@ -74,12 +74,45 @@ export const useUserPurchases = (): UseUserPurchasesReturn => {
       }
 
       console.log('🔍 useUserPurchases: Buscando compras para user_id:', userId);
+      console.log('🔍 useUserPurchases: Usuario actual:', {
+        email: user.email,
+        id: userId,
+        hasId: !!userId,
+        fullUser: user
+      });
+      
+      // Verificar que el usuario tiene un ID válido
+      if (!userId) {
+        console.error('❌ useUserPurchases: No se pudo obtener user_id del usuario');
+        setPurchases([]);
+        setLoading(false);
+        setError('No se pudo identificar al usuario');
+        return;
+      }
 
       // Obtener compras directamente sin JOIN (más confiable)
-      // Nota: start_date y completed_lessons no existen en course_purchases
+      // Nota: completed_lessons no existe en course_purchases (se obtiene de user_lesson_completions)
+      // start_date ahora existe en la tabla course_purchases
+      
+      // Primero, verificar si hay alguna compra sin filtro para diagnosticar
+      const { data: allPurchasesDebug, error: debugError } = await supabase
+        .from('course_purchases')
+        .select('id, user_id, course_id, is_active, created_at')
+        .eq('user_id', userId);
+      
+      console.log('🔍 useUserPurchases: Debug - Todas las compras del usuario (sin filtro is_active):', {
+        count: allPurchasesDebug?.length || 0,
+        purchases: allPurchasesDebug,
+        error: debugError ? {
+          message: debugError.message,
+          code: debugError.code
+        } : null
+      });
+      
+      // Ahora buscar solo las activas
       const { data: purchasesData, error: fetchError } = await supabase
         .from('course_purchases')
-        .select('id, course_id, order_id, created_at, is_active')
+        .select('id, course_id, order_id, created_at, start_date, is_active, user_id')
         .eq('user_id', userId)
         .eq('is_active', true)
         .order('created_at', { ascending: false });
@@ -93,7 +126,15 @@ export const useUserPurchases = (): UseUserPurchasesReturn => {
           code: fetchError.code,
           details: fetchError.details,
           hint: fetchError.hint
-        } : null
+        } : null,
+        purchases: purchasesData?.map(p => ({
+          id: p.id,
+          course_id: p.course_id,
+          order_id: p.order_id,
+          user_id: p.user_id,
+          is_active: p.is_active,
+          has_start_date: !!p.start_date
+        })) || []
       });
 
       // Si hay error, manejarlo apropiadamente
@@ -165,6 +206,25 @@ export const useUserPurchases = (): UseUserPurchasesReturn => {
       // Si no hay compras, terminar
       if (!purchasesData || purchasesData.length === 0) {
         console.log('ℹ️ useUserPurchases: No se encontraron compras activas');
+        console.log('🔍 useUserPurchases: Verificando si hay compras sin filtro is_active...');
+        
+        // Intentar buscar sin el filtro is_active para ver si hay compras inactivas
+        const { data: allPurchases } = await supabase
+          .from('course_purchases')
+          .select('id, course_id, is_active, user_id')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false });
+        
+        console.log('🔍 useUserPurchases: Todas las compras (incluyendo inactivas):', {
+          count: allPurchases?.length || 0,
+          purchases: allPurchases?.map(p => ({
+            id: p.id,
+            course_id: p.course_id,
+            is_active: p.is_active,
+            user_id: p.user_id
+          })) || []
+        });
+        
         setPurchases([]);
         setLoading(false);
         return;
@@ -248,7 +308,7 @@ export const useUserPurchases = (): UseUserPurchasesReturn => {
             order_id: purchase.order_id || '',
             created_at: purchase.created_at || '',
             is_active: purchase.is_active,
-            start_date: purchase.created_at || null, // Usar created_at como fecha de inicio
+            start_date: purchase.start_date || purchase.created_at?.split('T')[0] || null, // Usar start_date si existe, sino created_at
             completed_lessons: completedLessonIds,
             course: course
           };

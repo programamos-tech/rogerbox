@@ -199,9 +199,17 @@ export default function WompiCheckout({ course, onSuccess, onError, onClose }: W
   const handlePayment = async () => {
     console.log('🔵 handlePayment iniciado');
     console.log('📋 Validación de formulario:', isFormValid());
-    console.log('🎨 Widget listo:', widgetReady);
-    console.log('🔑 Public key disponible:', !!wompiPublicKey);
-    console.log('🪟 window.WidgetCheckout:', typeof window.WidgetCheckout);
+    
+    // Verificar si estamos en modo mock (solo en desarrollo local)
+    const isMockMode = process.env.NEXT_PUBLIC_MOCK_PAYMENTS === 'true';
+    
+    if (isMockMode) {
+      console.log('🎭 MODO MOCK ACTIVADO - Simulando pago sin Wompi');
+    } else {
+      console.log('🎨 Widget listo:', widgetReady);
+      console.log('🔑 Public key disponible:', !!wompiPublicKey);
+      console.log('🪟 window.WidgetCheckout:', typeof window.WidgetCheckout);
+    }
 
     if (!isFormValid()) {
       console.error('❌ Formulario inválido');
@@ -209,16 +217,19 @@ export default function WompiCheckout({ course, onSuccess, onError, onClose }: W
       return;
     }
 
-    if (!widgetReady) {
-      console.error('❌ Widget no está listo');
-      onError?.('El widget de pago aún no está listo. Intenta nuevamente.');
-      return;
-    }
+    // En modo mock, no necesitamos verificar widget ni public key
+    if (!isMockMode) {
+      if (!widgetReady) {
+        console.error('❌ Widget no está listo');
+        onError?.('El widget de pago aún no está listo. Intenta nuevamente.');
+        return;
+      }
 
-    if (!wompiPublicKey) {
-      console.error('❌ Public key no disponible');
-      onError?.('Error de configuración. Public key no disponible.');
-      return;
+      if (!wompiPublicKey) {
+        console.error('❌ Public key no disponible');
+        onError?.('Error de configuración. Public key no disponible.');
+        return;
+      }
     }
 
     setIsLoading(true);
@@ -262,6 +273,37 @@ export default function WompiCheckout({ course, onSuccess, onError, onClose }: W
 
       const { orderId, reference, signature } = orderData;
 
+      // Verificar si estamos en modo mock
+      const isMockMode = process.env.NEXT_PUBLIC_MOCK_PAYMENTS === 'true';
+
+      // MODO MOCK: Simular pago exitoso sin llamar a Wompi
+      if (isMockMode) {
+        console.log('🎭 Simulando pago exitoso en modo mock...');
+        
+        // Simular un pequeño delay para que parezca real y dar tiempo a que se complete la actualización en el backend
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // Simular respuesta exitosa de Wompi
+        const mockTransactionId = `mock-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        
+        console.log('✅ Pago simulado exitosamente');
+        console.log('📝 Transaction ID (mock):', mockTransactionId);
+        console.log('⏳ Esperando a que el backend complete la actualización...');
+        
+        // Dar un momento adicional para asegurar que la actualización se haya propagado
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        setIsLoading(false);
+        
+        // Llamar callback de éxito
+        onSuccess?.();
+        
+        // Redirigir a página de resultado como si fuera un pago real
+        window.location.href = `${window.location.origin}/payment/result?order_id=${orderId}&reference=${reference}&id=${mockTransactionId}`;
+        return;
+      }
+
+      // MODO REAL: Continuar con Wompi
       // 2. Configurar el Widget de Wompi
       const amountInCents = Math.round(course.price * 100);
 
@@ -280,15 +322,12 @@ export default function WompiCheckout({ course, onSuccess, onError, onClose }: W
 
       console.log('🚀 Creando instancia del widget...');
 
-      // Usar NEXT_PUBLIC_BASE_URL si está configurado (para ngrok), sino usar window.location.origin
-      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || window.location.origin;
-
       const widgetConfig = {
         currency: 'COP',
         amountInCents: amountInCents,
         reference: reference,
         publicKey: wompiPublicKey,
-        redirectUrl: `${baseUrl}/payment/result?order_id=${orderId}&reference=${reference}`,
+        redirectUrl: `${window.location.origin}/payment/result?order_id=${orderId}&reference=${reference}`,
         customerData: {
           email: buyerData.email,
           fullName: fullName,
@@ -303,7 +342,6 @@ export default function WompiCheckout({ course, onSuccess, onError, onClose }: W
       }
 
       console.log('📦 Configuración del widget:', JSON.stringify(widgetConfig, null, 2));
-      console.log('🌐 Base URL:', baseUrl);
       console.log('🔍 Verificando URL de redirección...');
       
       // Validar que la URL de redirección sea válida
@@ -341,14 +379,12 @@ export default function WompiCheckout({ course, onSuccess, onError, onClose }: W
           console.error('🚨 Error target:', target);
           console.error('🚨 Error message:', event.message);
           
-          // Si es un error 403 y estamos en localhost, mostrar mensaje útil
+          // Si es un error 403, mostrar mensaje útil
           if (event.message?.includes('403') || event.message?.includes('Forbidden')) {
-            if (baseUrl.includes('127.0.0.1') || baseUrl.includes('localhost')) {
-              console.error('❌ Wompi está bloqueando localhost (Error 403)');
-              console.error('💡 Solución: Usa ngrok para desarrollo local');
-              setIsLoading(false);
-              onError?.('Wompi bloquea localhost. Configura ngrok y NEXT_PUBLIC_BASE_URL. Ver consola para instrucciones.');
-            }
+            console.error('❌ Wompi está bloqueando la solicitud (Error 403)');
+            console.error('💡 Verifica la configuración de Wompi o contacta al soporte');
+            setIsLoading(false);
+            onError?.('Error 403: Wompi rechazó la solicitud. Verifica la configuración.');
           }
         }
       };
@@ -363,10 +399,8 @@ export default function WompiCheckout({ course, onSuccess, onError, onClose }: W
           const response = await originalFetch(...args);
           if (!response.ok && response.status === 403 && args[0]?.toString().includes('wompi')) {
             console.error('🚨 Error 403 en fetch a Wompi:', args[0]);
-            if (baseUrl.includes('127.0.0.1') || baseUrl.includes('localhost')) {
-              setIsLoading(false);
-              onError?.('Wompi bloquea localhost. Configura ngrok y NEXT_PUBLIC_BASE_URL.');
-            }
+            setIsLoading(false);
+            onError?.('Error 403: Wompi rechazó la solicitud. Verifica la configuración.');
           }
           return response;
         } catch (error) {
@@ -396,16 +430,11 @@ export default function WompiCheckout({ course, onSuccess, onError, onClose }: W
             }
           }, { once: true });
           
-          // Si estamos en localhost sin ngrok, mostrar mensaje útil
-          if (baseUrl.includes('127.0.0.1') || baseUrl.includes('localhost')) {
-            console.error('❌ Wompi está bloqueando localhost. Soluciones:');
-            console.error('1. Usa ngrok: ngrok http 3001');
-            console.error('2. Configura NEXT_PUBLIC_BASE_URL con la URL de ngrok');
-            console.error('3. O contacta a Wompi para habilitar localhost en modo test');
-            
-            setIsLoading(false);
-            onError?.('Wompi no permite localhost. Por favor usa ngrok o contacta al soporte. Ver consola para más detalles.');
-          }
+          console.error('❌ Wompi no está respondiendo correctamente');
+          console.error('💡 Verifica la configuración de Wompi o contacta al soporte');
+          
+          setIsLoading(false);
+          onError?.('El widget de Wompi no se abrió. Verifica la configuración o contacta al soporte.');
         }, 5000);
         
         // Llamar a open() con el callback
@@ -425,19 +454,19 @@ export default function WompiCheckout({ course, onSuccess, onError, onClose }: W
             onSuccess?.();
             // Redirigir a página de resultado que luego redirigirá automáticamente al dashboard
             // Esto asegura que el usuario vea el mensaje de éxito y la compra se registre correctamente
-            window.location.href = `${baseUrl}/payment/result?order_id=${orderId}&reference=${reference}&id=${result.transaction.id}`;
+            window.location.href = `${window.location.origin}/payment/result?order_id=${orderId}&reference=${reference}&id=${result.transaction.id}`;
           } else if (result?.transaction?.status === 'PENDING') {
             console.log('⏳ Pago pendiente de confirmación (PSE/Nequi)');
             // Redirigir a página de resultado para mostrar estado pendiente
-            window.location.href = `${baseUrl}/payment/result?order_id=${orderId}&reference=${reference}&id=${result.transaction.id}`;
+            window.location.href = `${window.location.origin}/payment/result?order_id=${orderId}&reference=${reference}&id=${result.transaction.id}`;
           } else if (result?.transaction?.status === 'DECLINED') {
             console.log('❌ Pago rechazado');
             // Redirigir a página de resultado para mostrar estado rechazado
-            window.location.href = `${baseUrl}/payment/result?order_id=${orderId}&reference=${reference}&id=${result.transaction.id}`;
+            window.location.href = `${window.location.origin}/payment/result?order_id=${orderId}&reference=${reference}&id=${result.transaction.id}`;
           } else if (result?.transaction?.status === 'ERROR') {
             console.log('⚠️ Error en el pago');
             // Redirigir a página de resultado para mostrar error
-            window.location.href = `${baseUrl}/payment/result?order_id=${orderId}&reference=${reference}&id=${result.transaction.id}`;
+            window.location.href = `${window.location.origin}/payment/result?order_id=${orderId}&reference=${reference}&id=${result.transaction.id}`;
           } else if (result?.error) {
             console.error('❌ Error del widget:', result.error);
             setIsLoading(false);
@@ -445,7 +474,7 @@ export default function WompiCheckout({ course, onSuccess, onError, onClose }: W
           } else {
             console.log('ℹ️ Estado desconocido:', result?.transaction?.status);
             // Por seguridad, redirigir a resultado con el orderId
-            window.location.href = `${baseUrl}/payment/result?order_id=${orderId}&reference=${reference}`;
+            window.location.href = `${window.location.origin}/payment/result?order_id=${orderId}&reference=${reference}`;
           }
         });
 
@@ -471,18 +500,11 @@ export default function WompiCheckout({ course, onSuccess, onError, onClose }: W
           redirectUrl: widgetConfig.redirectUrl
         });
         
-        // Si el error está relacionado con localhost, dar instrucciones
+        // Manejar errores
         const errorMessage = openError instanceof Error ? openError.message : String(openError);
         if (errorMessage.includes('403') || errorMessage.includes('Forbidden')) {
-          if (baseUrl.includes('127.0.0.1') || baseUrl.includes('localhost')) {
-            console.error('🔧 Solución: Usa ngrok para exponer tu servidor local');
-            console.error('   1. Instala ngrok: npm install -g ngrok');
-            console.error('   2. Ejecuta: ngrok http 3001');
-            console.error('   3. Configura NEXT_PUBLIC_BASE_URL con la URL de ngrok (ej: https://abc123.ngrok.io)');
-            onError?.('Wompi bloquea localhost. Configura ngrok y NEXT_PUBLIC_BASE_URL. Ver consola.');
-          } else {
-            onError?.('Error 403: Wompi rechazó la solicitud. Verifica la configuración.');
-          }
+          console.error('🔧 Error 403: Wompi rechazó la solicitud');
+          onError?.('Error 403: Wompi rechazó la solicitud. Verifica la configuración.');
         } else {
           onError?.(errorMessage || 'Error al abrir el widget de pago');
         }
