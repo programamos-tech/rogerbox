@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start -p 3000",
     "lint": "eslint",
-    "migrate-images": "node scripts/migrate-base64-to-webp.js"
+    "migrate-images": "node scripts/migrate-base64-to-webp.js",
+    "create-admin:prod": "node scripts/create-admin-production.js"
   },
   "dependencies": {
     "@mux/mux-player": "^3.6.1",

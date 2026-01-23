@@ -1,0 +1,54 @@
+# ============================================
+# VARIABLES DE ENTORNO PARA VERCEL - PRODUCCIÓN
+# ============================================
+# ⚠️ IMPORTANTE: Marca SUPABASE_SERVICE_ROLE_KEY como "Sensitive" en Vercel
+# ============================================
+
+# SUPABASE (REQUERIDAS)
+NEXT_PUBLIC_SUPABASE_URL=https://lrwiyqodwzqdlzkczvge.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_iy7prMijl6-WfPXQW6kSHg_Clwtt650
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxyd2l5cW9kd3pxZGx6a2N6dmdlIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2OTIwNTk5NCwiZXhwIjoyMDg0NzgxOTk0fQ.rrUiT6t4xBwG6LOlQyFmmvPCGtv_acixv82v0twCa9A
+
+# ADMIN (REQUERIDAS)
+NEXT_PUBLIC_ADMIN_USER_ID=8baaa101-ddcc-482c-a409-1ed9b9fac093
+NEXT_PUBLIC_ADMIN_EMAIL=rogerbox@admin.com
+
+# PRODUCCIÓN (REQUERIDAS)
+NEXT_PUBLIC_MOCK_PAYMENTS=false
+NODE_ENV=production
+
+# ============================================
+# OPCIONALES (Agrega solo si las usas)
+# ============================================
+
+# WOMPI - PAGOS
+# WOMPI_PUBLIC_KEY=tu_wompi_public_key
+# WOMPI_PRIVATE_KEY=tu_wompi_private_key
+# WOMPI_INTEGRITY_KEY=tu_wompi_integrity_key
+# WOMPI_ENVIRONMENT=production
+
+# MUX - VIDEOS
+# NEXT_PUBLIC_MUX_TOKEN_ID=tu_mux_token_id
+# NEXT_PUBLIC_MUX_PLAYBACK_ID=tu_mux_playback_id
+# NEXT_PUBLIC_MUX_DATA_ENV_KEY=tu_mux_data_env_key
+
+# NEXTAUTH
+# NEXTAUTH_URL=https://tu-app.vercel.app
+# NEXTAUTH_SECRET=genera_un_secreto_seguro
+
+# ============================================
+# NOTAS:
+# ============================================
+# 1. NEXT_PUBLIC_ADMIN_USER_ID: 
+#    - Obtén el ID del usuario admin desde Supabase Dashboard → Authentication → Users
+#    - O ejecuta: node scripts/create-admin.js (en local con variables de prod)
+#
+# 2. NEXTAUTH_URL: 
+#    - Reemplaza con tu URL real de Vercel después del deploy
+#    - Ejemplo: https://rogerbox.vercel.app
+#
+# 3. Variables SENSIBLES (marcar como "Sensitive" en Vercel):
+#    - SUPABASE_SERVICE_ROLE_KEY ⚠️
+#    - WOMPI_PRIVATE_KEY (si usas)
+#    - NEXTAUTH_SECRET (si usas)
+# ============================================
