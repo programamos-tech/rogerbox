@@ -19,13 +19,28 @@ const supabaseServiceKey =
   (supabaseUrl === localSupabaseUrl ? localServiceKey : 'service-key-placeholder');
 
 // Verificar que las variables estén cargadas
-if (
-  !process.env.NEXT_PUBLIC_SUPABASE_URL ||
-  !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-  !(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY)
-) {
-  console.warn('⚠️ Missing Supabase environment variables. Using placeholders for build.');
-  console.warn('Set NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY (o NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY)');
+// En producción, las variables son obligatorias
+if (process.env.NODE_ENV === 'production') {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    throw new Error('❌ Missing required Supabase environment variables in production: NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY must be set');
+  }
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY && !process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error('❌ Missing required Supabase service role key in production: SUPABASE_SERVICE_ROLE_KEY or NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY must be set');
+  }
+  // En producción, no permitir usar localhost
+  if (supabaseUrl.includes('127.0.0.1') || supabaseUrl.includes('localhost')) {
+    throw new Error('❌ Invalid Supabase URL in production: Cannot use localhost. Set NEXT_PUBLIC_SUPABASE_URL to your production Supabase project URL');
+  }
+} else {
+  // En desarrollo, solo advertir
+  if (
+    !process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    !(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY)
+  ) {
+    console.warn('⚠️ Missing Supabase environment variables. Using local fallbacks for development.');
+    console.warn('Set NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY (o NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY)');
+  }
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)

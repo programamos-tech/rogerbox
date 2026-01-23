@@ -2,12 +2,36 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSession, createClient } from '@/lib/supabase-server';
 import { supabaseAdmin } from '@/lib/supabase';
 
+function normalizeEmail(val?: string | null) {
+  return (val || '').trim().toLowerCase();
+}
+
+function isAdminUser(user: { id?: string; email?: string; user_metadata?: any } | null) {
+  if (!user) return false;
+  const envId = (process.env.NEXT_PUBLIC_ADMIN_USER_ID || '').trim();
+  const envEmail = normalizeEmail(process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'rogerbox@admin.com');
+  const matchId = !!envId && user.id === envId;
+  const matchEmail = normalizeEmail(user.email) === envEmail;
+  const matchRole = user.user_metadata?.role === 'admin';
+  return Boolean(matchId || matchEmail || matchRole);
+}
+
 export async function GET(request: NextRequest) {
+  // Solo permitir en desarrollo o para admins
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json({ error: 'Not available in production' }, { status: 403 });
+  }
+
   try {
     const { session } = await getSession();
     
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+    }
+
+    // En producción, solo admins pueden acceder
+    if (process.env.NODE_ENV === 'production' && !isAdminUser(session.user)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
     const userId = session.user.id;

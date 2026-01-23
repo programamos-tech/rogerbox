@@ -201,7 +201,8 @@ export default function WompiCheckout({ course, onSuccess, onError, onClose }: W
     console.log('📋 Validación de formulario:', isFormValid());
     
     // Verificar si estamos en modo mock (solo en desarrollo local)
-    const isMockMode = process.env.NEXT_PUBLIC_MOCK_PAYMENTS === 'true';
+    // El modo mock solo está permitido en desarrollo
+    const isMockMode = process.env.NODE_ENV !== 'production' && process.env.NEXT_PUBLIC_MOCK_PAYMENTS === 'true';
     
     if (isMockMode) {
       console.log('🎭 MODO MOCK ACTIVADO - Simulando pago sin Wompi');
@@ -273,8 +274,8 @@ export default function WompiCheckout({ course, onSuccess, onError, onClose }: W
 
       const { orderId, reference, signature } = orderData;
 
-      // Verificar si estamos en modo mock
-      const isMockMode = process.env.NEXT_PUBLIC_MOCK_PAYMENTS === 'true';
+      // Verificar si estamos en modo mock (solo en desarrollo)
+      const isMockMode = process.env.NODE_ENV !== 'production' && process.env.NEXT_PUBLIC_MOCK_PAYMENTS === 'true';
 
       // MODO MOCK: Simular pago exitoso sin llamar a Wompi
       if (isMockMode) {

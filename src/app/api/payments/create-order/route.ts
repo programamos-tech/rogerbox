@@ -116,7 +116,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Generar firma de integridad para Wompi (solo si no estamos en modo mock)
-    const isMockMode = process.env.NEXT_PUBLIC_MOCK_PAYMENTS === 'true';
+    // El modo mock solo está permitido en desarrollo
+    const isMockMode = process.env.NODE_ENV !== 'production' && process.env.NEXT_PUBLIC_MOCK_PAYMENTS === 'true';
     const amountInCents = Math.round(amount * 100);
     let signature = '';
     
