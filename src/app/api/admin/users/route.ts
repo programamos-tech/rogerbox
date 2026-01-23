@@ -41,6 +41,7 @@ export async function GET() {
                 status,
                 start_date,
                 end_date,
+                client_info_id,
                 plan:gym_plans(name)
               `)
               .eq('user_id', user.id);
@@ -139,6 +140,25 @@ export async function GET() {
           // Verificar si es cliente online (tiene compras de cursos)
           const hasOnlinePurchase = activeCoursePurchases.length > 0;
 
+          // Obtener is_inactive del cliente físico si existe
+          let isInactive = false;
+          let clientInfoId = null;
+          if (hasGymMembership && gymMemberships.length > 0) {
+            clientInfoId = gymMemberships[0].client_info_id;
+            if (clientInfoId) {
+              try {
+                const { data: clientInfo } = await supabaseAdmin
+                  .from('gym_client_info')
+                  .select('is_inactive')
+                  .eq('id', clientInfoId)
+                  .single();
+                isInactive = clientInfo?.is_inactive || false;
+              } catch (e) {
+                // Continuar sin is_inactive si hay error
+              }
+            }
+          }
+
           return {
             ...user,
             gym_memberships: gymMemberships,
@@ -157,6 +177,8 @@ export async function GET() {
               : 'none',
             isRegistered: true,
             totalSpent,
+            is_inactive: isInactive,
+            client_info_id: clientInfoId,
           };
         } catch (e) {
           // Si hay error al enriquecer, devolver usuario básico
@@ -290,6 +312,7 @@ export async function GET() {
               isRegistered: false,
               isUnregisteredClient: true,
               totalSpent: clientTotalSpent,
+              is_inactive: client.is_inactive || false,
             };
           })
         );

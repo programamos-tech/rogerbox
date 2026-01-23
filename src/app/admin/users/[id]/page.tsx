@@ -18,6 +18,7 @@ import {
   Dumbbell,
   CheckCircle,
   AlertCircle,
+  AlertTriangle,
   TrendingUp,
   X,
   Edit,
@@ -35,6 +36,8 @@ import {
   Users,
   Globe,
   MessageSquare,
+  Ban,
+  UserX,
 } from 'lucide-react';
 import QuickLoading from '@/components/QuickLoading';
 
@@ -352,15 +355,10 @@ export default function UserDetailPage() {
                     >
                       <Icon className="w-4 h-4 flex-shrink-0" />
                       {!sidebarCollapsed && (
-                        <div className="flex-1 text-left min-w-0 flex items-center gap-2">
+                        <div className="flex-1 text-left min-w-0">
                           <span className="text-xs font-semibold tracking-tight truncate">
                             {item.label}
                           </span>
-                          {isUsersItem && (
-                            <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-[#164151]/10 dark:bg-[#164151]/20 text-[#164151] dark:text-[#164151] font-medium">
-                              Ambas
-                            </span>
-                          )}
                         </div>
                       )}
                     </button>
@@ -453,7 +451,7 @@ export default function UserDetailPage() {
                 <button
                   onClick={handleSave}
                   disabled={isSaving}
-                  className="px-4 py-2 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-white/90 font-semibold transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-4 py-2 rounded-lg bg-[#164151] text-white hover:bg-[#1a4d5f] dark:bg-[#164151] dark:hover:bg-[#1a4d5f] font-semibold transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Save className="w-4 h-4" />
                   {isSaving ? 'Guardando...' : 'Guardar'}
@@ -462,7 +460,7 @@ export default function UserDetailPage() {
             ) : (
               <button
                 onClick={() => setIsEditing(true)}
-                className="px-4 py-2 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-white/90 font-semibold transition-colors flex items-center gap-2"
+                className="px-4 py-2 rounded-lg bg-[#164151] text-white hover:bg-[#1a4d5f] dark:bg-[#164151] dark:hover:bg-[#1a4d5f] font-semibold transition-colors flex items-center gap-2"
               >
                 <Edit className="w-4 h-4" />
                 Editar
@@ -474,7 +472,7 @@ export default function UserDetailPage() {
         {/* Content */}
         <div className="flex-1 overflow-y-auto">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className={`grid grid-cols-1 lg:grid-cols-3 gap-6 ${userData.is_inactive ? 'opacity-75' : ''}`}>
               {/* Left Column - Información Personal y Fitness */}
               <div className="lg:col-span-2 space-y-6">
                 {/* Estado y Tipo */}
@@ -487,12 +485,25 @@ export default function UserDetailPage() {
                   <p className="text-xs text-gray-500 dark:text-white/40 mb-1">Estado</p>
                   <div>
                     {(() => {
-                      // Si tiene membresía vencida, mostrar "Renovar"
+                      // Si tiene membresía vencida, mostrar estado apropiado
                       if (userData.hasGymMembership && !userData.hasActiveGymMembership) {
+                        // Si está marcado como inactivo en la BD, mostrar "Inactivo"
+                        if (userData.is_inactive) {
+                          return (
+                            <p className="text-sm font-medium text-[#164151] dark:text-white">
+                              <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400">
+                                <X className="w-5 h-5" />
+                                Inactivo
+                              </span>
+                            </p>
+                          );
+                        }
+                        
+                        // Siempre mostrar "Renovar" cuando está vencido (no importa cuántos días)
                         return (
                           <p className="text-sm font-medium text-[#164151] dark:text-white">
-                            <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400">
-                              <AlertCircle className="w-5 h-5" />
+                            <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-orange-100 dark:bg-orange-500/20 text-orange-700 dark:text-orange-400">
+                              <AlertTriangle className="w-5 h-5" />
                               Renovar
                             </span>
                           </p>
@@ -564,6 +575,131 @@ export default function UserDetailPage() {
                     <p className="text-sm font-medium text-gray-400 dark:text-white/40">-</p>
                   )}
                 </div>
+              </div>
+              
+              {/* Botón Inactivar/Activar */}
+              <div className="mt-4 pt-4 border-t border-gray-200 dark:border-white/10">
+                {(() => {
+                  const clientInfoId = userData.isUnregisteredClient 
+                    ? userData.id 
+                    : (userData.client_info_id || userData.gym_memberships?.[0]?.client_info_id || null);
+                  
+                  if (!clientInfoId) return null;
+                  
+                  const isInactive = userData.is_inactive || false;
+                  
+                  // Calcular si tiene planes vencidos (estado "Renovar")
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  const allMemberships = userData.gym_memberships || [];
+                  const activeMemberships = allMemberships.filter((m: any) => {
+                    const endDate = new Date(m.end_date);
+                    endDate.setHours(0, 0, 0, 0);
+                    return endDate >= today;
+                  });
+                  const expiredMemberships = allMemberships.filter((m: any) => {
+                    const endDate = new Date(m.end_date);
+                    endDate.setHours(0, 0, 0, 0);
+                    return endDate < today;
+                  });
+                  
+                  // Solo puede inactivarse si tiene estado "Renovar" (todos vencidos, sin activos)
+                  const hasOnlyExpiredMemberships = expiredMemberships.length > 0 && activeMemberships.length === 0;
+                  
+                  const latestExpired = expiredMemberships.length > 0
+                    ? expiredMemberships.sort((a: any, b: any) => 
+                        new Date(b.end_date).getTime() - new Date(a.end_date).getTime()
+                      )[0]
+                    : null;
+                  const daysSinceExpired = latestExpired
+                    ? Math.floor((today.getTime() - new Date(latestExpired.end_date).getTime()) / (1000 * 60 * 60 * 24))
+                    : 0;
+                  const hasExpiredMoreThan30Days = daysSinceExpired > 30;
+                  
+                  // Botón Inactivar - solo si tiene estado "Renovar" (todos vencidos) y más de 30 días PERO NO está inactivo
+                  if (hasOnlyExpiredMemberships && hasExpiredMoreThan30Days && !isInactive) {
+                    const handleInactivate = async () => {
+                      if (!confirm(`¿Estás seguro de inactivar a ${userData.name || userData.full_name || 'este usuario'}?`)) {
+                        return;
+                      }
+                      
+                      try {
+                        const response = await fetch(`/api/admin/gym/clients/${clientInfoId}/toggle-inactive`, {
+                          method: 'PATCH',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ is_inactive: true }),
+                        });
+                        
+                        if (!response.ok) {
+                          throw new Error('Error al actualizar estado');
+                        }
+                        
+                        // Recargar datos del usuario
+                        const userId = params?.id as string;
+                        const response2 = await fetch(`/api/admin/users/${userId}`);
+                        if (response2.ok) {
+                          const data = await response2.json();
+                          setUserData(data);
+                        }
+                      } catch (error) {
+                        console.error('Error inactivating user:', error);
+                        alert('Error al inactivar el usuario');
+                      }
+                    };
+                    
+                    return (
+                      <button
+                        onClick={handleInactivate}
+                        className="w-full px-4 py-2.5 rounded-lg bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-500/30 transition-colors flex items-center justify-center gap-2 text-sm font-semibold"
+                        title="Inactivar usuario (30 días sin pagar)"
+                      >
+                        <Ban className="w-5 h-5" />
+                        Inactivar Usuario
+                      </button>
+                    );
+                  }
+                  
+                  // Botón Activar - solo si está inactivo
+                  if (isInactive) {
+                    const handleActivate = async () => {
+                      try {
+                        const response = await fetch(`/api/admin/gym/clients/${clientInfoId}/toggle-inactive`, {
+                          method: 'PATCH',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ is_inactive: false }),
+                        });
+                        
+                        if (!response.ok) {
+                          throw new Error('Error al actualizar estado');
+                        }
+                        
+                        // Recargar datos del usuario
+                        const userId = params?.id as string;
+                        const response2 = await fetch(`/api/admin/users/${userId}`);
+                        if (response2.ok) {
+                          const data = await response2.json();
+                          setUserData(data);
+                        }
+                      } catch (error) {
+                        console.error('Error activating user:', error);
+                        alert('Error al activar el usuario');
+                      }
+                    };
+                    
+                    return (
+                      <button
+                        onClick={handleActivate}
+                        className="w-full px-4 py-2.5 rounded-lg bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-500/30 transition-colors flex items-center justify-center gap-2 text-sm font-semibold"
+                        title="Activar usuario"
+                      >
+                        <CheckCircle className="w-5 h-5" />
+                        Activar Usuario
+                      </button>
+                    );
+                  }
+                  
+                  return null;
+                })()}
               </div>
                 </div>
 
@@ -950,14 +1086,8 @@ export default function UserDetailPage() {
 
               {/* Right Column - Productos y Negocio */}
               <div className="space-y-6">
-                {/* Productos Activos */}
-                <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-white/10 p-6">
-              <h2 className="text-sm font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider mb-4">
-                Productos Activos
-              </h2>
-              <div className="space-y-3">
+                {/* Productos Activos - Solo para usuarios "Al día" o "Parcial" */}
                 {(() => {
-                  // Mostrar TODAS las membresías activas
                   const today = new Date();
                   today.setHours(0, 0, 0, 0);
                   
@@ -968,164 +1098,225 @@ export default function UserDetailPage() {
                     return endDate >= today;
                   });
                   
-                  // Si no hay activas, mostrar la más reciente (aunque esté vencida)
-                  const membershipsToShow = activeMemberships.length > 0 
-                    ? activeMemberships.sort((a: any, b: any) => new Date(b.end_date).getTime() - new Date(a.end_date).getTime())
-                    : (userData.gym_memberships?.length > 0 
-                        ? [userData.gym_memberships.sort((a: any, b: any) => new Date(b.end_date).getTime() - new Date(a.end_date).getTime())[0]]
-                        : []);
+                  // Verificar si tiene cursos activos
+                  const hasActiveCourses = userData.activeCoursePurchases && userData.activeCoursePurchases.length > 0;
                   
-                  return membershipsToShow.map((membership: any) => {
-                    const endDate = new Date(membership.end_date);
-                    endDate.setHours(0, 0, 0, 0);
-                    const isExpired = endDate < today;
-                    
-                    return (
-                      <div key={membership.id} className="p-4 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-200 dark:border-white/10">
-                        <div className="flex items-center gap-3 mb-3">
-                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                            isExpired 
-                              ? 'bg-slate-100 dark:bg-slate-500/20' 
-                              : 'bg-[#85ea10]/20 dark:bg-[#85ea10]/30'
-                          }`}>
-                            <Dumbbell className={`w-5 h-5 ${isExpired ? 'text-slate-600 dark:text-slate-400' : 'text-[#85ea10]'}`} />
-                          </div>
-                          <div className="flex-1">
-                            <div className="flex items-center justify-between mb-1">
-                              <p className="text-sm font-medium text-[#164151] dark:text-white">
-                                {membership.plan?.name || 'Plan'}
-                              </p>
-                              {isExpired ? (
-                                <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-100 dark:bg-slate-500/20 text-slate-700 dark:text-slate-400">
-                                  Finalizada
-                                </span>
-                              ) : (
-                                <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-[#85ea10]/20 text-[#164151] dark:bg-[#85ea10]/30 dark:text-[#85ea10]">
-                                  Al día
-                                </span>
-                              )}
+                  // Solo mostrar si tiene productos activos (membresías o cursos)
+                  // No mostrar si está inactivo o si todos los planes están vencidos
+                  const hasActiveProducts = activeMemberships.length > 0 || hasActiveCourses;
+                  const isInactive = userData.is_inactive || false;
+                  
+                  // No mostrar si está inactivo o no tiene productos activos
+                  if (!hasActiveProducts || isInactive) {
+                    return null;
+                  }
+                  
+                  return (
+                    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-white/10 p-6">
+                      <h2 className="text-sm font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider mb-4">
+                        Productos Activos
+                      </h2>
+                      <div className="space-y-3">
+                        {/* Membresías activas */}
+                        {activeMemberships
+                          .sort((a: any, b: any) => new Date(b.end_date).getTime() - new Date(a.end_date).getTime())
+                          .map((membership: any) => {
+                            return (
+                              <div key={membership.id} className="p-4 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-200 dark:border-white/10">
+                                <div className="flex items-center gap-3 mb-3">
+                                  <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-[#85ea10]/30 dark:bg-[#85ea10]/40">
+                                    <Dumbbell className="w-5 h-5 text-[#164151] dark:text-[#85ea10]" />
+                                  </div>
+                                  <div className="flex-1">
+                                    <div className="flex items-center justify-between mb-1">
+                                      <p className="text-sm font-medium text-[#164151] dark:text-white">
+                                        {membership.plan?.name || 'Plan'}
+                                      </p>
+                                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[#85ea10]/30 text-[#164151] dark:bg-[#85ea10]/30 dark:text-[#85ea10]">
+                                        Al día
+                                      </span>
+                                    </div>
+                                    <p className="text-xs text-gray-500 dark:text-white/50">
+                                      Vence: {new Date(membership.end_date).toLocaleDateString('es-ES', {
+                                        day: '2-digit',
+                                        month: 'long',
+                                        year: 'numeric',
+                                      })}
+                                    </p>
+                                    {membership.payment?.invoice_number && (
+                                      <p className="text-xs font-medium text-[#164151] dark:text-white mt-1">
+                                        Factura: #{membership.payment.invoice_number}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+
+                        {/* Cursos activos */}
+                        {hasActiveCourses && (
+                          <div className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-200 dark:border-white/10">
+                            <div className="w-10 h-10 rounded-lg bg-[#164151]/20 dark:bg-[#164151]/30 flex items-center justify-center">
+                              <Globe className="w-5 h-5 text-[#164151] dark:text-[#164151]" />
                             </div>
-                            <p className="text-xs text-gray-500 dark:text-white/50">
-                              {isExpired ? 'Venció' : 'Vence'}: {new Date(membership.end_date).toLocaleDateString('es-ES', {
-                                day: '2-digit',
-                                month: 'long',
-                                year: 'numeric',
-                              })}
-                            </p>
-                            {membership.payment?.invoice_number && (
-                              <p className="text-xs font-medium text-[#164151] dark:text-white mt-1">
-                                Factura: #{membership.payment.invoice_number}
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-[#164151] dark:text-white">
+                                {userData.activeCoursePurchases.length}{' '}
+                                {userData.activeCoursePurchases.length === 1 ? 'curso activo' : 'cursos activos'}
                               </p>
-                            )}
-                          </div>
-                        </div>
-                        {isExpired && (
-                          <div className="mt-3 pt-3 border-t border-gray-200 dark:border-white/10">
-                            <p className="text-xs text-slate-600 dark:text-slate-400 mb-3 font-medium">
-                              Esta membresía ha finalizado. ¿Deseas renovarla?
-                            </p>
-                            {/* Botón Invitar a renovar (WhatsApp) */}
-                            {userData.whatsapp || userData.phone ? (() => {
-                              const planName = membership.plan?.name || 'tu plan';
-                              const endDateFormatted = new Date(membership.end_date).toLocaleDateString('es-ES', {
-                                day: '2-digit',
-                                month: 'long',
-                                year: 'numeric',
-                              });
-                              
-                              const handleRenew = () => {
-                                const clientName = userData.name || userData.full_name || 'Cliente';
-                                const whatsappNumber = (userData.whatsapp || userData.phone || '').replace(/\D/g, '');
-                                
-                                if (!whatsappNumber) return;
-                                
-                                const message = encodeURIComponent(
-                                  `Hola ${clientName}, tu plan "${planName}" finalizó el ${endDateFormatted}. ¿Deseas renovar tu membresía para continuar?`
-                                );
-                                
-                                const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${message}`;
-                                window.open(whatsappUrl, '_blank');
-                              };
-                              
-                              return (
-                                <button
-                                  onClick={handleRenew}
-                                  className="w-full px-4 py-2 rounded-lg bg-[#85ea10]/20 dark:bg-[#85ea10]/30 text-[#164151] dark:text-[#85ea10] hover:bg-[#85ea10]/30 dark:hover:bg-[#85ea10]/40 transition-colors flex items-center justify-center gap-2 text-sm font-medium"
-                                >
-                                  <MessageSquare className="w-4 h-4" />
-                                  Invitar a renovar
-                                </button>
-                              );
-                            })() : (
-                              <p className="text-xs text-gray-400 dark:text-white/40">
-                                No hay número de contacto disponible
+                              <p className="text-xs text-gray-500 dark:text-white/50">
+                                {userData.activeCoursePurchases
+                                  .map((p: any) => p.course?.title)
+                                  .filter(Boolean)
+                                  .join(', ') || 'Cursos activos'}
                               </p>
-                            )}
+                            </div>
                           </div>
                         )}
                       </div>
-                    );
-                  });
+                    </div>
+                  );
                 })()}
 
-                {userData.activeCoursePurchases && userData.activeCoursePurchases.length > 0 && (
-                  <div className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-200 dark:border-white/10">
-                    <div className="w-10 h-10 rounded-lg bg-cyan-100 dark:bg-cyan-500/20 flex items-center justify-center">
-                      <Globe className="w-5 h-5 text-cyan-600 dark:text-cyan-400" />
+                {/* Planes que necesitan renovación */}
+                {(() => {
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  
+                  // Filtrar membresías vencidas
+                  const expiredMemberships = (userData.gym_memberships || []).filter((membership: any) => {
+                    const endDate = new Date(membership.end_date);
+                    endDate.setHours(0, 0, 0, 0);
+                    return endDate < today;
+                  });
+                  
+                  if (expiredMemberships.length === 0) {
+                    return null;
+                  }
+                  
+                  return (
+                    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-white/10 p-6">
+                      <h2 className="text-sm font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider mb-4">
+                        Planes que necesitan renovación
+                      </h2>
+                      <div className="space-y-3">
+                        {expiredMemberships
+                          .sort((a: any, b: any) => new Date(b.end_date).getTime() - new Date(a.end_date).getTime())
+                          .map((membership: any) => {
+                            const endDate = new Date(membership.end_date);
+                            endDate.setHours(0, 0, 0, 0);
+                            
+                            return (
+                              <div key={membership.id} className="p-4 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-200 dark:border-white/10">
+                                <div className="flex items-center gap-3 mb-3">
+                                  <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-slate-100 dark:bg-slate-500/20">
+                                    <Dumbbell className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+                                  </div>
+                                  <div className="flex-1">
+                                    <div className="flex items-center justify-between mb-1">
+                                      <p className="text-sm font-medium text-[#164151] dark:text-white">
+                                        {membership.plan?.name || 'Plan'}
+                                      </p>
+                                      {(() => {
+                                        // Solo mostrar "Inactivo" si el usuario está marcado como inactivo en la BD
+                                        if (userData.is_inactive) {
+                                          return (
+                                            <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400">
+                                              <X className="w-3 h-3 inline mr-1" />
+                                              Inactivo
+                                            </span>
+                                          );
+                                        }
+                                        
+                                        // Si no está inactivo, siempre mostrar "Renovar"
+                                        return (
+                                          <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-100 dark:bg-orange-500/20 text-orange-700 dark:text-orange-400">
+                                            Renovar
+                                          </span>
+                                        );
+                                      })()}
+                                    </div>
+                                    <p className="text-xs text-gray-500 dark:text-white/50">
+                                      Venció: {new Date(membership.end_date).toLocaleDateString('es-ES', {
+                                        day: '2-digit',
+                                        month: 'long',
+                                        year: 'numeric',
+                                      })}
+                                    </p>
+                                    {membership.payment?.invoice_number && (
+                                      <p className="text-xs font-medium text-[#164151] dark:text-white mt-1">
+                                        Factura: #{membership.payment.invoice_number}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="mt-3 pt-3 border-t border-gray-200 dark:border-white/10 space-y-2">
+                                  {/* Botón Invitar a renovar (WhatsApp) */}
+                                  {userData.whatsapp || userData.phone ? (() => {
+                                    const planName = membership.plan?.name || 'tu plan';
+                                    const endDateFormatted = new Date(membership.end_date).toLocaleDateString('es-ES', {
+                                      day: '2-digit',
+                                      month: 'long',
+                                      year: 'numeric',
+                                    });
+                                    
+                                    const handleRenew = () => {
+                                      const clientName = userData.name || userData.full_name || 'Cliente';
+                                      const whatsappNumber = (userData.whatsapp || userData.phone || '').replace(/\D/g, '');
+                                      
+                                      if (!whatsappNumber) return;
+                                      
+                                      const message = encodeURIComponent(
+                                        `Hola ${clientName}, tu plan "${planName}" finalizó el ${endDateFormatted}. ¿Deseas renovar tu membresía para continuar?`
+                                      );
+                                      
+                                      const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${message}`;
+                                      window.open(whatsappUrl, '_blank');
+                                    };
+                                    
+                                    return (
+                                      <button
+                                        onClick={handleRenew}
+                                        className="w-full px-4 py-2 rounded-lg bg-[#85ea10]/20 dark:bg-[#85ea10]/30 text-[#164151] dark:text-[#85ea10] hover:bg-[#85ea10]/30 dark:hover:bg-[#85ea10]/40 transition-colors flex items-center justify-center gap-2 text-sm font-medium"
+                                      >
+                                        <MessageSquare className="w-4 h-4" />
+                                        Invitar a renovar
+                                      </button>
+                                    );
+                                  })() : (
+                                    <p className="text-xs text-gray-400 dark:text-white/40 text-center">
+                                      No hay número de contacto disponible
+                                    </p>
+                                  )}
+                                  
+                                  {/* Botón Registrar Pago */}
+                                  {(() => {
+                                    const clientInfoId = userData.isUnregisteredClient ? userData.id : (membership.client_info_id || userData.id);
+                                    const planId = membership.plan?.id || null;
+                                    
+                                    const handleRegisterPayment = () => {
+                                      router.push(`/admin?tab=gym-payments&clientId=${clientInfoId}${planId ? `&planId=${planId}` : ''}`);
+                                    };
+                                    
+                                    return (
+                                      <button
+                                        onClick={handleRegisterPayment}
+                                        className="w-full px-4 py-2 rounded-lg bg-[#164151] dark:bg-white text-white dark:text-[#164151] hover:bg-[#1a4d5f] dark:hover:bg-gray-100 transition-colors flex items-center justify-center gap-2 text-sm font-semibold"
+                                      >
+                                        <CreditCard className="w-4 h-4" />
+                                        Registrar Pago
+                                      </button>
+                                    );
+                                  })()}
+                                </div>
+                              </div>
+                            );
+                          })}
+                      </div>
                     </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-[#164151] dark:text-white">
-                        {userData.activeCoursePurchases.length}{' '}
-                        {userData.activeCoursePurchases.length === 1 ? 'curso activo' : 'cursos activos'}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-white/50">
-                        {userData.activeCoursePurchases
-                          .map((p: any) => p.course?.title)
-                          .filter(Boolean)
-                          .join(', ') || 'Cursos activos'}
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {!userData.activeGymMembership &&
-                  (!userData.activeCoursePurchases || userData.activeCoursePurchases.length === 0) && (
-                    <div className="p-4 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-200 dark:border-white/10 text-center">
-                      <p className="text-sm text-gray-400 dark:text-white/50 mb-3">No hay productos activos</p>
-                      {/* Botón para clientes físicos - texto diferente si nunca ha comprado */}
-                      {(userData.userType === 'physical' || userData.hasGymMembership || userData.isUnregisteredClient) && (() => {
-                        // Obtener client_info_id
-                        const clientInfoId = userData.isUnregisteredClient ? userData.id : (userData.gym_memberships?.[0]?.client_info_id || userData.id);
-                        
-                        // Verificar si nunca ha comprado (no tiene membresías ni compras)
-                        const hasNeverPurchased = !userData.hasGymMembership && !userData.hasOnlinePurchase && !userData.gym_memberships?.length;
-                        
-                        // Obtener plan_id del último plan (activo o vencido)
-                        const latestMembership = userData.gym_memberships?.length > 0
-                          ? userData.gym_memberships.sort((a: any, b: any) => new Date(b.end_date).getTime() - new Date(a.end_date).getTime())[0]
-                          : userData.activeGymMembership;
-                        const planId = latestMembership?.plan?.id || null;
-                        
-                        const handleRegisterPayment = () => {
-                          // Navegar a la pestaña de pagos con parámetros
-                          router.push(`/admin?tab=gym-payments&clientId=${clientInfoId}${planId ? `&planId=${planId}` : ''}`);
-                        };
-                        
-                        return (
-                          <button
-                            onClick={handleRegisterPayment}
-                            className="px-4 py-2 rounded-lg bg-[#164151] dark:bg-white text-white dark:text-[#164151] hover:bg-[#1a4d5f] dark:hover:bg-gray-100 transition-colors flex items-center gap-2 text-sm font-semibold mx-auto"
-                            title={hasNeverPurchased ? "Empezar plan" : "Registrar nuevo pago"}
-                          >
-                            <CreditCard className="w-4 h-4" />
-                            {hasNeverPurchased ? 'Empezar Plan' : 'Registrar Pago'}
-                          </button>
-                        );
-                      })()}
-                    </div>
-                  )}
-              </div>
-                </div>
+                  );
+                })()}
 
                 {/* Membresías */}
                 {userData.gym_memberships && userData.gym_memberships.length > 0 && (

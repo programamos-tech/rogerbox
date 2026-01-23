@@ -61,7 +61,7 @@ async function updatePaymentsInvoiceNumbers() {
     
     // Actualizar cada pago sin invoice_number con un número secuencial
     for (const payment of paymentsWithoutInvoice) {
-      const invoiceNumber = invoiceCounter.toString().padStart(4, '0');
+      const invoiceNumber = invoiceCounter.toString().padStart(3, '0');
       
       const { error: updateError } = await supabaseAdmin
         .from('gym_payments')

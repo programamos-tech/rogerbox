@@ -20,6 +20,7 @@ interface PaymentFormData {
 
 export interface GymPaymentsManagementRef {
   openCreateModal: (clientId?: string, planId?: string) => void;
+  refresh: () => void;
 }
 
 const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) => {
@@ -340,6 +341,10 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
       
       setShowForm(true);
     },
+    refresh: () => {
+      loadPayments();
+      loadData();
+    },
   }));
 
   // Ordenar pagos de más reciente a más antiguo
@@ -364,7 +369,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
       // Búsqueda por ID de factura, nombre o cédula
       if (paymentSearchTerm) {
         const searchLower = paymentSearchTerm.toLowerCase();
-        const invoiceId = `#${(originalIndex + 1).toString().padStart(3, '0')}`.toLowerCase();
+        const invoiceId = payment.invoice_number ? `#${payment.invoice_number.padStart(3, '0')}`.toLowerCase() : '';
         const clientName = payment.client_info?.name?.toLowerCase() || '';
         const clientDocument = payment.client_info?.document_id?.toLowerCase() || '';
         
@@ -900,7 +905,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
                     >
                       <td className="px-4 py-4">
                         <p className="text-sm font-semibold text-[#164151] dark:text-white">
-                          #{(originalIndex + 1).toString().padStart(3, '0')}
+                          {payment.invoice_number ? `#${payment.invoice_number.padStart(3, '0')}` : `#${(originalIndex + 1).toString().padStart(3, '0')}`}
                         </p>
                       </td>
                       <td className="px-4 py-4">
@@ -961,11 +966,11 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
                             e.stopPropagation();
                             handleDownloadInvoice(payment);
                           }}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-500/30 transition-colors"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[#85ea10]/20 dark:bg-[#85ea10]/30 text-[#164151] dark:text-[#85ea10] hover:bg-[#85ea10]/30 dark:hover:bg-[#85ea10]/40 transition-colors"
                           title="Descargar factura"
                         >
                           <Download className="w-3 h-3" />
-                          {payment.invoice_number ? `Fact. ${payment.invoice_number}` : 'Factura'}
+                          {payment.invoice_number ? `Fact. ${payment.invoice_number.padStart(3, '0')}` : 'Factura'}
                         </button>
                       </td>
                     </tr>

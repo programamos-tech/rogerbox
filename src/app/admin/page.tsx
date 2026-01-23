@@ -27,6 +27,7 @@ import {
   DollarSign,
   Edit,
   Eye,
+  EyeOff,
   FileText,
   Globe,
   Home,
@@ -38,6 +39,7 @@ import {
   Phone,
   Play,
   Plus,
+  RefreshCw,
   Ruler,
   Scale,
   Search,
@@ -45,14 +47,18 @@ import {
   ShoppingCart,
   Target,
   Trash2,
-  TrendingUp,
   User,
   Users,
   X,
   Dumbbell,
   ClipboardList,
   AlertCircle,
+  AlertTriangle,
   Filter,
+  UserX,
+  Ban,
+  Wallet,
+  TrendingUp,
 } from 'lucide-react';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -266,6 +272,27 @@ export default function AdminDashboard() {
   });
   const gymPlansRef = useRef<GymPlansManagementRef>(null);
   const gymPaymentsRef = useRef<GymPaymentsManagementRef>(null);
+  const [productsModal, setProductsModal] = useState<{ isOpen: boolean; user: any | null; position: { x: number; y: number } | null }>({
+    isOpen: false,
+    user: null,
+    position: null,
+  });
+  
+  // Estados para el nuevo dashboard de ingresos
+  const [revenueStats, setRevenueStats] = useState<{
+    fisica?: { total: number; cash: number; transfer: number; mixed: number; count: number };
+    online?: { total: number; cash: number; transfer: number; mixed: number; count: number };
+    ambas?: { total: number; cash: number; transfer: number; mixed: number; count: number };
+  } | null>(null);
+  const [loadingRevenue, setLoadingRevenue] = useState(false);
+  const [dateFilter, setDateFilter] = useState<'today' | 'yesterday' | 'custom'>('today');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
+  const [sedeFilter, setSedeFilter] = useState<'fisica' | 'online' | 'ambas'>('ambas');
+  const [yesterdayStats, setYesterdayStats] = useState<typeof revenueStats>(null);
+  const [showRevenueNumbers, setShowRevenueNumbers] = useState(false);
+  const [weeklyData, setWeeklyData] = useState<{ date: string; amount: number; dayName: string }[]>([]);
+  const [loadingWeeklyData, setLoadingWeeklyData] = useState(false);
 
   const isAdmin = useMemo(() => {
     if (!user) return false;
@@ -317,8 +344,49 @@ export default function AdminDashboard() {
       loadUsers();
     } else if (activeTab === 'sales') {
       loadSales();
+    } else if (activeTab === 'overview') {
+      // Cargar ingresos del día actual por defecto
+      const today = new Date();
+      const todayStr = today.toISOString().split('T')[0];
+      loadRevenueStats(todayStr, todayStr, sedeFilter);
+      loadYesterdayStats();
+      loadWeeklyData();
     }
   }, [activeTab]);
+
+  // Cargar ingresos cuando cambien los filtros
+  useEffect(() => {
+    if (activeTab === 'overview') {
+      let startDate = '';
+      let endDate = '';
+      
+      if (dateFilter === 'today') {
+        const today = new Date();
+        startDate = today.toISOString().split('T')[0];
+        endDate = startDate;
+      } else if (dateFilter === 'yesterday') {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        startDate = yesterday.toISOString().split('T')[0];
+        endDate = startDate;
+      } else if (dateFilter === 'custom') {
+        if (customStartDate && customEndDate) {
+          startDate = customStartDate;
+          endDate = customEndDate;
+        } else {
+          return; // No cargar si no hay fechas personalizadas
+        }
+      }
+      
+      if (startDate && endDate) {
+        loadRevenueStats(startDate, endDate, sedeFilter);
+        if (dateFilter === 'today') {
+          loadYesterdayStats();
+          loadWeeklyData();
+        }
+      }
+    }
+  }, [dateFilter, customStartDate, customEndDate, sedeFilter, activeTab]);
 
   const loadAdminData = async () => {
     try {
@@ -335,6 +403,125 @@ export default function AdminDashboard() {
       console.error('Error loading admin data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadRevenueStats = async (startDate: string, endDate: string, sede: string) => {
+    try {
+      setLoadingRevenue(true);
+      const response = await fetch(`/api/admin/revenue-stats?start_date=${startDate}&end_date=${endDate}&sede=${sede}`);
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al cargar ingresos');
+      }
+      
+      // Convertir array de resultados a objeto por sede
+      const statsBySede: {
+        fisica?: { total: number; cash: number; transfer: number; mixed: number; count: number };
+        online?: { total: number; cash: number; transfer: number; mixed: number; count: number };
+        ambas?: { total: number; cash: number; transfer: number; mixed: number; count: number };
+      } = {};
+      if (data.results) {
+        data.results.forEach((result: { sede: 'fisica' | 'online' | 'ambas'; total: number; cash: number; transfer: number; mixed: number; count: number }) => {
+          const sede = result.sede;
+          if (sede === 'fisica' || sede === 'online' || sede === 'ambas') {
+            statsBySede[sede] = {
+              total: result.total,
+              cash: result.cash,
+              transfer: result.transfer,
+              mixed: result.mixed,
+              count: result.count,
+            };
+          }
+        });
+      }
+      
+      setRevenueStats(statsBySede);
+    } catch (error) {
+      console.error('Error loading revenue stats:', error);
+    } finally {
+      setLoadingRevenue(false);
+    }
+  };
+
+  const loadYesterdayStats = async () => {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+    
+    try {
+      const response = await fetch(`/api/admin/revenue-stats?start_date=${yesterdayStr}&end_date=${yesterdayStr}&sede=${sedeFilter}`);
+      const data = await response.json();
+      
+      if (data.results) {
+        const statsBySede: {
+          fisica?: { total: number; cash: number; transfer: number; mixed: number; count: number };
+          online?: { total: number; cash: number; transfer: number; mixed: number; count: number };
+          ambas?: { total: number; cash: number; transfer: number; mixed: number; count: number };
+        } = {};
+        data.results.forEach((result: { sede: 'fisica' | 'online' | 'ambas'; total: number; cash: number; transfer: number; mixed: number; count: number }) => {
+          const sede = result.sede;
+          if (sede === 'fisica' || sede === 'online' || sede === 'ambas') {
+            statsBySede[sede] = {
+              total: result.total,
+              cash: result.cash,
+              transfer: result.transfer,
+              mixed: result.mixed,
+              count: result.count,
+            };
+          }
+        });
+        setYesterdayStats(statsBySede);
+      }
+    } catch (error) {
+      console.error('Error loading yesterday stats:', error);
+    }
+  };
+
+  const loadWeeklyData = async () => {
+    try {
+      setLoadingWeeklyData(true);
+      const today = new Date();
+      const weeklyDataArray: { date: string; amount: number; dayName: string }[] = [];
+      
+      // Obtener datos de los últimos 7 días
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - i);
+        const dateStr = date.toISOString().split('T')[0];
+        
+        const response = await fetch(`/api/admin/revenue-stats?start_date=${dateStr}&end_date=${dateStr}&sede=${sedeFilter}`);
+        const data = await response.json();
+        
+        let totalAmount = 0;
+        if (data.results) {
+          const ambasData = data.results.find((r: any) => r.sede === 'ambas');
+          const fisicaData = data.results.find((r: any) => r.sede === 'fisica');
+          const onlineData = data.results.find((r: any) => r.sede === 'online');
+          
+          if (sedeFilter === 'ambas' && ambasData) {
+            totalAmount = ambasData.total;
+          } else if (sedeFilter === 'fisica' && fisicaData) {
+            totalAmount = fisicaData.total;
+          } else if (sedeFilter === 'online' && onlineData) {
+            totalAmount = onlineData.total;
+          }
+        }
+        
+        const dayName = date.toLocaleDateString('es-ES', { weekday: 'short' });
+        weeklyDataArray.push({
+          date: dateStr,
+          amount: totalAmount,
+          dayName: dayName.charAt(0).toUpperCase() + dayName.slice(1),
+        });
+      }
+      
+      setWeeklyData(weeklyDataArray);
+    } catch (error) {
+      console.error('Error loading weekly data:', error);
+    } finally {
+      setLoadingWeeklyData(false);
     }
   };
 
@@ -666,15 +853,10 @@ export default function AdminDashboard() {
                     >
                       <Icon className="w-4 h-4 flex-shrink-0" />
                       {!sidebarCollapsed && (
-                        <div className="flex-1 text-left min-w-0 flex items-center gap-2">
+                        <div className="flex-1 text-left min-w-0">
                           <span className="text-xs font-semibold tracking-tight truncate">
                             {item.label}
                           </span>
-                          {isUsersItem && (
-                            <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-[#164151]/10 dark:bg-[#164151]/20 text-[#164151] dark:text-[#164151] font-medium">
-                              Ambas
-                            </span>
-                          )}
                         </div>
                       )}
                     </button>
@@ -752,7 +934,7 @@ export default function AdminDashboard() {
                   setEditingCourse(null);
                   setShowCourseCreator(true);
                 }}
-                className="bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-white/90 font-semibold px-5 py-2.5 rounded-lg transition-all duration-200 flex items-center gap-2 text-sm shadow-lg hover:shadow-xl"
+                className="bg-[#164151] text-white hover:bg-[#1a4d5f] dark:bg-[#164151] dark:hover:bg-[#1a4d5f] font-semibold px-5 py-2.5 rounded-lg transition-all duration-200 flex items-center gap-2 text-sm shadow-lg hover:shadow-xl"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Crear Curso</span>
@@ -760,16 +942,28 @@ export default function AdminDashboard() {
             )}
 
             {activeTab === 'users' && (
-              <button
-                onClick={() => {
-                  setEditingClient(null);
-                  setShowClientForm(true);
-                }}
-                className="bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-white/90 font-semibold px-5 py-2.5 rounded-lg transition-all duration-200 flex items-center gap-2 text-sm shadow-lg hover:shadow-xl"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Crear Cliente Físico</span>
-              </button>
+              <>
+                <button
+                  onClick={() => {
+                    loadUsers();
+                  }}
+                  className="bg-gray-100 dark:bg-white/10 text-[#164151] dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 font-semibold px-5 py-2.5 rounded-lg transition-all duration-200 flex items-center gap-2 text-sm shadow-lg hover:shadow-xl"
+                  title="Actualizar lista de usuarios"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Actualizar</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setEditingClient(null);
+                    setShowClientForm(true);
+                  }}
+                  className="bg-[#164151] text-white hover:bg-[#1a4d5f] dark:bg-[#164151] dark:hover:bg-[#1a4d5f] font-semibold px-5 py-2.5 rounded-lg transition-all duration-200 flex items-center gap-2 text-sm shadow-lg hover:shadow-xl"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Crear Cliente Físico</span>
+                </button>
+              </>
             )}
 
             {activeTab === 'gym-plans' && (
@@ -777,7 +971,7 @@ export default function AdminDashboard() {
                 onClick={() => {
                   gymPlansRef.current?.openCreateModal();
                 }}
-                className="bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-white/90 font-semibold px-5 py-2.5 rounded-lg transition-all duration-200 flex items-center gap-2 text-sm shadow-lg hover:shadow-xl"
+                className="bg-[#164151] text-white hover:bg-[#1a4d5f] dark:bg-[#164151] dark:hover:bg-[#1a4d5f] font-semibold px-5 py-2.5 rounded-lg transition-all duration-200 flex items-center gap-2 text-sm shadow-lg hover:shadow-xl"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Crear Plan</span>
@@ -785,15 +979,27 @@ export default function AdminDashboard() {
             )}
 
             {activeTab === 'gym-payments' && (
-              <button
-                onClick={() => {
-                  gymPaymentsRef.current?.openCreateModal();
-                }}
-                className="bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-white/90 font-semibold px-5 py-2.5 rounded-lg transition-all duration-200 flex items-center gap-2 text-sm shadow-lg hover:shadow-xl"
-              >
-                <CreditCard className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Registrar Pago</span>
-              </button>
+              <>
+                <button
+                  onClick={() => {
+                    gymPaymentsRef.current?.refresh();
+                  }}
+                  className="bg-gray-100 dark:bg-white/10 text-[#164151] dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 font-semibold px-5 py-2.5 rounded-lg transition-all duration-200 flex items-center gap-2 text-sm shadow-lg hover:shadow-xl"
+                  title="Actualizar lista de pagos"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Actualizar</span>
+                </button>
+                <button
+                  onClick={() => {
+                    gymPaymentsRef.current?.openCreateModal();
+                  }}
+                  className="bg-[#164151] text-white hover:bg-[#1a4d5f] dark:bg-[#164151] dark:hover:bg-[#1a4d5f] font-semibold px-5 py-2.5 rounded-lg transition-all duration-200 flex items-center gap-2 text-sm shadow-lg hover:shadow-xl"
+                >
+                  <CreditCard className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Registrar Pago</span>
+                </button>
+              </>
             )}
 
             {/* Notifications */}
@@ -806,114 +1012,438 @@ export default function AdminDashboard() {
 
         {/* Page Content */}
         <div className="flex-1 overflow-y-auto p-4 lg:p-8">
-          {/* Overview Tab */}
-          {activeTab === 'overview' && stats && (
+          {/* Overview Tab - Nuevo Dashboard de Ingresos */}
+          {activeTab === 'overview' && (
             <div className="space-y-6">
-              {/* KPIs Principales */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 p-5 shadow-lg">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="w-9 h-9 bg-gray-100 dark:bg-white/10 rounded-lg flex items-center justify-center">
-                      <Users className="w-4 h-4 text-[#164151]/70 dark:text-white/70" />
-                    </div>
-                    <span className="text-xs font-semibold text-[#164151]/70 dark:text-white/60 bg-gray-100 dark:bg-white/10 px-2 py-1 rounded-full">
-                      +{stats.kpis.usersThisMonth} este mes
-                    </span>
+              {/* Filtros */}
+              <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-white/10 p-6">
+                <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+                  {/* Filtro de Sede */}
+                  <div className="flex items-center gap-3">
+                    <label className="text-sm font-semibold text-[#164151] dark:text-white">Sede:</label>
+                    <select
+                      value={sedeFilter}
+                      onChange={(e) => setSedeFilter(e.target.value as 'fisica' | 'online' | 'ambas')}
+                      className="px-4 py-2 rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-gray-800 text-[#164151] dark:text-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#164151]/50"
+                    >
+                      <option value="ambas">Ambas</option>
+                      <option value="fisica">Física</option>
+                      <option value="online">En Línea</option>
+                    </select>
                   </div>
-                  <p className="text-2xl font-bold text-[#164151] dark:text-white">{stats.kpis.totalUsers}</p>
-                  <p className="text-xs font-medium text-[#164151]/80 dark:text-white/60">Usuarios</p>
-                </div>
 
-                <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 p-5 shadow-lg">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="w-9 h-9 bg-gray-100 dark:bg-white/10 rounded-lg flex items-center justify-center">
-                      <BookOpen className="w-4 h-4 text-[#164151]/70 dark:text-white/70" />
+                  {/* Filtro de Fecha */}
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setShowRevenueNumbers(!showRevenueNumbers)}
+                        className="w-6 h-6 flex items-center justify-center text-[#164151]/70 dark:text-white/60 hover:text-[#164151] dark:hover:text-white transition-colors"
+                        title={showRevenueNumbers ? 'Ocultar números' : 'Mostrar números'}
+                      >
+                        {showRevenueNumbers ? (
+                          <EyeOff className="w-5 h-5" />
+                        ) : (
+                          <Eye className="w-5 h-5" />
+                        )}
+                      </button>
+                      <label className="text-sm font-semibold text-[#164151] dark:text-white">Período:</label>
                     </div>
-                    <span className="text-xs font-semibold text-[#164151]/70 dark:text-white/60 bg-gray-100 dark:bg-white/10 px-2 py-1 rounded-full">
-                      {stats.kpis.totalCourses} total
-                    </span>
-                  </div>
-                  <p className="text-2xl font-bold text-[#164151] dark:text-white">{stats.kpis.activeCourses}</p>
-                  <p className="text-xs font-medium text-[#164151]/80 dark:text-white/60">Cursos Activos</p>
-                </div>
-
-                <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 p-5 shadow-lg">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="w-9 h-9 bg-gray-100 dark:bg-white/10 rounded-lg flex items-center justify-center">
-                      <ShoppingCart className="w-4 h-4 text-[#164151]/70 dark:text-white/70" />
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setDateFilter('today')}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          dateFilter === 'today'
+                            ? 'bg-[#164151] text-white'
+                            : 'bg-gray-100 dark:bg-white/10 text-[#164151] dark:text-white hover:bg-gray-200 dark:hover:bg-white/20'
+                        }`}
+                      >
+                        Hoy
+                      </button>
+                      <button
+                        onClick={() => setDateFilter('yesterday')}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          dateFilter === 'yesterday'
+                            ? 'bg-[#164151] text-white'
+                            : 'bg-gray-100 dark:bg-white/10 text-[#164151] dark:text-white hover:bg-gray-200 dark:hover:bg-white/20'
+                        }`}
+                      >
+                        Ayer
+                      </button>
+                      <button
+                        onClick={() => setDateFilter('custom')}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          dateFilter === 'custom'
+                            ? 'bg-[#164151] text-white'
+                            : 'bg-gray-100 dark:bg-white/10 text-[#164151] dark:text-white hover:bg-gray-200 dark:hover:bg-white/20'
+                        }`}
+                      >
+                        Personalizado
+                      </button>
                     </div>
-                    <span className="text-xs font-semibold text-[#164151]/70 dark:text-white/60 bg-gray-100 dark:bg-white/10 px-2 py-1 rounded-full">
-                      +{stats.kpis.salesThisMonth} este mes
-                    </span>
+                    
+                    {/* Selector de fechas personalizadas */}
+                    {dateFilter === 'custom' && (
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="date"
+                          value={customStartDate}
+                          onChange={(e) => setCustomStartDate(e.target.value)}
+                          className="px-3 py-2 rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-gray-800 text-[#164151] dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#164151]/50"
+                        />
+                        <span className="text-gray-500 dark:text-white/50">-</span>
+                        <input
+                          type="date"
+                          value={customEndDate}
+                          onChange={(e) => setCustomEndDate(e.target.value)}
+                          className="px-3 py-2 rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-gray-800 text-[#164151] dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#164151]/50"
+                        />
+                      </div>
+                    )}
                   </div>
-                  <p className="text-2xl font-bold text-[#164151] dark:text-white">{stats.kpis.totalSales}</p>
-                  <p className="text-xs font-medium text-[#164151]/80 dark:text-white/60">Ventas</p>
-                </div>
-
-                <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 p-5 shadow-lg">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="w-9 h-9 bg-gray-100 dark:bg-white/10 rounded-lg flex items-center justify-center">
-                      <DollarSign className="w-4 h-4 text-[#164151]/70 dark:text-white/70" />
-                    </div>
-                    <span className="text-xs font-semibold text-[#164151]/70 dark:text-white/60 bg-gray-100 dark:bg-white/10 px-2 py-1 rounded-full">
-                      +${stats.kpis.revenueThisMonth?.toLocaleString('es-CO')} este mes
-                    </span>
-                  </div>
-                  <p className="text-2xl font-bold text-[#164151] dark:text-white">${stats.kpis.totalRevenue?.toLocaleString('es-CO')}</p>
-                  <p className="text-xs font-medium text-[#164151]/80 dark:text-white/60">Ingresos Totales</p>
                 </div>
               </div>
 
-              {/* Gráficas */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {/* Gráfica de Usuarios */}
-                <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 p-5 shadow-lg">
-                  <h3 className="text-sm font-black text-[#164151] dark:text-white uppercase tracking-tight mb-4">
-                    Nuevos Usuarios (7 días)
-                  </h3>
-                  <div className="flex items-end justify-between h-32 gap-2">
-                    {stats.charts.usersByDay.map((day, i) => {
-                      const maxCount = Math.max(...stats.charts.usersByDay.map(d => d.count), 1);
-                      const height = (day.count / maxCount) * 100;
-                      return (
-                        <div key={i} className="flex-1 flex flex-col items-center gap-1">
-                          <span className="text-xs font-semibold text-[#164151]/80 dark:text-white/70">{day.count}</span>
-                          <div 
-                            className="w-full bg-gray-300 dark:bg-white/20 rounded-t-lg transition-all duration-500"
-                            style={{ height: `${Math.max(height, 4)}%` }}
-                          />
-                          <span className="text-[10px] text-gray-500 dark:text-white/50">{day.date}</span>
-                        </div>
-                      );
-                    })}
+              {/* Cards de Ingresos */}
+              {loadingRevenue ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#164151] mx-auto mb-4"></div>
+                    <p className="text-sm text-gray-500 dark:text-white/50">Cargando ingresos...</p>
                   </div>
                 </div>
+              ) : revenueStats ? (
+                <>
+                  {/* Dashboard Sede Física */}
+                  {sedeFilter === 'fisica' && revenueStats.fisica && (
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                      {/* Total */}
+                      <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 p-6 shadow-lg">
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="w-9 h-9 rounded-lg bg-[#164151]/10 dark:bg-[#164151]/20 flex items-center justify-center">
+                            <TrendingUp className="w-4 h-4 text-[#164151] dark:text-[#164151]" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide">Total</p>
+                            <p className="text-[10px] text-gray-500 dark:text-white/50">Ingresos totales de la sede física</p>
+                          </div>
+                        </div>
+                        <p className="text-xl font-semibold text-[#164151] dark:text-white">
+                          {showRevenueNumbers ? `$${revenueStats.fisica.total.toLocaleString('es-CO')}` : '••••••'}
+                        </p>
+                        {dateFilter === 'today' && yesterdayStats?.fisica && yesterdayStats.fisica.total > 0 && (
+                          <div className="pt-3 border-t border-gray-200 dark:border-white/10 mt-3">
+                            <p className="text-xs text-gray-500 dark:text-white/50">Ayer</p>
+                            <p className="text-sm font-semibold text-gray-600 dark:text-white/70">
+                              {showRevenueNumbers ? `$${yesterdayStats.fisica.total.toLocaleString('es-CO')}` : '••••••'}
+                            </p>
+                          </div>
+                        )}
+                      </div>
 
-                {/* Gráfica de Ingresos */}
-                <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 p-5 shadow-lg">
-                  <h3 className="text-sm font-black text-[#164151] dark:text-white uppercase tracking-tight mb-4">
-                    Ingresos (7 días)
-                  </h3>
-                  <div className="flex items-end justify-between h-32 gap-2">
-                    {stats.charts.salesByDay.map((day, i) => {
-                      const maxAmount = Math.max(...stats.charts.salesByDay.map(d => d.amount), 1);
-                      const height = (day.amount / maxAmount) * 100;
-                      return (
-                        <div key={i} className="flex-1 flex flex-col items-center gap-1">
-                          <span className="text-[10px] font-semibold text-[#164151]/80 dark:text-white/70">
-                            {day.amount > 0 ? `$${(day.amount / 1000).toFixed(0)}k` : '-'}
-                          </span>
-                          <div 
-                            className="w-full bg-gray-300 dark:bg-white/20 rounded-t-lg transition-all duration-500"
-                            style={{ height: `${Math.max(height, 4)}%` }}
-                          />
-                          <span className="text-[10px] text-gray-500 dark:text-white/50">{day.date}</span>
+                      {/* Efectivo */}
+                      <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 p-6 shadow-lg">
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="w-9 h-9 rounded-lg bg-[#85ea10]/20 dark:bg-[#85ea10]/30 flex items-center justify-center">
+                            <Wallet className="w-4 h-4 text-[#164151] dark:text-[#164151]" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide">Efectivo</p>
+                            <p className="text-[10px] text-gray-500 dark:text-white/50">Pagos recibidos en efectivo</p>
+                          </div>
                         </div>
-                      );
-                    })}
-                  </div>
+                        <p className="text-xl font-semibold text-[#164151] dark:text-white">
+                          {showRevenueNumbers ? `$${revenueStats.fisica.cash.toLocaleString('es-CO')}` : '••••••'}
+                        </p>
+                        {dateFilter === 'today' && yesterdayStats?.fisica && yesterdayStats.fisica.cash > 0 && (
+                          <div className="pt-3 border-t border-gray-200 dark:border-white/10 mt-3">
+                            <p className="text-xs text-gray-500 dark:text-white/50">Ayer</p>
+                            <p className="text-sm font-semibold text-gray-600 dark:text-white/70">
+                              {showRevenueNumbers ? `$${yesterdayStats.fisica.cash.toLocaleString('es-CO')}` : '••••••'}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Transferencia */}
+                      <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 p-6 shadow-lg">
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="w-9 h-9 rounded-lg bg-gray-100 dark:bg-white/10 flex items-center justify-center">
+                            <CreditCard className="w-4 h-4 text-[#164151]/70 dark:text-white/70" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide">Transferencia</p>
+                            <p className="text-[10px] text-gray-500 dark:text-white/50">Pagos recibidos por transferencia bancaria</p>
+                          </div>
+                        </div>
+                        <p className="text-xl font-semibold text-[#164151] dark:text-white">
+                          {showRevenueNumbers ? `$${revenueStats.fisica.transfer.toLocaleString('es-CO')}` : '••••••'}
+                        </p>
+                        {dateFilter === 'today' && yesterdayStats?.fisica && yesterdayStats.fisica.transfer > 0 && (
+                          <div className="pt-3 border-t border-gray-200 dark:border-white/10 mt-3">
+                            <p className="text-xs text-gray-500 dark:text-white/50">Ayer</p>
+                            <p className="text-sm font-semibold text-gray-600 dark:text-white/70">
+                              {showRevenueNumbers ? `$${yesterdayStats.fisica.transfer.toLocaleString('es-CO')}` : '••••••'}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Dashboard Sede En Línea */}
+                  {sedeFilter === 'online' && revenueStats.online && (
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                      {/* Total */}
+                      <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 p-6 shadow-lg">
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="w-9 h-9 rounded-lg bg-[#164151]/10 dark:bg-[#164151]/20 flex items-center justify-center">
+                            <TrendingUp className="w-4 h-4 text-[#164151] dark:text-[#164151]" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide">Total</p>
+                            <p className="text-[10px] text-gray-500 dark:text-white/50">Ingresos totales de la sede en línea</p>
+                          </div>
+                        </div>
+                        <p className="text-xl font-semibold text-[#164151] dark:text-white">
+                          {showRevenueNumbers ? `$${revenueStats.online.total.toLocaleString('es-CO')}` : '••••••'}
+                        </p>
+                        {dateFilter === 'today' && yesterdayStats?.online && yesterdayStats.online.total > 0 && (
+                          <div className="pt-3 border-t border-gray-200 dark:border-white/10 mt-3">
+                            <p className="text-xs text-gray-500 dark:text-white/50">Ayer</p>
+                            <p className="text-sm font-semibold text-gray-600 dark:text-white/70">
+                              {showRevenueNumbers ? `$${yesterdayStats.online.total.toLocaleString('es-CO')}` : '••••••'}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Pagos Online */}
+                      <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 p-6 shadow-lg">
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="w-9 h-9 rounded-lg bg-gray-100 dark:bg-white/10 flex items-center justify-center">
+                            <CreditCard className="w-4 h-4 text-[#164151]/70 dark:text-white/70" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide">Pagos Online</p>
+                            <p className="text-[10px] text-gray-500 dark:text-white/50">Pagos procesados electrónicamente</p>
+                          </div>
+                        </div>
+                        <p className="text-xl font-semibold text-[#164151] dark:text-white">
+                          {showRevenueNumbers ? `$${revenueStats.online.transfer.toLocaleString('es-CO')}` : '••••••'}
+                        </p>
+                        {dateFilter === 'today' && yesterdayStats?.online && yesterdayStats.online.transfer > 0 && (
+                          <div className="pt-3 border-t border-gray-200 dark:border-white/10 mt-3">
+                            <p className="text-xs text-gray-500 dark:text-white/50">Ayer</p>
+                            <p className="text-sm font-semibold text-gray-600 dark:text-white/70">
+                              {showRevenueNumbers ? `$${yesterdayStats.online.transfer.toLocaleString('es-CO')}` : '••••••'}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Transacciones */}
+                      <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 p-6 shadow-lg">
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="w-9 h-9 rounded-lg bg-gray-100 dark:bg-white/10 flex items-center justify-center">
+                            <ShoppingCart className="w-4 h-4 text-[#85ea10] dark:text-[#85ea10]" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide">Transacciones</p>
+                            <p className="text-[10px] text-gray-500 dark:text-white/50">Número total de ventas realizadas</p>
+                          </div>
+                        </div>
+                        <p className="text-xl font-semibold text-[#164151] dark:text-white">
+                          {showRevenueNumbers ? revenueStats.online.count : '•••'}
+                        </p>
+                        {dateFilter === 'today' && yesterdayStats?.online && yesterdayStats.online.count > 0 && (
+                          <div className="pt-3 border-t border-gray-200 dark:border-white/10 mt-3">
+                            <p className="text-xs text-gray-500 dark:text-white/50">Ayer</p>
+                            <p className="text-sm font-semibold text-gray-600 dark:text-white/70">
+                              {showRevenueNumbers ? yesterdayStats.online.count : '•••'}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Dashboard Ambas Sedes (Resumen Combinado) */}
+                  {sedeFilter === 'ambas' && (
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                      {/* Total */}
+                      <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 p-6 shadow-lg">
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="w-9 h-9 rounded-lg bg-[#164151]/10 dark:bg-[#164151]/20 flex items-center justify-center">
+                            <TrendingUp className="w-4 h-4 text-[#164151] dark:text-[#164151]" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide">Total</p>
+                            <p className="text-[10px] text-gray-500 dark:text-white/50">Ingresos totales de ambas sedes</p>
+                          </div>
+                        </div>
+                        <p className="text-xl font-semibold text-[#164151] dark:text-white">
+                          {showRevenueNumbers ? `$${(revenueStats.ambas?.total || 0).toLocaleString('es-CO')}` : '••••••'}
+                        </p>
+                        {dateFilter === 'today' && yesterdayStats?.ambas && yesterdayStats.ambas.total > 0 && (
+                          <div className="pt-3 border-t border-gray-200 dark:border-white/10 mt-3">
+                            <p className="text-xs text-gray-500 dark:text-white/50">Ayer</p>
+                            <p className="text-sm font-semibold text-gray-600 dark:text-white/70">
+                              {showRevenueNumbers ? `$${yesterdayStats.ambas.total.toLocaleString('es-CO')}` : '••••••'}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Efectivo */}
+                      <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 p-6 shadow-lg">
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="w-9 h-9 rounded-lg bg-[#85ea10]/20 dark:bg-[#85ea10]/30 flex items-center justify-center">
+                            <Wallet className="w-4 h-4 text-[#164151] dark:text-[#164151]" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide">Efectivo</p>
+                            <p className="text-[10px] text-gray-500 dark:text-white/50">Pagos en efectivo de la sede física</p>
+                          </div>
+                        </div>
+                        <p className="text-xl font-semibold text-[#164151] dark:text-white">
+                          {showRevenueNumbers ? `$${(revenueStats.ambas?.cash || 0).toLocaleString('es-CO')}` : '••••••'}
+                        </p>
+                        {dateFilter === 'today' && yesterdayStats?.ambas && yesterdayStats.ambas.cash > 0 && (
+                          <div className="pt-3 border-t border-gray-200 dark:border-white/10 mt-3">
+                            <p className="text-xs text-gray-500 dark:text-white/50">Ayer</p>
+                            <p className="text-sm font-semibold text-gray-600 dark:text-white/70">
+                              {showRevenueNumbers ? `$${yesterdayStats.ambas.cash.toLocaleString('es-CO')}` : '••••••'}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Transferencia */}
+                      <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 p-6 shadow-lg">
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="w-9 h-9 rounded-lg bg-gray-100 dark:bg-white/10 flex items-center justify-center">
+                            <CreditCard className="w-4 h-4 text-[#164151]/70 dark:text-white/70" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide">Transferencia</p>
+                            <p className="text-[10px] text-gray-500 dark:text-white/50">Transferencias y pagos online</p>
+                          </div>
+                        </div>
+                        <p className="text-xl font-semibold text-[#164151] dark:text-white">
+                          {showRevenueNumbers ? `$${(revenueStats.ambas?.transfer || 0).toLocaleString('es-CO')}` : '••••••'}
+                        </p>
+                        {dateFilter === 'today' && yesterdayStats?.ambas && yesterdayStats.ambas.transfer > 0 && (
+                          <div className="pt-3 border-t border-gray-200 dark:border-white/10 mt-3">
+                            <p className="text-xs text-gray-500 dark:text-white/50">Ayer</p>
+                            <p className="text-sm font-semibold text-gray-600 dark:text-white/70">
+                              {showRevenueNumbers ? `$${yesterdayStats.ambas.transfer.toLocaleString('es-CO')}` : '••••••'}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-white/10 p-12 text-center">
+                  <p className="text-sm text-gray-500 dark:text-white/50">No hay datos para mostrar</p>
                 </div>
-              </div>
+              )}
+
+              {/* Gráfica de Ventas Semanales */}
+              {dateFilter === 'today' && (
+                <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 px-6 pt-6 pb-2 shadow-lg mt-8">
+                  <h3 className="text-sm font-semibold text-[#164151] dark:text-white uppercase tracking-wide mb-10">
+                    Ventas de la Última Semana
+                  </h3>
+                  
+                  {loadingWeeklyData ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#164151]"></div>
+                    </div>
+                  ) : weeklyData.length > 0 ? (
+                    <div className="relative">
+                      {/* Gráfica */}
+                      <div className="relative h-64 flex items-end justify-between gap-1 mb-0">
+                        {weeklyData.map((day, index) => {
+                          const maxAmount = Math.max(...weeklyData.map(d => d.amount), 1);
+                          const height = maxAmount > 0 ? (day.amount / maxAmount) * 100 : 0;
+                          const barHeight = Math.max(height, 8);
+                          
+                          // Formatear fecha
+                          const date = new Date(day.date);
+                          const dayNumber = date.getDate();
+                          const month = date.toLocaleDateString('es-ES', { month: 'short' });
+                          
+                          return (
+                            <div key={index} className="flex-1 flex flex-col items-center gap-1 h-full relative group">
+                              {/* Tooltip con fecha e ingresos */}
+                              <div className="absolute -top-20 left-1/2 transform -translate-x-1/2 bg-[#164151] dark:bg-gray-800 text-white text-xs rounded-lg px-3 py-2 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 whitespace-nowrap">
+                                <p className="font-semibold mb-1">{day.dayName}, {dayNumber} {month}</p>
+                                <p className="text-[#85ea10] font-bold">
+                                  {showRevenueNumbers ? `$${day.amount.toLocaleString('es-CO')}` : '••••••'}
+                                </p>
+                              </div>
+                              
+                              {/* Valor sobre el punto */}
+                              <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 text-center w-full">
+                                <p className="text-xs font-semibold text-[#164151] dark:text-white">
+                                  {showRevenueNumbers ? `$${day.amount.toLocaleString('es-CO')}` : '••••'}
+                                </p>
+                              </div>
+                              
+                              {/* Contenedor de la barra */}
+                              <div className="flex-1 w-full flex items-end justify-center relative">
+                                {/* Línea vertical */}
+                                <div 
+                                  className="w-3/4 bg-[#164151]/20 dark:bg-[#85ea10]/20 rounded-t transition-all duration-500 relative cursor-pointer hover:bg-[#164151]/30 dark:hover:bg-[#85ea10]/30"
+                                  style={{ height: `${barHeight}%` }}
+                                >
+                                  {/* Punto en la parte superior */}
+                                  <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 w-3 h-3 bg-[#85ea10] dark:bg-[#164151] rounded-full border-2 border-white dark:border-gray-900 shadow-md"></div>
+                                </div>
+                              </div>
+                              
+                              {/* Nombre del día y fecha */}
+                              <div className="text-center">
+                                <p className="text-[10px] font-medium text-gray-500 dark:text-white/50">
+                                  {day.dayName}
+                                </p>
+                                <p className="text-[9px] text-gray-400 dark:text-white/40">
+                                  {dayNumber}/{date.getMonth() + 1}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      
+                      {/* Línea conectando los puntos */}
+                      <svg className="absolute top-8 left-0 right-0 h-40 pointer-events-none" style={{ zIndex: 1 }}>
+                        <polyline
+                          points={weeklyData.map((day, index) => {
+                            const maxAmount = Math.max(...weeklyData.map(d => d.amount), 1);
+                            const height = maxAmount > 0 ? (day.amount / maxAmount) * 100 : 0;
+                            const barHeight = Math.max(height, 8);
+                            const x = ((index + 0.5) / weeklyData.length) * 100;
+                            const y = 100 - barHeight;
+                            return `${x}%,${y}%`;
+                          }).join(' ')}
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeDasharray="3 3"
+                          className="text-[#85ea10]/40 dark:text-[#164151]/40"
+                        />
+                      </svg>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <p className="text-sm text-gray-500 dark:text-white/50">No hay datos para mostrar</p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -1127,11 +1657,36 @@ export default function AdminDashboard() {
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100 dark:divide-white/5">
-                              {paginatedUsers.map((user) => (
+                              {paginatedUsers.map((user) => {
+                                // Calcular si tiene más de 30 días sin pagar
+                                const today = new Date();
+                                today.setHours(0, 0, 0, 0);
+                                const allMemberships = user.gym_memberships || [];
+                                const expiredMemberships = allMemberships.filter((m: any) => {
+                                  const endDate = new Date(m.end_date);
+                                  endDate.setHours(0, 0, 0, 0);
+                                  return endDate < today;
+                                });
+                                const latestExpired = expiredMemberships.length > 0
+                                  ? expiredMemberships.sort((a: any, b: any) => 
+                                      new Date(b.end_date).getTime() - new Date(a.end_date).getTime()
+                                    )[0]
+                                  : null;
+                                const daysSinceExpired = latestExpired
+                                  ? Math.floor((today.getTime() - new Date(latestExpired.end_date).getTime()) / (1000 * 60 * 60 * 24))
+                                  : 0;
+                                const hasExpiredMoreThan30Days = daysSinceExpired > 30;
+                                const isInactive = user.is_inactive || false;
+                                // Solo mostrar botón de inactivar si tiene más de 30 días PERO NO está inactivo aún
+                                const shouldShowInactiveButton = hasExpiredMoreThan30Days && !isInactive;
+                                
+                                return (
                                 <tr
                                   key={user.id}
                                   onClick={() => router.push(`/admin/users/${user.id}`)}
-                                  className="hover:bg-gray-100 dark:hover:bg-white/10 transition-all cursor-pointer group border-l-4 border-transparent hover:border-[#85ea10]/30"
+                                  className={`hover:bg-gray-100 dark:hover:bg-white/10 transition-all cursor-pointer group border-l-4 border-transparent hover:border-[#85ea10]/30 ${
+                                    isInactive ? 'opacity-60 bg-gray-50 dark:bg-gray-900/30' : ''
+                                  }`}
                                 >
                                   <td className="px-4 py-4">
                                     <div>
@@ -1164,49 +1719,116 @@ export default function AdminDashboard() {
                                     )}
                                   </td>
                                   <td className="px-4 py-4">
-                                    <div>
+                                    <div onClick={(e) => e.stopPropagation()}>
                                       {(() => {
-                                        // Mostrar el producto/plan que compró el usuario
+                                        const today = new Date();
+                                        today.setHours(0, 0, 0, 0);
                                         
-                                        // Si tiene membresía activa, mostrar solo el plan
-                                        if (user.hasActiveGymMembership && user.activeGymMembership?.plan) {
-                                          const planName = user.activeGymMembership.plan.name || 'Plan';
+                                        // Obtener todas las membresías físicas
+                                        const allMemberships = user.gym_memberships || [];
+                                        
+                                        // Obtener todos los cursos activos
+                                        const allCourses = user.activeCoursePurchases || [];
+                                        
+                                        // Si no tiene productos
+                                        if (allMemberships.length === 0 && allCourses.length === 0) {
                                           return (
-                                            <span className="text-sm font-medium text-[#164151] dark:text-white">
-                                              {planName}
+                                            <span className="text-sm font-medium text-gray-500 dark:text-white/50">
+                                              Sin productos
                                             </span>
                                           );
                                         }
                                         
-                                        // Si tiene membresía pero está vencida, mostrar el plan con icono y texto gris
-                                        if (user.hasGymMembership && !user.hasActiveGymMembership && user.gym_memberships?.length > 0) {
-                                          // Buscar la membresía más reciente
-                                          const latestMembership = user.gym_memberships
-                                            .sort((a: any, b: any) => new Date(b.end_date).getTime() - new Date(a.end_date).getTime())[0];
-                                          const planName = latestMembership?.plan?.name || 'Plan';
+                                        // Calcular estados
+                                        const activeMemberships = allMemberships.filter((m: any) => {
+                                          const endDate = new Date(m.end_date);
+                                          endDate.setHours(0, 0, 0, 0);
+                                          return endDate >= today;
+                                        });
+                                        const expiredMemberships = allMemberships.filter((m: any) => {
+                                          const endDate = new Date(m.end_date);
+                                          endDate.setHours(0, 0, 0, 0);
+                                          return endDate < today;
+                                        });
+                                        
+                                        // Construir lista completa de productos con estados
+                                        const allProducts: Array<{ name: string; type: 'membership' | 'course'; isActive: boolean; membership?: any }> = [];
+                                        
+                                        // Agregar membresías activas
+                                        activeMemberships.forEach((m: any) => {
+                                          allProducts.push({
+                                            name: m.plan?.name || 'Plan',
+                                            type: 'membership',
+                                            isActive: true,
+                                            membership: m,
+                                          });
+                                        });
+                                        
+                                        // Agregar membresías vencidas
+                                        expiredMemberships.forEach((m: any) => {
+                                          allProducts.push({
+                                            name: m.plan?.name || 'Plan',
+                                            type: 'membership',
+                                            isActive: false,
+                                            membership: m,
+                                          });
+                                        });
+                                        
+                                        // Agregar cursos
+                                        allCourses.forEach((p: any) => {
+                                          allProducts.push({
+                                            name: p.course?.title || 'Curso',
+                                            type: 'course',
+                                            isActive: true,
+                                          });
+                                        });
+                                        
+                                        // Obtener el primer producto para mostrar
+                                        const firstProduct = allProducts.length > 0 ? allProducts[0] : null;
+                                        const hasMoreProducts = allProducts.length > 1;
+                                        
+                                        const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+                                          const rect = e.currentTarget.getBoundingClientRect();
+                                          const popoverWidth = 288; // w-72 = 288px
+                                          const spaceOnRight = window.innerWidth - rect.right;
+                                          const spaceOnLeft = rect.left;
+                                          
+                                          // Decidir si mostrar a la derecha o izquierda
+                                          const showOnRight = spaceOnRight >= popoverWidth || spaceOnRight > spaceOnLeft;
+                                          
+                                          setProductsModal({ 
+                                            isOpen: true, 
+                                            user: { ...user, allProducts },
+                                            position: {
+                                              x: showOnRight ? rect.right + 8 : rect.left - popoverWidth - 8, // 8px de separación
+                                              y: rect.top, // Alineado con el elemento
+                                            }
+                                          });
+                                        };
+                                        
+                                        if (!firstProduct) {
                                           return (
-                                            <span className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 dark:text-white/50">
-                                              <AlertCircle className="w-3.5 h-3.5" />
-                                              {planName}
+                                            <span className="text-sm font-medium text-gray-500 dark:text-white/50">
+                                              Sin productos
                                             </span>
                                           );
                                         }
                                         
-                                        // Si es usuario online con compras activas, mostrar el curso
-                                        if (user.hasOnlinePurchase && user.activeCoursePurchases?.length > 0) {
-                                          const courseName = user.activeCoursePurchases[0]?.course?.title || 'Curso';
-                                          return (
-                                            <span className="text-sm font-medium text-[#164151] dark:text-white">
-                                              {courseName}
-                                            </span>
-                                          );
-                                        }
-                                        
-                                        // Si no ha comprado nada - diseño más profesional y serio
                                         return (
-                                          <span className="text-sm font-medium text-gray-500 dark:text-white/50">
-                                            Sin productos
-                                          </span>
+                                          <button
+                                            onClick={handleClick}
+                                            className="text-left hover:opacity-80 transition-opacity cursor-pointer flex items-center gap-1.5"
+                                            title={hasMoreProducts ? `Ver todos los productos (${allProducts.length})` : undefined}
+                                          >
+                                            <span className="text-sm font-medium text-[#164151] dark:text-white">
+                                              {firstProduct.name}
+                                            </span>
+                                            {hasMoreProducts && (
+                                              <span className="w-5 h-5 flex items-center justify-center rounded-full bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-white/60 text-xs font-semibold hover:bg-gray-200 dark:hover:bg-white/20 transition-colors">
+                                                +{allProducts.length - 1}
+                                              </span>
+                                            )}
+                                          </button>
                                         );
                                       })()}
                                     </div>
@@ -1214,18 +1836,18 @@ export default function AdminDashboard() {
                                   <td className="px-4 py-4">
                                     <div>
                                       {user.userType === 'both' && (
-                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-400">
+                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-[#164151]/15 text-[#164151] dark:bg-[#164151]/25 dark:text-[#164151]">
                                           Ambos
                                         </span>
                                       )}
                                       {user.userType === 'physical' && (
-                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-400">
+                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-[#164151]/15 text-[#164151] dark:bg-[#164151]/25 dark:text-[#164151]">
                                           <Dumbbell className="w-3 h-3" />
                                           Físico
                                         </span>
                                       )}
                                       {user.userType === 'online' && (
-                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-cyan-100 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-400">
+                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-[#164151]/15 text-[#164151] dark:bg-[#164151]/25 dark:text-[#164151]">
                                           <Globe className="w-3 h-3" />
                                           Online
                                         </span>
@@ -1253,51 +1875,112 @@ export default function AdminDashboard() {
                                   <td className="px-4 py-4">
                                     <div>
                                       {(() => {
-                                        // Para clientes físicos: verificar si está al día con pagos
-                                        if (user.userType === 'physical' || user.hasGymMembership) {
-                                          if (user.hasActiveGymMembership) {
+                                        // Si está inactivo, siempre mostrar "Inactivo" primero
+                                        if (user.is_inactive) {
+                                          return (
+                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400">
+                                              <X className="w-3 h-3" />
+                                              Inactivo
+                                            </span>
+                                          );
+                                        }
+                                        
+                                        const today = new Date();
+                                        today.setHours(0, 0, 0, 0);
+                                        
+                                        // Obtener todas las membresías físicas
+                                        const allMemberships = user.gym_memberships || [];
+                                        
+                                        // Obtener todos los cursos activos
+                                        const allCourses = user.activeCoursePurchases || [];
+                                        
+                                        // Si no tiene productos
+                                        if (allMemberships.length === 0 && allCourses.length === 0) {
+                                          return (
+                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-white/60">
+                                              <AlertCircle className="w-3 h-3" />
+                                              Sin pagos
+                                            </span>
+                                          );
+                                        }
+                                        
+                                        // Calcular estados de membresías físicas
+                                        const activeMemberships = allMemberships.filter((m: any) => {
+                                          const endDate = new Date(m.end_date);
+                                          endDate.setHours(0, 0, 0, 0);
+                                          return endDate >= today;
+                                        });
+                                        const expiredMemberships = allMemberships.filter((m: any) => {
+                                          const endDate = new Date(m.end_date);
+                                          endDate.setHours(0, 0, 0, 0);
+                                          return endDate < today;
+                                        });
+                                        
+                                        // Si solo tiene cursos online
+                                        if (allMemberships.length === 0 && allCourses.length > 0) {
+                                          return (
+                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[#85ea10]/30 text-[#164151] dark:bg-[#85ea10]/30 dark:text-[#85ea10]">
+                                              <CheckCircle className="w-3 h-3" />
+                                              Al día
+                                            </span>
+                                          );
+                                        }
+                                        
+                                        // Si solo tiene membresías físicas
+                                        if (allMemberships.length > 0 && allCourses.length === 0) {
+                                          // Todos activos
+                                          if (activeMemberships.length === allMemberships.length && expiredMemberships.length === 0) {
                                             return (
-                                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#85ea10]/20 text-[#164151] dark:bg-[#85ea10]/30 dark:text-[#85ea10]">
-                                                <CheckCircle className="w-3 h-3 text-[#164151] dark:text-[#85ea10]" />
+                                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[#85ea10]/30 text-[#164151] dark:bg-[#85ea10]/30 dark:text-[#85ea10]">
+                                                <CheckCircle className="w-3 h-3" />
                                                 Al día
                                               </span>
                                             );
-                                          } else if (user.hasGymMembership) {
-                                            // Tiene membresía pero está vencida - mostrar "Renovar" para incentivar acción
+                                          }
+                                          // Todos vencidos
+                                          if (expiredMemberships.length === allMemberships.length && activeMemberships.length === 0) {
+                                            // Siempre mostrar "Renovar" cuando está vencido (no importa cuántos días)
                                             return (
-                                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400">
-                                                <AlertCircle className="w-3 h-3" />
+                                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400">
+                                                <AlertTriangle className="w-3 h-3" />
                                                 Renovar
                                               </span>
                                             );
                                           }
-                                          // Cliente físico sin membresías registradas
-                                          return (
-                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-white/60">
-                                              <AlertCircle className="w-3 h-3" />
-                                              Sin pagos
-                                            </span>
-                                          );
-                                        }
-                                        // Para clientes online: verificar si tiene factura al día (compras activas)
-                                        if (user.userType === 'online' || user.hasOnlinePurchase) {
-                                          if (user.hasOnlinePurchase && user.activeCoursePurchases && user.activeCoursePurchases.length > 0) {
+                                          // Mezcla: algunos activos, algunos vencidos
+                                          if (activeMemberships.length > 0 && expiredMemberships.length > 0) {
                                             return (
-                                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#85ea10]/20 text-[#164151] dark:bg-[#85ea10]/30 dark:text-[#85ea10]">
-                                                <CheckCircle className="w-3 h-3 text-[#164151] dark:text-[#85ea10]" />
+                                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400">
+                                                <Bell className="w-3 h-3" />
+                                                Parcial
+                                              </span>
+                                            );
+                                          }
+                                        }
+                                        
+                                        // Si tiene ambos (físico y online)
+                                        if (allMemberships.length > 0 && allCourses.length > 0) {
+                                          // Si todas las membresías están activas
+                                          if (activeMemberships.length === allMemberships.length && expiredMemberships.length === 0) {
+                                            return (
+                                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[#85ea10]/30 text-[#164151] dark:bg-[#85ea10]/30 dark:text-[#85ea10]">
+                                                <CheckCircle className="w-3 h-3" />
                                                 Al día
                                               </span>
                                             );
                                           }
-                                          // Cliente online sin compras activas
-                                          return (
-                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-white/60">
-                                              <AlertCircle className="w-3 h-3" />
-                                              Sin pagos
-                                            </span>
-                                          );
+                                          // Si hay membresías vencidas (aunque tenga cursos activos)
+                                          if (expiredMemberships.length > 0) {
+                                            return (
+                                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400">
+                                                <Bell className="w-3 h-3" />
+                                                Parcial
+                                              </span>
+                                            );
+                                          }
                                         }
-                                        // Usuario sin tipo definido o sin pagos
+                                        
+                                        // Fallback
                                         return (
                                           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-white/60">
                                             <AlertCircle className="w-3 h-3" />
@@ -1309,11 +1992,93 @@ export default function AdminDashboard() {
                                   </td>
                                   <td className="px-4 py-4">
                                     <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
-                                      {/* Botón Recordatorio - solo visible cuando membresía está vencida */}
-                                      {user.hasGymMembership && !user.hasActiveGymMembership && (user.whatsapp || user.phone) && (() => {
-                                        // Obtener la membresía más reciente para el mensaje
-                                        const latestMembership = user.gym_memberships?.length > 0
-                                          ? user.gym_memberships.sort((a: any, b: any) => new Date(b.end_date).getTime() - new Date(a.end_date).getTime())[0]
+                                      {/* Botón Recordatorio/Inactivar - visible solo cuando tiene estado "Renovar" (planes vencidos) */}
+                                      {(() => {
+                                        const today = new Date();
+                                        today.setHours(0, 0, 0, 0);
+                                        
+                                        // Calcular estados de membresías
+                                        const allMemberships = user.gym_memberships || [];
+                                        const activeMemberships = allMemberships.filter((m: any) => {
+                                          const endDate = new Date(m.end_date);
+                                          endDate.setHours(0, 0, 0, 0);
+                                          return endDate >= today;
+                                        });
+                                        const expiredMemberships = allMemberships.filter((m: any) => {
+                                          const endDate = new Date(m.end_date);
+                                          endDate.setHours(0, 0, 0, 0);
+                                          return endDate < today;
+                                        });
+                                        
+                                        const isInactive = user.is_inactive || false;
+                                        
+                                        // Solo mostrar si:
+                                        // 1. Tiene planes vencidos (estado "Renovar")
+                                        // 2. NO tiene planes activos
+                                        // 3. Tiene contacto
+                                        // 4. NO está inactivo
+                                        const hasOnlyExpiredMemberships = expiredMemberships.length > 0 && activeMemberships.length === 0;
+                                        
+                                        if (!hasOnlyExpiredMemberships || !(user.whatsapp || user.phone) || isInactive) {
+                                          return null;
+                                        }
+                                        
+                                        // Calcular días desde que venció
+                                        const latestExpired = expiredMemberships.sort((a: any, b: any) => 
+                                          new Date(b.end_date).getTime() - new Date(a.end_date).getTime()
+                                        )[0];
+                                        const expiredDate = new Date(latestExpired.end_date);
+                                        expiredDate.setHours(0, 0, 0, 0);
+                                        const daysSinceExpired = Math.floor((today.getTime() - expiredDate.getTime()) / (1000 * 60 * 60 * 24));
+                                        
+                                        // Si tiene más de 30 días sin pagar, mostrar botón "Inactivar" en rojo
+                                        if (daysSinceExpired > 30) {
+                                          const clientInfoId = user.isUnregisteredClient 
+                                            ? user.id 
+                                            : (user.client_info_id || user.gym_memberships?.[0]?.client_info_id || null);
+                                          
+                                          if (!clientInfoId) return null;
+                                          
+                                          const handleInactivate = async (e: React.MouseEvent) => {
+                                            e.stopPropagation();
+                                            
+                                            if (!confirm(`¿Estás seguro de inactivar a ${user.name || user.full_name || 'este usuario'}?`)) {
+                                              return;
+                                            }
+                                            
+                                            try {
+                                              const response = await fetch(`/api/admin/gym/clients/${clientInfoId}/toggle-inactive`, {
+                                                method: 'PATCH',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({ is_inactive: true }),
+                                              });
+                                              
+                                              if (!response.ok) {
+                                                throw new Error('Error al actualizar estado');
+                                              }
+                                              
+                                              // Recargar usuarios
+                                              loadUsers();
+                                            } catch (error) {
+                                              console.error('Error inactivating user:', error);
+                                              alert('Error al inactivar el usuario');
+                                            }
+                                          };
+                                          
+                                          return (
+                                            <button
+                                              onClick={handleInactivate}
+                                              className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-white/40 hover:bg-gray-200 dark:hover:bg-white/20 transition-colors"
+                                              title="Inactivar usuario (30 días sin pagar)"
+                                            >
+                                              <Ban className="w-4 h-4" />
+                                            </button>
+                                          );
+                                        }
+                                        
+                                        // Menos de 30 días, mostrar botón "Recordatorio" normal
+                                        const latestMembership = allMemberships.length > 0
+                                          ? allMemberships.sort((a: any, b: any) => new Date(b.end_date).getTime() - new Date(a.end_date).getTime())[0]
                                           : null;
                                         const planName = latestMembership?.plan?.name || 'tu plan';
                                         const endDate = latestMembership?.end_date 
@@ -1341,62 +2106,33 @@ export default function AdminDashboard() {
                                         return (
                                           <button
                                             onClick={handleReminder}
-                                            className="px-3 py-1.5 rounded-lg bg-green-50 dark:bg-green-500/10 text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-500/20 transition-colors flex items-center gap-1.5 text-xs font-medium"
+                                            className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-white/40 hover:bg-gray-200 dark:hover:bg-white/20 transition-colors"
                                             title="Enviar recordatorio de renovación"
                                           >
-                                            <MessageSquare className="w-3.5 h-3.5" />
-                                            <span className="hidden sm:inline">Recordatorio</span>
-                                          </button>
-                                        );
-                                      })()}
-                                      {/* Botón Registrar Pago - solo para clientes físicos */}
-                                      {(user.userType === 'physical' || user.hasGymMembership || user.isUnregisteredClient) && (() => {
-                                        // Obtener client_info_id
-                                        const clientInfoId = user.isUnregisteredClient ? user.id : (user.gym_memberships?.[0]?.client_info_id || null);
-                                        
-                                        // Obtener plan_id del último plan (activo o vencido)
-                                        const latestMembership = user.gym_memberships?.length > 0
-                                          ? user.gym_memberships.sort((a: any, b: any) => new Date(b.end_date).getTime() - new Date(a.end_date).getTime())[0]
-                                          : user.activeGymMembership;
-                                        const planId = latestMembership?.plan?.id || null;
-                                        
-                                        const handleRegisterPayment = () => {
-                                          // Cambiar a la pestaña de pagos
-                                          setActiveTab('gym-payments');
-                                          // Abrir el modal con cliente y plan prellenados
-                                          setTimeout(() => {
-                                            gymPaymentsRef.current?.openCreateModal(clientInfoId || undefined, planId || undefined);
-                                          }, 100);
-                                        };
-                                        
-                                        return (
-                                          <button
-                                            onClick={handleRegisterPayment}
-                                            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-blue-100 dark:hover:bg-blue-500/20 text-gray-500 dark:text-white/40 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                                            title="Registrar pago"
-                                          >
-                                            <CreditCard className="w-4 h-4" />
+                                            <MessageSquare className="w-4 h-4" />
                                           </button>
                                         );
                                       })()}
                                       <button
                                         onClick={() => router.push(`/admin/users/${user.id}`)}
-                                        className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-blue-100 dark:hover:bg-blue-500/20 text-gray-500 dark:text-white/40 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                                        className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-white/40 hover:bg-gray-200 dark:hover:bg-white/20 transition-colors"
                                         title="Ver detalles"
                                       >
                                         <Eye className="w-4 h-4" />
                                       </button>
                                       <button
                                         onClick={() => router.push(`/admin/users/${user.id}?edit=true`)}
-                                        className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-blue-100 dark:hover:bg-blue-500/20 text-gray-500 dark:text-white/40 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                                        className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-white/40 hover:bg-gray-200 dark:hover:bg-white/20 transition-colors"
                                         title="Editar"
                                       >
                                         <Edit className="w-4 h-4" />
                                       </button>
+                                      
                                     </div>
                                   </td>
                                 </tr>
-                              ))}
+                              );
+                              })}
                             </tbody>
                           </table>
                         </div>
@@ -1484,7 +2220,7 @@ export default function AdminDashboard() {
                                       onClick={() => setCurrentPage(i)}
                                       className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all text-sm cursor-pointer ${
                                         currentPage === i
-                                          ? 'bg-[#85ea10] text-black font-semibold'
+                                          ? 'bg-[#164151] text-white font-semibold'
                                           : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20'
                                       }`}
                                     >
@@ -1859,7 +2595,7 @@ export default function AdminDashboard() {
                                     onClick={() => setSalesCurrentPage(pageNum)}
                                     className={`w-9 h-9 flex items-center justify-center rounded-lg text-sm font-medium transition-all cursor-pointer ${
                                       salesCurrentPage === pageNum
-                                        ? 'bg-[#85ea10] text-black'
+                                        ? 'bg-[#164151] text-white'
                                         : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20'
                                     }`}
                                   >
@@ -1946,6 +2682,85 @@ export default function AdminDashboard() {
         cancelText="Cancelar"
         isLoading={confirmDialog.isLoading}
       />
+
+      {/* Products Popover */}
+      {productsModal.isOpen && productsModal.user && productsModal.position && (
+        <>
+          {/* Overlay transparente para cerrar al hacer click fuera */}
+          <div 
+            className="fixed inset-0 z-40" 
+            onClick={() => setProductsModal({ isOpen: false, user: null, position: null })}
+          />
+          {/* Popover pequeño posicionado */}
+          <div 
+            className="fixed z-50 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-white/10 shadow-xl w-72 max-h-80 overflow-hidden"
+            style={{
+              left: `${Math.max(8, Math.min(productsModal.position.x, window.innerWidth - 296))}px`, // 296 = 288 + 8px margin
+              top: `${Math.max(8, Math.min(productsModal.position.y, window.innerHeight - 328))}px`, // 328 = 320 + 8px margin
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-2 border-b border-gray-200 dark:border-white/10 flex items-center justify-between">
+              <h3 className="text-xs font-semibold text-[#164151] dark:text-white">
+                Productos
+              </h3>
+              <button
+                onClick={() => setProductsModal({ isOpen: false, user: null, position: null })}
+                className="w-5 h-5 flex items-center justify-center rounded hover:bg-gray-100 dark:hover:bg-white/10 text-[#164151]/80 dark:text-white/60 transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            
+            <div className="p-2 space-y-1.5 max-h-72 overflow-y-auto">
+              {productsModal.user.allProducts && productsModal.user.allProducts.length > 0 ? (
+                productsModal.user.allProducts.map((product: any, idx: number) => (
+                  <div
+                    key={idx}
+                    className="p-2 bg-gray-50 dark:bg-white/5 rounded border border-gray-200 dark:border-white/10"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                        {product.type === 'membership' ? (
+                          <Dumbbell className={`w-3.5 h-3.5 flex-shrink-0 ${product.isActive ? 'text-[#85ea10]' : 'text-gray-400'}`} />
+                        ) : (
+                          <Globe className="w-3.5 h-3.5 flex-shrink-0 text-cyan-600 dark:text-cyan-400" />
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-medium text-[#164151] dark:text-white truncate">
+                            {product.name}
+                          </p>
+                          {product.membership && (
+                            <p className="text-xs text-gray-500 dark:text-white/50">
+                              {product.isActive ? 'Vence' : 'Venció'}: {new Date(product.membership.end_date).toLocaleDateString('es-ES', {
+                                day: '2-digit',
+                                month: 'short',
+                              })}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <span
+                        className={`px-1.5 py-0.5 rounded text-xs font-medium flex-shrink-0 ${
+                          product.isActive
+                            ? 'bg-[#85ea10]/30 text-[#164151] dark:bg-[#85ea10]/30 dark:text-[#85ea10]'
+                            : 'bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400'
+                        }`}
+                      >
+                        {product.isActive ? 'Al día' : 'Renovar'}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-xs text-gray-500 dark:text-white/50 text-center py-2">
+                  Sin productos
+                </p>
+              )}
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Gym Client Form Modal */}
       <GymClientForm
@@ -2110,7 +2925,7 @@ function EmptyState({ icon: Icon, title, description, action }: EmptyStateProps)
         {action && (
           <button
             onClick={action.onClick}
-            className="bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-white/90 font-semibold px-6 py-2.5 rounded-lg transition-all flex items-center gap-2 text-sm shadow-lg hover:shadow-xl"
+            className="bg-[#164151] text-white hover:bg-[#1a4d5f] dark:bg-[#164151] dark:hover:bg-[#1a4d5f] font-semibold px-6 py-2.5 rounded-lg transition-all flex items-center gap-2 text-sm shadow-lg hover:shadow-xl"
           >
             <Plus className="w-4 h-4" />
             {action.label}

@@ -162,8 +162,8 @@ export async function POST(request: NextRequest) {
         .select('*', { count: 'exact', head: true });
       
       if (!countError && count !== null) {
-        // Generar número secuencial: #0001, #0002, etc.
-        finalInvoiceNumber = (count + 1).toString().padStart(4, '0');
+        // Generar número secuencial: #001, #002, etc. (3 dígitos)
+        finalInvoiceNumber = (count + 1).toString().padStart(3, '0');
       } else {
         // Si hay error al contar, usar timestamp como fallback
         finalInvoiceNumber = Date.now().toString().slice(-4);
