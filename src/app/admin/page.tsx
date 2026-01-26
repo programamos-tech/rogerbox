@@ -165,7 +165,7 @@ const menuSections = [
       { id: 'users', label: 'Usuarios', icon: Users, description: 'Gestiona usuarios y clientes físicos' },
       { id: 'gym-plans', label: 'Planes', icon: Dumbbell, description: 'Gestionar planes del gimnasio' },
       { id: 'gym-payments', label: 'Pagos', icon: CreditCard, description: 'Facturar planes a clientes físicos' },
-      { id: 'gym-collections', label: 'Cobranza', icon: AlertCircle, description: 'Cobranza y seguimiento' },
+      // { id: 'gym-collections', label: 'Cobranza', icon: AlertCircle, description: 'Cobranza y seguimiento' },
     ],
   },
   {
@@ -285,11 +285,10 @@ function AdminDashboardContent() {
     ambas?: { total: number; cash: number; transfer: number; mixed: number; count: number };
   } | null>(null);
   const [loadingRevenue, setLoadingRevenue] = useState(false);
-  const [dateFilter, setDateFilter] = useState<'today' | 'yesterday' | 'custom'>('today');
+  const [dateFilter, setDateFilter] = useState<'today' | 'custom'>('today');
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
   const [sedeFilter, setSedeFilter] = useState<'fisica' | 'online' | 'ambas'>('ambas');
-  const [yesterdayStats, setYesterdayStats] = useState<typeof revenueStats>(null);
   const [showRevenueNumbers, setShowRevenueNumbers] = useState(false);
   const [weeklyData, setWeeklyData] = useState<{ date: string; amount: number; dayName: string }[]>([]);
   const [loadingWeeklyData, setLoadingWeeklyData] = useState(false);
@@ -304,17 +303,24 @@ function AdminDashboardContent() {
     return Boolean(matchId || matchEmail || matchRole);
   }, [user]);
 
-  // Leer query param 'tab' y establecer activeTab
+  // Leer query param 'tab' y establecer activeTab al cargar
   useEffect(() => {
     const tabParam = searchParams.get('tab');
-    if (tabParam) {
-      // Verificar que el tab existe en las secciones del menú
-      const validTabs = menuSections.flatMap((section) => section.items.map((item) => item.id));
-      if (validTabs.includes(tabParam)) {
-        setActiveTab(tabParam);
+    const validTabs = menuSections.flatMap((section) => section.items.map((item) => item.id));
+    
+    if (tabParam && validTabs.includes(tabParam)) {
+      // Si hay un tab válido en la URL, usarlo
+      setActiveTab(tabParam);
+    } else if (!tabParam) {
+      // Si no hay tab en la URL, establecer el default y actualizar la URL
+      const defaultTab = 'overview';
+      setActiveTab(defaultTab);
+      // Solo actualizar la URL si realmente no hay parámetro (evitar loops)
+      if (window.location.search !== `?tab=${defaultTab}`) {
+        router.replace(`/admin?tab=${defaultTab}`, { scroll: false });
       }
     }
-  }, [searchParams]);
+  }, [searchParams, router]);
 
   // Verificar si es admin
   useEffect(() => {
@@ -349,7 +355,6 @@ function AdminDashboardContent() {
       const today = new Date();
       const todayStr = today.toISOString().split('T')[0];
       loadRevenueStats(todayStr, todayStr, sedeFilter);
-      loadYesterdayStats();
       loadWeeklyData();
     }
   }, [activeTab]);
@@ -364,11 +369,6 @@ function AdminDashboardContent() {
         const today = new Date();
         startDate = today.toISOString().split('T')[0];
         endDate = startDate;
-      } else if (dateFilter === 'yesterday') {
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        startDate = yesterday.toISOString().split('T')[0];
-        endDate = startDate;
       } else if (dateFilter === 'custom') {
         if (customStartDate && customEndDate) {
           startDate = customStartDate;
@@ -381,7 +381,6 @@ function AdminDashboardContent() {
       if (startDate && endDate) {
         loadRevenueStats(startDate, endDate, sedeFilter);
         if (dateFilter === 'today') {
-          loadYesterdayStats();
           loadWeeklyData();
         }
       }
@@ -445,39 +444,6 @@ function AdminDashboardContent() {
     }
   };
 
-  const loadYesterdayStats = async () => {
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toISOString().split('T')[0];
-    
-    try {
-      const response = await fetch(`/api/admin/revenue-stats?start_date=${yesterdayStr}&end_date=${yesterdayStr}&sede=${sedeFilter}`);
-      const data = await response.json();
-      
-      if (data.results) {
-        const statsBySede: {
-          fisica?: { total: number; cash: number; transfer: number; mixed: number; count: number };
-          online?: { total: number; cash: number; transfer: number; mixed: number; count: number };
-          ambas?: { total: number; cash: number; transfer: number; mixed: number; count: number };
-        } = {};
-        data.results.forEach((result: { sede: 'fisica' | 'online' | 'ambas'; total: number; cash: number; transfer: number; mixed: number; count: number }) => {
-          const sede = result.sede;
-          if (sede === 'fisica' || sede === 'online' || sede === 'ambas') {
-            statsBySede[sede] = {
-              total: result.total,
-              cash: result.cash,
-              transfer: result.transfer,
-              mixed: result.mixed,
-              count: result.count,
-            };
-          }
-        });
-        setYesterdayStats(statsBySede);
-      }
-    } catch (error) {
-      console.error('Error loading yesterday stats:', error);
-    }
-  };
 
   const loadWeeklyData = async () => {
     try {
@@ -837,6 +803,7 @@ function AdminDashboardContent() {
                       key={item.id}
                       onClick={() => {
                         setActiveTab(item.id);
+                        router.push(`/admin?tab=${item.id}`, { scroll: false });
                         setMobileMenuOpen(false);
                       }}
                       className={`
@@ -1030,7 +997,7 @@ function AdminDashboardContent() {
                       <option value="fisica">Física</option>
                       <option value="online">En Línea</option>
                     </select>
-                  </div>
+                    </div>
 
                   {/* Filtro de Fecha */}
                   <div className="flex items-center gap-3 flex-wrap">
@@ -1047,7 +1014,7 @@ function AdminDashboardContent() {
                         )}
                       </button>
                       <label className="text-sm font-semibold text-[#164151] dark:text-white">Período:</label>
-                    </div>
+                  </div>
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => setDateFilter('today')}
@@ -1060,16 +1027,6 @@ function AdminDashboardContent() {
                         Hoy
                       </button>
                       <button
-                        onClick={() => setDateFilter('yesterday')}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                          dateFilter === 'yesterday'
-                            ? 'bg-[#164151] text-white'
-                            : 'bg-gray-100 dark:bg-white/10 text-[#164151] dark:text-white hover:bg-gray-200 dark:hover:bg-white/20'
-                        }`}
-                      >
-                        Ayer
-                      </button>
-                      <button
                         onClick={() => setDateFilter('custom')}
                         className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                           dateFilter === 'custom'
@@ -1079,8 +1036,8 @@ function AdminDashboardContent() {
                       >
                         Personalizado
                       </button>
-                    </div>
-                    
+                </div>
+
                     {/* Selector de fechas personalizadas */}
                     {dateFilter === 'custom' && (
                       <div className="flex items-center gap-2">
@@ -1097,11 +1054,11 @@ function AdminDashboardContent() {
                           onChange={(e) => setCustomEndDate(e.target.value)}
                           className="px-3 py-2 rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-gray-800 text-[#164151] dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#164151]/50"
                         />
-                      </div>
+                    </div>
                     )}
                   </div>
                 </div>
-              </div>
+                </div>
 
               {/* Cards de Ingresos */}
               {loadingRevenue ? (
@@ -1109,8 +1066,8 @@ function AdminDashboardContent() {
                   <div className="text-center">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#164151] mx-auto mb-4"></div>
                     <p className="text-sm text-gray-500 dark:text-white/50">Cargando ingresos...</p>
+                    </div>
                   </div>
-                </div>
               ) : revenueStats ? (
                 <>
                   {/* Dashboard Sede Física */}
@@ -1121,149 +1078,101 @@ function AdminDashboardContent() {
                         <div className="flex items-center gap-3 mb-4">
                           <div className="w-9 h-9 rounded-lg bg-[#164151]/10 dark:bg-[#164151]/20 flex items-center justify-center">
                             <TrendingUp className="w-4 h-4 text-[#164151] dark:text-[#164151]" />
-                          </div>
+                </div>
                           <div>
                             <p className="text-xs font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide">Total</p>
                             <p className="text-[10px] text-gray-500 dark:text-white/50">Ingresos totales de la sede física</p>
-                          </div>
-                        </div>
+                    </div>
+                  </div>
                         <p className="text-xl font-semibold text-[#164151] dark:text-white">
                           {showRevenueNumbers ? `$${revenueStats.fisica.total.toLocaleString('es-CO')}` : '••••••'}
                         </p>
-                        {dateFilter === 'today' && yesterdayStats?.fisica && yesterdayStats.fisica.total > 0 && (
-                          <div className="pt-3 border-t border-gray-200 dark:border-white/10 mt-3">
-                            <p className="text-xs text-gray-500 dark:text-white/50">Ayer</p>
-                            <p className="text-sm font-semibold text-gray-600 dark:text-white/70">
-                              {showRevenueNumbers ? `$${yesterdayStats.fisica.total.toLocaleString('es-CO')}` : '••••••'}
-                            </p>
-                          </div>
-                        )}
-                      </div>
+              </div>
 
                       {/* Efectivo */}
                       <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 p-6 shadow-lg">
                         <div className="flex items-center gap-3 mb-4">
                           <div className="w-9 h-9 rounded-lg bg-[#85ea10]/20 dark:bg-[#85ea10]/30 flex items-center justify-center">
                             <Wallet className="w-4 h-4 text-[#164151] dark:text-[#164151]" />
-                          </div>
+                        </div>
                           <div>
                             <p className="text-xs font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide">Efectivo</p>
                             <p className="text-[10px] text-gray-500 dark:text-white/50">Pagos recibidos en efectivo</p>
-                          </div>
+                  </div>
                         </div>
                         <p className="text-xl font-semibold text-[#164151] dark:text-white">
                           {showRevenueNumbers ? `$${revenueStats.fisica.cash.toLocaleString('es-CO')}` : '••••••'}
                         </p>
-                        {dateFilter === 'today' && yesterdayStats?.fisica && yesterdayStats.fisica.cash > 0 && (
-                          <div className="pt-3 border-t border-gray-200 dark:border-white/10 mt-3">
-                            <p className="text-xs text-gray-500 dark:text-white/50">Ayer</p>
-                            <p className="text-sm font-semibold text-gray-600 dark:text-white/70">
-                              {showRevenueNumbers ? `$${yesterdayStats.fisica.cash.toLocaleString('es-CO')}` : '••••••'}
-                            </p>
-                          </div>
-                        )}
-                      </div>
+                </div>
 
                       {/* Transferencia */}
                       <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 p-6 shadow-lg">
                         <div className="flex items-center gap-3 mb-4">
                           <div className="w-9 h-9 rounded-lg bg-gray-100 dark:bg-white/10 flex items-center justify-center">
                             <CreditCard className="w-4 h-4 text-[#164151]/70 dark:text-white/70" />
-                          </div>
+                        </div>
                           <div>
                             <p className="text-xs font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide">Transferencia</p>
                             <p className="text-[10px] text-gray-500 dark:text-white/50">Pagos recibidos por transferencia bancaria</p>
-                          </div>
-                        </div>
+                  </div>
+                </div>
                         <p className="text-xl font-semibold text-[#164151] dark:text-white">
                           {showRevenueNumbers ? `$${revenueStats.fisica.transfer.toLocaleString('es-CO')}` : '••••••'}
                         </p>
-                        {dateFilter === 'today' && yesterdayStats?.fisica && yesterdayStats.fisica.transfer > 0 && (
-                          <div className="pt-3 border-t border-gray-200 dark:border-white/10 mt-3">
-                            <p className="text-xs text-gray-500 dark:text-white/50">Ayer</p>
-                            <p className="text-sm font-semibold text-gray-600 dark:text-white/70">
-                              {showRevenueNumbers ? `$${yesterdayStats.fisica.transfer.toLocaleString('es-CO')}` : '••••••'}
-                            </p>
-                          </div>
-                        )}
                       </div>
                     </div>
                   )}
 
                   {/* Dashboard Sede En Línea */}
                   {sedeFilter === 'online' && revenueStats.online && (
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                       {/* Total */}
                       <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 p-6 shadow-lg">
                         <div className="flex items-center gap-3 mb-4">
                           <div className="w-9 h-9 rounded-lg bg-[#164151]/10 dark:bg-[#164151]/20 flex items-center justify-center">
                             <TrendingUp className="w-4 h-4 text-[#164151] dark:text-[#164151]" />
-                          </div>
+                      </div>
                           <div>
                             <p className="text-xs font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide">Total</p>
                             <p className="text-[10px] text-gray-500 dark:text-white/50">Ingresos totales de la sede en línea</p>
-                          </div>
-                        </div>
+                    </div>
+                    </div>
                         <p className="text-xl font-semibold text-[#164151] dark:text-white">
                           {showRevenueNumbers ? `$${revenueStats.online.total.toLocaleString('es-CO')}` : '••••••'}
                         </p>
-                        {dateFilter === 'today' && yesterdayStats?.online && yesterdayStats.online.total > 0 && (
-                          <div className="pt-3 border-t border-gray-200 dark:border-white/10 mt-3">
-                            <p className="text-xs text-gray-500 dark:text-white/50">Ayer</p>
-                            <p className="text-sm font-semibold text-gray-600 dark:text-white/70">
-                              {showRevenueNumbers ? `$${yesterdayStats.online.total.toLocaleString('es-CO')}` : '••••••'}
-                            </p>
-                          </div>
-                        )}
-                      </div>
+                    </div>
 
                       {/* Pagos Online */}
                       <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 p-6 shadow-lg">
                         <div className="flex items-center gap-3 mb-4">
                           <div className="w-9 h-9 rounded-lg bg-gray-100 dark:bg-white/10 flex items-center justify-center">
                             <CreditCard className="w-4 h-4 text-[#164151]/70 dark:text-white/70" />
-                          </div>
+                      </div>
                           <div>
                             <p className="text-xs font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide">Pagos Online</p>
                             <p className="text-[10px] text-gray-500 dark:text-white/50">Pagos procesados electrónicamente</p>
-                          </div>
+                    </div>
                         </div>
                         <p className="text-xl font-semibold text-[#164151] dark:text-white">
                           {showRevenueNumbers ? `$${revenueStats.online.transfer.toLocaleString('es-CO')}` : '••••••'}
                         </p>
-                        {dateFilter === 'today' && yesterdayStats?.online && yesterdayStats.online.transfer > 0 && (
-                          <div className="pt-3 border-t border-gray-200 dark:border-white/10 mt-3">
-                            <p className="text-xs text-gray-500 dark:text-white/50">Ayer</p>
-                            <p className="text-sm font-semibold text-gray-600 dark:text-white/70">
-                              {showRevenueNumbers ? `$${yesterdayStats.online.transfer.toLocaleString('es-CO')}` : '••••••'}
-                            </p>
-                          </div>
-                        )}
-                      </div>
+                    </div>
 
                       {/* Transacciones */}
                       <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 p-6 shadow-lg">
                         <div className="flex items-center gap-3 mb-4">
                           <div className="w-9 h-9 rounded-lg bg-gray-100 dark:bg-white/10 flex items-center justify-center">
                             <ShoppingCart className="w-4 h-4 text-[#85ea10] dark:text-[#85ea10]" />
-                          </div>
+                      </div>
                           <div>
                             <p className="text-xs font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide">Transacciones</p>
                             <p className="text-[10px] text-gray-500 dark:text-white/50">Número total de ventas realizadas</p>
-                          </div>
-                        </div>
+                    </div>
+                    </div>
                         <p className="text-xl font-semibold text-[#164151] dark:text-white">
                           {showRevenueNumbers ? revenueStats.online.count : '•••'}
                         </p>
-                        {dateFilter === 'today' && yesterdayStats?.online && yesterdayStats.online.count > 0 && (
-                          <div className="pt-3 border-t border-gray-200 dark:border-white/10 mt-3">
-                            <p className="text-xs text-gray-500 dark:text-white/50">Ayer</p>
-                            <p className="text-sm font-semibold text-gray-600 dark:text-white/70">
-                              {showRevenueNumbers ? yesterdayStats.online.count : '•••'}
-                            </p>
-                          </div>
-                        )}
-                      </div>
+                </div>
                     </div>
                   )}
 
@@ -1275,7 +1184,7 @@ function AdminDashboardContent() {
                         <div className="flex items-center gap-3 mb-4">
                           <div className="w-9 h-9 rounded-lg bg-[#164151]/10 dark:bg-[#164151]/20 flex items-center justify-center">
                             <TrendingUp className="w-4 h-4 text-[#164151] dark:text-[#164151]" />
-                          </div>
+                    </div>
                           <div>
                             <p className="text-xs font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide">Total</p>
                             <p className="text-[10px] text-gray-500 dark:text-white/50">Ingresos totales de ambas sedes</p>
@@ -1284,85 +1193,64 @@ function AdminDashboardContent() {
                         <p className="text-xl font-semibold text-[#164151] dark:text-white">
                           {showRevenueNumbers ? `$${(revenueStats.ambas?.total || 0).toLocaleString('es-CO')}` : '••••••'}
                         </p>
-                        {dateFilter === 'today' && yesterdayStats?.ambas && yesterdayStats.ambas.total > 0 && (
-                          <div className="pt-3 border-t border-gray-200 dark:border-white/10 mt-3">
-                            <p className="text-xs text-gray-500 dark:text-white/50">Ayer</p>
-                            <p className="text-sm font-semibold text-gray-600 dark:text-white/70">
-                              {showRevenueNumbers ? `$${yesterdayStats.ambas.total.toLocaleString('es-CO')}` : '••••••'}
-                            </p>
-                          </div>
-                        )}
-                      </div>
+                </div>
 
                       {/* Efectivo */}
                       <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 p-6 shadow-lg">
                         <div className="flex items-center gap-3 mb-4">
                           <div className="w-9 h-9 rounded-lg bg-[#85ea10]/20 dark:bg-[#85ea10]/30 flex items-center justify-center">
                             <Wallet className="w-4 h-4 text-[#164151] dark:text-[#164151]" />
-                          </div>
+                    </div>
                           <div>
                             <p className="text-xs font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide">Efectivo</p>
                             <p className="text-[10px] text-gray-500 dark:text-white/50">Pagos en efectivo de la sede física</p>
-                          </div>
-                        </div>
+                            </div>
+                            </div>
                         <p className="text-xl font-semibold text-[#164151] dark:text-white">
                           {showRevenueNumbers ? `$${(revenueStats.ambas?.cash || 0).toLocaleString('es-CO')}` : '••••••'}
                         </p>
-                        {dateFilter === 'today' && yesterdayStats?.ambas && yesterdayStats.ambas.cash > 0 && (
-                          <div className="pt-3 border-t border-gray-200 dark:border-white/10 mt-3">
-                            <p className="text-xs text-gray-500 dark:text-white/50">Ayer</p>
-                            <p className="text-sm font-semibold text-gray-600 dark:text-white/70">
-                              {showRevenueNumbers ? `$${yesterdayStats.ambas.cash.toLocaleString('es-CO')}` : '••••••'}
-                            </p>
-                          </div>
-                        )}
-                      </div>
+              </div>
 
                       {/* Transferencia */}
                       <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 p-6 shadow-lg">
                         <div className="flex items-center gap-3 mb-4">
                           <div className="w-9 h-9 rounded-lg bg-gray-100 dark:bg-white/10 flex items-center justify-center">
                             <CreditCard className="w-4 h-4 text-[#164151]/70 dark:text-white/70" />
-                          </div>
+                  </div>
                           <div>
                             <p className="text-xs font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide">Transferencia</p>
                             <p className="text-[10px] text-gray-500 dark:text-white/50">Transferencias y pagos online</p>
+                      </div>
                           </div>
-                        </div>
                         <p className="text-xl font-semibold text-[#164151] dark:text-white">
                           {showRevenueNumbers ? `$${(revenueStats.ambas?.transfer || 0).toLocaleString('es-CO')}` : '••••••'}
                         </p>
-                        {dateFilter === 'today' && yesterdayStats?.ambas && yesterdayStats.ambas.transfer > 0 && (
-                          <div className="pt-3 border-t border-gray-200 dark:border-white/10 mt-3">
-                            <p className="text-xs text-gray-500 dark:text-white/50">Ayer</p>
-                            <p className="text-sm font-semibold text-gray-600 dark:text-white/70">
-                              {showRevenueNumbers ? `$${yesterdayStats.ambas.transfer.toLocaleString('es-CO')}` : '••••••'}
-                            </p>
-                          </div>
-                        )}
-                      </div>
+                        </div>
                     </div>
-                  )}
+                    )}
                 </>
               ) : (
                 <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-white/10 p-12 text-center">
                   <p className="text-sm text-gray-500 dark:text-white/50">No hay datos para mostrar</p>
-                </div>
+                  </div>
               )}
 
               {/* Gráfica de Ventas Semanales */}
               {dateFilter === 'today' && (
                 <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 px-6 pt-6 pb-2 shadow-lg mt-8">
-                  <h3 className="text-sm font-semibold text-[#164151] dark:text-white uppercase tracking-wide mb-10">
+                  <h3 className="text-sm font-semibold text-[#164151] dark:text-white uppercase tracking-wide mb-3">
                     Ventas de la Última Semana
                   </h3>
+                  <p className="text-xs text-gray-500 dark:text-white/50 mb-12">
+                    Visualización de los ingresos diarios de los últimos 7 días para analizar tendencias y patrones de venta
+                  </p>
                   
                   {loadingWeeklyData ? (
                     <div className="flex items-center justify-center py-8">
                       <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#164151]"></div>
-                    </div>
+                </div>
                   ) : weeklyData.length > 0 ? (
-                    <div className="relative">
+                    <div className="relative mt-8">
                       {/* Gráfica */}
                       <div className="relative h-64 flex items-end justify-between gap-1 mb-0">
                         {weeklyData.map((day, index) => {
@@ -1383,14 +1271,14 @@ function AdminDashboardContent() {
                                 <p className="text-[#85ea10] font-bold">
                                   {showRevenueNumbers ? `$${day.amount.toLocaleString('es-CO')}` : '••••••'}
                                 </p>
-                              </div>
+                  </div>
                               
                               {/* Valor sobre el punto */}
                               <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 text-center w-full">
                                 <p className="text-xs font-semibold text-[#164151] dark:text-white">
                                   {showRevenueNumbers ? `$${day.amount.toLocaleString('es-CO')}` : '••••'}
                                 </p>
-                              </div>
+                      </div>
                               
                               {/* Contenedor de la barra */}
                               <div className="flex-1 w-full flex items-end justify-center relative">
@@ -1401,8 +1289,8 @@ function AdminDashboardContent() {
                                 >
                                   {/* Punto en la parte superior */}
                                   <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 w-3 h-3 bg-[#85ea10] dark:bg-[#164151] rounded-full border-2 border-white dark:border-gray-900 shadow-md"></div>
-                                </div>
-                              </div>
+                          </div>
+                          </div>
                               
                               {/* Nombre del día y fecha */}
                               <div className="text-center">
@@ -1411,13 +1299,13 @@ function AdminDashboardContent() {
                                 </p>
                                 <p className="text-[9px] text-gray-400 dark:text-white/40">
                                   {dayNumber}/{date.getMonth() + 1}
-                                </p>
-                              </div>
-                            </div>
+                          </p>
+                        </div>
+                  </div>
                           );
                         })}
-                      </div>
-                      
+              </div>
+
                       {/* Línea conectando los puntos */}
                       <svg className="absolute top-8 left-0 right-0 h-40 pointer-events-none" style={{ zIndex: 1 }}>
                         <polyline
@@ -1436,7 +1324,7 @@ function AdminDashboardContent() {
                           className="text-[#85ea10]/40 dark:text-[#164151]/40"
                         />
                       </svg>
-                    </div>
+              </div>
                   ) : (
                     <div className="text-center py-8">
                       <p className="text-sm text-gray-500 dark:text-white/50">No hay datos para mostrar</p>
@@ -1507,15 +1395,15 @@ function AdminDashboardContent() {
                 <div className="flex flex-col sm:flex-row gap-4">
                   {/* Search */}
                   <div className="flex-1 relative">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-white/40" />
-                    <input
-                      type="text"
-                      placeholder="Buscar usuarios por nombre o email..."
-                      value={userSearchTerm}
-                      onChange={(e) => {
-                        setUserSearchTerm(e.target.value);
-                        setCurrentPage(1);
-                      }}
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-white/40" />
+                  <input
+                    type="text"
+                    placeholder="Buscar usuarios por nombre o email..."
+                    value={userSearchTerm}
+                    onChange={(e) => {
+                      setUserSearchTerm(e.target.value);
+                      setCurrentPage(1);
+                    }}
                       className="w-full pl-12 pr-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-[#164151] dark:text-white placeholder-gray-400 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 focus:border-[#85ea10]/50 transition-all"
                     />
                   </div>
@@ -1698,7 +1586,7 @@ function AdminDashboardContent() {
                                         {!user.isUnregisteredClient && (
                                           <div className="w-4 h-4 rounded-full bg-[#85ea10] flex items-center justify-center flex-shrink-0">
                                             <Check className="w-2.5 h-2.5 text-white stroke-[3]" />
-                                          </div>
+                                      </div>
                                         )}
                                       </div>
                                       <p className="text-xs text-[#164151]/60 dark:text-white/50 mt-0.5 truncate">
@@ -2066,7 +1954,7 @@ function AdminDashboardContent() {
                                           };
                                           
                                           return (
-                                            <button
+                                      <button
                                               onClick={handleInactivate}
                                               className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-white/40 hover:bg-gray-200 dark:hover:bg-white/20 transition-colors"
                                               title="Inactivar usuario (30 días sin pagar)"
@@ -2306,17 +2194,17 @@ function AdminDashboardContent() {
                   </div>
 
                   <div className="flex flex-col sm:flex-row gap-4 flex-1">
-                    {/* Search */}
+                  {/* Search */}
                     <div className="relative flex-1">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                      <input
-                        type="text"
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      type="text"
                         placeholder="Buscar por cliente, curso o plan..."
-                        value={salesSearchTerm}
-                        onChange={(e) => {
-                          setSalesSearchTerm(e.target.value);
-                          setSalesCurrentPage(1);
-                        }}
+                      value={salesSearchTerm}
+                      onChange={(e) => {
+                        setSalesSearchTerm(e.target.value);
+                        setSalesCurrentPage(1);
+                      }}
                         className="w-full pl-10 pr-4 py-2.5 bg-gray-50 dark:bg-white/10 border border-gray-200 dark:border-white/10 rounded-xl text-sm text-[#164151] dark:text-white placeholder-gray-400 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 focus:border-[#85ea10]"
                       />
                     </div>
@@ -2450,21 +2338,21 @@ function AdminDashboardContent() {
                                         </>
                                       ) : (
                                         <>
-                                          {sale.course?.preview_image ? (
-                                            <img
-                                              src={sale.course.preview_image}
-                                              alt={sale.course.title}
-                                              className="w-10 h-10 rounded-lg object-cover"
-                                            />
-                                          ) : (
-                                            <div className="w-10 h-10 rounded-lg bg-gray-200 dark:bg-white/10 flex items-center justify-center">
-                                              <BookOpen className="w-5 h-5 text-gray-400" />
-                                            </div>
-                                          )}
+                                      {sale.course?.preview_image ? (
+                                        <img
+                                          src={sale.course.preview_image}
+                                          alt={sale.course.title}
+                                          className="w-10 h-10 rounded-lg object-cover"
+                                        />
+                                      ) : (
+                                        <div className="w-10 h-10 rounded-lg bg-gray-200 dark:bg-white/10 flex items-center justify-center">
+                                          <BookOpen className="w-5 h-5 text-gray-400" />
+                                        </div>
+                                      )}
                                           <div>
                                             <p className="font-medium text-[#164151] dark:text-white text-sm max-w-[200px] truncate">
-                                              {sale.course?.title || 'Curso eliminado'}
-                                            </p>
+                                        {sale.course?.title || 'Curso eliminado'}
+                                      </p>
                                             <p className="text-xs text-gray-500 dark:text-white/40">Curso online</p>
                                           </div>
                                         </>
@@ -2704,14 +2592,14 @@ function AdminDashboardContent() {
               <h3 className="text-xs font-semibold text-[#164151] dark:text-white">
                 Productos
               </h3>
-              <button
+                <button
                 onClick={() => setProductsModal({ isOpen: false, user: null, position: null })}
                 className="w-5 h-5 flex items-center justify-center rounded hover:bg-gray-100 dark:hover:bg-white/10 text-[#164151]/80 dark:text-white/60 transition-colors"
-              >
+                >
                 <X className="w-3.5 h-3.5" />
-              </button>
+                </button>
             </div>
-            
+
             <div className="p-2 space-y-1.5 max-h-72 overflow-y-auto">
               {productsModal.user.allProducts && productsModal.user.allProducts.length > 0 ? (
                 productsModal.user.allProducts.map((product: any, idx: number) => (
@@ -2749,16 +2637,16 @@ function AdminDashboardContent() {
                       >
                         {product.isActive ? 'Al día' : 'Renovar'}
                       </span>
+                      </div>
                     </div>
-                  </div>
                 ))
               ) : (
                 <p className="text-xs text-gray-500 dark:text-white/50 text-center py-2">
                   Sin productos
                 </p>
               )}
-            </div>
-          </div>
+                      </div>
+                    </div>
         </>
       )}
 

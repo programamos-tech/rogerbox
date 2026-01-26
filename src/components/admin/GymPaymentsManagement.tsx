@@ -2,7 +2,7 @@
 
 import { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { useRouter } from 'next/navigation';
-import { CreditCard, User, DollarSign, Calendar, FileText, Search, X, Save, CheckCircle, Eye, Download } from 'lucide-react';
+import { CreditCard, User, DollarSign, Calendar, FileText, Search, X, Save, CheckCircle, Eye, Download, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { GymClientInfo, GymPlan, GymPayment, PaymentMethod } from '@/types/gym';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -48,6 +48,8 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
   const [error, setError] = useState('');
   const [paymentSearchTerm, setPaymentSearchTerm] = useState('');
   const [selectedPlanFilter, setSelectedPlanFilter] = useState<string>('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
 
   useEffect(() => {
     loadData();
@@ -382,6 +384,18 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
 
       return true;
     });
+
+  // Calcular paginación
+  const totalFilteredPayments = filteredPayments.length;
+  const totalPages = Math.ceil(totalFilteredPayments / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedPayments = filteredPayments.slice(startIndex, endIndex);
+
+  // Resetear a página 1 cuando cambian los filtros
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [paymentSearchTerm, selectedPlanFilter]);
 
   const handleDownloadInvoice = async (payment: GymPayment) => {
     // Crear un elemento temporal para renderizar la factura
@@ -888,7 +902,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-white/5">
-                  {filteredPayments.length === 0 ? (
+                  {totalFilteredPayments === 0 ? (
                     <tr>
                       <td colSpan={8} className="px-4 py-12 text-center">
                         <p className="text-sm text-[#164151]/60 dark:text-white/60">
@@ -897,7 +911,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
                       </td>
                     </tr>
                   ) : (
-                    filteredPayments.map(({ payment, originalIndex }) => (
+                    paginatedPayments.map(({ payment, originalIndex }) => (
                     <tr
                       key={payment.id}
                       onClick={() => router.push(`/admin/payments/${payment.id}`)}
@@ -979,6 +993,156 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
                 </tbody>
               </table>
             </div>
+            
+            {/* Paginación */}
+            {totalFilteredPayments > 0 && totalPages > 1 && (
+              <div className="px-6 py-4 border-t border-gray-200 dark:border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="text-sm text-gray-500 dark:text-white/40">
+                  Mostrando{' '}
+                  <span className="text-[#164151] dark:text-white font-medium">{startIndex + 1}</span>{' '}
+                  a{' '}
+                  <span className="text-[#164151] dark:text-white font-medium">
+                    {Math.min(endIndex, totalFilteredPayments)}
+                  </span>{' '}
+                  de <span className="text-[#164151] dark:text-white font-medium">{totalFilteredPayments}</span>{' '}
+                  pagos
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {/* First Page Button */}
+                  <button
+                    onClick={() => setCurrentPage(1)}
+                    disabled={currentPage === 1}
+                    className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${
+                      currentPage === 1
+                        ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
+                        : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
+                    }`}
+                    title="Primera página"
+                  >
+                    <ChevronsLeft className="w-4 h-4" />
+                  </button>
+
+                  {/* Previous Page Button */}
+                  <button
+                    onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1}
+                    className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${
+                      currentPage === 1
+                        ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
+                        : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
+                    }`}
+                    title="Página anterior"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+
+                  {/* Page Numbers */}
+                  <div className="flex items-center gap-1">
+                    {(() => {
+                      const pages = [];
+                      const maxVisiblePages = 5;
+                      let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+                      let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+                      if (endPage - startPage + 1 < maxVisiblePages) {
+                        startPage = Math.max(1, endPage - maxVisiblePages + 1);
+                      }
+
+                      if (startPage > 1) {
+                        pages.push(
+                          <button
+                            key={1}
+                            onClick={() => setCurrentPage(1)}
+                            className="w-9 h-9 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 transition-all cursor-pointer text-sm"
+                          >
+                            1
+                          </button>
+                        );
+                        if (startPage > 2) {
+                          pages.push(
+                            <span
+                              key="ellipsis-start"
+                              className="px-2 text-gray-400 dark:text-white/40"
+                            >
+                              ...
+                            </span>
+                          );
+                        }
+                      }
+
+                      for (let i = startPage; i <= endPage; i++) {
+                        pages.push(
+                          <button
+                            key={i}
+                            onClick={() => setCurrentPage(i)}
+                            className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all text-sm cursor-pointer ${
+                              currentPage === i
+                                ? 'bg-[#164151] text-white font-semibold'
+                                : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20'
+                            }`}
+                          >
+                            {i}
+                          </button>
+                        );
+                      }
+
+                      if (endPage < totalPages) {
+                        if (endPage < totalPages - 1) {
+                          pages.push(
+                            <span
+                              key="ellipsis-end"
+                              className="px-2 text-gray-400 dark:text-white/40"
+                            >
+                              ...
+                            </span>
+                          );
+                        }
+                        pages.push(
+                          <button
+                            key={totalPages}
+                            onClick={() => setCurrentPage(totalPages)}
+                            className="w-9 h-9 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 transition-all cursor-pointer text-sm"
+                          >
+                            {totalPages}
+                          </button>
+                        );
+                      }
+
+                      return pages;
+                    })()}
+                  </div>
+
+                  {/* Next Page Button */}
+                  <button
+                    onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage === totalPages || totalPages === 0}
+                    className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${
+                      currentPage === totalPages || totalPages === 0
+                        ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
+                        : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
+                    }`}
+                    title="Página siguiente"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+
+                  {/* Last Page Button */}
+                  <button
+                    onClick={() => setCurrentPage(totalPages)}
+                    disabled={currentPage === totalPages || totalPages === 0}
+                    className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${
+                      currentPage === totalPages || totalPages === 0
+                        ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
+                        : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
+                    }`}
+                    title="Última página"
+                  >
+                    <ChevronsRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

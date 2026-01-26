@@ -32,9 +32,12 @@ export async function GET() {
       (registeredUsers || []).map(async (user: any) => {
         try {
           // Intentar obtener membresías físicas
+          // Primero buscar por user_id, luego por client_info_id si no hay user_id
           let gymMemberships: any[] = [];
           try {
-            const { data: memberships, error: membershipsError } = await supabaseAdmin
+            // Buscar membresías por user_id
+            let memberships: any[] = [];
+            const { data: membershipsByUserId, error: membershipsError } = await supabaseAdmin
               .from('gym_memberships')
               .select(`
                 id,
@@ -46,16 +49,52 @@ export async function GET() {
               `)
               .eq('user_id', user.id);
             
-            if (!membershipsError && memberships) {
+            if (!membershipsError && membershipsByUserId) {
+              memberships = membershipsByUserId;
+            }
+            
+            // Si no hay membresías por user_id, buscar por client_info_id usando document_id
+            if (memberships.length === 0 && user.document_id) {
+              try {
+                const { data: clientInfo } = await supabaseAdmin
+                  .from('gym_client_info')
+                  .select('id')
+                  .eq('document_id', user.document_id)
+                  .maybeSingle();
+                
+                if (clientInfo) {
+                  const { data: membershipsByClientId, error: clientMembershipsError } = await supabaseAdmin
+                    .from('gym_memberships')
+                    .select(`
+                      id,
+                      status,
+                      start_date,
+                      end_date,
+                      client_info_id,
+                      plan:gym_plans(name)
+                    `)
+                    .eq('client_info_id', clientInfo.id);
+                  
+                  if (!clientMembershipsError && membershipsByClientId) {
+                    memberships = membershipsByClientId;
+                  }
+                }
+              } catch (e: any) {
+                // Continuar sin membresías si hay error
+              }
+            }
+            
+            if (memberships.length > 0) {
               // Obtener pagos relacionados para cada membresía
               const membershipIds = memberships.map((m: any) => m.id);
               let paymentsMap: Record<string, any> = {};
               
               if (membershipIds.length > 0) {
                 try {
+                  // Buscar pagos por membership_id (funciona con o sin user_id)
                   const { data: payments, error: paymentsError } = await supabaseAdmin
                     .from('gym_payments')
-                    .select('membership_id, invoice_number, payment_date, amount')
+                    .select('membership_id, invoice_number, payment_date, amount, user_id')
                     .in('membership_id', membershipIds)
                     .order('payment_date', { ascending: false });
                   
@@ -221,6 +260,7 @@ export async function GET() {
           clients.map(async (client: any) => {
             let gymMemberships: any[] = [];
             try {
+              // Buscar membresías por client_info_id (funciona con o sin user_id)
               const { data: memberships, error: membershipsError } = await supabaseAdmin
                 .from('gym_memberships')
                 .select(`
@@ -228,6 +268,7 @@ export async function GET() {
                   status,
                   start_date,
                   end_date,
+                  client_info_id,
                   plan:gym_plans(name)
                 `)
                 .eq('client_info_id', client.id);
@@ -239,9 +280,10 @@ export async function GET() {
                 
                 if (membershipIds.length > 0) {
                   try {
+                    // Buscar pagos por membership_id (funciona con o sin user_id)
                     const { data: payments, error: paymentsError } = await supabaseAdmin
                       .from('gym_payments')
-                      .select('membership_id, invoice_number, payment_date, amount')
+                      .select('membership_id, invoice_number, payment_date, amount, user_id')
                       .in('membership_id', membershipIds)
                       .order('payment_date', { ascending: false });
                     
@@ -313,6 +355,7 @@ export async function GET() {
               isUnregisteredClient: true,
               totalSpent: clientTotalSpent,
               is_inactive: client.is_inactive || false,
+              medical_restrictions: client.medical_restrictions || null,
             };
           })
         );

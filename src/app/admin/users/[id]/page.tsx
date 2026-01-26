@@ -40,6 +40,7 @@ import {
   UserX,
 } from 'lucide-react';
 import QuickLoading from '@/components/QuickLoading';
+import { supabaseAdmin } from '@/lib/supabase';
 
 // Función para traducir los goals a español
 const translateGoal = (goal: string): string => {
@@ -91,7 +92,7 @@ const menuSections = [
       { id: 'users', label: 'Usuarios', icon: Users, description: 'Gestiona usuarios y clientes físicos' },
       { id: 'gym-plans', label: 'Planes', icon: Dumbbell, description: 'Gestionar planes del gimnasio' },
       { id: 'gym-payments', label: 'Pagos', icon: CreditCard, description: 'Facturar planes a clientes físicos' },
-      { id: 'gym-collections', label: 'Cobranza', icon: AlertCircle, description: 'Cobranza y seguimiento' },
+      // { id: 'gym-collections', label: 'Cobranza', icon: AlertCircle, description: 'Cobranza y seguimiento' },
     ],
   },
   {
@@ -125,6 +126,8 @@ export default function UserDetailPage() {
   const [saveError, setSaveError] = useState('');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [weightRecords, setWeightRecords] = useState<any[]>([]);
+  const [loadingWeightRecords, setLoadingWeightRecords] = useState(false);
 
   const userId = params?.id as string;
   
@@ -172,26 +175,26 @@ export default function UserDetailPage() {
       const foundUser = data.users?.find((u: any) => u.id === userId);
       if (foundUser) {
         setUserData(foundUser);
-        // Inicializar formulario de edición con los datos actuales
-        setEditForm({
-          name: foundUser.name || foundUser.full_name || '',
-          email: foundUser.email || '',
-          phone: foundUser.phone || foundUser.whatsapp || '',
-          whatsapp: foundUser.whatsapp || foundUser.phone || '',
-          document_id: foundUser.document_id || '',
-          document_type: foundUser.document_type || 'CC',
-          height: foundUser.height || '',
-          weight: foundUser.weight || foundUser.current_weight || '',
-          current_weight: foundUser.current_weight || foundUser.weight || '',
-          gender: foundUser.gender || '',
-          target_weight: foundUser.target_weight || '',
-          goals: Array.isArray(foundUser.goals) ? foundUser.goals : (foundUser.goals ? JSON.parse(foundUser.goals) : []),
-          address: foundUser.address || '',
-          city: foundUser.city || '',
-          birth_date: foundUser.birth_date || '',
-          birth_year: foundUser.birth_year || '',
-          medical_restrictions: foundUser.medical_restrictions || '',
-        });
+          // Inicializar formulario de edición con los datos actuales
+          setEditForm({
+            name: foundUser.name || foundUser.full_name || '',
+            email: foundUser.email || '',
+            phone: foundUser.phone || foundUser.whatsapp || '',
+            whatsapp: foundUser.whatsapp || foundUser.phone || '',
+            document_id: foundUser.document_id || '',
+            document_type: foundUser.document_type || 'CC',
+            height: foundUser.height || '',
+            weight: foundUser.weight || foundUser.current_weight || '',
+            current_weight: foundUser.current_weight || foundUser.weight || '',
+            gender: foundUser.gender || '',
+            target_weight: foundUser.target_weight || '',
+            goals: Array.isArray(foundUser.goals) ? foundUser.goals : (foundUser.goals ? (typeof foundUser.goals === 'string' ? JSON.parse(foundUser.goals) : foundUser.goals) : []),
+            address: foundUser.address || '',
+            city: foundUser.city || '',
+            birth_date: foundUser.birth_date || '',
+            birth_year: foundUser.birth_year || '',
+            medical_restrictions: foundUser.medical_restrictions || '',
+          });
         
         // Activar modo edición si viene con query param edit=true
         if (searchParams.get('edit') === 'true') {
@@ -203,14 +206,63 @@ export default function UserDetailPage() {
         const directData = await directResponse.json();
         if (directResponse.ok && directData.user) {
           setUserData(directData.user);
+          // Inicializar formulario de edición
+          setEditForm({
+            name: directData.user.name || directData.user.full_name || '',
+            email: directData.user.email || '',
+            phone: directData.user.phone || directData.user.whatsapp || '',
+            whatsapp: directData.user.whatsapp || directData.user.phone || '',
+            document_id: directData.user.document_id || '',
+            document_type: directData.user.document_type || 'CC',
+            height: directData.user.height || '',
+            weight: directData.user.weight || directData.user.current_weight || '',
+            current_weight: directData.user.current_weight || directData.user.weight || '',
+            gender: directData.user.gender || '',
+            target_weight: directData.user.target_weight || '',
+            goals: Array.isArray(directData.user.goals) ? directData.user.goals : (directData.user.goals ? (typeof directData.user.goals === 'string' ? JSON.parse(directData.user.goals) : directData.user.goals) : []),
+            address: directData.user.address || '',
+            city: directData.user.city || '',
+            birth_date: directData.user.birth_date || '',
+            birth_year: directData.user.birth_year || '',
+            medical_restrictions: directData.user.medical_restrictions || '',
+          });
+          // Cargar registros de peso si el usuario tiene user_id
+          if (directData.user.id && !directData.user.isUnregisteredClient) {
+            loadWeightRecords(directData.user.id);
+          }
         } else {
           console.warn('Usuario no encontrado');
         }
+      }
+      
+      // Cargar registros de peso si el usuario tiene user_id
+      if (foundUser && foundUser.id && !foundUser.isUnregisteredClient) {
+        loadWeightRecords(foundUser.id);
       }
     } catch (error) {
       console.error('Error loading user data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadWeightRecords = async (userId: string) => {
+    try {
+      setLoadingWeightRecords(true);
+      const { data, error } = await supabaseAdmin
+        .from('weight_records')
+        .select('weight, record_date, created_at, notes')
+        .eq('user_id', userId)
+        .order('record_date', { ascending: false })
+        .limit(30);
+      
+      if (!error && data) {
+        setWeightRecords(data);
+      }
+    } catch (error) {
+      console.error('Error loading weight records:', error);
+    } finally {
+      setLoadingWeightRecords(false);
     }
   };
 
@@ -634,13 +686,8 @@ export default function UserDetailPage() {
                           throw new Error('Error al actualizar estado');
                         }
                         
-                        // Recargar datos del usuario
-                        const userId = params?.id as string;
-                        const response2 = await fetch(`/api/admin/users/${userId}`);
-                        if (response2.ok) {
-                          const data = await response2.json();
-                          setUserData(data);
-                        }
+                        // Recargar datos del usuario usando la función existente
+                        await loadUserData();
                       } catch (error) {
                         console.error('Error inactivating user:', error);
                         alert('Error al inactivar el usuario');
@@ -673,13 +720,8 @@ export default function UserDetailPage() {
                           throw new Error('Error al actualizar estado');
                         }
                         
-                        // Recargar datos del usuario
-                        const userId = params?.id as string;
-                        const response2 = await fetch(`/api/admin/users/${userId}`);
-                        if (response2.ok) {
-                          const data = await response2.json();
-                          setUserData(data);
-                        }
+                        // Recargar datos del usuario usando la función existente
+                        await loadUserData();
                       } catch (error) {
                         console.error('Error activating user:', error);
                         alert('Error al activar el usuario');
@@ -807,25 +849,26 @@ export default function UserDetailPage() {
                   </div>
                 </div>
 
-                {isEditing && (
-                  <>
-                    {userData.isUnregisteredClient && (
-                      <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl md:col-span-2">
-                        <FileText className="w-5 h-5 text-gray-400" />
-                        <div className="flex-1">
-                          <p className="text-xs text-gray-500 dark:text-white/40 mb-1">Restricciones médicas</p>
-                          <textarea
-                            value={editForm.medical_restrictions || ''}
-                            onChange={(e) => setEditForm({ ...editForm, medical_restrictions: e.target.value })}
-                            rows={2}
-                            className="w-full px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded-lg text-sm text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 resize-none"
-                            placeholder="Restricciones médicas o historial clínico..."
-                          />
-                        </div>
-                      </div>
+                {/* Historial Clínico / Restricciones Médicas - Siempre visible */}
+                <div className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl md:col-span-2">
+                  <FileText className="w-5 h-5 text-gray-400 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-xs text-gray-500 dark:text-white/40 mb-1">Historial Clínico / Restricciones Médicas</p>
+                    {isEditing ? (
+                      <textarea
+                        value={editForm.medical_restrictions || ''}
+                        onChange={(e) => setEditForm({ ...editForm, medical_restrictions: e.target.value })}
+                        rows={3}
+                        className="w-full px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded-lg text-sm text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 resize-none"
+                        placeholder="Restricciones médicas o historial clínico..."
+                      />
+                    ) : (
+                      <p className="text-sm font-medium text-[#164151] dark:text-white">
+                        {userData.medical_restrictions || 'No especificado'}
+                      </p>
                     )}
-                  </>
-                )}
+                  </div>
+                </div>
 
                 {userData.address && !isEditing && (
                   <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
@@ -917,9 +960,8 @@ export default function UserDetailPage() {
               </div>
                 </div>
 
-                {/* Información Fitness */}
-                {!userData.isUnregisteredClient && (
-                  <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-white/10 p-6">
+                {/* Información Fitness - Mostrar para todos los usuarios */}
+                <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-white/10 p-6">
                 <h2 className="text-sm font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider mb-4">
                   Información Fitness
                 </h2>
@@ -1080,6 +1122,47 @@ export default function UserDetailPage() {
                     </div>
                   )}
                 </div>
+                </div>
+
+                {/* Registro del Peso - Solo para usuarios registrados */}
+                {!userData.isUnregisteredClient && userData.id && (
+                  <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-white/10 p-6">
+                    <h2 className="text-sm font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider mb-4">
+                      Registro del Peso
+                    </h2>
+                    {loadingWeightRecords ? (
+                      <div className="flex items-center justify-center py-8">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#164151]"></div>
+                      </div>
+                    ) : weightRecords.length > 0 ? (
+                      <div className="space-y-2 max-h-64 overflow-y-auto">
+                        {weightRecords.map((record: any, index: number) => (
+                          <div key={index} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
+                            <div>
+                              <p className="text-sm font-medium text-[#164151] dark:text-white">
+                                {new Date(record.record_date).toLocaleDateString('es-ES', {
+                                  day: '2-digit',
+                                  month: 'long',
+                                  year: 'numeric',
+                                })}
+                              </p>
+                              {record.notes && (
+                                <p className="text-xs text-gray-500 dark:text-white/50 mt-1">{record.notes}</p>
+                              )}
+                            </div>
+                            <div className="text-right">
+                              <p className="text-lg font-bold text-[#164151] dark:text-white">
+                                {record.weight} kg
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500 dark:text-white/50 text-center py-8">
+                        No hay registros de peso
+                      </p>
+                    )}
                   </div>
                 )}
               </div>

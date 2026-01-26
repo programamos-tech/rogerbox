@@ -150,8 +150,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Usar user_id de la membresía si existe, o el proporcionado
-    const finalUserId = user_id || membership.user_id || null;
+    // Obtener user_id: primero del parámetro, luego de la membresía, luego del client_info
+    let finalUserId = user_id || membership.user_id || null;
+    
+    // Si aún no hay user_id, intentar obtenerlo del client_info
+    if (!finalUserId) {
+      const { data: clientInfo, error: clientInfoError } = await supabaseAdmin
+        .from('gym_client_info')
+        .select('user_id')
+        .eq('id', client_info_id)
+        .single();
+      
+      if (!clientInfoError && clientInfo?.user_id) {
+        finalUserId = clientInfo.user_id;
+        
+        // Actualizar la membresía con el user_id encontrado
+        await supabaseAdmin
+          .from('gym_memberships')
+          .update({ user_id: finalUserId, updated_at: new Date().toISOString() })
+          .eq('id', membership_id);
+      }
+    }
 
     // Generar invoice_number automáticamente si no se proporciona
     let finalInvoiceNumber = invoice_number;
