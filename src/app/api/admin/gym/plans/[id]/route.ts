@@ -129,22 +129,40 @@ export async function DELETE(
 
     const { id } = await params;
 
-    // Verificar si hay membresías activas usando este plan
+    // Verificar si hay membresías activas y vigentes usando este plan
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
     const { data: activeMemberships, error: checkError } = await supabaseAdmin
       .from('gym_memberships')
-      .select('id')
-      .eq('plan_id', id)
-      .eq('status', 'active')
-      .limit(1);
+      .select('id, end_date, status')
+      .eq('plan_id', id);
 
     if (checkError) {
       console.error('Error checking memberships:', checkError);
       return NextResponse.json({ error: 'Error al verificar membresías' }, { status: 500 });
     }
 
-    if (activeMemberships && activeMemberships.length > 0) {
+    // Verificar si hay membresías activas y vigentes (no vencidas)
+    const hasActiveMemberships = activeMemberships?.some((m: any) => {
+      const endDate = new Date(m.end_date);
+      endDate.setHours(0, 0, 0, 0);
+      return m.status === 'active' && endDate >= today;
+    });
+
+    if (hasActiveMemberships) {
+      // Contar cuántas membresías activas hay
+      const activeCount = activeMemberships.filter((m: any) => {
+        const endDate = new Date(m.end_date);
+        endDate.setHours(0, 0, 0, 0);
+        return m.status === 'active' && endDate >= today;
+      }).length;
+
       return NextResponse.json(
-        { error: 'No se puede eliminar un plan con membresías activas. Desactívalo en su lugar.' },
+        { 
+          error: `No se puede eliminar este plan porque tiene ${activeCount} ${activeCount === 1 ? 'usuario activo' : 'usuarios activos'}. Debe esperar a que todas las membresías venzan o desactivar el plan en su lugar.`,
+          activeMembershipsCount: activeCount
+        },
         { status: 400 }
       );
     }

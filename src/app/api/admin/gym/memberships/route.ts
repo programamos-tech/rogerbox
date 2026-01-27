@@ -30,6 +30,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status');
     const clientInfoId = searchParams.get('client_info_id');
     const userId = searchParams.get('user_id');
+    const planId = searchParams.get('plan_id');
 
     let query = supabaseAdmin
       .from('gym_memberships')
@@ -46,6 +47,10 @@ export async function GET(request: NextRequest) {
 
     if (clientInfoId) {
       query = query.eq('client_info_id', clientInfoId);
+    }
+
+    if (planId) {
+      query = query.eq('plan_id', planId);
     }
 
     if (userId) {

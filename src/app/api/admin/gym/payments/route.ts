@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
     // Verificar que la membresía existe
     const { data: membership, error: membershipError } = await supabaseAdmin
       .from('gym_memberships')
-      .select('id, client_info_id, user_id, status')
+      .select('id, client_info_id, user_id, status, end_date, created_at')
       .eq('id', membership_id)
       .single();
 
@@ -148,6 +148,90 @@ export async function POST(request: NextRequest) {
         { error: 'El cliente no coincide con la membresía' },
         { status: 400 }
       );
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // Verificar si hay otra membresía activa para el MISMO plan (no permitir abonos del mismo plan)
+    // Solo bloquear si hay una membresía activa diferente a la que se está pagando
+    const { data: activeMembershipsSamePlan, error: activeMembershipsSamePlanError } = await supabaseAdmin
+      .from('gym_memberships')
+      .select('id, status, end_date, plan_id')
+      .eq('client_info_id', client_info_id)
+      .eq('plan_id', plan_id)
+      .eq('status', 'active')
+      .neq('id', membership_id); // Excluir la membresía actual
+
+    if (!activeMembershipsSamePlanError && activeMembershipsSamePlan) {
+      const hasActiveMembershipSamePlan = activeMembershipsSamePlan.some((m: any) => {
+        const endDate = new Date(m.end_date);
+        endDate.setHours(0, 0, 0, 0);
+        return endDate >= today;
+      });
+
+      if (hasActiveMembershipSamePlan) {
+        return NextResponse.json(
+          { error: 'Este cliente ya tiene una membresía activa para este plan. Debe esperar a que venza para poder renovar.' },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Verificar si la membresía que se está pagando está vencida
+    const membershipEndDate = new Date(membership.end_date);
+    membershipEndDate.setHours(0, 0, 0, 0);
+    const isMembershipExpired = membership.status === 'expired' || (membership.status === 'active' && membershipEndDate < today);
+
+    // Si la membresía NO está vencida (es activa o nueva), verificar si hay otras membresías vencidas
+    // Si está vencida, es la que se debe pagar, así que permitir
+    if (!isMembershipExpired) {
+      // Obtener todas las membresías del cliente
+      const { data: allMemberships, error: allMembershipsError } = await supabaseAdmin
+        .from('gym_memberships')
+        .select('id, status, end_date, plan_id, plan:gym_plans(name)')
+        .eq('client_info_id', client_info_id);
+
+      if (!allMembershipsError && allMemberships) {
+        // Buscar membresías vencidas de otros planes
+        const expiredMembershipsOtherPlans = allMemberships.filter((m: any) => {
+          if (m.id === membership_id) return false; // Excluir la membresía actual
+          const endDate = new Date(m.end_date);
+          endDate.setHours(0, 0, 0, 0);
+          return m.plan_id !== plan_id && (m.status === 'expired' || (m.status === 'active' && endDate < today));
+        });
+
+        if (expiredMembershipsOtherPlans.length > 0) {
+          // Hay membresías vencidas de otros planes, solo permitir pagar esas
+          const expiredMembership = expiredMembershipsOtherPlans[0];
+          const planName = expiredMembership.plan?.name || 'vencido';
+          return NextResponse.json(
+            { error: `Debes pagar primero el plan "${planName}" que está vencido.` },
+            { status: 400 }
+          );
+        }
+      }
+    }
+
+    // Verificar que la membresía específica que se está pagando no esté activa y vigente
+    // PERO permitir si es una membresía recién creada (creada hoy) - esto permite planes nuevos
+    if (membership.status === 'active') {
+      const endDate = new Date(membership.end_date);
+      endDate.setHours(0, 0, 0, 0);
+      
+      // Verificar si la membresía fue creada hoy (es un plan nuevo)
+      const membershipCreatedAt = new Date(membership.created_at);
+      membershipCreatedAt.setHours(0, 0, 0, 0);
+      const isNewlyCreated = membershipCreatedAt.getTime() === today.getTime();
+      
+      // Solo bloquear si está activa, vigente, y NO fue creada hoy (es una membresía antigua activa)
+      if (endDate >= today && !isNewlyCreated) {
+        // La membresía específica que se está pagando está activa y vigente desde antes
+        return NextResponse.json(
+          { error: 'Esta membresía está activa y vigente.' },
+          { status: 400 }
+        );
+      }
     }
 
     // Obtener user_id: primero del parámetro, luego de la membresía, luego del client_info

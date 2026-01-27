@@ -3,6 +3,7 @@
 import { useState, useEffect, useImperativeHandle, forwardRef } from 'react';
 import { Plus, Edit, Trash2, X, Save, DollarSign, Calendar, Dumbbell } from 'lucide-react';
 import { GymPlan } from '@/types/gym';
+import ConfirmDialog from './ConfirmDialog';
 
 export interface GymPlansManagementRef {
   openCreateModal: () => void;
@@ -21,6 +22,12 @@ const GymPlansManagement = forwardRef<GymPlansManagementRef>((props, ref) => {
     is_active: true,
   });
   const [displayPrice, setDisplayPrice] = useState('');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [planToDelete, setPlanToDelete] = useState<GymPlan | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [showEditWarning, setShowEditWarning] = useState(false);
+  const [pendingEditData, setPendingEditData] = useState<any>(null);
 
   // Función para formatear precio con separador de miles
   const formatPrice = (value: string) => {
@@ -56,15 +63,34 @@ const GymPlansManagement = forwardRef<GymPlansManagementRef>((props, ref) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    try {
-      const payload = {
-        name: formData.name.trim(),
-        description: formData.description.trim() || undefined,
-        price: parseFloat(parsePrice(formData.price)),
-        duration_days: parseInt(formData.duration_days),
-        is_active: formData.is_active,
-      };
+    
+    const payload = {
+      name: formData.name.trim(),
+      description: formData.description.trim() || undefined,
+      price: parseFloat(parsePrice(formData.price)),
+      duration_days: parseInt(formData.duration_days),
+      is_active: formData.is_active,
+    };
 
+    // Si estamos editando un plan, verificar si se cambió precio o duración
+    if (editingPlan) {
+      const priceChanged = payload.price !== editingPlan.price;
+      const durationChanged = payload.duration_days !== editingPlan.duration_days;
+      
+      if (priceChanged || durationChanged) {
+        // Guardar los datos pendientes y mostrar advertencia
+        setPendingEditData(payload);
+        setShowEditWarning(true);
+        return;
+      }
+    }
+
+    // Si no hay cambios en precio/duración o es un plan nuevo, proceder directamente
+    await savePlan(payload);
+  };
+
+  const savePlan = async (payload: any) => {
+    try {
       let response;
       if (editingPlan) {
         response = await fetch(`/api/admin/gym/plans/${editingPlan.id}`, {
@@ -87,11 +113,24 @@ const GymPlansManagement = forwardRef<GymPlansManagementRef>((props, ref) => {
 
       setShowForm(false);
       setEditingPlan(null);
+      setShowEditWarning(false);
+      setPendingEditData(null);
       resetForm();
       loadPlans();
     } catch (error: any) {
       alert(error.message || 'Error al guardar plan');
     }
+  };
+
+  const handleEditWarningConfirm = () => {
+    if (pendingEditData) {
+      savePlan(pendingEditData);
+    }
+  };
+
+  const handleEditWarningCancel = () => {
+    setShowEditWarning(false);
+    setPendingEditData(null);
   };
 
   const handleEdit = (plan: GymPlan) => {
@@ -108,11 +147,54 @@ const GymPlansManagement = forwardRef<GymPlansManagementRef>((props, ref) => {
     setShowForm(true);
   };
 
-  const handleDelete = async (plan: GymPlan) => {
-    if (!confirm(`¿Estás seguro de eliminar el plan "${plan.name}"?`)) return;
+  const handleDeleteClick = async (plan: GymPlan) => {
+    setPlanToDelete(plan);
+    setDeleteError(null);
+    setIsDeleting(true);
+    
+    // Verificar primero si hay usuarios activos antes de mostrar el modal
+    try {
+      const checkResponse = await fetch(`/api/admin/gym/memberships?plan_id=${plan.id}`);
+      
+      if (checkResponse.ok) {
+        const data = await checkResponse.json();
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        // Verificar si hay membresías activas y vigentes
+        const activeMemberships = data.filter((m: any) => {
+          const endDate = new Date(m.end_date);
+          endDate.setHours(0, 0, 0, 0);
+          return m.status === 'active' && endDate >= today;
+        });
+        
+        if (activeMemberships.length > 0) {
+          setDeleteError(`No se puede eliminar este plan porque tiene ${activeMemberships.length} ${activeMemberships.length === 1 ? 'usuario activo' : 'usuarios activos'}. Debe esperar a que todas las membresías venzan o desactivar el plan en su lugar.`);
+        }
+      }
+    } catch (error: any) {
+      console.error('Error verificando membresías:', error);
+      // Si hay error al verificar, permitir intentar eliminar (el backend lo validará)
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteModal(true);
+    }
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!planToDelete) return;
+
+    // Si hay un error mostrado (usuarios activos), solo cerrar el modal
+    if (deleteError) {
+      handleDeleteCancel();
+      return;
+    }
+
+    // Si llegamos aquí, no hay error, proceder con la eliminación
+    setIsDeleting(true);
 
     try {
-      const response = await fetch(`/api/admin/gym/plans/${plan.id}`, {
+      const response = await fetch(`/api/admin/gym/plans/${planToDelete.id}`, {
         method: 'DELETE',
       });
 
@@ -121,10 +203,21 @@ const GymPlansManagement = forwardRef<GymPlansManagementRef>((props, ref) => {
         throw new Error(error.error || 'Error al eliminar plan');
       }
 
+      // Éxito: cerrar modal y recargar planes
+      setShowDeleteModal(false);
+      setPlanToDelete(null);
       loadPlans();
     } catch (error: any) {
-      alert(error.message || 'Error al eliminar plan');
+      setDeleteError(error.message || 'Error al eliminar plan');
+    } finally {
+      setIsDeleting(false);
     }
+  };
+
+  const handleDeleteCancel = () => {
+    setShowDeleteModal(false);
+    setPlanToDelete(null);
+    setDeleteError(null);
   };
 
   const resetForm = () => {
@@ -342,7 +435,7 @@ const GymPlansManagement = forwardRef<GymPlansManagementRef>((props, ref) => {
                   Editar
                 </button>
                 <button
-                  onClick={() => handleDelete(plan)}
+                  onClick={() => handleDeleteClick(plan)}
                   className="px-3 py-2 rounded-lg bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
@@ -352,6 +445,46 @@ const GymPlansManagement = forwardRef<GymPlansManagementRef>((props, ref) => {
           ))}
         </div>
       )}
+
+      {/* Modal de confirmación de eliminación */}
+      <ConfirmDialog
+        isOpen={showDeleteModal}
+        onClose={handleDeleteCancel}
+        onConfirm={handleDeleteConfirm}
+        title={deleteError ? "No se puede eliminar" : "Eliminar Plan"}
+        message={
+          deleteError 
+            ? deleteError
+            : planToDelete
+            ? `¿Estás seguro de eliminar el plan "${planToDelete.name}"? Esta acción no se puede deshacer.`
+            : ''
+        }
+        type={deleteError ? 'danger' : 'warning'}
+        confirmText={deleteError ? "Entendido" : "Eliminar"}
+        cancelText={deleteError ? undefined : "Cancelar"}
+        isLoading={isDeleting}
+      />
+
+      {/* Modal de advertencia al editar precio/duración */}
+      <ConfirmDialog
+        isOpen={showEditWarning}
+        onClose={handleEditWarningCancel}
+        onConfirm={handleEditWarningConfirm}
+        title="Confirmar Cambios en el Plan"
+        message={
+          editingPlan && pendingEditData
+            ? `Estás a punto de modificar el ${pendingEditData.price !== editingPlan.price && pendingEditData.duration_days !== editingPlan.duration_days ? 'precio y la duración' : pendingEditData.price !== editingPlan.price ? 'precio' : 'duración'} del plan "${editingPlan.name}".
+
+⚠️ Importante: Los cambios que realices solo aplicarán a las nuevas facturas y membresías generadas a partir de este momento. Las facturas y membresías ya creadas con el precio y duración anteriores NO se modificarán.
+
+¿Deseas continuar con los cambios?`
+            : ''
+        }
+        type="info"
+        confirmText="Sí, continuar"
+        cancelText="Cancelar"
+        isLoading={false}
+      />
     </div>
   );
 });

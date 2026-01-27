@@ -50,6 +50,10 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
   const [selectedPlanFilter, setSelectedPlanFilter] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
+  const [hasActiveMembership, setHasActiveMembership] = useState(false);
+  const [checkingMembership, setCheckingMembership] = useState(false);
+  const [expiredMembershipToPay, setExpiredMembershipToPay] = useState<any>(null);
+  const [urlParamsProcessed, setUrlParamsProcessed] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -65,25 +69,49 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
 
   // Leer parámetros de URL para abrir modal automáticamente
   useEffect(() => {
-    if (typeof window !== 'undefined' && !loading && clients.length > 0 && plans.length > 0) {
+    if (typeof window !== 'undefined' && !loading && !loadingPayments && clients.length > 0 && plans.length > 0 && !urlParamsProcessed) {
       const params = new URLSearchParams(window.location.search);
       const clientId = params.get('clientId');
       const planId = params.get('planId');
       
-      if ((clientId || planId) && !showForm) {
+      if (clientId || planId) {
         const client = clientId ? clients.find(c => c.id === clientId) : null;
+        // Buscar el plan incluso si está inactivo (para planes vencidos)
         const plan = planId ? plans.find(p => p.id === planId) : null;
         
+        // Debug: verificar si el plan se encontró
+        if (planId && !plan) {
+          console.log('🔍 Plan no encontrado:', {
+            planIdBuscado: planId,
+            planesDisponibles: plans.map(p => ({ id: p.id, name: p.name, is_active: p.is_active })),
+            totalPlanes: plans.length
+          });
+        } else if (planId && plan) {
+          console.log('✅ Plan encontrado:', { id: plan.id, name: plan.name });
+        }
+        
+        // Solo procesar si encontramos al menos uno de los dos
         if (client || plan) {
+          // Marcar como procesado primero para evitar múltiples ejecuciones
+          setUrlParamsProcessed(true);
+          
+          // Primero establecer el cliente si existe
           if (client) {
             setSelectedClient(client);
             setFormData(prev => ({
               ...prev,
               client_info_id: clientId!,
             }));
+            setClientSearchTerm('');
+            setError('');
+            setHasActiveMembership(false);
+            setCheckingMembership(false);
+            setExpiredMembershipToPay(null);
           }
           
+          // Luego establecer el plan si existe
           if (plan) {
+            // Establecer el plan directamente
             setSelectedPlan(plan);
             const startDate = new Date();
             const endDate = new Date(startDate);
@@ -96,16 +124,35 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
               period_start: startDate.toISOString().split('T')[0],
               period_end: endDate.toISOString().split('T')[0],
             }));
+            
+            // Verificar membresía activa para este plan si hay cliente seleccionado
+            if (client) {
+              // Usar setTimeout para asegurar que el estado se actualice primero
+              setTimeout(() => {
+                checkActiveMembershipForPlan(client.id, plan.id);
+              }, 300);
+            }
+          } else if (planId) {
+            // Si el plan no se encontró, mostrar un error
+            console.warn(`Plan con ID ${planId} no encontrado en la lista de planes disponibles. Planes disponibles:`, plans.map(p => ({ id: p.id, name: p.name })));
+            setError(`El plan seleccionado no está disponible. Por favor, selecciona otro plan.`);
           }
           
+          // Abrir el modal
           setShowForm(true);
-          // Limpiar los parámetros de la URL
-          const newUrl = window.location.pathname + '?tab=gym-payments';
-          window.history.replaceState({}, '', newUrl);
+          
+          // Limpiar los parámetros de la URL después de un breve delay
+          setTimeout(() => {
+            const newUrl = window.location.pathname + '?tab=gym-payments';
+            window.history.replaceState({}, '', newUrl);
+          }, 300);
         }
+      } else {
+        // Si no hay parámetros, marcar como procesado también
+        setUrlParamsProcessed(true);
       }
     }
-  }, [loading, clients, plans, showForm]);
+  }, [loading, loadingPayments, clients, plans, urlParamsProcessed]);
 
   useEffect(() => {
     if (selectedPlan) {
@@ -113,14 +160,77 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
       const endDate = new Date(startDate);
       endDate.setDate(endDate.getDate() + selectedPlan.duration_days);
       
-      setFormData({
-        ...formData,
+      setFormData(prev => ({
+        ...prev,
         plan_id: selectedPlan.id,
         amount: selectedPlan.price,
         period_end: endDate.toISOString().split('T')[0],
-      });
+      }));
+      
+      // Verificar si hay membresía activa para este plan específico
+      if (selectedClient) {
+        checkActiveMembershipForPlan(selectedClient.id, selectedPlan.id);
+      }
     }
-  }, [selectedPlan, formData.period_start]);
+  }, [selectedPlan, formData.period_start, selectedClient]);
+
+  const checkActiveMembershipForPlan = async (clientId: string, planId: string) => {
+    setCheckingMembership(true);
+    setError('');
+    setHasActiveMembership(false);
+    setExpiredMembershipToPay(null);
+    
+    try {
+      const membershipsRes = await fetch(
+        `/api/admin/gym/memberships?client_info_id=${clientId}`
+      );
+      
+      if (membershipsRes.ok) {
+        const memberships = await membershipsRes.json();
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        // Buscar membresía activa SOLO para este plan específico
+        const activeMembershipForThisPlan = memberships.find(
+          (m: any) => {
+            const endDate = new Date(m.end_date);
+            endDate.setHours(0, 0, 0, 0);
+            return m.plan_id === planId && m.status === 'active' && endDate >= today;
+          }
+        );
+        
+        if (activeMembershipForThisPlan) {
+          setHasActiveMembership(true);
+          setError('Este cliente ya tiene una membresía activa para este plan. Debe esperar a que venza para poder renovar.');
+          return;
+        }
+        
+        // Verificar si hay alguna membresía vencida (estado "Renovar") para OTRO plan
+        const expiredMemberships = memberships.filter((m: any) => {
+          const endDate = new Date(m.end_date);
+          endDate.setHours(0, 0, 0, 0);
+          return (m.status === 'expired' || (m.status === 'active' && endDate < today)) && m.plan_id !== planId;
+        });
+        
+        if (expiredMemberships.length > 0) {
+          // Hay membresías vencidas de otros planes, solo permitir pagar esas
+          const expiredMembership = expiredMemberships[0]; // Tomar la primera vencida
+          setExpiredMembershipToPay(expiredMembership);
+          setError(`Debes pagar primero el plan "${expiredMembership.plan?.name || 'vencido'}" que está vencido.`);
+          setHasActiveMembership(true); // Usar el mismo flag para bloquear
+        } else {
+          // Limpiar error si no hay membresía activa ni vencida para otros planes
+          setError('');
+          setHasActiveMembership(false);
+          setExpiredMembershipToPay(null);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking membership:', error);
+    } finally {
+      setCheckingMembership(false);
+    }
+  };
 
   const loadData = async () => {
     try {
@@ -140,7 +250,8 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
       ]);
 
       setClients(clientsData || []);
-      setPlans((plansData || []).filter((p: GymPlan) => p.is_active));
+      // Cargar todos los planes (activos e inactivos) para permitir pagar planes vencidos
+      setPlans(plansData || []);
     } catch (error) {
       console.error('Error loading data:', error);
       setError('Error al cargar datos');
@@ -164,10 +275,14 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
     }
   };
 
-  const handleClientSelect = (client: GymClientInfo) => {
+  const handleClientSelect = async (client: GymClientInfo) => {
     setSelectedClient(client);
     setFormData({ ...formData, client_info_id: client.id });
     setClientSearchTerm('');
+    setError('');
+    setHasActiveMembership(false);
+    setCheckingMembership(false);
+    setExpiredMembershipToPay(null);
   };
 
   const handlePlanSelect = (plan: GymPlan) => {
@@ -186,7 +301,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
         return;
       }
 
-      // Primero, verificar si existe una membresía activa para este cliente y plan
+      // Primero, verificar si existe una membresía activa para este cliente y plan específico
       const membershipsRes = await fetch(
         `/api/admin/gym/memberships?client_info_id=${formData.client_info_id}`
       );
@@ -194,15 +309,54 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
 
       if (membershipsRes.ok) {
         const memberships = await membershipsRes.json();
-        const activeMembership = memberships.find(
-          (m: any) => m.plan_id === formData.plan_id && m.status === 'active' && new Date(m.end_date) >= new Date()
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        // Buscar membresía activa SOLO para el plan específico que se está pagando
+        const activeMembershipForThisPlan = memberships.find(
+          (m: any) => {
+            const endDate = new Date(m.end_date);
+            endDate.setHours(0, 0, 0, 0);
+            return m.plan_id === formData.plan_id && m.status === 'active' && endDate >= today;
+          }
         );
 
-        if (activeMembership) {
-          // Usar membresía existente
-          membershipId = activeMembership.id;
+        if (activeMembershipForThisPlan) {
+          // Si tiene membresía activa para ESTE plan específico, no permitir crear nuevo pago (no hay abonos)
+          setError('Este cliente ya tiene una membresía activa para este plan. Debe esperar a que venza para poder renovar.');
+          setIsSubmitting(false);
+          return;
+        }
+        
+        // Verificar si hay membresías vencidas (estado "Renovar") para OTROS planes
+        const expiredMembershipsOtherPlans = memberships.filter((m: any) => {
+          const endDate = new Date(m.end_date);
+          endDate.setHours(0, 0, 0, 0);
+          return m.plan_id !== formData.plan_id && (m.status === 'expired' || (m.status === 'active' && endDate < today));
+        });
+        
+        // Buscar membresía vencida para este plan específico para reutilizarla
+        const expiredMembershipForThisPlan = memberships.find(
+          (m: any) => {
+            const endDate = new Date(m.end_date);
+            endDate.setHours(0, 0, 0, 0);
+            return m.plan_id === formData.plan_id && (m.status === 'expired' || (m.status === 'active' && endDate < today));
+          }
+        );
+
+        // Si hay membresías vencidas de otros planes, solo permitir pagar esas
+        if (expiredMembershipsOtherPlans.length > 0 && !expiredMembershipForThisPlan) {
+          const expiredMembership = expiredMembershipsOtherPlans[0];
+          setError(`Debes pagar primero el plan "${expiredMembership.plan?.name || 'vencido'}" que está vencido.`);
+          setIsSubmitting(false);
+          return;
+        }
+
+        if (expiredMembershipForThisPlan) {
+          // Usar membresía vencida existente (se renovará con el nuevo pago)
+          membershipId = expiredMembershipForThisPlan.id;
         } else {
-          // Crear nueva membresía
+          // No hay membresía para este plan (es un plan nuevo), crear nueva
           const membershipRes = await fetch('/api/admin/gym/memberships', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -224,7 +378,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
           membershipId = membershipData.id;
         }
       } else {
-        // Si no se puede verificar, crear nueva membresía
+        // Si no se puede verificar membresías, crear nueva membresía
         const membershipRes = await fetch('/api/admin/gym/memberships', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -294,6 +448,10 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
     setSelectedPlan(null);
     setClientSearchTerm('');
     setError('');
+    setHasActiveMembership(false);
+    setCheckingMembership(false);
+    setExpiredMembershipToPay(null);
+    setUrlParamsProcessed(false);
   };
 
   const filteredClients = clients.filter((client) => {
@@ -807,11 +965,11 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmitting || !selectedClient || !selectedPlan}
+                  disabled={isSubmitting || !selectedClient || !selectedPlan || hasActiveMembership || checkingMembership}
                   className="px-6 py-3 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-white/90 font-semibold transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Save className="w-4 h-4" />
-                  {isSubmitting ? 'Registrando...' : 'Registrar Pago'}
+                  {isSubmitting ? 'Registrando...' : checkingMembership ? 'Verificando...' : 'Registrar Pago'}
                 </button>
               </div>
             </form>

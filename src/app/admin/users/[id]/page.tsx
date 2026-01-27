@@ -1375,8 +1375,26 @@ export default function UserDetailPage() {
                                   
                                   {/* Botón Registrar Pago */}
                                   {(() => {
-                                    const clientInfoId = userData.isUnregisteredClient ? userData.id : (membership.client_info_id || userData.id);
+                                    // Obtener el client_info_id correcto
+                                    let clientInfoId: string | null = null;
+                                    
+                                    if (userData.isUnregisteredClient) {
+                                      // Cliente físico sin registro online
+                                      clientInfoId = userData.id;
+                                    } else {
+                                      // Usuario registrado: usar client_info_id de la membresía o del userData
+                                      clientInfoId = membership.client_info_id || userData.client_info_id || userData.gym_memberships?.[0]?.client_info_id || null;
+                                    }
+                                    
                                     const planId = membership.plan?.id || null;
+                                    
+                                    if (!clientInfoId) {
+                                      return (
+                                        <p className="text-xs text-gray-400 dark:text-white/40 text-center">
+                                          No se puede registrar pago: falta información del cliente
+                                        </p>
+                                      );
+                                    }
                                     
                                     const handleRegisterPayment = () => {
                                       router.push(`/admin?tab=gym-payments&clientId=${clientInfoId}${planId ? `&planId=${planId}` : ''}`);

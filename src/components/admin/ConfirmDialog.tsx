@@ -32,9 +32,9 @@ export default function ConfirmDialog({
       case 'danger':
         return <XCircle className="w-8 h-8 text-red-500" />;
       case 'warning':
-        return <AlertTriangle className="w-8 h-8 text-yellow-500" />;
+        return <AlertTriangle className="w-8 h-8 text-[#164151]" />;
       case 'info':
-        return <Info className="w-8 h-8 text-blue-500" />;
+        return <Info className="w-8 h-8 text-[#164151]" />;
       case 'success':
         return <CheckCircle className="w-8 h-8 text-green-500" />;
       default:
@@ -46,17 +46,17 @@ export default function ConfirmDialog({
     switch (type) {
       case 'danger':
         return {
-          confirm: 'bg-red-600 hover:bg-red-700 text-white',
+          confirm: 'bg-[#164151] hover:bg-[#1a4d5f] text-white',
           cancel: 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300'
         };
       case 'warning':
         return {
-          confirm: 'bg-yellow-600 hover:bg-yellow-700 text-white',
+          confirm: 'bg-[#164151] hover:bg-[#1a4d5f] text-white',
           cancel: 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300'
         };
       case 'info':
         return {
-          confirm: 'bg-blue-600 hover:bg-blue-700 text-white',
+          confirm: 'bg-[#164151] hover:bg-[#1a4d5f] text-white',
           cancel: 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300'
         };
       case 'success':
@@ -103,13 +103,15 @@ export default function ConfirmDialog({
 
         {/* Footer */}
         <div className="flex items-center justify-end space-x-3 p-6 border-t border-gray-200 dark:border-gray-700">
-          <button
-            onClick={onClose}
-            disabled={isLoading}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${buttonStyles.cancel}`}
-          >
-            {cancelText}
-          </button>
+          {cancelText && (
+            <button
+              onClick={onClose}
+              disabled={isLoading}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${buttonStyles.cancel}`}
+            >
+              {cancelText}
+            </button>
+          )}
           <button
             onClick={onConfirm}
             disabled={isLoading}
