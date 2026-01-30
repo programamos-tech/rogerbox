@@ -892,7 +892,7 @@ function AdminDashboardContent() {
                   {activeItem.description}
                 </p>
               </div>
-              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-[#85ea10]/10 text-[#85ea10] text-[10px] font-bold uppercase tracking-wider">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 text-[10px] font-bold uppercase tracking-wider">
                 beta
               </span>
             </div>
@@ -1806,7 +1806,7 @@ function AdminDashboardContent() {
                                           // Si solo tiene cursos online
                                           if (allMemberships.length === 0 && allCourses.length > 0) {
                                             return (
-                                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[#85ea10]/30 text-[#164151] dark:bg-[#85ea10]/30 dark:text-[#85ea10]">
+                                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400">
                                                 <CheckCircle className="w-3 h-3" />
                                                 Al día
                                               </span>
@@ -1818,7 +1818,7 @@ function AdminDashboardContent() {
                                             // Todos activos
                                             if (activeMemberships.length === allMemberships.length && expiredMemberships.length === 0) {
                                               return (
-                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[#85ea10]/30 text-[#164151] dark:bg-[#85ea10]/30 dark:text-[#85ea10]">
+                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400">
                                                   <CheckCircle className="w-3 h-3" />
                                                   Al día
                                                 </span>
@@ -1850,7 +1850,7 @@ function AdminDashboardContent() {
                                             // Si todas las membresías están activas
                                             if (activeMemberships.length === allMemberships.length && expiredMemberships.length === 0) {
                                               return (
-                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[#85ea10]/30 text-[#164151] dark:bg-[#85ea10]/30 dark:text-[#85ea10]">
+                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400">
                                                   <CheckCircle className="w-3 h-3" />
                                                   Al día
                                                 </span>
@@ -2043,16 +2043,16 @@ function AdminDashboardContent() {
                             let statusBadge = null;
 
                             if (user.is_inactive) {
-                              statusColor = 'border-red-500';
-                              statusBadge = <span className="bg-red-100 text-red-600 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">Inactivo</span>;
+                              statusColor = 'border-red-400/60';
+                              statusBadge = <span className="bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">Inactivo</span>;
                             } else if (hasActive) {
-                              statusColor = 'border-[#85ea10]';
-                              statusBadge = <span className="bg-[#85ea10]/20 text-[#164151] text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">Al día</span>;
+                              statusColor = 'border-emerald-400/50';
+                              statusBadge = <span className="bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">Al día</span>;
                             } else if (hasExpired) {
-                              statusColor = 'border-orange-400';
-                              statusBadge = <span className="bg-orange-100 text-orange-600 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">Renovación</span>;
+                              statusColor = 'border-orange-400/60';
+                              statusBadge = <span className="bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">Renovación</span>;
                             } else {
-                              statusBadge = <span className="bg-gray-100 text-gray-500 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">Sin productos</span>;
+                              statusBadge = <span className="bg-gray-100 dark:bg-gray-500/20 text-gray-500 dark:text-gray-400 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">Sin productos</span>;
                             }
 
                             return (
@@ -2122,21 +2122,36 @@ function AdminDashboardContent() {
                                 </div>
 
                                 <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100 dark:border-white/5">
-                                  <div onClick={(e) => e.stopPropagation()} className="flex items-center gap-2 overflow-hidden">
+                                  <div onClick={(e) => e.stopPropagation()} className="flex items-center gap-2 overflow-hidden flex-wrap">
                                     {(user.activeCoursePurchases || []).length > 0 && (
                                       <div className="flex items-center gap-1 bg-blue-50 dark:bg-blue-500/10 px-2 py-1 rounded-lg">
                                         <BookOpen className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                                         <span className="text-[10px] font-bold text-blue-700 dark:text-blue-300">{(user.activeCoursePurchases || []).length}</span>
                                       </div>
                                     )}
-                                    {activeMemberships.length > 0 && (
-                                      <div className="flex items-center gap-1 bg-[#85ea10]/10 px-2 py-1 rounded-lg">
-                                        <Dumbbell className="w-3.5 h-3.5 text-[#164151] dark:text-[#85ea10]" />
-                                        <span className="text-[10px] font-bold text-[#164151] dark:text-[#85ea10] leading-none">
-                                          {activeMemberships[0].plan?.name?.split(' ')[0]}
+                                    {/* Mostrar planes activos */}
+                                    {activeMemberships.length > 0 && activeMemberships.map((membership: any, idx: number) => (
+                                      <div key={membership.id || idx} className="flex items-center gap-1 bg-emerald-100 dark:bg-emerald-500/15 px-2 py-1 rounded-lg">
+                                        <Dumbbell className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
+                                        <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 leading-none">
+                                          {membership.plan?.name?.split(' ')[0] || 'Plan'}
                                         </span>
                                       </div>
-                                    )}
+                                    ))}
+                                    {/* Mostrar planes vencidos (para renovar) */}
+                                    {memberships.filter((m: any) => {
+                                      const endDate = new Date(m.end_date);
+                                      endDate.setHours(0, 0, 0, 0);
+                                      return endDate < today;
+                                    }).map((membership: any, idx: number) => (
+                                      <div key={`expired-${membership.id || idx}`} className="flex items-center gap-1 bg-orange-100 dark:bg-orange-500/10 px-2 py-1 rounded-lg">
+                                        <Dumbbell className="w-3.5 h-3.5 text-orange-600 dark:text-orange-400" />
+                                        <span className="text-[10px] font-bold text-orange-600 dark:text-orange-400 leading-none">
+                                          {membership.plan?.name?.split(' ')[0] || 'Plan'}
+                                        </span>
+                                        <AlertTriangle className="w-3 h-3 text-orange-600 dark:text-orange-400" />
+                                      </div>
+                                    ))}
                                   </div>
 
                                   <div className="flex items-center gap-1 text-[#164151]/30 dark:text-white/20 font-bold uppercase text-[9px] tracking-widest group-hover:text-[#85ea10] transition-colors">
@@ -2408,7 +2423,7 @@ function AdminDashboardContent() {
                       </div>
                       <span
                         className={`px-1.5 py-0.5 rounded text-xs font-medium flex-shrink-0 ${product.isActive
-                          ? 'bg-[#85ea10]/30 text-[#164151] dark:bg-[#85ea10]/30 dark:text-[#85ea10]'
+                          ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400'
                           : 'bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400'
                           }`}
                       >

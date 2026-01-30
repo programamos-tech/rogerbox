@@ -10,7 +10,7 @@ export default function VersionFooter() {
                 <div className="flex items-center justify-between h-12">
                     {/* Version Badge */}
                     <div className="flex items-center gap-2">
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-[#85ea10]/10 text-[#85ea10] text-xs font-bold uppercase tracking-wider">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-[#164151] dark:bg-emerald-500/15 text-white dark:text-emerald-400 text-xs font-bold uppercase tracking-wider">
                             v1.0.0-beta
                         </span>
                     </div>
@@ -20,7 +20,7 @@ export default function VersionFooter() {
                         href="https://programamos.studio"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 text-xs text-[#164151]/60 dark:text-white/40 hover:text-[#85ea10] dark:hover:text-[#85ea10] transition-colors group"
+                        className="flex items-center gap-1.5 text-xs text-[#164151]/60 dark:text-white/40 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors group"
                     >
                         <span className="font-medium">Powered by</span>
                         <span className="font-bold">programamos.st</span>

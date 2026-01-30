@@ -708,7 +708,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-20">
       {/* Form Modal */}
       {showForm && (
         <div className="fixed inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
