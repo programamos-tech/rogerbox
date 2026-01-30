@@ -1032,7 +1032,7 @@ export default function DashboardPage() {
       </header>
 
       {/* Main Content - Layout optimizado sin scroll */}
-      <main className="max-w-full mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-3 sm:py-4 relative">
+      <main className="max-w-full mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-3 sm:py-4 pb-20 relative">
         {/* CURSOS COMPRADOS - Banner de ancho completo */}
         {hasActivePurchases && purchases.length > 0 && (
           <div className="mb-4 sm:mb-6 md:mb-8 -mx-3 sm:-mx-4 md:-mx-6 lg:-mx-8">

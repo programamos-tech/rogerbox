@@ -984,7 +984,7 @@ function AdminDashboardContent() {
         </header>
 
         {/* Page Content */}
-        <div className="flex-1 overflow-y-auto p-4 lg:p-8">
+        <div className="flex-1 overflow-y-auto p-4 lg:p-8 pb-20">
           {/* Overview Tab - Nuevo Dashboard de Ingresos */}
           {activeTab === 'overview' && (
             <div className="space-y-6">
