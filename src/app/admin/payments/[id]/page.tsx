@@ -46,7 +46,7 @@ const menuSections = [
       { id: 'users', label: 'Usuarios', icon: Users, description: 'Gestiona usuarios y clientes físicos' },
       { id: 'gym-plans', label: 'Planes', icon: Dumbbell, description: 'Gestionar planes del gimnasio' },
       { id: 'gym-payments', label: 'Pagos', icon: CreditCard, description: 'Facturar planes a clientes físicos' },
-      // { id: 'gym-collections', label: 'Cobranza', icon: AlertCircle, description: 'Cobranza y seguimiento' },
+
     ],
   },
   {
@@ -77,7 +77,7 @@ export default function PaymentDetailPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const paymentId = params?.id as string;
-  
+
   // Encontrar el item activo (Pagos)
   const activeItem = menuSections
     .flatMap((section) => section.items)
@@ -120,7 +120,7 @@ export default function PaymentDetailPage() {
       }
 
       // Buscar el pago específico
-      const foundPayment = Array.isArray(data.payments) 
+      const foundPayment = Array.isArray(data.payments)
         ? data.payments.find((p: GymPayment) => p.id === paymentId)
         : data.payment;
 
@@ -344,10 +344,9 @@ export default function PaymentDetailPage() {
                       className={`
                         w-full flex items-center gap-3 px-4 py-2.5 rounded-lg
                         transition-all duration-200 group
-                        ${
-                          isActive
-                            ? 'bg-[#85ea10]/20 dark:bg-[#85ea10]/20 text-[#164151] dark:text-white'
-                            : 'text-[#164151]/80 dark:text-white/60 hover:text-[#164151] dark:hover:text-white hover:bg-gray-50 dark:hover:bg-white/5'
+                        ${isActive
+                          ? 'bg-[#85ea10]/20 dark:bg-[#85ea10]/20 text-[#164151] dark:text-white'
+                          : 'text-[#164151]/80 dark:text-white/60 hover:text-[#164151] dark:hover:text-white hover:bg-gray-50 dark:hover:bg-white/5'
                         }
                         ${sidebarCollapsed ? 'justify-center' : ''}
                       `}

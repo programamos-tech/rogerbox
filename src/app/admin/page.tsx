@@ -8,7 +8,7 @@ import ConfirmDialog from '@/components/admin/ConfirmDialog';
 import CourseCreator from '@/components/admin/CourseCreator';
 import GymPlansManagement, { GymPlansManagementRef } from '@/components/admin/GymPlansManagement';
 import GymPaymentsManagement, { GymPaymentsManagementRef } from '@/components/admin/GymPaymentsManagement';
-import GymCollectionsManagement from '@/components/admin/GymCollectionsManagement';
+
 import GymClientForm from '@/components/admin/GymClientForm';
 import { supabaseAdmin } from '@/lib/supabase';
 import { supabase } from '@/lib/supabase-browser';
@@ -165,7 +165,7 @@ const menuSections = [
       { id: 'users', label: 'Usuarios', icon: Users, description: 'Gestiona usuarios y clientes físicos' },
       { id: 'gym-plans', label: 'Planes', icon: Dumbbell, description: 'Gestionar planes del gimnasio' },
       { id: 'gym-payments', label: 'Pagos', icon: CreditCard, description: 'Facturar planes a clientes físicos' },
-      // { id: 'gym-collections', label: 'Cobranza', icon: AlertCircle, description: 'Cobranza y seguimiento' },
+
     ],
   },
   {
@@ -267,7 +267,7 @@ function AdminDashboardContent() {
     title: '',
     message: '',
     type: 'danger',
-    onConfirm: () => {},
+    onConfirm: () => { },
     isLoading: false,
   });
   const gymPlansRef = useRef<GymPlansManagementRef>(null);
@@ -277,7 +277,7 @@ function AdminDashboardContent() {
     user: null,
     position: null,
   });
-  
+
   // Estados para el nuevo dashboard de ingresos
   const [revenueStats, setRevenueStats] = useState<{
     fisica?: { total: number; cash: number; transfer: number; mixed: number; count: number };
@@ -307,7 +307,7 @@ function AdminDashboardContent() {
   useEffect(() => {
     const tabParam = searchParams.get('tab');
     const validTabs = menuSections.flatMap((section) => section.items.map((item) => item.id));
-    
+
     if (tabParam && validTabs.includes(tabParam)) {
       // Si hay un tab válido en la URL, usarlo
       setActiveTab(tabParam);
@@ -364,7 +364,7 @@ function AdminDashboardContent() {
     if (activeTab === 'overview') {
       let startDate = '';
       let endDate = '';
-      
+
       if (dateFilter === 'today') {
         const today = new Date();
         startDate = today.toISOString().split('T')[0];
@@ -377,7 +377,7 @@ function AdminDashboardContent() {
           return; // No cargar si no hay fechas personalizadas
         }
       }
-      
+
       if (startDate && endDate) {
         loadRevenueStats(startDate, endDate, sedeFilter);
         if (dateFilter === 'today') {
@@ -392,11 +392,11 @@ function AdminDashboardContent() {
       setLoading(true);
       const response = await fetch('/api/admin/dashboard-stats');
       const data = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(data.error || 'Error al cargar estadísticas');
       }
-      
+
       setStats(data);
     } catch (error) {
       console.error('Error loading admin data:', error);
@@ -410,11 +410,11 @@ function AdminDashboardContent() {
       setLoadingRevenue(true);
       const response = await fetch(`/api/admin/revenue-stats?start_date=${startDate}&end_date=${endDate}&sede=${sede}`);
       const data = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(data.error || 'Error al cargar ingresos');
       }
-      
+
       // Convertir array de resultados a objeto por sede
       const statsBySede: {
         fisica?: { total: number; cash: number; transfer: number; mixed: number; count: number };
@@ -435,7 +435,7 @@ function AdminDashboardContent() {
           }
         });
       }
-      
+
       setRevenueStats(statsBySede);
     } catch (error) {
       console.error('Error loading revenue stats:', error);
@@ -450,22 +450,22 @@ function AdminDashboardContent() {
       setLoadingWeeklyData(true);
       const today = new Date();
       const weeklyDataArray: { date: string; amount: number; dayName: string }[] = [];
-      
+
       // Obtener datos de los últimos 7 días
       for (let i = 6; i >= 0; i--) {
         const date = new Date(today);
         date.setDate(date.getDate() - i);
         const dateStr = date.toISOString().split('T')[0];
-        
+
         const response = await fetch(`/api/admin/revenue-stats?start_date=${dateStr}&end_date=${dateStr}&sede=${sedeFilter}`);
         const data = await response.json();
-        
+
         let totalAmount = 0;
         if (data.results) {
           const ambasData = data.results.find((r: any) => r.sede === 'ambas');
           const fisicaData = data.results.find((r: any) => r.sede === 'fisica');
           const onlineData = data.results.find((r: any) => r.sede === 'online');
-          
+
           if (sedeFilter === 'ambas' && ambasData) {
             totalAmount = ambasData.total;
           } else if (sedeFilter === 'fisica' && fisicaData) {
@@ -474,7 +474,7 @@ function AdminDashboardContent() {
             totalAmount = onlineData.total;
           }
         }
-        
+
         const dayName = date.toLocaleDateString('es-ES', { weekday: 'short' });
         weeklyDataArray.push({
           date: dateStr,
@@ -482,7 +482,7 @@ function AdminDashboardContent() {
           dayName: dayName.charAt(0).toUpperCase() + dayName.slice(1),
         });
       }
-      
+
       setWeeklyData(weeklyDataArray);
     } catch (error) {
       console.error('Error loading weekly data:', error);
@@ -527,11 +527,11 @@ function AdminDashboardContent() {
       setLoadingUsers(true);
       const response = await fetch('/api/admin/users');
       const data = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(data.error || 'Error al cargar usuarios');
       }
-      
+
       setUsers(data.users || []);
     } catch (error) {
       console.error('Error loading users:', error);
@@ -666,7 +666,7 @@ function AdminDashboardContent() {
 
       // Usar API route del servidor (service_role key solo funciona en servidor)
       console.log('📝 Eliminando curso vía API...');
-      
+
       const response = await fetch(`/api/admin/courses/${courseId}`, {
         method: 'DELETE',
         credentials: 'include', // Asegurar que las cookies se envíen
@@ -684,7 +684,7 @@ function AdminDashboardContent() {
       console.log('✅ Curso eliminado exitosamente:', result);
 
       setCourses((prev) => prev.filter((course) => course.id !== courseId));
-      
+
       // Cerrar el diálogo de confirmación sin mostrar modal de éxito
       setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
     } catch (error) {
@@ -809,10 +809,9 @@ function AdminDashboardContent() {
                       className={`
                         w-full flex items-center gap-3 px-4 py-2.5 rounded-lg
                         transition-all duration-200 group
-                        ${
-                          isActive
-                            ? 'bg-[#85ea10]/20 dark:bg-[#85ea10]/20 text-[#164151] dark:text-white'
-                            : 'text-[#164151]/80 dark:text-white/60 hover:text-[#164151] dark:hover:text-white hover:bg-gray-50 dark:hover:bg-white/5'
+                        ${isActive
+                          ? 'bg-[#85ea10]/20 dark:bg-[#85ea10]/20 text-[#164151] dark:text-white'
+                          : 'text-[#164151]/80 dark:text-white/60 hover:text-[#164151] dark:hover:text-white hover:bg-gray-50 dark:hover:bg-white/5'
                         }
                         ${sidebarCollapsed ? 'justify-center' : ''}
                       `}
@@ -997,7 +996,7 @@ function AdminDashboardContent() {
                       <option value="fisica">Física</option>
                       <option value="online">En Línea</option>
                     </select>
-                    </div>
+                  </div>
 
                   {/* Filtro de Fecha */}
                   <div className="flex items-center gap-3 flex-wrap">
@@ -1014,29 +1013,27 @@ function AdminDashboardContent() {
                         )}
                       </button>
                       <label className="text-sm font-semibold text-[#164151] dark:text-white">Período:</label>
-                  </div>
+                    </div>
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => setDateFilter('today')}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                          dateFilter === 'today'
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${dateFilter === 'today'
                             ? 'bg-[#164151] text-white'
                             : 'bg-gray-100 dark:bg-white/10 text-[#164151] dark:text-white hover:bg-gray-200 dark:hover:bg-white/20'
-                        }`}
+                          }`}
                       >
                         Hoy
                       </button>
                       <button
                         onClick={() => setDateFilter('custom')}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                          dateFilter === 'custom'
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${dateFilter === 'custom'
                             ? 'bg-[#164151] text-white'
                             : 'bg-gray-100 dark:bg-white/10 text-[#164151] dark:text-white hover:bg-gray-200 dark:hover:bg-white/20'
-                        }`}
+                          }`}
                       >
                         Personalizado
                       </button>
-                </div>
+                    </div>
 
                     {/* Selector de fechas personalizadas */}
                     {dateFilter === 'custom' && (
@@ -1054,11 +1051,11 @@ function AdminDashboardContent() {
                           onChange={(e) => setCustomEndDate(e.target.value)}
                           className="px-3 py-2 rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-gray-800 text-[#164151] dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#164151]/50"
                         />
-                    </div>
+                      </div>
                     )}
                   </div>
                 </div>
-                </div>
+              </div>
 
               {/* Cards de Ingresos */}
               {loadingRevenue ? (
@@ -1066,8 +1063,8 @@ function AdminDashboardContent() {
                   <div className="text-center">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#164151] mx-auto mb-4"></div>
                     <p className="text-sm text-gray-500 dark:text-white/50">Cargando ingresos...</p>
-                    </div>
                   </div>
+                </div>
               ) : revenueStats ? (
                 <>
                   {/* Dashboard Sede Física */}
@@ -1078,44 +1075,44 @@ function AdminDashboardContent() {
                         <div className="flex items-center gap-3 mb-4">
                           <div className="w-9 h-9 rounded-lg bg-[#164151]/10 dark:bg-[#164151]/20 flex items-center justify-center">
                             <TrendingUp className="w-4 h-4 text-[#164151] dark:text-[#164151]" />
-                </div>
+                          </div>
                           <div>
                             <p className="text-xs font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide">Total</p>
                             <p className="text-[10px] text-gray-500 dark:text-white/50">Ingresos totales de la sede física</p>
-                    </div>
-                  </div>
+                          </div>
+                        </div>
                         <p className="text-xl font-semibold text-[#164151] dark:text-white">
                           {showRevenueNumbers ? `$${revenueStats.fisica.total.toLocaleString('es-CO')}` : '••••••'}
                         </p>
-              </div>
+                      </div>
 
                       {/* Efectivo */}
                       <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 p-6 shadow-lg">
                         <div className="flex items-center gap-3 mb-4">
                           <div className="w-9 h-9 rounded-lg bg-[#85ea10]/20 dark:bg-[#85ea10]/30 flex items-center justify-center">
                             <Wallet className="w-4 h-4 text-[#164151] dark:text-[#164151]" />
-                        </div>
+                          </div>
                           <div>
                             <p className="text-xs font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide">Efectivo</p>
                             <p className="text-[10px] text-gray-500 dark:text-white/50">Pagos recibidos en efectivo</p>
-                  </div>
+                          </div>
                         </div>
                         <p className="text-xl font-semibold text-[#164151] dark:text-white">
                           {showRevenueNumbers ? `$${revenueStats.fisica.cash.toLocaleString('es-CO')}` : '••••••'}
                         </p>
-                </div>
+                      </div>
 
                       {/* Transferencia */}
                       <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 p-6 shadow-lg">
                         <div className="flex items-center gap-3 mb-4">
                           <div className="w-9 h-9 rounded-lg bg-gray-100 dark:bg-white/10 flex items-center justify-center">
                             <CreditCard className="w-4 h-4 text-[#164151]/70 dark:text-white/70" />
-                        </div>
+                          </div>
                           <div>
                             <p className="text-xs font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide">Transferencia</p>
                             <p className="text-[10px] text-gray-500 dark:text-white/50">Pagos recibidos por transferencia bancaria</p>
-                  </div>
-                </div>
+                          </div>
+                        </div>
                         <p className="text-xl font-semibold text-[#164151] dark:text-white">
                           {showRevenueNumbers ? `$${revenueStats.fisica.transfer.toLocaleString('es-CO')}` : '••••••'}
                         </p>
@@ -1125,54 +1122,54 @@ function AdminDashboardContent() {
 
                   {/* Dashboard Sede En Línea */}
                   {sedeFilter === 'online' && revenueStats.online && (
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                       {/* Total */}
                       <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 p-6 shadow-lg">
                         <div className="flex items-center gap-3 mb-4">
                           <div className="w-9 h-9 rounded-lg bg-[#164151]/10 dark:bg-[#164151]/20 flex items-center justify-center">
                             <TrendingUp className="w-4 h-4 text-[#164151] dark:text-[#164151]" />
-                      </div>
+                          </div>
                           <div>
                             <p className="text-xs font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide">Total</p>
                             <p className="text-[10px] text-gray-500 dark:text-white/50">Ingresos totales de la sede en línea</p>
-                    </div>
-                    </div>
+                          </div>
+                        </div>
                         <p className="text-xl font-semibold text-[#164151] dark:text-white">
                           {showRevenueNumbers ? `$${revenueStats.online.total.toLocaleString('es-CO')}` : '••••••'}
                         </p>
-                    </div>
+                      </div>
 
                       {/* Pagos Online */}
                       <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 p-6 shadow-lg">
                         <div className="flex items-center gap-3 mb-4">
                           <div className="w-9 h-9 rounded-lg bg-gray-100 dark:bg-white/10 flex items-center justify-center">
                             <CreditCard className="w-4 h-4 text-[#164151]/70 dark:text-white/70" />
-                      </div>
+                          </div>
                           <div>
                             <p className="text-xs font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide">Pagos Online</p>
                             <p className="text-[10px] text-gray-500 dark:text-white/50">Pagos procesados electrónicamente</p>
-                    </div>
+                          </div>
                         </div>
                         <p className="text-xl font-semibold text-[#164151] dark:text-white">
                           {showRevenueNumbers ? `$${revenueStats.online.transfer.toLocaleString('es-CO')}` : '••••••'}
                         </p>
-                    </div>
+                      </div>
 
                       {/* Transacciones */}
                       <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 p-6 shadow-lg">
                         <div className="flex items-center gap-3 mb-4">
                           <div className="w-9 h-9 rounded-lg bg-gray-100 dark:bg-white/10 flex items-center justify-center">
                             <ShoppingCart className="w-4 h-4 text-[#85ea10] dark:text-[#85ea10]" />
-                      </div>
+                          </div>
                           <div>
                             <p className="text-xs font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide">Transacciones</p>
                             <p className="text-[10px] text-gray-500 dark:text-white/50">Número total de ventas realizadas</p>
-                    </div>
-                    </div>
+                          </div>
+                        </div>
                         <p className="text-xl font-semibold text-[#164151] dark:text-white">
                           {showRevenueNumbers ? revenueStats.online.count : '•••'}
                         </p>
-                </div>
+                      </div>
                     </div>
                   )}
 
@@ -1184,7 +1181,7 @@ function AdminDashboardContent() {
                         <div className="flex items-center gap-3 mb-4">
                           <div className="w-9 h-9 rounded-lg bg-[#164151]/10 dark:bg-[#164151]/20 flex items-center justify-center">
                             <TrendingUp className="w-4 h-4 text-[#164151] dark:text-[#164151]" />
-                    </div>
+                          </div>
                           <div>
                             <p className="text-xs font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide">Total</p>
                             <p className="text-[10px] text-gray-500 dark:text-white/50">Ingresos totales de ambas sedes</p>
@@ -1193,46 +1190,46 @@ function AdminDashboardContent() {
                         <p className="text-xl font-semibold text-[#164151] dark:text-white">
                           {showRevenueNumbers ? `$${(revenueStats.ambas?.total || 0).toLocaleString('es-CO')}` : '••••••'}
                         </p>
-                </div>
+                      </div>
 
                       {/* Efectivo */}
                       <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 p-6 shadow-lg">
                         <div className="flex items-center gap-3 mb-4">
                           <div className="w-9 h-9 rounded-lg bg-[#85ea10]/20 dark:bg-[#85ea10]/30 flex items-center justify-center">
                             <Wallet className="w-4 h-4 text-[#164151] dark:text-[#164151]" />
-                    </div>
+                          </div>
                           <div>
                             <p className="text-xs font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide">Efectivo</p>
                             <p className="text-[10px] text-gray-500 dark:text-white/50">Pagos en efectivo de la sede física</p>
-                            </div>
-                            </div>
+                          </div>
+                        </div>
                         <p className="text-xl font-semibold text-[#164151] dark:text-white">
                           {showRevenueNumbers ? `$${(revenueStats.ambas?.cash || 0).toLocaleString('es-CO')}` : '••••••'}
                         </p>
-              </div>
+                      </div>
 
                       {/* Transferencia */}
                       <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 p-6 shadow-lg">
                         <div className="flex items-center gap-3 mb-4">
                           <div className="w-9 h-9 rounded-lg bg-gray-100 dark:bg-white/10 flex items-center justify-center">
                             <CreditCard className="w-4 h-4 text-[#164151]/70 dark:text-white/70" />
-                  </div>
+                          </div>
                           <div>
                             <p className="text-xs font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide">Transferencia</p>
                             <p className="text-[10px] text-gray-500 dark:text-white/50">Transferencias y pagos online</p>
-                      </div>
                           </div>
+                        </div>
                         <p className="text-xl font-semibold text-[#164151] dark:text-white">
                           {showRevenueNumbers ? `$${(revenueStats.ambas?.transfer || 0).toLocaleString('es-CO')}` : '••••••'}
                         </p>
-                        </div>
+                      </div>
                     </div>
-                    )}
+                  )}
                 </>
               ) : (
                 <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-white/10 p-12 text-center">
                   <p className="text-sm text-gray-500 dark:text-white/50">No hay datos para mostrar</p>
-                  </div>
+                </div>
               )}
 
               {/* Gráfica de Ventas Semanales */}
@@ -1244,11 +1241,11 @@ function AdminDashboardContent() {
                   <p className="text-xs text-gray-500 dark:text-white/50 mb-12">
                     Visualización de los ingresos diarios de los últimos 7 días para analizar tendencias y patrones de venta
                   </p>
-                  
+
                   {loadingWeeklyData ? (
                     <div className="flex items-center justify-center py-8">
                       <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#164151]"></div>
-                </div>
+                    </div>
                   ) : weeklyData.length > 0 ? (
                     <div className="relative mt-8">
                       {/* Gráfica */}
@@ -1257,12 +1254,12 @@ function AdminDashboardContent() {
                           const maxAmount = Math.max(...weeklyData.map(d => d.amount), 1);
                           const height = maxAmount > 0 ? (day.amount / maxAmount) * 100 : 0;
                           const barHeight = Math.max(height, 8);
-                          
+
                           // Formatear fecha
                           const date = new Date(day.date);
                           const dayNumber = date.getDate();
                           const month = date.toLocaleDateString('es-ES', { month: 'short' });
-                          
+
                           return (
                             <div key={index} className="flex-1 flex flex-col items-center gap-1 h-full relative group">
                               {/* Tooltip con fecha e ingresos */}
@@ -1271,27 +1268,27 @@ function AdminDashboardContent() {
                                 <p className="text-[#85ea10] font-bold">
                                   {showRevenueNumbers ? `$${day.amount.toLocaleString('es-CO')}` : '••••••'}
                                 </p>
-                  </div>
-                              
+                              </div>
+
                               {/* Valor sobre el punto */}
                               <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 text-center w-full">
                                 <p className="text-xs font-semibold text-[#164151] dark:text-white">
                                   {showRevenueNumbers ? `$${day.amount.toLocaleString('es-CO')}` : '••••'}
                                 </p>
-                      </div>
-                              
+                              </div>
+
                               {/* Contenedor de la barra */}
                               <div className="flex-1 w-full flex items-end justify-center relative">
                                 {/* Línea vertical */}
-                                <div 
+                                <div
                                   className="w-3/4 bg-[#164151]/20 dark:bg-[#85ea10]/20 rounded-t transition-all duration-500 relative cursor-pointer hover:bg-[#164151]/30 dark:hover:bg-[#85ea10]/30"
                                   style={{ height: `${barHeight}%` }}
                                 >
                                   {/* Punto en la parte superior */}
                                   <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 w-3 h-3 bg-[#85ea10] dark:bg-[#164151] rounded-full border-2 border-white dark:border-gray-900 shadow-md"></div>
-                          </div>
-                          </div>
-                              
+                                </div>
+                              </div>
+
                               {/* Nombre del día y fecha */}
                               <div className="text-center">
                                 <p className="text-[10px] font-medium text-gray-500 dark:text-white/50">
@@ -1299,12 +1296,12 @@ function AdminDashboardContent() {
                                 </p>
                                 <p className="text-[9px] text-gray-400 dark:text-white/40">
                                   {dayNumber}/{date.getMonth() + 1}
-                          </p>
-                        </div>
-                  </div>
+                                </p>
+                              </div>
+                            </div>
                           );
                         })}
-              </div>
+                      </div>
 
                       {/* Línea conectando los puntos */}
                       <svg className="absolute top-8 left-0 right-0 h-40 pointer-events-none" style={{ zIndex: 1 }}>
@@ -1324,7 +1321,7 @@ function AdminDashboardContent() {
                           className="text-[#85ea10]/40 dark:text-[#164151]/40"
                         />
                       </svg>
-              </div>
+                    </div>
                   ) : (
                     <div className="text-center py-8">
                       <p className="text-sm text-gray-500 dark:text-white/50">No hay datos para mostrar</p>
@@ -1385,7 +1382,7 @@ function AdminDashboardContent() {
           {activeTab === 'gym-payments' && <GymPaymentsManagement ref={gymPaymentsRef} />}
 
           {/* Gym Collections Tab */}
-          {activeTab === 'gym-collections' && <GymCollectionsManagement />}
+
 
           {/* Users Tab */}
           {activeTab === 'users' && (
@@ -1395,15 +1392,15 @@ function AdminDashboardContent() {
                 <div className="flex flex-col sm:flex-row gap-4">
                   {/* Search */}
                   <div className="flex-1 relative">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-white/40" />
-                  <input
-                    type="text"
-                    placeholder="Buscar usuarios por nombre o email..."
-                    value={userSearchTerm}
-                    onChange={(e) => {
-                      setUserSearchTerm(e.target.value);
-                      setCurrentPage(1);
-                    }}
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-white/40" />
+                    <input
+                      type="text"
+                      placeholder="Buscar usuarios por nombre o email..."
+                      value={userSearchTerm}
+                      onChange={(e) => {
+                        setUserSearchTerm(e.target.value);
+                        setCurrentPage(1);
+                      }}
                       className="w-full pl-12 pr-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-[#164151] dark:text-white placeholder-gray-400 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 focus:border-[#85ea10]/50 transition-all"
                     />
                   </div>
@@ -1556,9 +1553,9 @@ function AdminDashboardContent() {
                                   return endDate < today;
                                 });
                                 const latestExpired = expiredMemberships.length > 0
-                                  ? expiredMemberships.sort((a: any, b: any) => 
-                                      new Date(b.end_date).getTime() - new Date(a.end_date).getTime()
-                                    )[0]
+                                  ? expiredMemberships.sort((a: any, b: any) =>
+                                    new Date(b.end_date).getTime() - new Date(a.end_date).getTime()
+                                  )[0]
                                   : null;
                                 const daysSinceExpired = latestExpired
                                   ? Math.floor((today.getTime() - new Date(latestExpired.end_date).getTime()) / (1000 * 60 * 60 * 24))
@@ -1567,459 +1564,458 @@ function AdminDashboardContent() {
                                 const isInactive = user.is_inactive || false;
                                 // Solo mostrar botón de inactivar si tiene más de 30 días PERO NO está inactivo aún
                                 const shouldShowInactiveButton = hasExpiredMoreThan30Days && !isInactive;
-                                
+
                                 return (
-                                <tr
-                                  key={user.id}
-                                  onClick={() => router.push(`/admin/users/${user.id}`)}
-                                  className={`hover:bg-gray-100 dark:hover:bg-white/10 transition-all cursor-pointer group border-l-4 border-transparent hover:border-[#85ea10]/30 ${
-                                    isInactive ? 'opacity-60 bg-gray-50 dark:bg-gray-900/30' : ''
-                                  }`}
-                                >
-                                  <td className="px-4 py-4">
-                                    <div>
-                                      <div className="flex items-center gap-2">
-                                        <p className="text-sm font-medium text-[#164151] dark:text-white truncate">
-                                          {user.name || user.full_name || 'Sin nombre'}
+                                  <tr
+                                    key={user.id}
+                                    onClick={() => router.push(`/admin/users/${user.id}`)}
+                                    className={`hover:bg-gray-100 dark:hover:bg-white/10 transition-all cursor-pointer group border-l-4 border-transparent hover:border-[#85ea10]/30 ${isInactive ? 'opacity-60 bg-gray-50 dark:bg-gray-900/30' : ''
+                                      }`}
+                                  >
+                                    <td className="px-4 py-4">
+                                      <div>
+                                        <div className="flex items-center gap-2">
+                                          <p className="text-sm font-medium text-[#164151] dark:text-white truncate">
+                                            {user.name || user.full_name || 'Sin nombre'}
+                                          </p>
+                                          {/* Check verde rellenito para usuarios registrados */}
+                                          {!user.isUnregisteredClient && (
+                                            <div className="w-4 h-4 rounded-full bg-[#85ea10] flex items-center justify-center flex-shrink-0">
+                                              <Check className="w-2.5 h-2.5 text-white stroke-[3]" />
+                                            </div>
+                                          )}
+                                        </div>
+                                        <p className="text-xs text-[#164151]/60 dark:text-white/50 mt-0.5 truncate">
+                                          {user.email || 'Sin email'}
                                         </p>
-                                        {/* Check verde rellenito para usuarios registrados */}
-                                        {!user.isUnregisteredClient && (
-                                          <div className="w-4 h-4 rounded-full bg-[#85ea10] flex items-center justify-center flex-shrink-0">
-                                            <Check className="w-2.5 h-2.5 text-white stroke-[3]" />
                                       </div>
-                                        )}
-                                      </div>
-                                      <p className="text-xs text-[#164151]/60 dark:text-white/50 mt-0.5 truncate">
-                                        {user.email || 'Sin email'}
-                                      </p>
-                                    </div>
-                                  </td>
-                                  <td className="px-4 py-4">
-                                    {user.document_id ? (
-                                      <div className="flex items-center gap-1.5">
-                                        <CreditCard className="w-3 h-3 text-gray-400" />
-                                        <span className="text-xs font-medium text-[#164151] dark:text-white">
-                                          {user.document_id}
-                                        </span>
-                                      </div>
-                                    ) : (
-                                      <span className="text-xs text-gray-400 dark:text-white/40">-</span>
-                                    )}
-                                  </td>
-                                  <td className="px-4 py-4">
-                                    <div onClick={(e) => e.stopPropagation()}>
-                                      {(() => {
-                                        const today = new Date();
-                                        today.setHours(0, 0, 0, 0);
-                                        
-                                        // Obtener todas las membresías físicas
-                                        const allMemberships = user.gym_memberships || [];
-                                        
-                                        // Obtener todos los cursos activos
-                                        const allCourses = user.activeCoursePurchases || [];
-                                        
-                                        // Si no tiene productos
-                                        if (allMemberships.length === 0 && allCourses.length === 0) {
-                                          return (
-                                            <span className="text-sm font-medium text-gray-500 dark:text-white/50">
-                                              Sin productos
-                                            </span>
-                                          );
-                                        }
-                                        
-                                        // Calcular estados
-                                        const activeMemberships = allMemberships.filter((m: any) => {
-                                          const endDate = new Date(m.end_date);
-                                          endDate.setHours(0, 0, 0, 0);
-                                          return endDate >= today;
-                                        });
-                                        const expiredMemberships = allMemberships.filter((m: any) => {
-                                          const endDate = new Date(m.end_date);
-                                          endDate.setHours(0, 0, 0, 0);
-                                          return endDate < today;
-                                        });
-                                        
-                                        // Construir lista completa de productos con estados
-                                        const allProducts: Array<{ name: string; type: 'membership' | 'course'; isActive: boolean; membership?: any }> = [];
-                                        
-                                        // Agregar membresías activas
-                                        activeMemberships.forEach((m: any) => {
-                                          allProducts.push({
-                                            name: m.plan?.name || 'Plan',
-                                            type: 'membership',
-                                            isActive: true,
-                                            membership: m,
-                                          });
-                                        });
-                                        
-                                        // Agregar membresías vencidas
-                                        expiredMemberships.forEach((m: any) => {
-                                          allProducts.push({
-                                            name: m.plan?.name || 'Plan',
-                                            type: 'membership',
-                                            isActive: false,
-                                            membership: m,
-                                          });
-                                        });
-                                        
-                                        // Agregar cursos
-                                        allCourses.forEach((p: any) => {
-                                          allProducts.push({
-                                            name: p.course?.title || 'Curso',
-                                            type: 'course',
-                                            isActive: true,
-                                          });
-                                        });
-                                        
-                                        // Obtener el primer producto para mostrar
-                                        const firstProduct = allProducts.length > 0 ? allProducts[0] : null;
-                                        const hasMoreProducts = allProducts.length > 1;
-                                        
-                                        const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-                                          const rect = e.currentTarget.getBoundingClientRect();
-                                          const popoverWidth = 288; // w-72 = 288px
-                                          const spaceOnRight = window.innerWidth - rect.right;
-                                          const spaceOnLeft = rect.left;
-                                          
-                                          // Decidir si mostrar a la derecha o izquierda
-                                          const showOnRight = spaceOnRight >= popoverWidth || spaceOnRight > spaceOnLeft;
-                                          
-                                          setProductsModal({ 
-                                            isOpen: true, 
-                                            user: { ...user, allProducts },
-                                            position: {
-                                              x: showOnRight ? rect.right + 8 : rect.left - popoverWidth - 8, // 8px de separación
-                                              y: rect.top, // Alineado con el elemento
-                                            }
-                                          });
-                                        };
-                                        
-                                        if (!firstProduct) {
-                                          return (
-                                            <span className="text-sm font-medium text-gray-500 dark:text-white/50">
-                                              Sin productos
-                                            </span>
-                                          );
-                                        }
-                                        
-                                        return (
-                                          <button
-                                            onClick={handleClick}
-                                            className="text-left hover:opacity-80 transition-opacity cursor-pointer flex items-center gap-1.5"
-                                            title={hasMoreProducts ? `Ver todos los productos (${allProducts.length})` : undefined}
-                                          >
-                                            <span className="text-sm font-medium text-[#164151] dark:text-white">
-                                              {firstProduct.name}
-                                            </span>
-                                            {hasMoreProducts && (
-                                              <span className="w-5 h-5 flex items-center justify-center rounded-full bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-white/60 text-xs font-semibold hover:bg-gray-200 dark:hover:bg-white/20 transition-colors">
-                                                +{allProducts.length - 1}
-                                              </span>
-                                            )}
-                                          </button>
-                                        );
-                                      })()}
-                                    </div>
-                                  </td>
-                                  <td className="px-4 py-4">
-                                    <div>
-                                      {user.userType === 'both' && (
-                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-[#164151]/15 text-[#164151] dark:bg-[#164151]/25 dark:text-[#164151]">
-                                          Ambos
-                                        </span>
-                                      )}
-                                      {user.userType === 'physical' && (
-                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-[#164151]/15 text-[#164151] dark:bg-[#164151]/25 dark:text-[#164151]">
-                                          <Dumbbell className="w-3 h-3" />
-                                          Físico
-                                        </span>
-                                      )}
-                                      {user.userType === 'online' && (
-                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-[#164151]/15 text-[#164151] dark:bg-[#164151]/25 dark:text-[#164151]">
-                                          <Globe className="w-3 h-3" />
-                                          Online
-                                        </span>
-                                      )}
-                                      {user.userType === 'none' && (
+                                    </td>
+                                    <td className="px-4 py-4">
+                                      {user.document_id ? (
+                                        <div className="flex items-center gap-1.5">
+                                          <CreditCard className="w-3 h-3 text-gray-400" />
+                                          <span className="text-xs font-medium text-[#164151] dark:text-white">
+                                            {user.document_id}
+                                          </span>
+                                        </div>
+                                      ) : (
                                         <span className="text-xs text-gray-400 dark:text-white/40">-</span>
                                       )}
-                                    </div>
-                                  </td>
-                                  <td className="px-4 py-4">
-                                    {user.phone || user.whatsapp ? (
-                                      <a
-                                        href={`https://wa.me/${(user.phone || user.whatsapp).replace(/\D/g, '')}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-colors"
-                                      >
-                                        <Phone className="w-3 h-3" />
-                                        {user.phone || user.whatsapp}
-                                      </a>
-                                    ) : (
-                                      <span className="text-xs text-gray-400 dark:text-white/40">-</span>
-                                    )}
-                                  </td>
-                                  <td className="px-4 py-4">
-                                    <div>
-                                      {(() => {
-                                        // Si está inactivo, siempre mostrar "Inactivo" primero
-                                        if (user.is_inactive) {
+                                    </td>
+                                    <td className="px-4 py-4">
+                                      <div onClick={(e) => e.stopPropagation()}>
+                                        {(() => {
+                                          const today = new Date();
+                                          today.setHours(0, 0, 0, 0);
+
+                                          // Obtener todas las membresías físicas
+                                          const allMemberships = user.gym_memberships || [];
+
+                                          // Obtener todos los cursos activos
+                                          const allCourses = user.activeCoursePurchases || [];
+
+                                          // Si no tiene productos
+                                          if (allMemberships.length === 0 && allCourses.length === 0) {
+                                            return (
+                                              <span className="text-sm font-medium text-gray-500 dark:text-white/50">
+                                                Sin productos
+                                              </span>
+                                            );
+                                          }
+
+                                          // Calcular estados
+                                          const activeMemberships = allMemberships.filter((m: any) => {
+                                            const endDate = new Date(m.end_date);
+                                            endDate.setHours(0, 0, 0, 0);
+                                            return endDate >= today;
+                                          });
+                                          const expiredMemberships = allMemberships.filter((m: any) => {
+                                            const endDate = new Date(m.end_date);
+                                            endDate.setHours(0, 0, 0, 0);
+                                            return endDate < today;
+                                          });
+
+                                          // Construir lista completa de productos con estados
+                                          const allProducts: Array<{ name: string; type: 'membership' | 'course'; isActive: boolean; membership?: any }> = [];
+
+                                          // Agregar membresías activas
+                                          activeMemberships.forEach((m: any) => {
+                                            allProducts.push({
+                                              name: m.plan?.name || 'Plan',
+                                              type: 'membership',
+                                              isActive: true,
+                                              membership: m,
+                                            });
+                                          });
+
+                                          // Agregar membresías vencidas
+                                          expiredMemberships.forEach((m: any) => {
+                                            allProducts.push({
+                                              name: m.plan?.name || 'Plan',
+                                              type: 'membership',
+                                              isActive: false,
+                                              membership: m,
+                                            });
+                                          });
+
+                                          // Agregar cursos
+                                          allCourses.forEach((p: any) => {
+                                            allProducts.push({
+                                              name: p.course?.title || 'Curso',
+                                              type: 'course',
+                                              isActive: true,
+                                            });
+                                          });
+
+                                          // Obtener el primer producto para mostrar
+                                          const firstProduct = allProducts.length > 0 ? allProducts[0] : null;
+                                          const hasMoreProducts = allProducts.length > 1;
+
+                                          const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+                                            const rect = e.currentTarget.getBoundingClientRect();
+                                            const popoverWidth = 288; // w-72 = 288px
+                                            const spaceOnRight = window.innerWidth - rect.right;
+                                            const spaceOnLeft = rect.left;
+
+                                            // Decidir si mostrar a la derecha o izquierda
+                                            const showOnRight = spaceOnRight >= popoverWidth || spaceOnRight > spaceOnLeft;
+
+                                            setProductsModal({
+                                              isOpen: true,
+                                              user: { ...user, allProducts },
+                                              position: {
+                                                x: showOnRight ? rect.right + 8 : rect.left - popoverWidth - 8, // 8px de separación
+                                                y: rect.top, // Alineado con el elemento
+                                              }
+                                            });
+                                          };
+
+                                          if (!firstProduct) {
+                                            return (
+                                              <span className="text-sm font-medium text-gray-500 dark:text-white/50">
+                                                Sin productos
+                                              </span>
+                                            );
+                                          }
+
                                           return (
-                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400">
-                                              <X className="w-3 h-3" />
-                                              Inactivo
-                                            </span>
+                                            <button
+                                              onClick={handleClick}
+                                              className="text-left hover:opacity-80 transition-opacity cursor-pointer flex items-center gap-1.5"
+                                              title={hasMoreProducts ? `Ver todos los productos (${allProducts.length})` : undefined}
+                                            >
+                                              <span className="text-sm font-medium text-[#164151] dark:text-white">
+                                                {firstProduct.name}
+                                              </span>
+                                              {hasMoreProducts && (
+                                                <span className="w-5 h-5 flex items-center justify-center rounded-full bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-white/60 text-xs font-semibold hover:bg-gray-200 dark:hover:bg-white/20 transition-colors">
+                                                  +{allProducts.length - 1}
+                                                </span>
+                                              )}
+                                            </button>
                                           );
-                                        }
-                                        
-                                        const today = new Date();
-                                        today.setHours(0, 0, 0, 0);
-                                        
-                                        // Obtener todas las membresías físicas
-                                        const allMemberships = user.gym_memberships || [];
-                                        
-                                        // Obtener todos los cursos activos
-                                        const allCourses = user.activeCoursePurchases || [];
-                                        
-                                        // Si no tiene productos
-                                        if (allMemberships.length === 0 && allCourses.length === 0) {
+                                        })()}
+                                      </div>
+                                    </td>
+                                    <td className="px-4 py-4">
+                                      <div>
+                                        {user.userType === 'both' && (
+                                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-[#164151]/15 text-[#164151] dark:bg-[#164151]/25 dark:text-[#164151]">
+                                            Ambos
+                                          </span>
+                                        )}
+                                        {user.userType === 'physical' && (
+                                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-[#164151]/15 text-[#164151] dark:bg-[#164151]/25 dark:text-[#164151]">
+                                            <Dumbbell className="w-3 h-3" />
+                                            Físico
+                                          </span>
+                                        )}
+                                        {user.userType === 'online' && (
+                                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-[#164151]/15 text-[#164151] dark:bg-[#164151]/25 dark:text-[#164151]">
+                                            <Globe className="w-3 h-3" />
+                                            Online
+                                          </span>
+                                        )}
+                                        {user.userType === 'none' && (
+                                          <span className="text-xs text-gray-400 dark:text-white/40">-</span>
+                                        )}
+                                      </div>
+                                    </td>
+                                    <td className="px-4 py-4">
+                                      {user.phone || user.whatsapp ? (
+                                        <a
+                                          href={`https://wa.me/${(user.phone || user.whatsapp).replace(/\D/g, '')}`}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-colors"
+                                        >
+                                          <Phone className="w-3 h-3" />
+                                          {user.phone || user.whatsapp}
+                                        </a>
+                                      ) : (
+                                        <span className="text-xs text-gray-400 dark:text-white/40">-</span>
+                                      )}
+                                    </td>
+                                    <td className="px-4 py-4">
+                                      <div>
+                                        {(() => {
+                                          // Si está inactivo, siempre mostrar "Inactivo" primero
+                                          if (user.is_inactive) {
+                                            return (
+                                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400">
+                                                <X className="w-3 h-3" />
+                                                Inactivo
+                                              </span>
+                                            );
+                                          }
+
+                                          const today = new Date();
+                                          today.setHours(0, 0, 0, 0);
+
+                                          // Obtener todas las membresías físicas
+                                          const allMemberships = user.gym_memberships || [];
+
+                                          // Obtener todos los cursos activos
+                                          const allCourses = user.activeCoursePurchases || [];
+
+                                          // Si no tiene productos
+                                          if (allMemberships.length === 0 && allCourses.length === 0) {
+                                            return (
+                                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-white/60">
+                                                <AlertCircle className="w-3 h-3" />
+                                                Sin pagos
+                                              </span>
+                                            );
+                                          }
+
+                                          // Calcular estados de membresías físicas
+                                          const activeMemberships = allMemberships.filter((m: any) => {
+                                            const endDate = new Date(m.end_date);
+                                            endDate.setHours(0, 0, 0, 0);
+                                            return endDate >= today;
+                                          });
+                                          const expiredMemberships = allMemberships.filter((m: any) => {
+                                            const endDate = new Date(m.end_date);
+                                            endDate.setHours(0, 0, 0, 0);
+                                            return endDate < today;
+                                          });
+
+                                          // Si solo tiene cursos online
+                                          if (allMemberships.length === 0 && allCourses.length > 0) {
+                                            return (
+                                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[#85ea10]/30 text-[#164151] dark:bg-[#85ea10]/30 dark:text-[#85ea10]">
+                                                <CheckCircle className="w-3 h-3" />
+                                                Al día
+                                              </span>
+                                            );
+                                          }
+
+                                          // Si solo tiene membresías físicas
+                                          if (allMemberships.length > 0 && allCourses.length === 0) {
+                                            // Todos activos
+                                            if (activeMemberships.length === allMemberships.length && expiredMemberships.length === 0) {
+                                              return (
+                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[#85ea10]/30 text-[#164151] dark:bg-[#85ea10]/30 dark:text-[#85ea10]">
+                                                  <CheckCircle className="w-3 h-3" />
+                                                  Al día
+                                                </span>
+                                              );
+                                            }
+                                            // Todos vencidos
+                                            if (expiredMemberships.length === allMemberships.length && activeMemberships.length === 0) {
+                                              // Siempre mostrar "Renovar" cuando está vencido (no importa cuántos días)
+                                              return (
+                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400">
+                                                  <AlertTriangle className="w-3 h-3" />
+                                                  Renovar
+                                                </span>
+                                              );
+                                            }
+                                            // Mezcla: algunos activos, algunos vencidos
+                                            if (activeMemberships.length > 0 && expiredMemberships.length > 0) {
+                                              return (
+                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400">
+                                                  <Bell className="w-3 h-3" />
+                                                  Parcial
+                                                </span>
+                                              );
+                                            }
+                                          }
+
+                                          // Si tiene ambos (físico y online)
+                                          if (allMemberships.length > 0 && allCourses.length > 0) {
+                                            // Si todas las membresías están activas
+                                            if (activeMemberships.length === allMemberships.length && expiredMemberships.length === 0) {
+                                              return (
+                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[#85ea10]/30 text-[#164151] dark:bg-[#85ea10]/30 dark:text-[#85ea10]">
+                                                  <CheckCircle className="w-3 h-3" />
+                                                  Al día
+                                                </span>
+                                              );
+                                            }
+                                            // Si hay membresías vencidas (aunque tenga cursos activos)
+                                            if (expiredMemberships.length > 0) {
+                                              return (
+                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400">
+                                                  <Bell className="w-3 h-3" />
+                                                  Parcial
+                                                </span>
+                                              );
+                                            }
+                                          }
+
+                                          // Fallback
                                           return (
                                             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-white/60">
                                               <AlertCircle className="w-3 h-3" />
                                               Sin pagos
                                             </span>
                                           );
-                                        }
-                                        
-                                        // Calcular estados de membresías físicas
-                                        const activeMemberships = allMemberships.filter((m: any) => {
-                                          const endDate = new Date(m.end_date);
-                                          endDate.setHours(0, 0, 0, 0);
-                                          return endDate >= today;
-                                        });
-                                        const expiredMemberships = allMemberships.filter((m: any) => {
-                                          const endDate = new Date(m.end_date);
-                                          endDate.setHours(0, 0, 0, 0);
-                                          return endDate < today;
-                                        });
-                                        
-                                        // Si solo tiene cursos online
-                                        if (allMemberships.length === 0 && allCourses.length > 0) {
-                                          return (
-                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[#85ea10]/30 text-[#164151] dark:bg-[#85ea10]/30 dark:text-[#85ea10]">
-                                              <CheckCircle className="w-3 h-3" />
-                                              Al día
-                                            </span>
-                                          );
-                                        }
-                                        
-                                        // Si solo tiene membresías físicas
-                                        if (allMemberships.length > 0 && allCourses.length === 0) {
-                                          // Todos activos
-                                          if (activeMemberships.length === allMemberships.length && expiredMemberships.length === 0) {
-                                            return (
-                                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[#85ea10]/30 text-[#164151] dark:bg-[#85ea10]/30 dark:text-[#85ea10]">
-                                                <CheckCircle className="w-3 h-3" />
-                                                Al día
-                                              </span>
-                                            );
+                                        })()}
+                                      </div>
+                                    </td>
+                                    <td className="px-4 py-4">
+                                      <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                                        {/* Botón Recordatorio/Inactivar - visible solo cuando tiene estado "Renovar" (planes vencidos) */}
+                                        {(() => {
+                                          const today = new Date();
+                                          today.setHours(0, 0, 0, 0);
+
+                                          // Calcular estados de membresías
+                                          const allMemberships = user.gym_memberships || [];
+                                          const activeMemberships = allMemberships.filter((m: any) => {
+                                            const endDate = new Date(m.end_date);
+                                            endDate.setHours(0, 0, 0, 0);
+                                            return endDate >= today;
+                                          });
+                                          const expiredMemberships = allMemberships.filter((m: any) => {
+                                            const endDate = new Date(m.end_date);
+                                            endDate.setHours(0, 0, 0, 0);
+                                            return endDate < today;
+                                          });
+
+                                          const isInactive = user.is_inactive || false;
+
+                                          // Solo mostrar si:
+                                          // 1. Tiene planes vencidos (estado "Renovar")
+                                          // 2. NO tiene planes activos
+                                          // 3. Tiene contacto
+                                          // 4. NO está inactivo
+                                          const hasOnlyExpiredMemberships = expiredMemberships.length > 0 && activeMemberships.length === 0;
+
+                                          if (!hasOnlyExpiredMemberships || !(user.whatsapp || user.phone) || isInactive) {
+                                            return null;
                                           }
-                                          // Todos vencidos
-                                          if (expiredMemberships.length === allMemberships.length && activeMemberships.length === 0) {
-                                            // Siempre mostrar "Renovar" cuando está vencido (no importa cuántos días)
-                                            return (
-                                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400">
-                                                <AlertTriangle className="w-3 h-3" />
-                                                Renovar
-                                              </span>
-                                            );
-                                          }
-                                          // Mezcla: algunos activos, algunos vencidos
-                                          if (activeMemberships.length > 0 && expiredMemberships.length > 0) {
-                                            return (
-                                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400">
-                                                <Bell className="w-3 h-3" />
-                                                Parcial
-                                              </span>
-                                            );
-                                          }
-                                        }
-                                        
-                                        // Si tiene ambos (físico y online)
-                                        if (allMemberships.length > 0 && allCourses.length > 0) {
-                                          // Si todas las membresías están activas
-                                          if (activeMemberships.length === allMemberships.length && expiredMemberships.length === 0) {
-                                            return (
-                                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[#85ea10]/30 text-[#164151] dark:bg-[#85ea10]/30 dark:text-[#85ea10]">
-                                                <CheckCircle className="w-3 h-3" />
-                                                Al día
-                                              </span>
-                                            );
-                                          }
-                                          // Si hay membresías vencidas (aunque tenga cursos activos)
-                                          if (expiredMemberships.length > 0) {
-                                            return (
-                                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400">
-                                                <Bell className="w-3 h-3" />
-                                                Parcial
-                                              </span>
-                                            );
-                                          }
-                                        }
-                                        
-                                        // Fallback
-                                        return (
-                                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-white/60">
-                                            <AlertCircle className="w-3 h-3" />
-                                            Sin pagos
-                                          </span>
-                                        );
-                                      })()}
-                                    </div>
-                                  </td>
-                                  <td className="px-4 py-4">
-                                    <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
-                                      {/* Botón Recordatorio/Inactivar - visible solo cuando tiene estado "Renovar" (planes vencidos) */}
-                                      {(() => {
-                                        const today = new Date();
-                                        today.setHours(0, 0, 0, 0);
-                                        
-                                        // Calcular estados de membresías
-                                        const allMemberships = user.gym_memberships || [];
-                                        const activeMemberships = allMemberships.filter((m: any) => {
-                                          const endDate = new Date(m.end_date);
-                                          endDate.setHours(0, 0, 0, 0);
-                                          return endDate >= today;
-                                        });
-                                        const expiredMemberships = allMemberships.filter((m: any) => {
-                                          const endDate = new Date(m.end_date);
-                                          endDate.setHours(0, 0, 0, 0);
-                                          return endDate < today;
-                                        });
-                                        
-                                        const isInactive = user.is_inactive || false;
-                                        
-                                        // Solo mostrar si:
-                                        // 1. Tiene planes vencidos (estado "Renovar")
-                                        // 2. NO tiene planes activos
-                                        // 3. Tiene contacto
-                                        // 4. NO está inactivo
-                                        const hasOnlyExpiredMemberships = expiredMemberships.length > 0 && activeMemberships.length === 0;
-                                        
-                                        if (!hasOnlyExpiredMemberships || !(user.whatsapp || user.phone) || isInactive) {
-                                          return null;
-                                        }
-                                        
-                                        // Calcular días desde que venció
-                                        const latestExpired = expiredMemberships.sort((a: any, b: any) => 
-                                          new Date(b.end_date).getTime() - new Date(a.end_date).getTime()
-                                        )[0];
-                                        const expiredDate = new Date(latestExpired.end_date);
-                                        expiredDate.setHours(0, 0, 0, 0);
-                                        const daysSinceExpired = Math.floor((today.getTime() - expiredDate.getTime()) / (1000 * 60 * 60 * 24));
-                                        
-                                        // Si tiene más de 30 días sin pagar, mostrar botón "Inactivar" en rojo
-                                        if (daysSinceExpired > 30) {
-                                          const clientInfoId = user.isUnregisteredClient 
-                                            ? user.id 
-                                            : (user.client_info_id || user.gym_memberships?.[0]?.client_info_id || null);
-                                          
-                                          if (!clientInfoId) return null;
-                                          
-                                          const handleInactivate = async (e: React.MouseEvent) => {
-                                            e.stopPropagation();
-                                            
-                                            if (!confirm(`¿Estás seguro de inactivar a ${user.name || user.full_name || 'este usuario'}?`)) {
-                                              return;
-                                            }
-                                            
-                                            try {
-                                              const response = await fetch(`/api/admin/gym/clients/${clientInfoId}/toggle-inactive`, {
-                                                method: 'PATCH',
-                                                headers: { 'Content-Type': 'application/json' },
-                                                body: JSON.stringify({ is_inactive: true }),
-                                              });
-                                              
-                                              if (!response.ok) {
-                                                throw new Error('Error al actualizar estado');
+
+                                          // Calcular días desde que venció
+                                          const latestExpired = expiredMemberships.sort((a: any, b: any) =>
+                                            new Date(b.end_date).getTime() - new Date(a.end_date).getTime()
+                                          )[0];
+                                          const expiredDate = new Date(latestExpired.end_date);
+                                          expiredDate.setHours(0, 0, 0, 0);
+                                          const daysSinceExpired = Math.floor((today.getTime() - expiredDate.getTime()) / (1000 * 60 * 60 * 24));
+
+                                          // Si tiene más de 30 días sin pagar, mostrar botón "Inactivar" en rojo
+                                          if (daysSinceExpired > 30) {
+                                            const clientInfoId = user.isUnregisteredClient
+                                              ? user.id
+                                              : (user.client_info_id || user.gym_memberships?.[0]?.client_info_id || null);
+
+                                            if (!clientInfoId) return null;
+
+                                            const handleInactivate = async (e: React.MouseEvent) => {
+                                              e.stopPropagation();
+
+                                              if (!confirm(`¿Estás seguro de inactivar a ${user.name || user.full_name || 'este usuario'}?`)) {
+                                                return;
                                               }
-                                              
-                                              // Recargar usuarios
-                                              loadUsers();
-                                            } catch (error) {
-                                              console.error('Error inactivating user:', error);
-                                              alert('Error al inactivar el usuario');
-                                            }
-                                          };
-                                          
-                                          return (
-                                      <button
-                                              onClick={handleInactivate}
-                                              className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-white/40 hover:bg-gray-200 dark:hover:bg-white/20 transition-colors"
-                                              title="Inactivar usuario (30 días sin pagar)"
-                                            >
-                                              <Ban className="w-4 h-4" />
-                                            </button>
-                                          );
-                                        }
-                                        
-                                        // Menos de 30 días, mostrar botón "Recordatorio" normal
-                                        const latestMembership = allMemberships.length > 0
-                                          ? allMemberships.sort((a: any, b: any) => new Date(b.end_date).getTime() - new Date(a.end_date).getTime())[0]
-                                          : null;
-                                        const planName = latestMembership?.plan?.name || 'tu plan';
-                                        const endDate = latestMembership?.end_date 
-                                          ? new Date(latestMembership.end_date).toLocaleDateString('es-ES', {
+
+                                              try {
+                                                const response = await fetch(`/api/admin/gym/clients/${clientInfoId}/toggle-inactive`, {
+                                                  method: 'PATCH',
+                                                  headers: { 'Content-Type': 'application/json' },
+                                                  body: JSON.stringify({ is_inactive: true }),
+                                                });
+
+                                                if (!response.ok) {
+                                                  throw new Error('Error al actualizar estado');
+                                                }
+
+                                                // Recargar usuarios
+                                                loadUsers();
+                                              } catch (error) {
+                                                console.error('Error inactivating user:', error);
+                                                alert('Error al inactivar el usuario');
+                                              }
+                                            };
+
+                                            return (
+                                              <button
+                                                onClick={handleInactivate}
+                                                className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-white/40 hover:bg-gray-200 dark:hover:bg-white/20 transition-colors"
+                                                title="Inactivar usuario (30 días sin pagar)"
+                                              >
+                                                <Ban className="w-4 h-4" />
+                                              </button>
+                                            );
+                                          }
+
+                                          // Menos de 30 días, mostrar botón "Recordatorio" normal
+                                          const latestMembership = allMemberships.length > 0
+                                            ? allMemberships.sort((a: any, b: any) => new Date(b.end_date).getTime() - new Date(a.end_date).getTime())[0]
+                                            : null;
+                                          const planName = latestMembership?.plan?.name || 'tu plan';
+                                          const endDate = latestMembership?.end_date
+                                            ? new Date(latestMembership.end_date).toLocaleDateString('es-ES', {
                                               day: '2-digit',
                                               month: 'long',
                                               year: 'numeric',
                                             })
-                                          : 'la fecha indicada';
-                                        
-                                        const handleReminder = () => {
-                                          const clientName = user.name || user.full_name || 'Cliente';
-                                          const whatsappNumber = (user.whatsapp || user.phone || '').replace(/\D/g, '');
-                                          
-                                          if (!whatsappNumber) return;
-                                          
-                                          const message = encodeURIComponent(
-                                            `Hola ${clientName}, tu plan "${planName}" venció el ${endDate}. ¿Deseas renovarlo?`
+                                            : 'la fecha indicada';
+
+                                          const handleReminder = () => {
+                                            const clientName = user.name || user.full_name || 'Cliente';
+                                            const whatsappNumber = (user.whatsapp || user.phone || '').replace(/\D/g, '');
+
+                                            if (!whatsappNumber) return;
+
+                                            const message = encodeURIComponent(
+                                              `Hola ${clientName}, tu plan "${planName}" venció el ${endDate}. ¿Deseas renovarlo?`
+                                            );
+
+                                            const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${message}`;
+                                            window.open(whatsappUrl, '_blank');
+                                          };
+
+                                          return (
+                                            <button
+                                              onClick={handleReminder}
+                                              className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-white/40 hover:bg-gray-200 dark:hover:bg-white/20 transition-colors"
+                                              title="Enviar recordatorio de renovación"
+                                            >
+                                              <MessageSquare className="w-4 h-4" />
+                                            </button>
                                           );
-                                          
-                                          const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${message}`;
-                                          window.open(whatsappUrl, '_blank');
-                                        };
-                                        
-                                        return (
-                                          <button
-                                            onClick={handleReminder}
-                                            className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-white/40 hover:bg-gray-200 dark:hover:bg-white/20 transition-colors"
-                                            title="Enviar recordatorio de renovación"
-                                          >
-                                            <MessageSquare className="w-4 h-4" />
-                                          </button>
-                                        );
-                                      })()}
-                                      <button
-                                        onClick={() => router.push(`/admin/users/${user.id}`)}
-                                        className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-white/40 hover:bg-gray-200 dark:hover:bg-white/20 transition-colors"
-                                        title="Ver detalles"
-                                      >
-                                        <Eye className="w-4 h-4" />
-                                      </button>
-                                      <button
-                                        onClick={() => router.push(`/admin/users/${user.id}?edit=true`)}
-                                        className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-white/40 hover:bg-gray-200 dark:hover:bg-white/20 transition-colors"
-                                        title="Editar"
-                                      >
-                                        <Edit className="w-4 h-4" />
-                                      </button>
-                                      
-                                    </div>
-                                  </td>
-                                </tr>
-                              );
+                                        })()}
+                                        <button
+                                          onClick={() => router.push(`/admin/users/${user.id}`)}
+                                          className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-white/40 hover:bg-gray-200 dark:hover:bg-white/20 transition-colors"
+                                          title="Ver detalles"
+                                        >
+                                          <Eye className="w-4 h-4" />
+                                        </button>
+                                        <button
+                                          onClick={() => router.push(`/admin/users/${user.id}?edit=true`)}
+                                          className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-white/40 hover:bg-gray-200 dark:hover:bg-white/20 transition-colors"
+                                          title="Editar"
+                                        >
+                                          <Edit className="w-4 h-4" />
+                                        </button>
+
+                                      </div>
+                                    </td>
+                                  </tr>
+                                );
                               })}
                             </tbody>
                           </table>
@@ -2043,11 +2039,10 @@ function AdminDashboardContent() {
                             <button
                               onClick={() => setCurrentPage(1)}
                               disabled={currentPage === 1}
-                              className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${
-                                currentPage === 1
+                              className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${currentPage === 1
                                   ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
                                   : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
-                              }`}
+                                }`}
                               title="Primera página"
                             >
                               <ChevronsLeft className="w-4 h-4" />
@@ -2057,11 +2052,10 @@ function AdminDashboardContent() {
                             <button
                               onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
                               disabled={currentPage === 1}
-                              className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${
-                                currentPage === 1
+                              className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${currentPage === 1
                                   ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
                                   : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
-                              }`}
+                                }`}
                               title="Página anterior"
                             >
                               <ChevronLeft className="w-4 h-4" />
@@ -2106,11 +2100,10 @@ function AdminDashboardContent() {
                                     <button
                                       key={i}
                                       onClick={() => setCurrentPage(i)}
-                                      className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all text-sm cursor-pointer ${
-                                        currentPage === i
+                                      className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all text-sm cursor-pointer ${currentPage === i
                                           ? 'bg-[#164151] text-white font-semibold'
                                           : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20'
-                                      }`}
+                                        }`}
                                     >
                                       {i}
                                     </button>
@@ -2147,11 +2140,10 @@ function AdminDashboardContent() {
                             <button
                               onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
                               disabled={currentPage === totalPages || totalPages === 0}
-                              className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${
-                                currentPage === totalPages || totalPages === 0
+                              className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${currentPage === totalPages || totalPages === 0
                                   ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
                                   : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
-                              }`}
+                                }`}
                               title="Página siguiente"
                             >
                               <ChevronRight className="w-4 h-4" />
@@ -2161,11 +2153,10 @@ function AdminDashboardContent() {
                             <button
                               onClick={() => setCurrentPage(totalPages)}
                               disabled={currentPage === totalPages || totalPages === 0}
-                              className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${
-                                currentPage === totalPages || totalPages === 0
+                              className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${currentPage === totalPages || totalPages === 0
                                   ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
                                   : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
-                              }`}
+                                }`}
                               title="Última página"
                             >
                               <ChevronsRight className="w-4 h-4" />
@@ -2194,17 +2185,17 @@ function AdminDashboardContent() {
                   </div>
 
                   <div className="flex flex-col sm:flex-row gap-4 flex-1">
-                  {/* Search */}
+                    {/* Search */}
                     <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    <input
-                      type="text"
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <input
+                        type="text"
                         placeholder="Buscar por cliente, curso o plan..."
-                      value={salesSearchTerm}
-                      onChange={(e) => {
-                        setSalesSearchTerm(e.target.value);
-                        setSalesCurrentPage(1);
-                      }}
+                        value={salesSearchTerm}
+                        onChange={(e) => {
+                          setSalesSearchTerm(e.target.value);
+                          setSalesCurrentPage(1);
+                        }}
                         className="w-full pl-10 pr-4 py-2.5 bg-gray-50 dark:bg-white/10 border border-gray-200 dark:border-white/10 rounded-xl text-sm text-[#164151] dark:text-white placeholder-gray-400 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 focus:border-[#85ea10]"
                       />
                     </div>
@@ -2338,21 +2329,21 @@ function AdminDashboardContent() {
                                         </>
                                       ) : (
                                         <>
-                                      {sale.course?.preview_image ? (
-                                        <img
-                                          src={sale.course.preview_image}
-                                          alt={sale.course.title}
-                                          className="w-10 h-10 rounded-lg object-cover"
-                                        />
-                                      ) : (
-                                        <div className="w-10 h-10 rounded-lg bg-gray-200 dark:bg-white/10 flex items-center justify-center">
-                                          <BookOpen className="w-5 h-5 text-gray-400" />
-                                        </div>
-                                      )}
+                                          {sale.course?.preview_image ? (
+                                            <img
+                                              src={sale.course.preview_image}
+                                              alt={sale.course.title}
+                                              className="w-10 h-10 rounded-lg object-cover"
+                                            />
+                                          ) : (
+                                            <div className="w-10 h-10 rounded-lg bg-gray-200 dark:bg-white/10 flex items-center justify-center">
+                                              <BookOpen className="w-5 h-5 text-gray-400" />
+                                            </div>
+                                          )}
                                           <div>
                                             <p className="font-medium text-[#164151] dark:text-white text-sm max-w-[200px] truncate">
-                                        {sale.course?.title || 'Curso eliminado'}
-                                      </p>
+                                              {sale.course?.title || 'Curso eliminado'}
+                                            </p>
                                             <p className="text-xs text-gray-500 dark:text-white/40">Curso online</p>
                                           </div>
                                         </>
@@ -2362,7 +2353,7 @@ function AdminDashboardContent() {
 
                                   {/* Monto */}
                                   <td className="py-4 px-4">
-                                      <p className="font-semibold text-[#164151] dark:text-white text-sm">
+                                    <p className="font-semibold text-[#164151] dark:text-white text-sm">
                                       ${sale.amount?.toLocaleString('es-CO')}{' '}
                                       <span className="text-xs font-normal text-gray-500 dark:text-white/40">
                                         {sale.currency || 'COP'}
@@ -2373,13 +2364,12 @@ function AdminDashboardContent() {
                                   {/* Estado */}
                                   <td className="py-4 px-4">
                                     <span
-                                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
-                                        sale.status === 'approved' || sale.status === 'APPROVED'
+                                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${sale.status === 'approved' || sale.status === 'APPROVED'
                                           ? 'bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400'
                                           : sale.status === 'pending' || sale.status === 'PENDING'
-                                          ? 'bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-400'
-                                          : 'bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400'
-                                      }`}
+                                            ? 'bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-400'
+                                            : 'bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400'
+                                        }`}
                                     >
                                       {sale.status === 'approved' || sale.status === 'APPROVED' ? (
                                         <CheckCircle className="w-3 h-3" />
@@ -2387,10 +2377,10 @@ function AdminDashboardContent() {
                                       {sale.status === 'approved' || sale.status === 'APPROVED'
                                         ? 'Aprobado'
                                         : sale.status === 'pending' || sale.status === 'PENDING'
-                                        ? 'Pendiente'
-                                        : sale.status === 'declined' || sale.status === 'DECLINED'
-                                        ? 'Rechazado'
-                                        : sale.status}
+                                          ? 'Pendiente'
+                                          : sale.status === 'declined' || sale.status === 'DECLINED'
+                                            ? 'Rechazado'
+                                            : sale.status}
                                     </span>
                                   </td>
 
@@ -2439,11 +2429,10 @@ function AdminDashboardContent() {
                             <button
                               onClick={() => setSalesCurrentPage(1)}
                               disabled={salesCurrentPage === 1}
-                              className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${
-                                salesCurrentPage === 1
+                              className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${salesCurrentPage === 1
                                   ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
                                   : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
-                              }`}
+                                }`}
                               title="Primera página"
                             >
                               <ChevronsLeft className="w-4 h-4" />
@@ -2453,11 +2442,10 @@ function AdminDashboardContent() {
                             <button
                               onClick={() => setSalesCurrentPage((prev) => Math.max(1, prev - 1))}
                               disabled={salesCurrentPage === 1}
-                              className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${
-                                salesCurrentPage === 1
+                              className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${salesCurrentPage === 1
                                   ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
                                   : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
-                              }`}
+                                }`}
                               title="Página anterior"
                             >
                               <ChevronLeft className="w-4 h-4" />
@@ -2481,11 +2469,10 @@ function AdminDashboardContent() {
                                   <button
                                     key={pageNum}
                                     onClick={() => setSalesCurrentPage(pageNum)}
-                                    className={`w-9 h-9 flex items-center justify-center rounded-lg text-sm font-medium transition-all cursor-pointer ${
-                                      salesCurrentPage === pageNum
+                                    className={`w-9 h-9 flex items-center justify-center rounded-lg text-sm font-medium transition-all cursor-pointer ${salesCurrentPage === pageNum
                                         ? 'bg-[#164151] text-white'
                                         : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20'
-                                    }`}
+                                      }`}
                                   >
                                     {pageNum}
                                   </button>
@@ -2497,11 +2484,10 @@ function AdminDashboardContent() {
                             <button
                               onClick={() => setSalesCurrentPage((prev) => Math.min(totalPages, prev + 1))}
                               disabled={salesCurrentPage === totalPages || totalPages === 0}
-                              className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${
-                                salesCurrentPage === totalPages || totalPages === 0
+                              className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${salesCurrentPage === totalPages || totalPages === 0
                                   ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
                                   : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
-                              }`}
+                                }`}
                               title="Página siguiente"
                             >
                               <ChevronRight className="w-4 h-4" />
@@ -2511,11 +2497,10 @@ function AdminDashboardContent() {
                             <button
                               onClick={() => setSalesCurrentPage(totalPages)}
                               disabled={salesCurrentPage === totalPages || totalPages === 0}
-                              className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${
-                                salesCurrentPage === totalPages || totalPages === 0
+                              className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${salesCurrentPage === totalPages || totalPages === 0
                                   ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
                                   : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
-                              }`}
+                                }`}
                               title="Última página"
                             >
                               <ChevronsRight className="w-4 h-4" />
@@ -2575,12 +2560,12 @@ function AdminDashboardContent() {
       {productsModal.isOpen && productsModal.user && productsModal.position && (
         <>
           {/* Overlay transparente para cerrar al hacer click fuera */}
-          <div 
-            className="fixed inset-0 z-40" 
+          <div
+            className="fixed inset-0 z-40"
             onClick={() => setProductsModal({ isOpen: false, user: null, position: null })}
           />
           {/* Popover pequeño posicionado */}
-          <div 
+          <div
             className="fixed z-50 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-white/10 shadow-xl w-72 max-h-80 overflow-hidden"
             style={{
               left: `${Math.max(8, Math.min(productsModal.position.x, window.innerWidth - 296))}px`, // 296 = 288 + 8px margin
@@ -2592,12 +2577,12 @@ function AdminDashboardContent() {
               <h3 className="text-xs font-semibold text-[#164151] dark:text-white">
                 Productos
               </h3>
-                <button
+              <button
                 onClick={() => setProductsModal({ isOpen: false, user: null, position: null })}
                 className="w-5 h-5 flex items-center justify-center rounded hover:bg-gray-100 dark:hover:bg-white/10 text-[#164151]/80 dark:text-white/60 transition-colors"
-                >
+              >
                 <X className="w-3.5 h-3.5" />
-                </button>
+              </button>
             </div>
 
             <div className="p-2 space-y-1.5 max-h-72 overflow-y-auto">
@@ -2629,24 +2614,23 @@ function AdminDashboardContent() {
                         </div>
                       </div>
                       <span
-                        className={`px-1.5 py-0.5 rounded text-xs font-medium flex-shrink-0 ${
-                          product.isActive
+                        className={`px-1.5 py-0.5 rounded text-xs font-medium flex-shrink-0 ${product.isActive
                             ? 'bg-[#85ea10]/30 text-[#164151] dark:bg-[#85ea10]/30 dark:text-[#85ea10]'
                             : 'bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400'
-                        }`}
+                          }`}
                       >
                         {product.isActive ? 'Al día' : 'Renovar'}
                       </span>
-                      </div>
                     </div>
+                  </div>
                 ))
               ) : (
                 <p className="text-xs text-gray-500 dark:text-white/50 text-center py-2">
                   Sin productos
                 </p>
               )}
-                      </div>
-                    </div>
+            </div>
+          </div>
         </>
       )}
 
@@ -2707,11 +2691,10 @@ function CourseCard({ course, onEdit, onDelete, onTogglePublish }: CourseCardPro
         {/* Badge de estado sobre la imagen */}
         <div className="absolute top-3 right-3">
           <span
-            className={`px-3 py-1 text-xs font-black rounded-full ${
-              course.is_published
+            className={`px-3 py-1 text-xs font-black rounded-full ${course.is_published
                 ? 'bg-[#85ea10] text-black'
                 : 'bg-gray-800/80 dark:bg-white/20 text-white dark:text-white/90 backdrop-blur-sm'
-            }`}
+              }`}
           >
             {course.is_published ? 'Publicado' : 'Borrador'}
           </span>
@@ -2764,11 +2747,10 @@ function CourseCard({ course, onEdit, onDelete, onTogglePublish }: CourseCardPro
           </button>
           <button
             onClick={onTogglePublish}
-            className={`flex-1 px-3 py-2.5 rounded-lg text-xs font-black transition-colors flex items-center justify-center gap-1.5 uppercase tracking-tight ${
-              course.is_published
+            className={`flex-1 px-3 py-2.5 rounded-lg text-xs font-black transition-colors flex items-center justify-center gap-1.5 uppercase tracking-tight ${course.is_published
                 ? 'bg-orange-100 dark:bg-orange-500/20 hover:bg-orange-200 dark:hover:bg-orange-500/30 border border-orange-300 dark:border-orange-500/30 text-orange-600 dark:text-orange-400'
                 : 'bg-[#85ea10] hover:bg-[#7dd30f] text-black border border-[#85ea10]'
-            }`}
+              }`}
           >
             {course.is_published ? (
               <>

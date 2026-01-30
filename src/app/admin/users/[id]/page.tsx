@@ -92,7 +92,7 @@ const menuSections = [
       { id: 'users', label: 'Usuarios', icon: Users, description: 'Gestiona usuarios y clientes físicos' },
       { id: 'gym-plans', label: 'Planes', icon: Dumbbell, description: 'Gestionar planes del gimnasio' },
       { id: 'gym-payments', label: 'Pagos', icon: CreditCard, description: 'Facturar planes a clientes físicos' },
-      // { id: 'gym-collections', label: 'Cobranza', icon: AlertCircle, description: 'Cobranza y seguimiento' },
+
     ],
   },
   {
@@ -130,7 +130,7 @@ export default function UserDetailPage() {
   const [loadingWeightRecords, setLoadingWeightRecords] = useState(false);
 
   const userId = params?.id as string;
-  
+
   // Encontrar el item activo (Usuarios)
   const activeItem = menuSections
     .flatMap((section) => section.items)
@@ -175,27 +175,27 @@ export default function UserDetailPage() {
       const foundUser = data.users?.find((u: any) => u.id === userId);
       if (foundUser) {
         setUserData(foundUser);
-          // Inicializar formulario de edición con los datos actuales
-          setEditForm({
-            name: foundUser.name || foundUser.full_name || '',
-            email: foundUser.email || '',
-            phone: foundUser.phone || foundUser.whatsapp || '',
-            whatsapp: foundUser.whatsapp || foundUser.phone || '',
-            document_id: foundUser.document_id || '',
-            document_type: foundUser.document_type || 'CC',
-            height: foundUser.height || '',
-            weight: foundUser.weight || foundUser.current_weight || '',
-            current_weight: foundUser.current_weight || foundUser.weight || '',
-            gender: foundUser.gender || '',
-            target_weight: foundUser.target_weight || '',
-            goals: Array.isArray(foundUser.goals) ? foundUser.goals : (foundUser.goals ? (typeof foundUser.goals === 'string' ? JSON.parse(foundUser.goals) : foundUser.goals) : []),
-            address: foundUser.address || '',
-            city: foundUser.city || '',
-            birth_date: foundUser.birth_date || '',
-            birth_year: foundUser.birth_year || '',
-            medical_restrictions: foundUser.medical_restrictions || '',
-          });
-        
+        // Inicializar formulario de edición con los datos actuales
+        setEditForm({
+          name: foundUser.name || foundUser.full_name || '',
+          email: foundUser.email || '',
+          phone: foundUser.phone || foundUser.whatsapp || '',
+          whatsapp: foundUser.whatsapp || foundUser.phone || '',
+          document_id: foundUser.document_id || '',
+          document_type: foundUser.document_type || 'CC',
+          height: foundUser.height || '',
+          weight: foundUser.weight || foundUser.current_weight || '',
+          current_weight: foundUser.current_weight || foundUser.weight || '',
+          gender: foundUser.gender || '',
+          target_weight: foundUser.target_weight || '',
+          goals: Array.isArray(foundUser.goals) ? foundUser.goals : (foundUser.goals ? (typeof foundUser.goals === 'string' ? JSON.parse(foundUser.goals) : foundUser.goals) : []),
+          address: foundUser.address || '',
+          city: foundUser.city || '',
+          birth_date: foundUser.birth_date || '',
+          birth_year: foundUser.birth_year || '',
+          medical_restrictions: foundUser.medical_restrictions || '',
+        });
+
         // Activar modo edición si viene con query param edit=true
         if (searchParams.get('edit') === 'true') {
           setIsEditing(true);
@@ -234,7 +234,7 @@ export default function UserDetailPage() {
           console.warn('Usuario no encontrado');
         }
       }
-      
+
       // Cargar registros de peso si el usuario tiene user_id
       if (foundUser && foundUser.id && !foundUser.isUnregisteredClient) {
         loadWeightRecords(foundUser.id);
@@ -255,7 +255,7 @@ export default function UserDetailPage() {
         .eq('user_id', userId)
         .order('record_date', { ascending: false })
         .limit(30);
-      
+
       if (!error && data) {
         setWeightRecords(data);
       }
@@ -396,10 +396,9 @@ export default function UserDetailPage() {
                       className={`
                         w-full flex items-center gap-3 px-4 py-2.5 rounded-lg
                         transition-all duration-200 group
-                        ${
-                          isActive
-                            ? 'bg-[#85ea10]/20 dark:bg-[#85ea10]/20 text-[#164151] dark:text-white'
-                            : 'text-[#164151]/80 dark:text-white/60 hover:text-[#164151] dark:hover:text-white hover:bg-gray-50 dark:hover:bg-white/5'
+                        ${isActive
+                          ? 'bg-[#85ea10]/20 dark:bg-[#85ea10]/20 text-[#164151] dark:text-white'
+                          : 'text-[#164151]/80 dark:text-white/60 hover:text-[#164151] dark:hover:text-white hover:bg-gray-50 dark:hover:bg-white/5'
                         }
                         ${sidebarCollapsed ? 'justify-center' : ''}
                       `}
@@ -529,599 +528,599 @@ export default function UserDetailPage() {
               <div className="lg:col-span-2 space-y-6">
                 {/* Estado y Tipo */}
                 <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-white/10 p-6">
-              <h2 className="text-sm font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider mb-4">
-                Estado del Cliente
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <p className="text-xs text-gray-500 dark:text-white/40 mb-1">Estado</p>
-                  <div>
-                    {(() => {
-                      // Si tiene membresía vencida, mostrar estado apropiado
-                      if (userData.hasGymMembership && !userData.hasActiveGymMembership) {
-                        // Si está marcado como inactivo en la BD, mostrar "Inactivo"
-                        if (userData.is_inactive) {
+                  <h2 className="text-sm font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider mb-4">
+                    Estado del Cliente
+                  </h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs text-gray-500 dark:text-white/40 mb-1">Estado</p>
+                      <div>
+                        {(() => {
+                          // Si tiene membresía vencida, mostrar estado apropiado
+                          if (userData.hasGymMembership && !userData.hasActiveGymMembership) {
+                            // Si está marcado como inactivo en la BD, mostrar "Inactivo"
+                            if (userData.is_inactive) {
+                              return (
+                                <p className="text-sm font-medium text-[#164151] dark:text-white">
+                                  <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400">
+                                    <X className="w-5 h-5" />
+                                    Inactivo
+                                  </span>
+                                </p>
+                              );
+                            }
+
+                            // Siempre mostrar "Renovar" cuando está vencido (no importa cuántos días)
+                            return (
+                              <p className="text-sm font-medium text-[#164151] dark:text-white">
+                                <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-orange-100 dark:bg-orange-500/20 text-orange-700 dark:text-orange-400">
+                                  <AlertTriangle className="w-5 h-5" />
+                                  Renovar
+                                </span>
+                              </p>
+                            );
+                          }
+
+                          if (userData.hasActiveGymMembership || userData.hasOnlinePurchase) {
+                            return (
+                              <p className="text-sm font-medium text-[#164151] dark:text-white">
+                                <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#85ea10]/20 text-[#164151] dark:bg-[#85ea10]/30 dark:text-[#85ea10]">
+                                  <CheckCircle className="w-5 h-5" />
+                                  Al día
+                                </span>
+                              </p>
+                            );
+                          }
+
+                          // Si no está registrado y no tiene membresías, mostrar "Nuevo cliente"
+                          if (userData.isUnregisteredClient) {
+                            return (
+                              <p className="text-sm font-medium text-[#164151] dark:text-white">
+                                <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400">
+                                  <User className="w-5 h-5" />
+                                  Nuevo cliente
+                                </span>
+                              </p>
+                            );
+                          }
+
+                          // Cliente registrado pero sin compras
                           return (
                             <p className="text-sm font-medium text-[#164151] dark:text-white">
-                              <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400">
-                                <X className="w-5 h-5" />
-                                Inactivo
+                              <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400">
+                                <User className="w-5 h-5" />
+                                Nuevo cliente
                               </span>
                             </p>
                           );
-                        }
-                        
-                        // Siempre mostrar "Renovar" cuando está vencido (no importa cuántos días)
-                        return (
-                          <p className="text-sm font-medium text-[#164151] dark:text-white">
-                            <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-orange-100 dark:bg-orange-500/20 text-orange-700 dark:text-orange-400">
-                              <AlertTriangle className="w-5 h-5" />
-                              Renovar
-                            </span>
-                          </p>
-                        );
-                      }
-                      
-                      if (userData.hasActiveGymMembership || userData.hasOnlinePurchase) {
-                        return (
-                          <p className="text-sm font-medium text-[#164151] dark:text-white">
-                            <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#85ea10]/20 text-[#164151] dark:bg-[#85ea10]/30 dark:text-[#85ea10]">
-                              <CheckCircle className="w-5 h-5" />
-                              Al día
-                            </span>
-                          </p>
-                        );
-                      }
-                      
-                      // Si no está registrado y no tiene membresías, mostrar "Nuevo cliente"
-                      if (userData.isUnregisteredClient) {
-                        return (
-                          <p className="text-sm font-medium text-[#164151] dark:text-white">
-                            <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400">
-                              <User className="w-5 h-5" />
-                              Nuevo cliente
-                            </span>
-                          </p>
-                        );
-                      }
-                      
-                      // Cliente registrado pero sin compras
-                      return (
+                        })()}
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="text-xs text-gray-500 dark:text-white/40 mb-1">Tipo de Cliente</p>
+                      {userData.userType === 'both' && (
                         <p className="text-sm font-medium text-[#164151] dark:text-white">
-                          <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400">
-                            <User className="w-5 h-5" />
-                            Nuevo cliente
+                          <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-400">
+                            Físico + Online
                           </span>
                         </p>
-                      );
+                      )}
+                      {userData.userType === 'physical' && (
+                        <p className="text-sm font-medium text-[#164151] dark:text-white">
+                          <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-400">
+                            <Dumbbell className="w-5 h-5" />
+                            Físico
+                          </span>
+                        </p>
+                      )}
+                      {userData.userType === 'online' && (
+                        <p className="text-sm font-medium text-[#164151] dark:text-white">
+                          <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-cyan-100 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-400">
+                            <Globe className="w-5 h-5" />
+                            Online
+                          </span>
+                        </p>
+                      )}
+                      {userData.userType === 'none' && (
+                        <p className="text-sm font-medium text-gray-400 dark:text-white/40">-</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Botón Inactivar/Activar */}
+                  <div className="mt-4 pt-4 border-t border-gray-200 dark:border-white/10">
+                    {(() => {
+                      const clientInfoId = userData.isUnregisteredClient
+                        ? userData.id
+                        : (userData.client_info_id || userData.gym_memberships?.[0]?.client_info_id || null);
+
+                      if (!clientInfoId) return null;
+
+                      const isInactive = userData.is_inactive || false;
+
+                      // Calcular si tiene planes vencidos (estado "Renovar")
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      const allMemberships = userData.gym_memberships || [];
+                      const activeMemberships = allMemberships.filter((m: any) => {
+                        const endDate = new Date(m.end_date);
+                        endDate.setHours(0, 0, 0, 0);
+                        return endDate >= today;
+                      });
+                      const expiredMemberships = allMemberships.filter((m: any) => {
+                        const endDate = new Date(m.end_date);
+                        endDate.setHours(0, 0, 0, 0);
+                        return endDate < today;
+                      });
+
+                      // Solo puede inactivarse si tiene estado "Renovar" (todos vencidos, sin activos)
+                      const hasOnlyExpiredMemberships = expiredMemberships.length > 0 && activeMemberships.length === 0;
+
+                      const latestExpired = expiredMemberships.length > 0
+                        ? expiredMemberships.sort((a: any, b: any) =>
+                          new Date(b.end_date).getTime() - new Date(a.end_date).getTime()
+                        )[0]
+                        : null;
+                      const daysSinceExpired = latestExpired
+                        ? Math.floor((today.getTime() - new Date(latestExpired.end_date).getTime()) / (1000 * 60 * 60 * 24))
+                        : 0;
+                      const hasExpiredMoreThan30Days = daysSinceExpired > 30;
+
+                      // Botón Inactivar - solo si tiene estado "Renovar" (todos vencidos) y más de 30 días PERO NO está inactivo
+                      if (hasOnlyExpiredMemberships && hasExpiredMoreThan30Days && !isInactive) {
+                        const handleInactivate = async () => {
+                          if (!confirm(`¿Estás seguro de inactivar a ${userData.name || userData.full_name || 'este usuario'}?`)) {
+                            return;
+                          }
+
+                          try {
+                            const response = await fetch(`/api/admin/gym/clients/${clientInfoId}/toggle-inactive`, {
+                              method: 'PATCH',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ is_inactive: true }),
+                            });
+
+                            if (!response.ok) {
+                              throw new Error('Error al actualizar estado');
+                            }
+
+                            // Recargar datos del usuario usando la función existente
+                            await loadUserData();
+                          } catch (error) {
+                            console.error('Error inactivating user:', error);
+                            alert('Error al inactivar el usuario');
+                          }
+                        };
+
+                        return (
+                          <button
+                            onClick={handleInactivate}
+                            className="w-full px-4 py-2.5 rounded-lg bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-500/30 transition-colors flex items-center justify-center gap-2 text-sm font-semibold"
+                            title="Inactivar usuario (30 días sin pagar)"
+                          >
+                            <Ban className="w-5 h-5" />
+                            Inactivar Usuario
+                          </button>
+                        );
+                      }
+
+                      // Botón Activar - solo si está inactivo
+                      if (isInactive) {
+                        const handleActivate = async () => {
+                          try {
+                            const response = await fetch(`/api/admin/gym/clients/${clientInfoId}/toggle-inactive`, {
+                              method: 'PATCH',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ is_inactive: false }),
+                            });
+
+                            if (!response.ok) {
+                              throw new Error('Error al actualizar estado');
+                            }
+
+                            // Recargar datos del usuario usando la función existente
+                            await loadUserData();
+                          } catch (error) {
+                            console.error('Error activating user:', error);
+                            alert('Error al activar el usuario');
+                          }
+                        };
+
+                        return (
+                          <button
+                            onClick={handleActivate}
+                            className="w-full px-4 py-2.5 rounded-lg bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-500/30 transition-colors flex items-center justify-center gap-2 text-sm font-semibold"
+                            title="Activar usuario"
+                          >
+                            <CheckCircle className="w-5 h-5" />
+                            Activar Usuario
+                          </button>
+                        );
+                      }
+
+                      return null;
                     })()}
                   </div>
                 </div>
 
-                <div>
-                  <p className="text-xs text-gray-500 dark:text-white/40 mb-1">Tipo de Cliente</p>
-                  {userData.userType === 'both' && (
-                    <p className="text-sm font-medium text-[#164151] dark:text-white">
-                      <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-400">
-                        Físico + Online
-                      </span>
-                    </p>
-                  )}
-                  {userData.userType === 'physical' && (
-                    <p className="text-sm font-medium text-[#164151] dark:text-white">
-                      <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-400">
-                        <Dumbbell className="w-5 h-5" />
-                        Físico
-                      </span>
-                    </p>
-                  )}
-                  {userData.userType === 'online' && (
-                    <p className="text-sm font-medium text-[#164151] dark:text-white">
-                      <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-cyan-100 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-400">
-                        <Globe className="w-5 h-5" />
-                        Online
-                      </span>
-                    </p>
-                  )}
-                  {userData.userType === 'none' && (
-                    <p className="text-sm font-medium text-gray-400 dark:text-white/40">-</p>
-                  )}
-                </div>
-              </div>
-              
-              {/* Botón Inactivar/Activar */}
-              <div className="mt-4 pt-4 border-t border-gray-200 dark:border-white/10">
-                {(() => {
-                  const clientInfoId = userData.isUnregisteredClient 
-                    ? userData.id 
-                    : (userData.client_info_id || userData.gym_memberships?.[0]?.client_info_id || null);
-                  
-                  if (!clientInfoId) return null;
-                  
-                  const isInactive = userData.is_inactive || false;
-                  
-                  // Calcular si tiene planes vencidos (estado "Renovar")
-                  const today = new Date();
-                  today.setHours(0, 0, 0, 0);
-                  const allMemberships = userData.gym_memberships || [];
-                  const activeMemberships = allMemberships.filter((m: any) => {
-                    const endDate = new Date(m.end_date);
-                    endDate.setHours(0, 0, 0, 0);
-                    return endDate >= today;
-                  });
-                  const expiredMemberships = allMemberships.filter((m: any) => {
-                    const endDate = new Date(m.end_date);
-                    endDate.setHours(0, 0, 0, 0);
-                    return endDate < today;
-                  });
-                  
-                  // Solo puede inactivarse si tiene estado "Renovar" (todos vencidos, sin activos)
-                  const hasOnlyExpiredMemberships = expiredMemberships.length > 0 && activeMemberships.length === 0;
-                  
-                  const latestExpired = expiredMemberships.length > 0
-                    ? expiredMemberships.sort((a: any, b: any) => 
-                        new Date(b.end_date).getTime() - new Date(a.end_date).getTime()
-                      )[0]
-                    : null;
-                  const daysSinceExpired = latestExpired
-                    ? Math.floor((today.getTime() - new Date(latestExpired.end_date).getTime()) / (1000 * 60 * 60 * 24))
-                    : 0;
-                  const hasExpiredMoreThan30Days = daysSinceExpired > 30;
-                  
-                  // Botón Inactivar - solo si tiene estado "Renovar" (todos vencidos) y más de 30 días PERO NO está inactivo
-                  if (hasOnlyExpiredMemberships && hasExpiredMoreThan30Days && !isInactive) {
-                    const handleInactivate = async () => {
-                      if (!confirm(`¿Estás seguro de inactivar a ${userData.name || userData.full_name || 'este usuario'}?`)) {
-                        return;
-                      }
-                      
-                      try {
-                        const response = await fetch(`/api/admin/gym/clients/${clientInfoId}/toggle-inactive`, {
-                          method: 'PATCH',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ is_inactive: true }),
-                        });
-                        
-                        if (!response.ok) {
-                          throw new Error('Error al actualizar estado');
-                        }
-                        
-                        // Recargar datos del usuario usando la función existente
-                        await loadUserData();
-                      } catch (error) {
-                        console.error('Error inactivating user:', error);
-                        alert('Error al inactivar el usuario');
-                      }
-                    };
-                    
-                    return (
-                      <button
-                        onClick={handleInactivate}
-                        className="w-full px-4 py-2.5 rounded-lg bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-500/30 transition-colors flex items-center justify-center gap-2 text-sm font-semibold"
-                        title="Inactivar usuario (30 días sin pagar)"
-                      >
-                        <Ban className="w-5 h-5" />
-                        Inactivar Usuario
-                      </button>
-                    );
-                  }
-                  
-                  // Botón Activar - solo si está inactivo
-                  if (isInactive) {
-                    const handleActivate = async () => {
-                      try {
-                        const response = await fetch(`/api/admin/gym/clients/${clientInfoId}/toggle-inactive`, {
-                          method: 'PATCH',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ is_inactive: false }),
-                        });
-                        
-                        if (!response.ok) {
-                          throw new Error('Error al actualizar estado');
-                        }
-                        
-                        // Recargar datos del usuario usando la función existente
-                        await loadUserData();
-                      } catch (error) {
-                        console.error('Error activating user:', error);
-                        alert('Error al activar el usuario');
-                      }
-                    };
-                    
-                    return (
-                      <button
-                        onClick={handleActivate}
-                        className="w-full px-4 py-2.5 rounded-lg bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-500/30 transition-colors flex items-center justify-center gap-2 text-sm font-semibold"
-                        title="Activar usuario"
-                      >
-                        <CheckCircle className="w-5 h-5" />
-                        Activar Usuario
-                      </button>
-                    );
-                  }
-                  
-                  return null;
-                })()}
-              </div>
-                </div>
-
                 {/* Información Personal */}
                 <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-white/10 p-6">
-              <h2 className="text-sm font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider mb-4">
-                Información Personal
-              </h2>
-              {saveError && (
-                <div className="mb-4 p-3 bg-red-50 dark:bg-red-500/20 border border-red-200 dark:border-red-500/30 rounded-lg">
-                  <p className="text-sm text-red-600 dark:text-red-400">{saveError}</p>
-                </div>
-              )}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
-                  <User className="w-5 h-5 text-gray-400" />
-                  <div className="flex-1">
-                    <p className="text-xs text-gray-500 dark:text-white/40 mb-1">Nombre completo</p>
-                    {isEditing ? (
-                      <input
-                        type="text"
-                        value={editForm.name || ''}
-                        onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                        className="w-full px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded-lg text-sm text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50"
-                      />
-                    ) : (
-                      <p className="text-sm font-medium text-[#164151] dark:text-white">
-                        {userData.first_name && userData.last_name
-                          ? `${userData.first_name} ${userData.last_name}`
-                          : userData.name || userData.full_name || 'No especificado'}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
-                  <Mail className="w-5 h-5 text-gray-400" />
-                  <div className="flex-1">
-                    <p className="text-xs text-gray-500 dark:text-white/40 mb-1">Email</p>
-                    {isEditing ? (
-                      <input
-                        type="email"
-                        value={editForm.email || ''}
-                        onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-                        className="w-full px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded-lg text-sm text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50"
-                      />
-                    ) : (
-                      <p className="text-sm font-medium text-[#164151] dark:text-white">
-                        {userData.email || 'No especificado'}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
-                  <Phone className="w-5 h-5 text-gray-400" />
-                  <div className="flex-1">
-                    <p className="text-xs text-gray-500 dark:text-white/40 mb-1">Teléfono / WhatsApp</p>
-                    {isEditing ? (
-                      <input
-                        type="text"
-                        value={editForm.phone || editForm.whatsapp || ''}
-                        onChange={(e) => setEditForm({ ...editForm, phone: e.target.value, whatsapp: e.target.value })}
-                        className="w-full px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded-lg text-sm text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50"
-                      />
-                    ) : (
-                      <p className="text-sm font-medium text-[#164151] dark:text-white">
-                        {userData.phone || userData.whatsapp || 'No especificado'}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
-                  <CreditCard className="w-5 h-5 text-gray-400" />
-                  <div className="flex-1">
-                    <p className="text-xs text-gray-500 dark:text-white/40 mb-1">Documento</p>
-                    {isEditing ? (
-                      <div className="flex gap-2">
-                        <select
-                          value={editForm.document_type || 'CC'}
-                          onChange={(e) => setEditForm({ ...editForm, document_type: e.target.value })}
-                          className="px-2 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded-lg text-sm text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50"
-                        >
-                          <option value="CC">CC</option>
-                          <option value="CE">CE</option>
-                          <option value="TI">TI</option>
-                          <option value="PA">PA</option>
-                        </select>
-                        <input
-                          type="text"
-                          value={editForm.document_id || ''}
-                          onChange={(e) => setEditForm({ ...editForm, document_id: e.target.value })}
-                          disabled={userData.isUnregisteredClient}
-                          className="flex-1 px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded-lg text-sm text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed"
-                        />
-                      </div>
-                    ) : (
-                      <p className="text-sm font-medium text-[#164151] dark:text-white">
-                        {userData.document_id
-                          ? `${userData.document_type || 'CC'}: ${userData.document_id}`
-                          : 'No especificado'}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Historial Clínico / Restricciones Médicas - Siempre visible */}
-                <div className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl md:col-span-2">
-                  <FileText className="w-5 h-5 text-gray-400 mt-0.5" />
-                  <div className="flex-1">
-                    <p className="text-xs text-gray-500 dark:text-white/40 mb-1">Historial Clínico / Restricciones Médicas</p>
-                    {isEditing ? (
-                      <textarea
-                        value={editForm.medical_restrictions || ''}
-                        onChange={(e) => setEditForm({ ...editForm, medical_restrictions: e.target.value })}
-                        rows={3}
-                        className="w-full px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded-lg text-sm text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 resize-none"
-                        placeholder="Restricciones médicas o historial clínico..."
-                      />
-                    ) : (
-                      <p className="text-sm font-medium text-[#164151] dark:text-white">
-                        {userData.medical_restrictions || 'No especificado'}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                {userData.address && !isEditing && (
-                  <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
-                    <MapPin className="w-5 h-5 text-gray-400" />
-                    <div>
-                      <p className="text-xs text-gray-500 dark:text-white/40">Dirección</p>
-                      <p className="text-sm font-medium text-[#164151] dark:text-white">
-                        {userData.address}
-                        {userData.city ? `, ${userData.city}` : ''}
-                      </p>
+                  <h2 className="text-sm font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider mb-4">
+                    Información Personal
+                  </h2>
+                  {saveError && (
+                    <div className="mb-4 p-3 bg-red-50 dark:bg-red-500/20 border border-red-200 dark:border-red-500/30 rounded-lg">
+                      <p className="text-sm text-red-600 dark:text-red-400">{saveError}</p>
                     </div>
-                  </div>
-                )}
-
-                {isEditing && (
-                  <>
+                  )}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
-                      <MapPin className="w-5 h-5 text-gray-400" />
+                      <User className="w-5 h-5 text-gray-400" />
                       <div className="flex-1">
-                        <p className="text-xs text-gray-500 dark:text-white/40 mb-1">Dirección</p>
-                        <input
-                          type="text"
-                          value={editForm.address || ''}
-                          onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
-                          className="w-full px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded-lg text-sm text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50"
-                        />
+                        <p className="text-xs text-gray-500 dark:text-white/40 mb-1">Nombre completo</p>
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            value={editForm.name || ''}
+                            onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                            className="w-full px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded-lg text-sm text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50"
+                          />
+                        ) : (
+                          <p className="text-sm font-medium text-[#164151] dark:text-white">
+                            {userData.first_name && userData.last_name
+                              ? `${userData.first_name} ${userData.last_name}`
+                              : userData.name || userData.full_name || 'No especificado'}
+                          </p>
+                        )}
                       </div>
                     </div>
+
                     <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
-                      <MapPin className="w-5 h-5 text-gray-400" />
+                      <Mail className="w-5 h-5 text-gray-400" />
                       <div className="flex-1">
-                        <p className="text-xs text-gray-500 dark:text-white/40 mb-1">Ciudad</p>
-                        <input
-                          type="text"
-                          value={editForm.city || ''}
-                          onChange={(e) => setEditForm({ ...editForm, city: e.target.value })}
-                          className="w-full px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded-lg text-sm text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50"
-                        />
+                        <p className="text-xs text-gray-500 dark:text-white/40 mb-1">Email</p>
+                        {isEditing ? (
+                          <input
+                            type="email"
+                            value={editForm.email || ''}
+                            onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                            className="w-full px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded-lg text-sm text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50"
+                          />
+                        ) : (
+                          <p className="text-sm font-medium text-[#164151] dark:text-white">
+                            {userData.email || 'No especificado'}
+                          </p>
+                        )}
                       </div>
                     </div>
-                  </>
-                )}
 
-                {userData.birth_year && !isEditing && (
-                  <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
-                    <Calendar className="w-5 h-5 text-gray-400" />
-                    <div>
-                      <p className="text-xs text-gray-500 dark:text-white/40">Año de nacimiento</p>
-                      <p className="text-sm font-medium text-[#164151] dark:text-white">
-                        {userData.birth_year} ({new Date().getFullYear() - userData.birth_year} años)
-                      </p>
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
+                      <Phone className="w-5 h-5 text-gray-400" />
+                      <div className="flex-1">
+                        <p className="text-xs text-gray-500 dark:text-white/40 mb-1">Teléfono / WhatsApp</p>
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            value={editForm.phone || editForm.whatsapp || ''}
+                            onChange={(e) => setEditForm({ ...editForm, phone: e.target.value, whatsapp: e.target.value })}
+                            className="w-full px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded-lg text-sm text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50"
+                          />
+                        ) : (
+                          <p className="text-sm font-medium text-[#164151] dark:text-white">
+                            {userData.phone || userData.whatsapp || 'No especificado'}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
+                      <CreditCard className="w-5 h-5 text-gray-400" />
+                      <div className="flex-1">
+                        <p className="text-xs text-gray-500 dark:text-white/40 mb-1">Documento</p>
+                        {isEditing ? (
+                          <div className="flex gap-2">
+                            <select
+                              value={editForm.document_type || 'CC'}
+                              onChange={(e) => setEditForm({ ...editForm, document_type: e.target.value })}
+                              className="px-2 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded-lg text-sm text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50"
+                            >
+                              <option value="CC">CC</option>
+                              <option value="CE">CE</option>
+                              <option value="TI">TI</option>
+                              <option value="PA">PA</option>
+                            </select>
+                            <input
+                              type="text"
+                              value={editForm.document_id || ''}
+                              onChange={(e) => setEditForm({ ...editForm, document_id: e.target.value })}
+                              disabled={userData.isUnregisteredClient}
+                              className="flex-1 px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded-lg text-sm text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed"
+                            />
+                          </div>
+                        ) : (
+                          <p className="text-sm font-medium text-[#164151] dark:text-white">
+                            {userData.document_id
+                              ? `${userData.document_type || 'CC'}: ${userData.document_id}`
+                              : 'No especificado'}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Historial Clínico / Restricciones Médicas - Siempre visible */}
+                    <div className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl md:col-span-2">
+                      <FileText className="w-5 h-5 text-gray-400 mt-0.5" />
+                      <div className="flex-1">
+                        <p className="text-xs text-gray-500 dark:text-white/40 mb-1">Historial Clínico / Restricciones Médicas</p>
+                        {isEditing ? (
+                          <textarea
+                            value={editForm.medical_restrictions || ''}
+                            onChange={(e) => setEditForm({ ...editForm, medical_restrictions: e.target.value })}
+                            rows={3}
+                            className="w-full px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded-lg text-sm text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 resize-none"
+                            placeholder="Restricciones médicas o historial clínico..."
+                          />
+                        ) : (
+                          <p className="text-sm font-medium text-[#164151] dark:text-white">
+                            {userData.medical_restrictions || 'No especificado'}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {userData.address && !isEditing && (
+                      <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
+                        <MapPin className="w-5 h-5 text-gray-400" />
+                        <div>
+                          <p className="text-xs text-gray-500 dark:text-white/40">Dirección</p>
+                          <p className="text-sm font-medium text-[#164151] dark:text-white">
+                            {userData.address}
+                            {userData.city ? `, ${userData.city}` : ''}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {isEditing && (
+                      <>
+                        <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
+                          <MapPin className="w-5 h-5 text-gray-400" />
+                          <div className="flex-1">
+                            <p className="text-xs text-gray-500 dark:text-white/40 mb-1">Dirección</p>
+                            <input
+                              type="text"
+                              value={editForm.address || ''}
+                              onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
+                              className="w-full px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded-lg text-sm text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50"
+                            />
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
+                          <MapPin className="w-5 h-5 text-gray-400" />
+                          <div className="flex-1">
+                            <p className="text-xs text-gray-500 dark:text-white/40 mb-1">Ciudad</p>
+                            <input
+                              type="text"
+                              value={editForm.city || ''}
+                              onChange={(e) => setEditForm({ ...editForm, city: e.target.value })}
+                              className="w-full px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded-lg text-sm text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50"
+                            />
+                          </div>
+                        </div>
+                      </>
+                    )}
+
+                    {userData.birth_year && !isEditing && (
+                      <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
+                        <Calendar className="w-5 h-5 text-gray-400" />
+                        <div>
+                          <p className="text-xs text-gray-500 dark:text-white/40">Año de nacimiento</p>
+                          <p className="text-sm font-medium text-[#164151] dark:text-white">
+                            {userData.birth_year} ({new Date().getFullYear() - userData.birth_year} años)
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {isEditing && (
+                      <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
+                        <Calendar className="w-5 h-5 text-gray-400" />
+                        <div className="flex-1">
+                          <p className="text-xs text-gray-500 dark:text-white/40 mb-1">Fecha de nacimiento</p>
+                          <input
+                            type="date"
+                            value={editForm.birth_date || editForm.birth_year ? `${editForm.birth_year || new Date().getFullYear()}-01-01` : ''}
+                            onChange={(e) => {
+                              const year = e.target.value ? new Date(e.target.value).getFullYear() : '';
+                              setEditForm({ ...editForm, birth_date: e.target.value, birth_year: year });
+                            }}
+                            className="w-full px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded-lg text-sm text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
+                      <Calendar className="w-5 h-5 text-gray-400" />
+                      <div>
+                        <p className="text-xs text-gray-500 dark:text-white/40">Fecha de registro</p>
+                        <p className="text-sm font-medium text-[#164151] dark:text-white">
+                          {new Date(userData.created_at).toLocaleDateString('es-ES', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                )}
-
-                {isEditing && (
-                  <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
-                    <Calendar className="w-5 h-5 text-gray-400" />
-                    <div className="flex-1">
-                      <p className="text-xs text-gray-500 dark:text-white/40 mb-1">Fecha de nacimiento</p>
-                      <input
-                        type="date"
-                        value={editForm.birth_date || editForm.birth_year ? `${editForm.birth_year || new Date().getFullYear()}-01-01` : ''}
-                        onChange={(e) => {
-                          const year = e.target.value ? new Date(e.target.value).getFullYear() : '';
-                          setEditForm({ ...editForm, birth_date: e.target.value, birth_year: year });
-                        }}
-                        className="w-full px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded-lg text-sm text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
-                  <Calendar className="w-5 h-5 text-gray-400" />
-                  <div>
-                    <p className="text-xs text-gray-500 dark:text-white/40">Fecha de registro</p>
-                    <p className="text-sm font-medium text-[#164151] dark:text-white">
-                      {new Date(userData.created_at).toLocaleDateString('es-ES', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </p>
-                  </div>
-                </div>
-              </div>
                 </div>
 
                 {/* Información Fitness - Mostrar para todos los usuarios */}
                 <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-white/10 p-6">
-                <h2 className="text-sm font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider mb-4">
-                  Información Fitness
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
-                    <Scale className="w-5 h-5 text-gray-400" />
-                    <div className="flex-1">
-                      <p className="text-xs text-gray-500 dark:text-white/40 mb-1">Peso actual</p>
-                      {isEditing ? (
-                        <input
-                          type="number"
-                          step="0.1"
-                          value={editForm.current_weight || editForm.weight || ''}
-                          onChange={(e) => setEditForm({ ...editForm, current_weight: e.target.value ? parseFloat(e.target.value) : '', weight: e.target.value ? parseFloat(e.target.value) : '' })}
-                          className="w-full px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded-lg text-sm text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50"
-                          placeholder="kg"
-                        />
-                      ) : (
-                        <p className="text-sm font-medium text-[#164151] dark:text-white">
-                          {userData.current_weight || userData.weight
-                            ? `${userData.current_weight || userData.weight} kg`
-                            : 'No especificado'}
-                        </p>
-                      )}
+                  <h2 className="text-sm font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider mb-4">
+                    Información Fitness
+                  </h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
+                      <Scale className="w-5 h-5 text-gray-400" />
+                      <div className="flex-1">
+                        <p className="text-xs text-gray-500 dark:text-white/40 mb-1">Peso actual</p>
+                        {isEditing ? (
+                          <input
+                            type="number"
+                            step="0.1"
+                            value={editForm.current_weight || editForm.weight || ''}
+                            onChange={(e) => setEditForm({ ...editForm, current_weight: e.target.value ? parseFloat(e.target.value) : '', weight: e.target.value ? parseFloat(e.target.value) : '' })}
+                            className="w-full px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded-lg text-sm text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50"
+                            placeholder="kg"
+                          />
+                        ) : (
+                          <p className="text-sm font-medium text-[#164151] dark:text-white">
+                            {userData.current_weight || userData.weight
+                              ? `${userData.current_weight || userData.weight} kg`
+                              : 'No especificado'}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
-                    <Target className="w-5 h-5 text-gray-400" />
-                    <div className="flex-1">
-                      <p className="text-xs text-gray-500 dark:text-white/40 mb-1">Peso objetivo</p>
-                      {isEditing ? (
-                        <input
-                          type="number"
-                          step="0.1"
-                          value={editForm.target_weight || ''}
-                          onChange={(e) => setEditForm({ ...editForm, target_weight: e.target.value ? parseFloat(e.target.value) : null })}
-                          className="w-full px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded-lg text-sm text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50"
-                          placeholder="kg"
-                        />
-                      ) : (
-                        <p className="text-sm font-medium text-[#164151] dark:text-white">
-                          {userData.target_weight ? `${userData.target_weight} kg` : 'No especificado'}
-                        </p>
-                      )}
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
+                      <Target className="w-5 h-5 text-gray-400" />
+                      <div className="flex-1">
+                        <p className="text-xs text-gray-500 dark:text-white/40 mb-1">Peso objetivo</p>
+                        {isEditing ? (
+                          <input
+                            type="number"
+                            step="0.1"
+                            value={editForm.target_weight || ''}
+                            onChange={(e) => setEditForm({ ...editForm, target_weight: e.target.value ? parseFloat(e.target.value) : null })}
+                            className="w-full px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded-lg text-sm text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50"
+                            placeholder="kg"
+                          />
+                        ) : (
+                          <p className="text-sm font-medium text-[#164151] dark:text-white">
+                            {userData.target_weight ? `${userData.target_weight} kg` : 'No especificado'}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
-                    <Ruler className="w-5 h-5 text-gray-400" />
-                    <div className="flex-1">
-                      <p className="text-xs text-gray-500 dark:text-white/40 mb-1">Altura</p>
-                      {isEditing ? (
-                        <input
-                          type="number"
-                          value={editForm.height || ''}
-                          onChange={(e) => setEditForm({ ...editForm, height: e.target.value ? parseInt(e.target.value) : null })}
-                          className="w-full px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded-lg text-sm text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50"
-                          placeholder="cm"
-                        />
-                      ) : (
-                        <p className="text-sm font-medium text-[#164151] dark:text-white">
-                          {userData.height ? `${userData.height} cm` : 'No especificada'}
-                        </p>
-                      )}
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
+                      <Ruler className="w-5 h-5 text-gray-400" />
+                      <div className="flex-1">
+                        <p className="text-xs text-gray-500 dark:text-white/40 mb-1">Altura</p>
+                        {isEditing ? (
+                          <input
+                            type="number"
+                            value={editForm.height || ''}
+                            onChange={(e) => setEditForm({ ...editForm, height: e.target.value ? parseInt(e.target.value) : null })}
+                            className="w-full px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded-lg text-sm text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50"
+                            placeholder="cm"
+                          />
+                        ) : (
+                          <p className="text-sm font-medium text-[#164151] dark:text-white">
+                            {userData.height ? `${userData.height} cm` : 'No especificada'}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
-                    <User className="w-5 h-5 text-gray-400" />
-                    <div className="flex-1">
-                      <p className="text-xs text-gray-500 dark:text-white/40 mb-1">Género</p>
-                      {isEditing ? (
-                        <select
-                          value={editForm.gender || ''}
-                          onChange={(e) => setEditForm({ ...editForm, gender: e.target.value })}
-                          className="w-full px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded-lg text-sm text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50"
-                        >
-                          <option value="">Seleccionar</option>
-                          <option value="male">Masculino</option>
-                          <option value="female">Femenino</option>
-                          <option value="other">Otro</option>
-                        </select>
-                      ) : (
-                        <p className="text-sm font-medium text-[#164151] dark:text-white">
-                          {userData.gender === 'male'
-                            ? 'Masculino'
-                            : userData.gender === 'female'
-                            ? 'Femenino'
-                            : userData.gender === 'other'
-                            ? 'Otro'
-                            : 'No especificado'}
-                        </p>
-                      )}
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
+                      <User className="w-5 h-5 text-gray-400" />
+                      <div className="flex-1">
+                        <p className="text-xs text-gray-500 dark:text-white/40 mb-1">Género</p>
+                        {isEditing ? (
+                          <select
+                            value={editForm.gender || ''}
+                            onChange={(e) => setEditForm({ ...editForm, gender: e.target.value })}
+                            className="w-full px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded-lg text-sm text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50"
+                          >
+                            <option value="">Seleccionar</option>
+                            <option value="male">Masculino</option>
+                            <option value="female">Femenino</option>
+                            <option value="other">Otro</option>
+                          </select>
+                        ) : (
+                          <p className="text-sm font-medium text-[#164151] dark:text-white">
+                            {userData.gender === 'male'
+                              ? 'Masculino'
+                              : userData.gender === 'female'
+                                ? 'Femenino'
+                                : userData.gender === 'other'
+                                  ? 'Otro'
+                                  : 'No especificado'}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl md:col-span-2">
-                    <Target className="w-5 h-5 text-gray-400 mt-0.5" />
-                    <div className="flex-1">
-                      <p className="text-xs text-gray-500 dark:text-white/40 mb-1">Metas</p>
-                      {isEditing ? (
-                        <div className="flex flex-wrap gap-2">
-                          {['lose_weight', 'gain_muscle', 'improve_health', 'maintain_weight', 'increase_endurance', 'flexibility', 'tone', 'endurance'].map((goal) => (
-                            <label key={goal} className="flex items-center gap-2 cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={Array.isArray(editForm.goals) && editForm.goals.includes(goal)}
-                                onChange={(e) => {
-                                  const currentGoals = Array.isArray(editForm.goals) ? editForm.goals : [];
-                                  if (e.target.checked) {
-                                    setEditForm({ ...editForm, goals: [...currentGoals, goal] });
-                                  } else {
-                                    setEditForm({ ...editForm, goals: currentGoals.filter((g: string) => g !== goal) });
-                                  }
-                                }}
-                                className="rounded border-gray-300 text-[#85ea10] focus:ring-[#85ea10]"
-                              />
-                              <span className="text-xs text-[#164151] dark:text-white">{translateGoal(goal)}</span>
-                            </label>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-sm font-medium text-[#164151] dark:text-white">
-                          {formatGoals(userData.goals || userData.goal)}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  {userData.dietary_habits && userData.dietary_habits.length > 0 && !isEditing && (
                     <div className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl md:col-span-2">
-                      <BookOpen className="w-5 h-5 text-gray-400 mt-0.5" />
-                      <div>
-                        <p className="text-xs text-gray-500 dark:text-white/40">Hábitos alimenticios</p>
-                        <p className="text-sm font-medium text-[#164151] dark:text-white">
-                          {userData.dietary_habits.join(', ')}
-                        </p>
+                      <Target className="w-5 h-5 text-gray-400 mt-0.5" />
+                      <div className="flex-1">
+                        <p className="text-xs text-gray-500 dark:text-white/40 mb-1">Metas</p>
+                        {isEditing ? (
+                          <div className="flex flex-wrap gap-2">
+                            {['lose_weight', 'gain_muscle', 'improve_health', 'maintain_weight', 'increase_endurance', 'flexibility', 'tone', 'endurance'].map((goal) => (
+                              <label key={goal} className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={Array.isArray(editForm.goals) && editForm.goals.includes(goal)}
+                                  onChange={(e) => {
+                                    const currentGoals = Array.isArray(editForm.goals) ? editForm.goals : [];
+                                    if (e.target.checked) {
+                                      setEditForm({ ...editForm, goals: [...currentGoals, goal] });
+                                    } else {
+                                      setEditForm({ ...editForm, goals: currentGoals.filter((g: string) => g !== goal) });
+                                    }
+                                  }}
+                                  className="rounded border-gray-300 text-[#85ea10] focus:ring-[#85ea10]"
+                                />
+                                <span className="text-xs text-[#164151] dark:text-white">{translateGoal(goal)}</span>
+                              </label>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm font-medium text-[#164151] dark:text-white">
+                            {formatGoals(userData.goals || userData.goal)}
+                          </p>
+                        )}
                       </div>
                     </div>
-                  )}
 
-                  {/* Estadísticas de actividad */}
-                  {!isEditing && (
-                    <div className="grid grid-cols-2 gap-3 md:col-span-2">
-                      <div className="p-4 bg-gray-100 dark:bg-white/10 rounded-xl text-center">
-                        <p className="text-2xl font-bold text-[#164151] dark:text-white">
-                          {userData.streak_days || 0}
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-white/40">Días de racha</p>
+                    {userData.dietary_habits && userData.dietary_habits.length > 0 && !isEditing && (
+                      <div className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl md:col-span-2">
+                        <BookOpen className="w-5 h-5 text-gray-400 mt-0.5" />
+                        <div>
+                          <p className="text-xs text-gray-500 dark:text-white/40">Hábitos alimenticios</p>
+                          <p className="text-sm font-medium text-[#164151] dark:text-white">
+                            {userData.dietary_habits.join(', ')}
+                          </p>
+                        </div>
                       </div>
-                      <div className="p-4 bg-blue-500/10 rounded-xl text-center">
-                        <p className="text-2xl font-bold text-blue-500">
-                          {userData.weight_progress_percentage || 0}%
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-white/40">Progreso peso</p>
+                    )}
+
+                    {/* Estadísticas de actividad */}
+                    {!isEditing && (
+                      <div className="grid grid-cols-2 gap-3 md:col-span-2">
+                        <div className="p-4 bg-gray-100 dark:bg-white/10 rounded-xl text-center">
+                          <p className="text-2xl font-bold text-[#164151] dark:text-white">
+                            {userData.streak_days || 0}
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-white/40">Días de racha</p>
+                        </div>
+                        <div className="p-4 bg-blue-500/10 rounded-xl text-center">
+                          <p className="text-2xl font-bold text-blue-500">
+                            {userData.weight_progress_percentage || 0}%
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-white/40">Progreso peso</p>
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Registro del Peso - Solo para usuarios registrados */}
@@ -1173,27 +1172,27 @@ export default function UserDetailPage() {
                 {(() => {
                   const today = new Date();
                   today.setHours(0, 0, 0, 0);
-                  
+
                   // Filtrar membresías activas (no vencidas)
                   const activeMemberships = (userData.gym_memberships || []).filter((membership: any) => {
                     const endDate = new Date(membership.end_date);
                     endDate.setHours(0, 0, 0, 0);
                     return endDate >= today;
                   });
-                  
+
                   // Verificar si tiene cursos activos
                   const hasActiveCourses = userData.activeCoursePurchases && userData.activeCoursePurchases.length > 0;
-                  
+
                   // Solo mostrar si tiene productos activos (membresías o cursos)
                   // No mostrar si está inactivo o si todos los planes están vencidos
                   const hasActiveProducts = activeMemberships.length > 0 || hasActiveCourses;
                   const isInactive = userData.is_inactive || false;
-                  
+
                   // No mostrar si está inactivo o no tiene productos activos
                   if (!hasActiveProducts || isInactive) {
                     return null;
                   }
-                  
+
                   return (
                     <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-white/10 p-6">
                       <h2 className="text-sm font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider mb-4">
@@ -1266,18 +1265,18 @@ export default function UserDetailPage() {
                 {(() => {
                   const today = new Date();
                   today.setHours(0, 0, 0, 0);
-                  
+
                   // Filtrar membresías vencidas
                   const expiredMemberships = (userData.gym_memberships || []).filter((membership: any) => {
                     const endDate = new Date(membership.end_date);
                     endDate.setHours(0, 0, 0, 0);
                     return endDate < today;
                   });
-                  
+
                   if (expiredMemberships.length === 0) {
                     return null;
                   }
-                  
+
                   return (
                     <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-white/10 p-6">
                       <h2 className="text-sm font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider mb-4">
@@ -1289,7 +1288,7 @@ export default function UserDetailPage() {
                           .map((membership: any) => {
                             const endDate = new Date(membership.end_date);
                             endDate.setHours(0, 0, 0, 0);
-                            
+
                             return (
                               <div key={membership.id} className="p-4 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-200 dark:border-white/10">
                                 <div className="flex items-center gap-3 mb-3">
@@ -1311,7 +1310,7 @@ export default function UserDetailPage() {
                                             </span>
                                           );
                                         }
-                                        
+
                                         // Si no está inactivo, siempre mostrar "Renovar"
                                         return (
                                           <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-100 dark:bg-orange-500/20 text-orange-700 dark:text-orange-400">
@@ -1343,21 +1342,21 @@ export default function UserDetailPage() {
                                       month: 'long',
                                       year: 'numeric',
                                     });
-                                    
+
                                     const handleRenew = () => {
                                       const clientName = userData.name || userData.full_name || 'Cliente';
                                       const whatsappNumber = (userData.whatsapp || userData.phone || '').replace(/\D/g, '');
-                                      
+
                                       if (!whatsappNumber) return;
-                                      
+
                                       const message = encodeURIComponent(
                                         `Hola ${clientName}, tu plan "${planName}" finalizó el ${endDateFormatted}. ¿Deseas renovar tu membresía para continuar?`
                                       );
-                                      
+
                                       const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${message}`;
                                       window.open(whatsappUrl, '_blank');
                                     };
-                                    
+
                                     return (
                                       <button
                                         onClick={handleRenew}
@@ -1372,12 +1371,12 @@ export default function UserDetailPage() {
                                       No hay número de contacto disponible
                                     </p>
                                   )}
-                                  
+
                                   {/* Botón Registrar Pago */}
                                   {(() => {
                                     // Obtener el client_info_id correcto
                                     let clientInfoId: string | null = null;
-                                    
+
                                     if (userData.isUnregisteredClient) {
                                       // Cliente físico sin registro online
                                       clientInfoId = userData.id;
@@ -1385,9 +1384,9 @@ export default function UserDetailPage() {
                                       // Usuario registrado: usar client_info_id de la membresía o del userData
                                       clientInfoId = membership.client_info_id || userData.client_info_id || userData.gym_memberships?.[0]?.client_info_id || null;
                                     }
-                                    
+
                                     const planId = membership.plan?.id || null;
-                                    
+
                                     if (!clientInfoId) {
                                       return (
                                         <p className="text-xs text-gray-400 dark:text-white/40 text-center">
@@ -1395,11 +1394,11 @@ export default function UserDetailPage() {
                                         </p>
                                       );
                                     }
-                                    
+
                                     const handleRegisterPayment = () => {
                                       router.push(`/admin?tab=gym-payments&clientId=${clientInfoId}${planId ? `&planId=${planId}` : ''}`);
                                     };
-                                    
+
                                     return (
                                       <button
                                         onClick={handleRegisterPayment}
@@ -1422,96 +1421,95 @@ export default function UserDetailPage() {
                 {/* Membresías */}
                 {userData.gym_memberships && userData.gym_memberships.length > 0 && (
                   <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-white/10 p-6">
-                <h2 className="text-sm font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider mb-4">
-                  Historial de Facturación
-                </h2>
-                <div className="space-y-3">
-                  {userData.gym_memberships
-                    .sort((a: any, b: any) => new Date(b.end_date).getTime() - new Date(a.end_date).getTime())
-                    .map((membership: any) => {
-                      // Verificar dinámicamente si está vencida
-                      const today = new Date();
-                      today.setHours(0, 0, 0, 0);
-                      const endDate = new Date(membership.end_date);
-                      endDate.setHours(0, 0, 0, 0);
-                      const isExpired = endDate < today;
-                      const isActive = !isExpired && membership.status === 'active';
-                      
-                      return (
-                    <div
-                      key={membership.id}
-                      className="p-3 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-200 dark:border-white/10"
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <p className="text-sm font-medium text-[#164151] dark:text-white">
-                          {membership.plan?.name || 'Plan'}
-                        </p>
-                        <span
-                          className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                            isActive
-                              ? 'bg-[#85ea10]/20 text-[#164151] dark:bg-[#85ea10]/30 dark:text-[#85ea10]'
-                              : isExpired
-                              ? 'bg-slate-100 dark:bg-slate-500/20 text-slate-700 dark:text-slate-400'
-                              : 'bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-white/60'
-                          }`}
-                        >
-                          {isActive
-                            ? 'Al día'
-                            : isExpired
-                            ? 'Finalizada'
-                            : membership.status === 'cancelled'
-                            ? 'Cancelada'
-                            : membership.status === 'courtesy'
-                            ? 'Cortesía'
-                            : membership.status}
-                        </span>
-                      </div>
-                      <div className="space-y-1">
-                        <p className="text-xs text-gray-500 dark:text-white/50">
-                          {isExpired ? 'Venció' : 'Vence'}: {new Date(membership.end_date).toLocaleDateString('es-ES', {
-                            day: '2-digit',
-                            month: 'long',
-                            year: 'numeric',
-                          })}
-                        </p>
-                        {membership.payment?.invoice_number ? (
-                          <p className="text-xs font-medium text-[#164151] dark:text-white">
-                            Factura: #{membership.payment.invoice_number}
-                          </p>
-                        ) : null}
-                      </div>
+                    <h2 className="text-sm font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider mb-4">
+                      Historial de Facturación
+                    </h2>
+                    <div className="space-y-3">
+                      {userData.gym_memberships
+                        .sort((a: any, b: any) => new Date(b.end_date).getTime() - new Date(a.end_date).getTime())
+                        .map((membership: any) => {
+                          // Verificar dinámicamente si está vencida
+                          const today = new Date();
+                          today.setHours(0, 0, 0, 0);
+                          const endDate = new Date(membership.end_date);
+                          endDate.setHours(0, 0, 0, 0);
+                          const isExpired = endDate < today;
+                          const isActive = !isExpired && membership.status === 'active';
+
+                          return (
+                            <div
+                              key={membership.id}
+                              className="p-3 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-200 dark:border-white/10"
+                            >
+                              <div className="flex items-center justify-between mb-2">
+                                <p className="text-sm font-medium text-[#164151] dark:text-white">
+                                  {membership.plan?.name || 'Plan'}
+                                </p>
+                                <span
+                                  className={`px-2 py-1 rounded-full text-xs font-semibold ${isActive
+                                      ? 'bg-[#85ea10]/20 text-[#164151] dark:bg-[#85ea10]/30 dark:text-[#85ea10]'
+                                      : isExpired
+                                        ? 'bg-slate-100 dark:bg-slate-500/20 text-slate-700 dark:text-slate-400'
+                                        : 'bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-white/60'
+                                    }`}
+                                >
+                                  {isActive
+                                    ? 'Al día'
+                                    : isExpired
+                                      ? 'Finalizada'
+                                      : membership.status === 'cancelled'
+                                        ? 'Cancelada'
+                                        : membership.status === 'courtesy'
+                                          ? 'Cortesía'
+                                          : membership.status}
+                                </span>
+                              </div>
+                              <div className="space-y-1">
+                                <p className="text-xs text-gray-500 dark:text-white/50">
+                                  {isExpired ? 'Venció' : 'Vence'}: {new Date(membership.end_date).toLocaleDateString('es-ES', {
+                                    day: '2-digit',
+                                    month: 'long',
+                                    year: 'numeric',
+                                  })}
+                                </p>
+                                {membership.payment?.invoice_number ? (
+                                  <p className="text-xs font-medium text-[#164151] dark:text-white">
+                                    Factura: #{membership.payment.invoice_number}
+                                  </p>
+                                ) : null}
+                              </div>
+                            </div>
+                          );
+                        })}
                     </div>
-                      );
-                    })}
-                </div>
                   </div>
                 )}
 
                 {/* Cursos */}
                 {userData.course_purchases && userData.course_purchases.length > 0 && (
                   <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-white/10 p-6">
-                <h2 className="text-sm font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider mb-4">
-                  Historial de Cursos
-                </h2>
-                <div className="space-y-3">
-                  {userData.course_purchases.map((purchase: any) => (
-                    <div
-                      key={purchase.id}
-                      className="p-3 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-200 dark:border-white/10"
-                    >
-                      <p className="text-sm font-medium text-[#164151] dark:text-white">
-                        {purchase.course?.title || 'Curso'}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-white/50">
-                        {purchase.is_active ? (
-                          <span className="text-[#85ea10]">Activo</span>
-                        ) : (
-                          <span>Completado</span>
-                        )}
-                      </p>
+                    <h2 className="text-sm font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider mb-4">
+                      Historial de Cursos
+                    </h2>
+                    <div className="space-y-3">
+                      {userData.course_purchases.map((purchase: any) => (
+                        <div
+                          key={purchase.id}
+                          className="p-3 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-200 dark:border-white/10"
+                        >
+                          <p className="text-sm font-medium text-[#164151] dark:text-white">
+                            {purchase.course?.title || 'Curso'}
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-white/50">
+                            {purchase.is_active ? (
+                              <span className="text-[#85ea10]">Activo</span>
+                            ) : (
+                              <span>Completado</span>
+                            )}
+                          </p>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
                   </div>
                 )}
               </div>
