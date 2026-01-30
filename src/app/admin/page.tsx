@@ -289,7 +289,7 @@ function AdminDashboardContent() {
   const [dateFilter, setDateFilter] = useState<'today' | 'custom'>('today');
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
-  const [sedeFilter, setSedeFilter] = useState<'fisica' | 'online' | 'ambas'>('ambas');
+  const [sedeFilter, setSedeFilter] = useState<'fisica' | 'online' | 'ambas'>('fisica');
   const [showRevenueNumbers, setShowRevenueNumbers] = useState(false);
   const [weeklyData, setWeeklyData] = useState<{ date: string; amount: number; dayName: string }[]>([]);
   const [loadingWeeklyData, setLoadingWeeklyData] = useState(false);
@@ -999,9 +999,9 @@ function AdminDashboardContent() {
                       onChange={(e) => setSedeFilter(e.target.value as 'fisica' | 'online' | 'ambas')}
                       className="px-4 py-2 rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-gray-800 text-[#164151] dark:text-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#164151]/50"
                     >
-                      <option value="ambas">Ambas</option>
                       <option value="fisica">Física</option>
-                      <option value="online">En Línea</option>
+                      <option value="ambas" disabled className="text-gray-400">Ambas (deshabilitado)</option>
+                      <option value="online" disabled className="text-gray-400">En Línea (deshabilitado)</option>
                     </select>
                   </div>
 
@@ -2052,7 +2052,7 @@ function AdminDashboardContent() {
                               statusColor = 'border-orange-400';
                               statusBadge = <span className="bg-orange-100 text-orange-600 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">Renovación</span>;
                             } else {
-                              statusBadge = <span className="bg-gray-100 text-gray-500 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">Sin datos</span>;
+                              statusBadge = <span className="bg-gray-100 text-gray-500 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">Sin productos</span>;
                             }
 
                             return (
@@ -2084,12 +2084,35 @@ function AdminDashboardContent() {
                                     </div>
                                   </div>
 
-                                  {(user.phone || user.whatsapp) && (
+                                  {/* Solo mostrar botón WhatsApp si está en Renovación o Inactivo */}
+                                  {(user.phone || user.whatsapp) && (hasExpired || user.is_inactive) && (
                                     <button
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         const phone = (user.phone || user.whatsapp).replace(/\D/g, '');
-                                        window.open(`https://wa.me/${phone}`, '_blank');
+                                        const clientName = user.name || user.full_name || 'Cliente';
+                                        
+                                        let message = '';
+                                        if (user.is_inactive) {
+                                          message = encodeURIComponent(
+                                            `Hola ${clientName}, te extrañamos en RogerBox. ¿Te gustaría volver a entrenar con nosotros?`
+                                          );
+                                        } else if (hasExpired && memberships.length > 0) {
+                                          // Obtener la última membresía vencida
+                                          const lastMembership = memberships[0];
+                                          const planName = lastMembership?.plan?.name || 'tu plan';
+                                          const endDate = lastMembership?.end_date 
+                                            ? new Date(lastMembership.end_date).toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })
+                                            : 'la fecha indicada';
+                                          message = encodeURIComponent(
+                                            `Hola ${clientName}, tu plan "${planName}" venció el ${endDate}. ¿Deseas renovarlo?`
+                                          );
+                                        }
+                                        
+                                        const whatsappUrl = message 
+                                          ? `https://wa.me/${phone}?text=${message}`
+                                          : `https://wa.me/${phone}`;
+                                        window.open(whatsappUrl, '_blank');
                                       }}
                                       className="p-2.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full hover:bg-emerald-500/20 transition-colors"
                                     >
@@ -2127,7 +2150,7 @@ function AdminDashboardContent() {
                         </div>
 
                         {/* Pagination Controls */}
-                        <div className="px-6 py-4 border-t border-gray-200 dark:border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div className="px-6 py-4 mb-16 border-t border-gray-200 dark:border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4">
                           <div className="text-sm text-gray-500 dark:text-white/40">
                             Mostrando{' '}
                             <span className="text-[#164151] dark:text-white font-medium">{startIndex + 1}</span>{' '}

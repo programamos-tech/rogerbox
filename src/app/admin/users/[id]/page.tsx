@@ -479,13 +479,14 @@ export default function UserDetailPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <button
               onClick={() => router.push('/admin?tab=users')}
-              className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-[#164151]/80 dark:text-white/60 hover:text-[#164151] dark:hover:text-white transition-colors"
+              className="flex items-center gap-2 p-2 sm:px-4 sm:py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-[#164151]/80 dark:text-white/60 hover:text-[#164151] dark:hover:text-white transition-colors"
+              title="Volver a usuarios"
             >
-              <ArrowLeft className="w-4 h-4" />
-              <span className="text-sm font-medium">Volver a usuarios</span>
+              <ArrowLeft className="w-5 h-5 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline text-sm font-medium">Volver a usuarios</span>
             </button>
             {isEditing ? (
               <>
@@ -495,26 +496,30 @@ export default function UserDetailPage() {
                     setSaveError('');
                     loadUserData();
                   }}
-                  className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-[#164151] dark:text-white font-medium transition-colors"
+                  className="p-2 sm:px-4 sm:py-2 rounded-lg bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-[#164151] dark:text-white font-medium transition-colors"
+                  title="Cancelar"
                 >
-                  Cancelar
+                  <X className="w-5 h-5 sm:hidden" />
+                  <span className="hidden sm:inline">Cancelar</span>
                 </button>
                 <button
                   onClick={handleSave}
                   disabled={isSaving}
-                  className="px-4 py-2 rounded-lg bg-[#164151] text-white hover:bg-[#1a4d5f] dark:bg-[#164151] dark:hover:bg-[#1a4d5f] font-semibold transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="p-2 sm:px-4 sm:py-2 rounded-lg bg-[#164151] text-white hover:bg-[#1a4d5f] dark:bg-[#164151] dark:hover:bg-[#1a4d5f] font-semibold transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title={isSaving ? 'Guardando...' : 'Guardar'}
                 >
-                  <Save className="w-4 h-4" />
-                  {isSaving ? 'Guardando...' : 'Guardar'}
+                  <Save className="w-5 h-5 sm:w-4 sm:h-4" />
+                  <span className="hidden sm:inline">{isSaving ? 'Guardando...' : 'Guardar'}</span>
                 </button>
               </>
             ) : (
               <button
                 onClick={() => setIsEditing(true)}
-                className="px-4 py-2 rounded-lg bg-[#164151] text-white hover:bg-[#1a4d5f] dark:bg-[#164151] dark:hover:bg-[#1a4d5f] font-semibold transition-colors flex items-center gap-2"
+                className="p-2 sm:px-4 sm:py-2 rounded-lg bg-[#164151] text-white hover:bg-[#1a4d5f] dark:bg-[#164151] dark:hover:bg-[#1a4d5f] font-semibold transition-colors flex items-center gap-2"
+                title="Editar"
               >
-                <Edit className="w-4 h-4" />
-                Editar
+                <Edit className="w-5 h-5 sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">Editar</span>
               </button>
             )}
           </div>
@@ -1516,7 +1521,7 @@ export default function UserDetailPage() {
             </div>
 
             {/* Bottom Back Button */}
-            <div className="mt-8 flex justify-center">
+            <div className="mt-8 mb-20 flex justify-center">
               <button
                 onClick={() => router.push('/admin?tab=users')}
                 className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-4 bg-gray-100 dark:bg-white/10 text-[#164151] dark:text-white font-bold rounded-2xl hover:bg-gray-200 dark:hover:bg-white/20 transition-all shadow-sm"

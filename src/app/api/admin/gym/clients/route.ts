@@ -82,6 +82,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validar que el WhatsApp tenga al menos 10 dígitos
+    const digitsOnly = whatsapp.replace(/\D/g, '');
+    if (digitsOnly.length < 10) {
+      return NextResponse.json(
+        { error: 'El WhatsApp debe tener al menos 10 dígitos' },
+        { status: 400 }
+      );
+    }
+
     // Verificar si ya existe un cliente con esa cédula
     const { data: existing } = await supabaseAdmin
       .from('gym_client_info')

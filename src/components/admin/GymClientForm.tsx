@@ -41,6 +41,12 @@ export default function GymClientForm({ isOpen, onClose, onSuccess, clientToEdit
       setError('El WhatsApp es obligatorio');
       return;
     }
+    // Validar que el WhatsApp tenga al menos 10 dígitos
+    const digitsOnly = formData.whatsapp.replace(/\D/g, '');
+    if (digitsOnly.length < 10) {
+      setError('El WhatsApp debe tener al menos 10 dígitos');
+      return;
+    }
 
     setIsLoading(true);
 
@@ -172,7 +178,7 @@ export default function GymClientForm({ isOpen, onClose, onSuccess, clientToEdit
                   value={formData.whatsapp}
                   onChange={(e) => setFormData({ ...formData, whatsapp: e.target.value })}
                   className="w-full pl-12 pr-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50"
-                  placeholder="+57 300 123 4567"
+                  placeholder="3001234567 (mínimo 10 dígitos)"
                 />
               </div>
             </div>
