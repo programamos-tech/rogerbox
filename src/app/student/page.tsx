@@ -768,7 +768,6 @@ function StudentPageContent() {
         if (timeoutId) clearTimeout(timeoutId);
       };
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoStart, currentLesson?.id, showIntro, showCourseImage, lessonVideoEnded]);
 
   // Efecto adicional: inicializar video cuando currentLesson cambia y no hay intro/image
@@ -809,8 +808,7 @@ function StudentPageContent() {
       
       return () => clearTimeout(timer);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentLesson?.id || null, showIntro, showCourseImage, introEnded, autoStart]);
+  }, [currentLesson?.id, showIntro, showCourseImage, introEnded, autoStart]);
 
   // Cerrar menú de usuario al hacer click fuera
   useEffect(() => {

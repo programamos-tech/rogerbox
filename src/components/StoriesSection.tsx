@@ -268,7 +268,7 @@ export default function StoriesSection({ courseStartDate }: StoriesSectionProps)
             className="absolute inset-0 w-full h-full"
             style={{ 
               '--controls': 'auto',
-            } as React.CSSProperties}
+            } as Record<string, string>}
             envKey={process.env.NEXT_PUBLIC_MUX_DATA_ENV_KEY}
             metadata={{
               video_id: todayComplement.id,

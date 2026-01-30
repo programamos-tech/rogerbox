@@ -21,7 +21,7 @@ function isAdminUser(user: { id?: string; email?: string; user_metadata?: any } 
 export async function GET(request: NextRequest) {
   try {
     const { user } = await getUser();
-    
+
     if (!isAdminUser(user)) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
@@ -95,7 +95,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const { user } = await getUser();
-    
+
     if (!isAdminUser(user)) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
@@ -152,7 +152,7 @@ export async function POST(request: NextRequest) {
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     // Verificar si hay otra membresía activa para el MISMO plan (no permitir abonos del mismo plan)
     // Solo bloquear si hay una membresía activa diferente a la que se está pagando
     const { data: activeMembershipsSamePlan, error: activeMembershipsSamePlanError } = await supabaseAdmin
@@ -204,7 +204,7 @@ export async function POST(request: NextRequest) {
         if (expiredMembershipsOtherPlans.length > 0) {
           // Hay membresías vencidas de otros planes, solo permitir pagar esas
           const expiredMembership = expiredMembershipsOtherPlans[0];
-          const planName = expiredMembership.plan?.name || 'vencido';
+          const planName = (expiredMembership.plan as any)?.name || 'vencido';
           return NextResponse.json(
             { error: `Debes pagar primero el plan "${planName}" que está vencido.` },
             { status: 400 }
@@ -218,12 +218,12 @@ export async function POST(request: NextRequest) {
     if (membership.status === 'active') {
       const endDate = new Date(membership.end_date);
       endDate.setHours(0, 0, 0, 0);
-      
+
       // Verificar si la membresía fue creada hoy (es un plan nuevo)
       const membershipCreatedAt = new Date(membership.created_at);
       membershipCreatedAt.setHours(0, 0, 0, 0);
       const isNewlyCreated = membershipCreatedAt.getTime() === today.getTime();
-      
+
       // Solo bloquear si está activa, vigente, y NO fue creada hoy (es una membresía antigua activa)
       if (endDate >= today && !isNewlyCreated) {
         // La membresía específica que se está pagando está activa y vigente desde antes
@@ -236,7 +236,7 @@ export async function POST(request: NextRequest) {
 
     // Obtener user_id: primero del parámetro, luego de la membresía, luego del client_info
     let finalUserId = user_id || membership.user_id || null;
-    
+
     // Si aún no hay user_id, intentar obtenerlo del client_info
     if (!finalUserId) {
       const { data: clientInfo, error: clientInfoError } = await supabaseAdmin
@@ -244,10 +244,10 @@ export async function POST(request: NextRequest) {
         .select('user_id')
         .eq('id', client_info_id)
         .single();
-      
+
       if (!clientInfoError && clientInfo?.user_id) {
         finalUserId = clientInfo.user_id;
-        
+
         // Actualizar la membresía con el user_id encontrado
         await supabaseAdmin
           .from('gym_memberships')
@@ -263,7 +263,7 @@ export async function POST(request: NextRequest) {
       const { count, error: countError } = await supabaseAdmin
         .from('gym_payments')
         .select('*', { count: 'exact', head: true });
-      
+
       if (!countError && count !== null) {
         // Generar número secuencial: #001, #002, etc. (3 dígitos)
         finalInvoiceNumber = (count + 1).toString().padStart(3, '0');
