@@ -2,7 +2,7 @@
 
 import { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { useRouter } from 'next/navigation';
-import { CreditCard, User, DollarSign, Calendar, FileText, Search, X, Save, CheckCircle, Eye, Download, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { CreditCard, User, DollarSign, Calendar, FileText, Search, X, Save, CheckCircle, Eye, Download, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Filter } from 'lucide-react';
 import { GymClientInfo, GymPlan, GymPayment, PaymentMethod } from '@/types/gym';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -73,12 +73,12 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
       const params = new URLSearchParams(window.location.search);
       const clientId = params.get('clientId');
       const planId = params.get('planId');
-      
+
       if (clientId || planId) {
         const client = clientId ? clients.find(c => c.id === clientId) : null;
         // Buscar el plan incluso si está inactivo (para planes vencidos)
         const plan = planId ? plans.find(p => p.id === planId) : null;
-        
+
         // Debug: verificar si el plan se encontró
         if (planId && !plan) {
           console.log('🔍 Plan no encontrado:', {
@@ -89,12 +89,12 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
         } else if (planId && plan) {
           console.log('✅ Plan encontrado:', { id: plan.id, name: plan.name });
         }
-        
+
         // Solo procesar si encontramos al menos uno de los dos
         if (client || plan) {
           // Marcar como procesado primero para evitar múltiples ejecuciones
           setUrlParamsProcessed(true);
-          
+
           // Primero establecer el cliente si existe
           if (client) {
             setSelectedClient(client);
@@ -108,7 +108,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
             setCheckingMembership(false);
             setExpiredMembershipToPay(null);
           }
-          
+
           // Luego establecer el plan si existe
           if (plan) {
             // Establecer el plan directamente
@@ -116,7 +116,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
             const startDate = new Date();
             const endDate = new Date(startDate);
             endDate.setDate(endDate.getDate() + plan.duration_days);
-            
+
             setFormData(prev => ({
               ...prev,
               plan_id: planId!,
@@ -124,7 +124,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
               period_start: startDate.toISOString().split('T')[0],
               period_end: endDate.toISOString().split('T')[0],
             }));
-            
+
             // Verificar membresía activa para este plan si hay cliente seleccionado
             if (client) {
               // Usar setTimeout para asegurar que el estado se actualice primero
@@ -137,10 +137,10 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
             console.warn(`Plan con ID ${planId} no encontrado en la lista de planes disponibles. Planes disponibles:`, plans.map(p => ({ id: p.id, name: p.name })));
             setError(`El plan seleccionado no está disponible. Por favor, selecciona otro plan.`);
           }
-          
+
           // Abrir el modal
           setShowForm(true);
-          
+
           // Limpiar los parámetros de la URL después de un breve delay
           setTimeout(() => {
             const newUrl = window.location.pathname + '?tab=gym-payments';
@@ -159,14 +159,14 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
       const startDate = new Date(formData.period_start);
       const endDate = new Date(startDate);
       endDate.setDate(endDate.getDate() + selectedPlan.duration_days);
-      
+
       setFormData(prev => ({
         ...prev,
         plan_id: selectedPlan.id,
         amount: selectedPlan.price,
         period_end: endDate.toISOString().split('T')[0],
       }));
-      
+
       // Verificar si hay membresía activa para este plan específico
       if (selectedClient) {
         checkActiveMembershipForPlan(selectedClient.id, selectedPlan.id);
@@ -179,17 +179,17 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
     setError('');
     setHasActiveMembership(false);
     setExpiredMembershipToPay(null);
-    
+
     try {
       const membershipsRes = await fetch(
         `/api/admin/gym/memberships?client_info_id=${clientId}`
       );
-      
+
       if (membershipsRes.ok) {
         const memberships = await membershipsRes.json();
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        
+
         // Buscar membresía activa SOLO para este plan específico
         const activeMembershipForThisPlan = memberships.find(
           (m: any) => {
@@ -198,20 +198,20 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
             return m.plan_id === planId && m.status === 'active' && endDate >= today;
           }
         );
-        
+
         if (activeMembershipForThisPlan) {
           setHasActiveMembership(true);
           setError('Este cliente ya tiene una membresía activa para este plan. Debe esperar a que venza para poder renovar.');
           return;
         }
-        
+
         // Verificar si hay alguna membresía vencida (estado "Renovar") para OTRO plan
         const expiredMemberships = memberships.filter((m: any) => {
           const endDate = new Date(m.end_date);
           endDate.setHours(0, 0, 0, 0);
           return (m.status === 'expired' || (m.status === 'active' && endDate < today)) && m.plan_id !== planId;
         });
-        
+
         if (expiredMemberships.length > 0) {
           // Hay membresías vencidas de otros planes, solo permitir pagar esas
           const expiredMembership = expiredMemberships[0]; // Tomar la primera vencida
@@ -311,7 +311,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
         const memberships = await membershipsRes.json();
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        
+
         // Buscar membresía activa SOLO para el plan específico que se está pagando
         const activeMembershipForThisPlan = memberships.find(
           (m: any) => {
@@ -327,14 +327,14 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
           setIsSubmitting(false);
           return;
         }
-        
+
         // Verificar si hay membresías vencidas (estado "Renovar") para OTROS planes
         const expiredMembershipsOtherPlans = memberships.filter((m: any) => {
           const endDate = new Date(m.end_date);
           endDate.setHours(0, 0, 0, 0);
           return m.plan_id !== formData.plan_id && (m.status === 'expired' || (m.status === 'active' && endDate < today));
         });
-        
+
         // Buscar membresía vencida para este plan específico para reutilizarla
         const expiredMembershipForThisPlan = memberships.find(
           (m: any) => {
@@ -467,7 +467,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
   useImperativeHandle(ref, () => ({
     openCreateModal: (clientId?: string, planId?: string) => {
       resetForm();
-      
+
       // Si se proporciona clientId, prellenar el cliente
       if (clientId) {
         const client = clients.find(c => c.id === clientId);
@@ -479,7 +479,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
           }));
         }
       }
-      
+
       // Si se proporciona planId, prellenar el plan
       if (planId) {
         const plan = plans.find(p => p.id === planId);
@@ -488,7 +488,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
           const startDate = new Date();
           const endDate = new Date(startDate);
           endDate.setDate(endDate.getDate() + plan.duration_days);
-          
+
           setFormData(prev => ({
             ...prev,
             plan_id: planId,
@@ -498,7 +498,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
           }));
         }
       }
-      
+
       setShowForm(true);
     },
     refresh: () => {
@@ -515,10 +515,10 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
   // Filtrar pagos por búsqueda y plan
   const totalPayments = sortedPayments.length;
   const filteredPayments = sortedPayments
-    .map((payment, index) => ({ 
-      payment, 
+    .map((payment, index) => ({
+      payment,
       // Calcular índice inverso: el más reciente (índice 0) tiene el número más alto
-      originalIndex: totalPayments - index - 1 
+      originalIndex: totalPayments - index - 1
     }))
     .filter(({ payment, originalIndex }) => {
       // Filtro por plan
@@ -532,7 +532,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
         const invoiceId = payment.invoice_number ? `#${payment.invoice_number.padStart(3, '0')}`.toLowerCase() : '';
         const clientName = payment.client_info?.name?.toLowerCase() || '';
         const clientDocument = payment.client_info?.document_id?.toLowerCase() || '';
-        
+
         return (
           invoiceId.includes(searchLower) ||
           clientName.includes(searchLower) ||
@@ -566,7 +566,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
     invoiceDiv.style.position = 'absolute';
     invoiceDiv.style.left = '-9999px';
     invoiceDiv.style.top = '0';
-    
+
     invoiceDiv.innerHTML = `
       <div style="text-align: center; margin-bottom: 40px; border-bottom: 3px solid #85ea10; padding-bottom: 20px;">
         <div style="font-size: 36px; font-weight: 900; color: #000; font-family: 'Arial Black', Arial, sans-serif; letter-spacing: 0px; text-transform: uppercase;">
@@ -607,32 +607,31 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
         <div style="background: #e5f7ff; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #3b82f6;">
           <strong>Período Facturado:</strong><br>
           Del ${new Date(payment.period_start).toLocaleDateString('es-ES', {
-            day: '2-digit',
-            month: 'long',
-            year: 'numeric',
-          })} al ${new Date(payment.period_end).toLocaleDateString('es-ES', {
-            day: '2-digit',
-            month: 'long',
-            year: 'numeric',
-          })}
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+    })} al ${new Date(payment.period_end).toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+    })}
         </div>
         <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
           <span style="font-weight: 600; color: #666;">Fecha de Pago:</span>
           <span style="color: #000; text-align: right; max-width: 60%;">${new Date(payment.payment_date).toLocaleDateString('es-ES', {
-            day: '2-digit',
-            month: 'long',
-            year: 'numeric',
-          })}</span>
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+    })}</span>
         </div>
         <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
           <span style="font-weight: 600; color: #666;">Método de Pago:</span>
-          <span style="color: #000; text-align: right; max-width: 60%;">${
-            payment.payment_method === 'cash'
-              ? 'Efectivo'
-              : payment.payment_method === 'transfer'
-              ? 'Transferencia'
-              : 'Mixto'
-          }</span>
+          <span style="color: #000; text-align: right; max-width: 60%;">${payment.payment_method === 'cash'
+        ? 'Efectivo'
+        : payment.payment_method === 'transfer'
+          ? 'Transferencia'
+          : 'Mixto'
+      }</span>
         </div>
         ${payment.notes ? `
         <div style="display: flex; justify-content: space-between; padding: 12px 0;">
@@ -650,12 +649,12 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
       <div style="margin-top: 40px; padding-top: 20px; border-top: 2px solid #e5e7eb; text-align: center; color: #666; font-size: 12px;">
         <p><strong>Esta factura es válida como comprobante de pago</strong></p>
         <p>Factura generada el ${new Date().toLocaleDateString('es-ES', {
-          day: '2-digit',
-          month: 'long',
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-        })}</p>
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })}</p>
         <p style="margin-top: 15px;">RogerBox - Entrenamientos HIIT profesionales</p>
         <p>www.rogerbox.com</p>
         <p style="margin-top: 10px; font-size: 11px; color: #999;">
@@ -687,7 +686,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
       const imgY = 0;
 
       pdf.addImage(imgData, 'PNG', imgX, imgY, imgWidth * ratio, imgHeight * ratio);
-      
+
       // Descargar el PDF
       const fileName = `factura-${payment.invoice_number || payment.id.substring(0, 8)}-${new Date(payment.payment_date).toISOString().split('T')[0]}.pdf`;
       pdf.save(fileName);
@@ -803,11 +802,10 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
                       key={plan.id}
                       type="button"
                       onClick={() => handlePlanSelect(plan)}
-                      className={`p-4 rounded-xl border-2 transition-all text-left ${
-                        selectedPlan?.id === plan.id
-                          ? 'border-[#85ea10] bg-[#85ea10]/10 dark:bg-[#85ea10]/20'
-                          : 'border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20'
-                      }`}
+                      className={`p-4 rounded-xl border-2 transition-all text-left ${selectedPlan?.id === plan.id
+                        ? 'border-[#85ea10] bg-[#85ea10]/10 dark:bg-[#85ea10]/20'
+                        : 'border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20'
+                        }`}
                     >
                       <div className="flex items-center justify-between mb-2">
                         <h4 className="font-semibold text-[#164151] dark:text-white">{plan.name}</h4>
@@ -985,22 +983,23 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
             <div className="flex flex-col sm:flex-row gap-4">
               {/* Buscador */}
               <div className="flex-1 relative">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
                 <input
                   type="text"
                   value={paymentSearchTerm}
                   onChange={(e) => setPaymentSearchTerm(e.target.value)}
-                  placeholder="Buscar por ID de factura, nombre o cédula..."
-                  className="w-full pl-12 pr-4 py-2.5 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-[#164151] dark:text-white placeholder-gray-400 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 focus:border-[#85ea10]/50 transition-all text-sm"
+                  placeholder="Buscar por factura, nombre o cédula..."
+                  className="w-full pl-10 sm:pl-12 pr-4 py-2.5 sm:py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-[#164151] dark:text-white placeholder-gray-400 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 focus:border-[#85ea10]/50 transition-all text-[11px] sm:text-sm"
                 />
               </div>
 
               {/* Filtro por Plan */}
-              <div className="sm:w-64">
+              <div className="sm:w-64 relative">
+                <Filter className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                 <select
                   value={selectedPlanFilter}
                   onChange={(e) => setSelectedPlanFilter(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 focus:border-[#85ea10]/50 transition-all text-sm"
+                  className="w-full pl-10 pr-4 py-2.5 sm:py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 focus:border-[#85ea10]/50 transition-all text-[11px] sm:text-sm appearance-none cursor-pointer"
                 >
                   <option value="all">Todos los planes</option>
                   {plans.map((plan) => (
@@ -1029,7 +1028,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
           </div>
         ) : (
           <div className="bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl border border-gray-200 dark:border-white/10 overflow-hidden">
-            <div className="overflow-x-auto">
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-transparent">
@@ -1070,88 +1069,152 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
                     </tr>
                   ) : (
                     paginatedPayments.map(({ payment, originalIndex }) => (
-                    <tr
-                      key={payment.id}
-                      onClick={() => router.push(`/admin/payments/${payment.id}`)}
-                      className="hover:bg-gray-50 dark:hover:bg-white/5 transition-colors cursor-pointer"
-                    >
-                      <td className="px-4 py-4">
-                        <p className="text-sm font-semibold text-[#164151] dark:text-white">
-                          {payment.invoice_number ? `#${payment.invoice_number.padStart(3, '0')}` : `#${(originalIndex + 1).toString().padStart(3, '0')}`}
-                        </p>
-                      </td>
-                      <td className="px-4 py-4">
-                        <div>
-                          <p className="text-sm font-medium text-[#164151] dark:text-white">
-                            {payment.client_info?.name || 'Sin nombre'}
+                      <tr
+                        key={payment.id}
+                        onClick={() => router.push(`/admin/payments/${payment.id}`)}
+                        className="hover:bg-gray-50 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                      >
+                        <td className="px-4 py-4">
+                          <p className="text-sm font-semibold text-[#164151] dark:text-white">
+                            {payment.invoice_number ? `#${payment.invoice_number.padStart(3, '0')}` : `#${(originalIndex + 1).toString().padStart(3, '0')}`}
                           </p>
-                          <p className="text-xs text-[#164151]/60 dark:text-white/50">
-                            {payment.client_info?.document_id || '-'}
+                        </td>
+                        <td className="px-4 py-4">
+                          <div>
+                            <p className="text-sm font-medium text-[#164151] dark:text-white">
+                              {payment.client_info?.name || 'Sin nombre'}
+                            </p>
+                            <p className="text-xs text-[#164151]/60 dark:text-white/50">
+                              {payment.client_info?.document_id || '-'}
+                            </p>
+                          </div>
+                        </td>
+                        <td className="px-4 py-4">
+                          <p className="text-xs font-medium text-[#164151] dark:text-white">
+                            {payment.plan?.name || 'Plan'}
                           </p>
-                        </div>
-                      </td>
-                      <td className="px-4 py-4">
-                        <p className="text-xs font-medium text-[#164151] dark:text-white">
-                          {payment.plan?.name || 'Plan'}
-                        </p>
-                      </td>
-                      <td className="px-4 py-4">
-                        <p className="text-sm font-semibold text-[#164151] dark:text-white">
-                          ${payment.amount.toLocaleString('es-CO')}
-                        </p>
-                      </td>
-                      <td className="px-4 py-4">
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-white/80">
-                          {payment.payment_method === 'cash'
-                            ? 'Efectivo'
-                            : payment.payment_method === 'transfer'
-                            ? 'Transferencia'
-                            : 'Mixto'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-4">
-                        <p className="text-xs text-[#164151] dark:text-white">
-                          {new Date(payment.payment_date).toLocaleDateString('es-ES', {
-                            day: '2-digit',
-                            month: 'short',
-                            year: 'numeric',
-                          })}
-                        </p>
-                      </td>
-                      <td className="px-4 py-4">
-                        <p className="text-xs text-[#164151] dark:text-white">
-                          {new Date(payment.period_start).toLocaleDateString('es-ES', {
-                            day: '2-digit',
-                            month: 'short',
-                          })}{' '}
-                          -{' '}
-                          {new Date(payment.period_end).toLocaleDateString('es-ES', {
-                            day: '2-digit',
-                            month: 'short',
-                            year: 'numeric',
-                          })}
-                        </p>
-                      </td>
-                      <td className="px-4 py-4">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDownloadInvoice(payment);
-                          }}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[#85ea10]/20 dark:bg-[#85ea10]/30 text-[#164151] dark:text-[#85ea10] hover:bg-[#85ea10]/30 dark:hover:bg-[#85ea10]/40 transition-colors"
-                          title="Descargar factura"
-                        >
-                          <Download className="w-3 h-3" />
-                          {payment.invoice_number ? `Fact. ${payment.invoice_number.padStart(3, '0')}` : 'Factura'}
-                        </button>
-                      </td>
-                    </tr>
+                        </td>
+                        <td className="px-4 py-4">
+                          <p className="text-sm font-semibold text-[#164151] dark:text-white">
+                            ${payment.amount.toLocaleString('es-CO')}
+                          </p>
+                        </td>
+                        <td className="px-4 py-4">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-white/80">
+                            {payment.payment_method === 'cash'
+                              ? 'Efectivo'
+                              : payment.payment_method === 'transfer'
+                                ? 'Transferencia'
+                                : 'Mixto'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4">
+                          <p className="text-xs text-[#164151] dark:text-white">
+                            {new Date(payment.payment_date).toLocaleDateString('es-ES', {
+                              day: '2-digit',
+                              month: 'short',
+                              year: 'numeric',
+                            })}
+                          </p>
+                        </td>
+                        <td className="px-4 py-4">
+                          <p className="text-xs text-[#164151] dark:text-white">
+                            {new Date(payment.period_start).toLocaleDateString('es-ES', {
+                              day: '2-digit',
+                              month: 'short',
+                            })}{' '}
+                            -{' '}
+                            {new Date(payment.period_end).toLocaleDateString('es-ES', {
+                              day: '2-digit',
+                              month: 'short',
+                              year: 'numeric',
+                            })}
+                          </p>
+                        </td>
+                        <td className="px-4 py-4">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDownloadInvoice(payment);
+                            }}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[#85ea10]/20 dark:bg-[#85ea10]/30 text-[#164151] dark:text-[#85ea10] hover:bg-[#85ea10]/30 dark:hover:bg-[#85ea10]/40 transition-colors"
+                            title="Descargar factura"
+                          >
+                            <Download className="w-3 h-3" />
+                            {payment.invoice_number ? `Fact. ${payment.invoice_number.padStart(3, '0')}` : 'Factura'}
+                          </button>
+                        </td>
+                      </tr>
                     ))
                   )}
                 </tbody>
               </table>
             </div>
-            
+
+            {/* Vista de móviles (Card view) */}
+            <div className="md:hidden divide-y divide-gray-100 dark:divide-white/5">
+              {totalFilteredPayments === 0 ? (
+                <div className="p-12 text-center">
+                  <p className="text-sm text-[#164151]/60 dark:text-white/60">
+                    No se encontraron pagos con los filtros aplicados
+                  </p>
+                </div>
+              ) : (
+                paginatedPayments.map(({ payment, originalIndex }) => (
+                  <div
+                    key={payment.id}
+                    onClick={() => router.push(`/admin/payments/${payment.id}`)}
+                    className="p-4 bg-white dark:bg-gray-900 active:bg-gray-50 dark:active:bg-white/5 transition-colors cursor-pointer"
+                  >
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <span className="text-[10px] font-bold text-gray-400 dark:text-white/30 uppercase tracking-widest block mb-1">
+                          {payment.invoice_number ? `Factura #${payment.invoice_number.padStart(3, '0')}` : `Pago #${(originalIndex + 1).toString().padStart(3, '0')}`}
+                        </span>
+                        <h4 className="text-sm font-bold text-[#164151] dark:text-white">
+                          {payment.client_info?.name || 'Sin nombre'}
+                        </h4>
+                        <p className="text-xs text-[#164151]/50 dark:text-white/40">
+                          CC: {payment.client_info?.document_id || '-'}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-black text-[#164151] dark:text-[#85ea10]">
+                          ${payment.amount.toLocaleString('es-CO')}
+                        </p>
+                        <span className="inline-block mt-1 px-2 py-0.5 rounded-md bg-gray-100 dark:bg-white/10 text-[9px] font-bold text-gray-600 dark:text-white/60 uppercase">
+                          {payment.payment_method === 'cash' ? 'Efectivo' : payment.payment_method === 'transfer' ? 'Transf.' : 'Mixto'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[11px]">
+                      <div className="flex flex-col gap-0.5">
+                        <div className="flex items-center gap-1.5 text-[#164151]/60 dark:text-white/40">
+                          <Calendar className="w-3 h-3" />
+                          <span>{new Date(payment.payment_date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-[#164151]/40 dark:text-white/20">
+                          <CreditCard className="w-3 h-3" />
+                          <span className="font-semibold">{payment.plan?.name || 'Plan'}</span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDownloadInvoice(payment);
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#85ea10]/20 dark:bg-[#85ea10]/30 text-[#164151] dark:text-[#85ea10] font-bold active:scale-95 transition-all"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        <span>PDF</span>
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
             {/* Paginación */}
             {totalFilteredPayments > 0 && totalPages > 1 && (
               <div className="px-6 py-4 border-t border-gray-200 dark:border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -1171,11 +1234,10 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
                   <button
                     onClick={() => setCurrentPage(1)}
                     disabled={currentPage === 1}
-                    className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${
-                      currentPage === 1
-                        ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
-                        : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
-                    }`}
+                    className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${currentPage === 1
+                      ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
+                      : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
+                      }`}
                     title="Primera página"
                   >
                     <ChevronsLeft className="w-4 h-4" />
@@ -1185,18 +1247,17 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
                   <button
                     onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
                     disabled={currentPage === 1}
-                    className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${
-                      currentPage === 1
-                        ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
-                        : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
-                    }`}
+                    className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${currentPage === 1
+                      ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
+                      : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
+                      }`}
                     title="Página anterior"
                   >
                     <ChevronLeft className="w-4 h-4" />
                   </button>
 
                   {/* Page Numbers */}
-                  <div className="flex items-center gap-1">
+                  <div className="hidden sm:flex items-center gap-1">
                     {(() => {
                       const pages = [];
                       const maxVisiblePages = 5;
@@ -1234,11 +1295,10 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
                           <button
                             key={i}
                             onClick={() => setCurrentPage(i)}
-                            className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all text-sm cursor-pointer ${
-                              currentPage === i
-                                ? 'bg-[#164151] text-white font-semibold'
-                                : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20'
-                            }`}
+                            className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all text-sm cursor-pointer ${currentPage === i
+                              ? 'bg-[#164151] text-white font-semibold'
+                              : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20'
+                              }`}
                           >
                             {i}
                           </button>
@@ -1275,11 +1335,10 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
                   <button
                     onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
                     disabled={currentPage === totalPages || totalPages === 0}
-                    className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${
-                      currentPage === totalPages || totalPages === 0
-                        ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
-                        : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
-                    }`}
+                    className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${currentPage === totalPages || totalPages === 0
+                      ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
+                      : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
+                      }`}
                     title="Página siguiente"
                   >
                     <ChevronRight className="w-4 h-4" />
@@ -1289,11 +1348,10 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
                   <button
                     onClick={() => setCurrentPage(totalPages)}
                     disabled={currentPage === totalPages || totalPages === 0}
-                    className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${
-                      currentPage === totalPages || totalPages === 0
-                        ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
-                        : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
-                    }`}
+                    className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${currentPage === totalPages || totalPages === 0
+                      ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
+                      : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
+                      }`}
                     title="Última página"
                   >
                     <ChevronsRight className="w-4 h-4" />

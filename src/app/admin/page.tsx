@@ -3,6 +3,7 @@
 import QuickLoading from '@/components/QuickLoading';
 import BannerManagement from '@/components/admin/BannerManagement';
 import BlogManagement from '@/components/admin/BlogManagement';
+import UnderConstruction from '@/components/UnderConstruction';
 import ComplementManagement from '@/components/admin/ComplementManagement';
 import ConfirmDialog from '@/components/admin/ConfirmDialog';
 import CourseCreator from '@/components/admin/CourseCreator';
@@ -884,11 +885,16 @@ function AdminDashboardContent() {
               <Menu className="w-4 h-4" />
             </button>
 
-            <div>
-              <h1 className="text-xl font-black text-[#164151] dark:text-white uppercase tracking-tight">{activeItem.label}</h1>
-              <p className="text-xs text-[#164151]/80 dark:text-white/60 hidden sm:block font-medium">
-                {activeItem.description}
-              </p>
+            <div className="flex items-center gap-3">
+              <div>
+                <h1 className="text-xl font-black text-[#164151] dark:text-white uppercase tracking-tight">{activeItem.label}</h1>
+                <p className="text-xs text-[#164151]/80 dark:text-white/60 hidden sm:block font-medium">
+                  {activeItem.description}
+                </p>
+              </div>
+              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-[#85ea10]/10 text-[#85ea10] text-[10px] font-bold uppercase tracking-wider">
+                beta
+              </span>
             </div>
           </div>
 
@@ -913,10 +919,10 @@ function AdminDashboardContent() {
                   onClick={() => {
                     loadUsers();
                   }}
-                  className="bg-gray-100 dark:bg-white/10 text-[#164151] dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 font-semibold px-5 py-2.5 rounded-lg transition-all duration-200 flex items-center gap-2 text-sm shadow-lg hover:shadow-xl"
+                  className="bg-gray-100 dark:bg-white/10 text-[#164151] dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 font-semibold p-2.5 sm:px-5 sm:py-2.5 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 text-sm shadow-lg hover:shadow-xl"
                   title="Actualizar lista de usuarios"
                 >
-                  <RefreshCw className="w-3.5 h-3.5" />
+                  <RefreshCw className="w-4 h-4" />
                   <span className="hidden sm:inline">Actualizar</span>
                 </button>
                 <button
@@ -924,9 +930,10 @@ function AdminDashboardContent() {
                     setEditingClient(null);
                     setShowClientForm(true);
                   }}
-                  className="bg-[#164151] text-white hover:bg-[#1a4d5f] dark:bg-[#164151] dark:hover:bg-[#1a4d5f] font-semibold px-5 py-2.5 rounded-lg transition-all duration-200 flex items-center gap-2 text-sm shadow-lg hover:shadow-xl"
+                  className="bg-[#164151] text-white hover:bg-[#1a4d5f] dark:bg-[#164151] dark:hover:bg-[#1a4d5f] font-semibold p-2.5 sm:px-5 sm:py-2.5 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 text-sm shadow-lg hover:shadow-xl"
+                  title="Crear Cliente Físico"
                 >
-                  <Plus className="w-3.5 h-3.5" />
+                  <Plus className="w-4 h-4" />
                   <span className="hidden sm:inline">Crear Cliente Físico</span>
                 </button>
               </>
@@ -1018,8 +1025,8 @@ function AdminDashboardContent() {
                       <button
                         onClick={() => setDateFilter('today')}
                         className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${dateFilter === 'today'
-                            ? 'bg-[#164151] text-white'
-                            : 'bg-gray-100 dark:bg-white/10 text-[#164151] dark:text-white hover:bg-gray-200 dark:hover:bg-white/20'
+                          ? 'bg-[#164151] text-white'
+                          : 'bg-gray-100 dark:bg-white/10 text-[#164151] dark:text-white hover:bg-gray-200 dark:hover:bg-white/20'
                           }`}
                       >
                         Hoy
@@ -1027,8 +1034,8 @@ function AdminDashboardContent() {
                       <button
                         onClick={() => setDateFilter('custom')}
                         className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${dateFilter === 'custom'
-                            ? 'bg-[#164151] text-white'
-                            : 'bg-gray-100 dark:bg-white/10 text-[#164151] dark:text-white hover:bg-gray-200 dark:hover:bg-white/20'
+                          ? 'bg-[#164151] text-white'
+                          : 'bg-gray-100 dark:bg-white/10 text-[#164151] dark:text-white hover:bg-gray-200 dark:hover:bg-white/20'
                           }`}
                       >
                         Personalizado
@@ -1334,46 +1341,39 @@ function AdminDashboardContent() {
 
           {/* Courses Tab */}
           {activeTab === 'courses' && (
-            <div className="space-y-6">
-              {loadingCourses ? (
-                <LoadingState message="Cargando cursos..." />
-              ) : courses.length === 0 ? (
-                <EmptyState
-                  icon={BookOpen}
-                  title="No hay cursos creados"
-                  description="Crea tu primer curso para comenzar"
-                  action={{
-                    label: 'Crear Curso',
-                    onClick: () => {
-                      setEditingCourse(null);
-                      setShowCourseCreator(true);
-                    },
-                  }}
-                />
-              ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-                  {courses.map((course) => (
-                    <CourseCard
-                      key={course.id}
-                      course={course}
-                      onEdit={() => editCourse(course.id)}
-                      onDelete={() => deleteCourse(course.id, course.title)}
-                      onTogglePublish={() => toggleCoursePublish(course.id, course.is_published)}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
+            <UnderConstruction
+              title="Cursos Online"
+              icon={BookOpen}
+              description="La gestión de cursos y contenido digital está en mantenimiento programado. Pronto podrás crear y editar tu contenido aquí."
+            />
           )}
 
           {/* Blogs Tab */}
-          {activeTab === 'blogs' && <BlogManagement />}
+          {activeTab === 'blogs' && (
+            <UnderConstruction
+              title="Blog Nutricional"
+              icon={FileText}
+              description="El sistema de artículos y blogs está recibiendo una actualización de diseño. ¡Vuelve pronto para publicar contenido!"
+            />
+          )}
 
           {/* Complements Tab */}
-          {activeTab === 'complements' && <ComplementManagement />}
+          {activeTab === 'complements' && (
+            <UnderConstruction
+              title="Complementos"
+              icon={Play}
+              description="La sección de videos semanales y guías se encuentra en fase de mejora técnica."
+            />
+          )}
 
           {/* Banners Tab */}
-          {activeTab === 'banners' && <BannerManagement />}
+          {activeTab === 'banners' && (
+            <UnderConstruction
+              title="Banners"
+              icon={Image}
+              description="El editor de banners y publicidad del dashboard está siendo renovado."
+            />
+          )}
 
           {/* Gym Plans Tab */}
           {activeTab === 'gym-plans' && <GymPlansManagement ref={gymPlansRef} />}
@@ -1405,40 +1405,43 @@ function AdminDashboardContent() {
                     />
                   </div>
 
-                  {/* Type Filter */}
-                  <div className="relative">
-                    <Filter className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-white/40" />
-                    <select
-                      value={userTypeFilter}
-                      onChange={(e) => {
-                        setUserTypeFilter(e.target.value);
-                        setCurrentPage(1);
-                      }}
-                      className="pl-12 pr-10 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-sm text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 appearance-none cursor-pointer"
-                    >
-                      <option value="all">Todos los usuarios</option>
-                      <option value="physical">Solo físicos</option>
-                      <option value="online">Solo online</option>
-                      <option value="both">Ambos</option>
-                    </select>
-                  </div>
+                  {/* Filters - Side by side on mobile, flexible on larger screens */}
+                  <div className="grid grid-cols-2 sm:flex sm:flex-row gap-2 sm:gap-4">
+                    {/* Type Filter */}
+                    <div className="relative">
+                      <Filter className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 dark:text-white/40" />
+                      <select
+                        value={userTypeFilter}
+                        onChange={(e) => {
+                          setUserTypeFilter(e.target.value);
+                          setCurrentPage(1);
+                        }}
+                        className="w-full pl-8 sm:pl-12 pr-4 sm:pr-10 py-2.5 sm:py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-[11px] sm:text-sm text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 appearance-none cursor-pointer"
+                      >
+                        <option value="all">Usuarios: Todos</option>
+                        <option value="physical">Solo físicos</option>
+                        <option value="online">Solo online</option>
+                        <option value="both">Ambos</option>
+                      </select>
+                    </div>
 
-                  {/* Payment Status Filter */}
-                  <div className="relative">
-                    <Filter className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-white/40" />
-                    <select
-                      value={paymentStatusFilter}
-                      onChange={(e) => {
-                        setPaymentStatusFilter(e.target.value);
-                        setCurrentPage(1);
-                      }}
-                      className="pl-12 pr-10 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-sm text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 appearance-none cursor-pointer"
-                    >
-                      <option value="all">Todos los estados</option>
-                      <option value="paid">Al día</option>
-                      <option value="unpaid">Sin pagos</option>
-                      <option value="overdue">Vencidos</option>
-                    </select>
+                    {/* Payment Status Filter */}
+                    <div className="relative">
+                      <Filter className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 dark:text-white/40" />
+                      <select
+                        value={paymentStatusFilter}
+                        onChange={(e) => {
+                          setPaymentStatusFilter(e.target.value);
+                          setCurrentPage(1);
+                        }}
+                        className="w-full pl-8 sm:pl-12 pr-4 sm:pr-10 py-2.5 sm:py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-[11px] sm:text-sm text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 appearance-none cursor-pointer"
+                      >
+                        <option value="all">Estado: Todos</option>
+                        <option value="paid">Al día</option>
+                        <option value="unpaid">Sin pagos</option>
+                        <option value="overdue">Vencidos</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1514,7 +1517,7 @@ function AdminDashboardContent() {
 
                     return (
                       <>
-                        <div className="overflow-x-auto">
+                        <div className="hidden md:block overflow-x-auto">
                           <table className="w-full">
                             <thead>
                               <tr className="border-b border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-transparent">
@@ -2021,6 +2024,108 @@ function AdminDashboardContent() {
                           </table>
                         </div>
 
+                        {/* Card view para móviles */}
+                        <div className="md:hidden divide-y divide-gray-100 dark:divide-white/5">
+                          {paginatedUsers.map((user) => {
+                            // Calcular estados para la tarjeta
+                            const today = new Date();
+                            today.setHours(0, 0, 0, 0);
+                            const memberships = user.gym_memberships || [];
+                            const activeMemberships = memberships.filter((m: any) => {
+                              const endDate = new Date(m.end_date);
+                              endDate.setHours(0, 0, 0, 0);
+                              return endDate >= today;
+                            });
+                            const hasActive = activeMemberships.length > 0;
+                            const hasExpired = memberships.length > 0 && !hasActive;
+
+                            let statusColor = 'border-gray-300';
+                            let statusBadge = null;
+
+                            if (user.is_inactive) {
+                              statusColor = 'border-red-500';
+                              statusBadge = <span className="bg-red-100 text-red-600 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">Inactivo</span>;
+                            } else if (hasActive) {
+                              statusColor = 'border-[#85ea10]';
+                              statusBadge = <span className="bg-[#85ea10]/20 text-[#164151] text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">Al día</span>;
+                            } else if (hasExpired) {
+                              statusColor = 'border-orange-400';
+                              statusBadge = <span className="bg-orange-100 text-orange-600 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">Renovación</span>;
+                            } else {
+                              statusBadge = <span className="bg-gray-100 text-gray-500 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">Sin datos</span>;
+                            }
+
+                            return (
+                              <div
+                                key={user.id}
+                                onClick={() => router.push(`/admin/users/${user.id}`)}
+                                className={`p-4 hover:bg-gray-50 dark:hover:bg-white/5 transition-all cursor-pointer border-l-4 ${statusColor} active:bg-gray-100 relative group bg-white dark:bg-gray-900`}
+                              >
+                                <div className="flex justify-between items-start mb-2">
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <h4 className="text-base font-bold text-[#164151] dark:text-white truncate">
+                                        {user.name || user.full_name || 'Sin nombre'}
+                                      </h4>
+                                      {!user.isUnregisteredClient && (
+                                        <div className="w-4 h-4 rounded-full bg-[#85ea10] flex items-center justify-center flex-shrink-0">
+                                          <Check className="w-2.5 h-2.5 text-white stroke-[3]" />
+                                        </div>
+                                      )}
+                                      {statusBadge}
+                                    </div>
+                                    <div className="flex flex-col gap-1 mt-1">
+                                      <p className="text-xs text-gray-500 dark:text-white/40 truncate">
+                                        ID: {user.document_id || 'N/A'} • {user.email}
+                                      </p>
+                                      <span className="inline-flex w-fit items-center px-1.5 py-0.5 rounded-md bg-[#164151]/5 dark:bg-white/5 text-[9px] font-bold text-[#164151]/50 dark:text-white/30 uppercase tracking-wider">
+                                        {user.user_type === 'online' ? 'Usuario Online' : 'Usuario Presencial'}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {(user.phone || user.whatsapp) && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        const phone = (user.phone || user.whatsapp).replace(/\D/g, '');
+                                        window.open(`https://wa.me/${phone}`, '_blank');
+                                      }}
+                                      className="p-2.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full hover:bg-emerald-500/20 transition-colors"
+                                    >
+                                      <MessageSquare className="w-5 h-5 flex-shrink-0" />
+                                    </button>
+                                  )}
+                                </div>
+
+                                <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100 dark:border-white/5">
+                                  <div onClick={(e) => e.stopPropagation()} className="flex items-center gap-2 overflow-hidden">
+                                    {(user.activeCoursePurchases || []).length > 0 && (
+                                      <div className="flex items-center gap-1 bg-blue-50 dark:bg-blue-500/10 px-2 py-1 rounded-lg">
+                                        <BookOpen className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                                        <span className="text-[10px] font-bold text-blue-700 dark:text-blue-300">{(user.activeCoursePurchases || []).length}</span>
+                                      </div>
+                                    )}
+                                    {activeMemberships.length > 0 && (
+                                      <div className="flex items-center gap-1 bg-[#85ea10]/10 px-2 py-1 rounded-lg">
+                                        <Dumbbell className="w-3.5 h-3.5 text-[#164151] dark:text-[#85ea10]" />
+                                        <span className="text-[10px] font-bold text-[#164151] dark:text-[#85ea10] leading-none">
+                                          {activeMemberships[0].plan?.name?.split(' ')[0]}
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  <div className="flex items-center gap-1 text-[#164151]/30 dark:text-white/20 font-bold uppercase text-[9px] tracking-widest group-hover:text-[#85ea10] transition-colors">
+                                    Ver Perfil
+                                    <ChevronRight className="w-4 h-4" />
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+
                         {/* Pagination Controls */}
                         <div className="px-6 py-4 border-t border-gray-200 dark:border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4">
                           <div className="text-sm text-gray-500 dark:text-white/40">
@@ -2040,8 +2145,8 @@ function AdminDashboardContent() {
                               onClick={() => setCurrentPage(1)}
                               disabled={currentPage === 1}
                               className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${currentPage === 1
-                                  ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
-                                  : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
+                                ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
+                                : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
                                 }`}
                               title="Primera página"
                             >
@@ -2053,8 +2158,8 @@ function AdminDashboardContent() {
                               onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
                               disabled={currentPage === 1}
                               className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${currentPage === 1
-                                  ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
-                                  : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
+                                ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
+                                : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
                                 }`}
                               title="Página anterior"
                             >
@@ -2101,8 +2206,8 @@ function AdminDashboardContent() {
                                       key={i}
                                       onClick={() => setCurrentPage(i)}
                                       className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all text-sm cursor-pointer ${currentPage === i
-                                          ? 'bg-[#164151] text-white font-semibold'
-                                          : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20'
+                                        ? 'bg-[#164151] text-white font-semibold'
+                                        : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20'
                                         }`}
                                     >
                                       {i}
@@ -2141,8 +2246,8 @@ function AdminDashboardContent() {
                               onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
                               disabled={currentPage === totalPages || totalPages === 0}
                               className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${currentPage === totalPages || totalPages === 0
-                                  ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
-                                  : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
+                                ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
+                                : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
                                 }`}
                               title="Página siguiente"
                             >
@@ -2154,8 +2259,8 @@ function AdminDashboardContent() {
                               onClick={() => setCurrentPage(totalPages)}
                               disabled={currentPage === totalPages || totalPages === 0}
                               className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${currentPage === totalPages || totalPages === 0
-                                  ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
-                                  : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
+                                ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
+                                : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
                                 }`}
                               title="Última página"
                             >
@@ -2173,346 +2278,11 @@ function AdminDashboardContent() {
 
           {/* Sales Tab */}
           {activeTab === 'sales' && (
-            <div className="bg-white dark:bg-white/5 dark:backdrop-blur-xl rounded-2xl border border-gray-200 dark:border-white/10 overflow-hidden">
-              {/* Header */}
-              <div className="p-6 border-b border-gray-200 dark:border-white/10">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                  <div>
-                    <h2 className="text-xl font-bold text-[#164151] dark:text-white">Historial de Ventas</h2>
-                    <p className="text-sm text-gray-500 dark:text-white/60 mt-1">
-                      {sales.length} {sales.length === 1 ? 'venta registrada' : 'ventas registradas'}
-                    </p>
-                  </div>
-
-                  <div className="flex flex-col sm:flex-row gap-4 flex-1">
-                    {/* Search */}
-                    <div className="relative flex-1">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                      <input
-                        type="text"
-                        placeholder="Buscar por cliente, curso o plan..."
-                        value={salesSearchTerm}
-                        onChange={(e) => {
-                          setSalesSearchTerm(e.target.value);
-                          setSalesCurrentPage(1);
-                        }}
-                        className="w-full pl-10 pr-4 py-2.5 bg-gray-50 dark:bg-white/10 border border-gray-200 dark:border-white/10 rounded-xl text-sm text-[#164151] dark:text-white placeholder-gray-400 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 focus:border-[#85ea10]"
-                      />
-                    </div>
-
-                    {/* Type Filter */}
-                    <div className="relative">
-                      <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-white/40" />
-                      <select
-                        value={salesTypeFilter}
-                        onChange={(e) => {
-                          setSalesTypeFilter(e.target.value);
-                          setSalesCurrentPage(1);
-                        }}
-                        className="pl-10 pr-10 py-2.5 bg-gray-50 dark:bg-white/10 border border-gray-200 dark:border-white/10 rounded-xl text-sm text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 appearance-none cursor-pointer"
-                      >
-                        <option value="all">Todas las ventas</option>
-                        <option value="online">Solo Online</option>
-                        <option value="physical">Solo Físicas</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Content */}
-              <div className="p-6">
-                {loadingSales ? (
-                  <div className="flex items-center justify-center py-12">
-                    <div className="w-8 h-8 border-2 border-[#85ea10] border-t-transparent rounded-full animate-spin"></div>
-                  </div>
-                ) : (
-                  (() => {
-                    // Filtrar ventas
-                    let filteredSales = sales.filter((sale) => {
-                      const searchLower = salesSearchTerm.toLowerCase();
-                      const matchesSearch =
-                        sale.customer_name?.toLowerCase().includes(searchLower) ||
-                        sale.customer_email?.toLowerCase().includes(searchLower) ||
-                        sale.course?.title?.toLowerCase().includes(searchLower) ||
-                        sale.gym_plan?.name?.toLowerCase().includes(searchLower) ||
-                        sale.wompi_transaction_id?.toLowerCase().includes(searchLower);
-
-                      // Filter by type
-                      let matchesType = true;
-                      if (salesTypeFilter === 'online') {
-                        matchesType = Boolean(sale.order_type === 'course' || (!sale.order_type && sale.course_id));
-                      } else if (salesTypeFilter === 'physical') {
-                        matchesType = Boolean(sale.order_type === 'gym_plan' || sale.gym_plan_id);
-                      }
-
-                      return matchesSearch && matchesType;
-                    });
-
-                    // Paginación
-                    const totalPages = Math.ceil(filteredSales.length / salesPerPage);
-                    const startIndex = (salesCurrentPage - 1) * salesPerPage;
-                    const paginatedSales = filteredSales.slice(startIndex, startIndex + salesPerPage);
-
-                    if (filteredSales.length === 0) {
-                      return (
-                        <div className="text-center py-12">
-                          <ShoppingCart className="w-12 h-12 text-gray-300 dark:text-white/20 mx-auto mb-4" />
-                          <p className="text-gray-500 dark:text-white/60">
-                            {salesSearchTerm
-                              ? 'No se encontraron ventas con esos criterios'
-                              : 'No hay ventas registradas aún'}
-                          </p>
-                        </div>
-                      );
-                    }
-
-                    return (
-                      <>
-                        {/* Sales Table */}
-                        <div className="overflow-x-auto">
-                          <table className="w-full">
-                            <thead>
-                              <tr className="border-b border-gray-200 dark:border-white/10">
-                                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
-                                  Cliente
-                                </th>
-                                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
-                                  Producto
-                                </th>
-                                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
-                                  Monto
-                                </th>
-                                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
-                                  Estado
-                                </th>
-                                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
-                                  Método
-                                </th>
-                                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
-                                  Fecha
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100 dark:divide-white/5">
-                              {paginatedSales.map((sale) => (
-                                <tr
-                                  key={sale.id}
-                                  className="hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
-                                >
-                                  {/* Cliente */}
-                                  <td className="py-4 px-4">
-                                    <div>
-                                      <p className="font-medium text-[#164151] dark:text-white text-sm">
-                                        {sale.customer_name || sale.profile?.name || 'Sin nombre'}
-                                      </p>
-                                      <p className="text-xs text-gray-500 dark:text-white/40">
-                                        {sale.customer_email || sale.profile?.email}
-                                      </p>
-                                    </div>
-                                  </td>
-
-                                  {/* Producto (Curso o Plan) */}
-                                  <td className="py-4 px-4">
-                                    <div className="flex items-center gap-3">
-                                      {sale.order_type === 'gym_plan' || sale.gym_plan_id ? (
-                                        <>
-                                          <div className="w-10 h-10 rounded-lg bg-[#85ea10]/20 dark:bg-[#85ea10]/30 flex items-center justify-center">
-                                            <Dumbbell className="w-5 h-5 text-[#85ea10]" />
-                                          </div>
-                                          <div>
-                                            <p className="font-medium text-[#164151] dark:text-white text-sm max-w-[200px] truncate">
-                                              {sale.gym_plan?.name || 'Plan físico'}
-                                            </p>
-                                            <p className="text-xs text-gray-500 dark:text-white/40">Plan físico</p>
-                                          </div>
-                                        </>
-                                      ) : (
-                                        <>
-                                          {sale.course?.preview_image ? (
-                                            <img
-                                              src={sale.course.preview_image}
-                                              alt={sale.course.title}
-                                              className="w-10 h-10 rounded-lg object-cover"
-                                            />
-                                          ) : (
-                                            <div className="w-10 h-10 rounded-lg bg-gray-200 dark:bg-white/10 flex items-center justify-center">
-                                              <BookOpen className="w-5 h-5 text-gray-400" />
-                                            </div>
-                                          )}
-                                          <div>
-                                            <p className="font-medium text-[#164151] dark:text-white text-sm max-w-[200px] truncate">
-                                              {sale.course?.title || 'Curso eliminado'}
-                                            </p>
-                                            <p className="text-xs text-gray-500 dark:text-white/40">Curso online</p>
-                                          </div>
-                                        </>
-                                      )}
-                                    </div>
-                                  </td>
-
-                                  {/* Monto */}
-                                  <td className="py-4 px-4">
-                                    <p className="font-semibold text-[#164151] dark:text-white text-sm">
-                                      ${sale.amount?.toLocaleString('es-CO')}{' '}
-                                      <span className="text-xs font-normal text-gray-500 dark:text-white/40">
-                                        {sale.currency || 'COP'}
-                                      </span>
-                                    </p>
-                                  </td>
-
-                                  {/* Estado */}
-                                  <td className="py-4 px-4">
-                                    <span
-                                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${sale.status === 'approved' || sale.status === 'APPROVED'
-                                          ? 'bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400'
-                                          : sale.status === 'pending' || sale.status === 'PENDING'
-                                            ? 'bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-400'
-                                            : 'bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400'
-                                        }`}
-                                    >
-                                      {sale.status === 'approved' || sale.status === 'APPROVED' ? (
-                                        <CheckCircle className="w-3 h-3" />
-                                      ) : null}
-                                      {sale.status === 'approved' || sale.status === 'APPROVED'
-                                        ? 'Aprobado'
-                                        : sale.status === 'pending' || sale.status === 'PENDING'
-                                          ? 'Pendiente'
-                                          : sale.status === 'declined' || sale.status === 'DECLINED'
-                                            ? 'Rechazado'
-                                            : sale.status}
-                                    </span>
-                                  </td>
-
-                                  {/* Método de pago */}
-                                  <td className="py-4 px-4">
-                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-white/10 text-xs font-medium text-[#164151]/90 dark:text-white/70">
-                                      <CreditCard className="w-3 h-3" />
-                                      {sale.payment_method || 'N/A'}
-                                    </span>
-                                  </td>
-
-                                  {/* Fecha */}
-                                  <td className="py-4 px-4">
-                                    <div>
-                                      <p className="text-sm text-[#164151] dark:text-white">
-                                        {new Date(sale.created_at).toLocaleDateString('es-CO', {
-                                          day: '2-digit',
-                                          month: 'short',
-                                          year: 'numeric',
-                                        })}
-                                      </p>
-                                      <p className="text-xs text-gray-500 dark:text-white/40">
-                                        {new Date(sale.created_at).toLocaleTimeString('es-CO', {
-                                          hour: '2-digit',
-                                          minute: '2-digit',
-                                        })}
-                                      </p>
-                                    </div>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-
-                        {/* Pagination */}
-                        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-6 border-t border-gray-200 dark:border-white/10">
-                          <p className="text-sm text-gray-500 dark:text-white/60">
-                            Mostrando {startIndex + 1} -{' '}
-                            {Math.min(startIndex + salesPerPage, filteredSales.length)} de{' '}
-                            {filteredSales.length} ventas
-                          </p>
-
-                          <div className="flex items-center gap-2">
-                            {/* First Page Button */}
-                            <button
-                              onClick={() => setSalesCurrentPage(1)}
-                              disabled={salesCurrentPage === 1}
-                              className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${salesCurrentPage === 1
-                                  ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
-                                  : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
-                                }`}
-                              title="Primera página"
-                            >
-                              <ChevronsLeft className="w-4 h-4" />
-                            </button>
-
-                            {/* Previous Page Button */}
-                            <button
-                              onClick={() => setSalesCurrentPage((prev) => Math.max(1, prev - 1))}
-                              disabled={salesCurrentPage === 1}
-                              className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${salesCurrentPage === 1
-                                  ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
-                                  : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
-                                }`}
-                              title="Página anterior"
-                            >
-                              <ChevronLeft className="w-4 h-4" />
-                            </button>
-
-                            {/* Page Numbers */}
-                            <div className="flex items-center gap-1">
-                              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                                let pageNum;
-                                if (totalPages <= 5) {
-                                  pageNum = i + 1;
-                                } else if (salesCurrentPage <= 3) {
-                                  pageNum = i + 1;
-                                } else if (salesCurrentPage >= totalPages - 2) {
-                                  pageNum = totalPages - 4 + i;
-                                } else {
-                                  pageNum = salesCurrentPage - 2 + i;
-                                }
-
-                                return (
-                                  <button
-                                    key={pageNum}
-                                    onClick={() => setSalesCurrentPage(pageNum)}
-                                    className={`w-9 h-9 flex items-center justify-center rounded-lg text-sm font-medium transition-all cursor-pointer ${salesCurrentPage === pageNum
-                                        ? 'bg-[#164151] text-white'
-                                        : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20'
-                                      }`}
-                                  >
-                                    {pageNum}
-                                  </button>
-                                );
-                              })}
-                            </div>
-
-                            {/* Next Page Button */}
-                            <button
-                              onClick={() => setSalesCurrentPage((prev) => Math.min(totalPages, prev + 1))}
-                              disabled={salesCurrentPage === totalPages || totalPages === 0}
-                              className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${salesCurrentPage === totalPages || totalPages === 0
-                                  ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
-                                  : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
-                                }`}
-                              title="Página siguiente"
-                            >
-                              <ChevronRight className="w-4 h-4" />
-                            </button>
-
-                            {/* Last Page Button */}
-                            <button
-                              onClick={() => setSalesCurrentPage(totalPages)}
-                              disabled={salesCurrentPage === totalPages || totalPages === 0}
-                              className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${salesCurrentPage === totalPages || totalPages === 0
-                                  ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
-                                  : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
-                                }`}
-                              title="Última página"
-                            >
-                              <ChevronsRight className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </div>
-                      </>
-                    );
-                  })()
-                )}
-              </div>
-            </div>
+            <UnderConstruction
+              title="Ventas Online"
+              icon={ShoppingCart}
+              description="El historial de transacciones online y pasarela de pagos se encuentra bajo revisión de seguridad y mejoras."
+            />
           )}
 
           {/* Settings Tab */}
@@ -2615,8 +2385,8 @@ function AdminDashboardContent() {
                       </div>
                       <span
                         className={`px-1.5 py-0.5 rounded text-xs font-medium flex-shrink-0 ${product.isActive
-                            ? 'bg-[#85ea10]/30 text-[#164151] dark:bg-[#85ea10]/30 dark:text-[#85ea10]'
-                            : 'bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400'
+                          ? 'bg-[#85ea10]/30 text-[#164151] dark:bg-[#85ea10]/30 dark:text-[#85ea10]'
+                          : 'bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400'
                           }`}
                       >
                         {product.isActive ? 'Al día' : 'Renovar'}
@@ -2692,8 +2462,8 @@ function CourseCard({ course, onEdit, onDelete, onTogglePublish }: CourseCardPro
         <div className="absolute top-3 right-3">
           <span
             className={`px-3 py-1 text-xs font-black rounded-full ${course.is_published
-                ? 'bg-[#85ea10] text-black'
-                : 'bg-gray-800/80 dark:bg-white/20 text-white dark:text-white/90 backdrop-blur-sm'
+              ? 'bg-[#85ea10] text-black'
+              : 'bg-gray-800/80 dark:bg-white/20 text-white dark:text-white/90 backdrop-blur-sm'
               }`}
           >
             {course.is_published ? 'Publicado' : 'Borrador'}
@@ -2748,8 +2518,8 @@ function CourseCard({ course, onEdit, onDelete, onTogglePublish }: CourseCardPro
           <button
             onClick={onTogglePublish}
             className={`flex-1 px-3 py-2.5 rounded-lg text-xs font-black transition-colors flex items-center justify-center gap-1.5 uppercase tracking-tight ${course.is_published
-                ? 'bg-orange-100 dark:bg-orange-500/20 hover:bg-orange-200 dark:hover:bg-orange-500/30 border border-orange-300 dark:border-orange-500/30 text-orange-600 dark:text-orange-400'
-                : 'bg-[#85ea10] hover:bg-[#7dd30f] text-black border border-[#85ea10]'
+              ? 'bg-orange-100 dark:bg-orange-500/20 hover:bg-orange-200 dark:hover:bg-orange-500/30 border border-orange-300 dark:border-orange-500/30 text-orange-600 dark:text-orange-400'
+              : 'bg-[#85ea10] hover:bg-[#7dd30f] text-black border border-[#85ea10]'
               }`}
           >
             {course.is_published ? (
@@ -2813,3 +2583,4 @@ function EmptyState({ icon: Icon, title, description, action }: EmptyStateProps)
     </div>
   );
 }
+

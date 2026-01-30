@@ -17,6 +17,7 @@ export interface GymPlan {
   created_at: string;
   updated_at: string;
   created_by?: string;
+  active_users_count?: number; // Número de membresías activas
 }
 
 export interface GymPlanInsert {

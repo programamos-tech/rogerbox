@@ -482,10 +482,10 @@ export default function UserDetailPage() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => router.push('/admin?tab=users')}
-              className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-[#164151]/80 dark:text-white/60 hover:text-[#164151] dark:hover:text-white transition-colors"
+              className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-[#164151]/80 dark:text-white/60 hover:text-[#164151] dark:hover:text-white transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
-              <span className="text-sm font-medium">Volver</span>
+              <span className="text-sm font-medium">Volver a usuarios</span>
             </button>
             {isEditing ? (
               <>
@@ -1447,10 +1447,10 @@ export default function UserDetailPage() {
                                 </p>
                                 <span
                                   className={`px-2 py-1 rounded-full text-xs font-semibold ${isActive
-                                      ? 'bg-[#85ea10]/20 text-[#164151] dark:bg-[#85ea10]/30 dark:text-[#85ea10]'
-                                      : isExpired
-                                        ? 'bg-slate-100 dark:bg-slate-500/20 text-slate-700 dark:text-slate-400'
-                                        : 'bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-white/60'
+                                    ? 'bg-[#85ea10]/20 text-[#164151] dark:bg-[#85ea10]/30 dark:text-[#85ea10]'
+                                    : isExpired
+                                      ? 'bg-slate-100 dark:bg-slate-500/20 text-slate-700 dark:text-slate-400'
+                                      : 'bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-white/60'
                                     }`}
                                 >
                                   {isActive
@@ -1513,6 +1513,17 @@ export default function UserDetailPage() {
                   </div>
                 )}
               </div>
+            </div>
+
+            {/* Bottom Back Button */}
+            <div className="mt-8 flex justify-center">
+              <button
+                onClick={() => router.push('/admin?tab=users')}
+                className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-4 bg-gray-100 dark:bg-white/10 text-[#164151] dark:text-white font-bold rounded-2xl hover:bg-gray-200 dark:hover:bg-white/20 transition-all shadow-sm"
+              >
+                <ArrowLeft className="w-5 h-5" />
+                Volver a usuarios
+              </button>
             </div>
           </div>
         </div>

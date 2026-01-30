@@ -21,7 +21,7 @@ function isAdminUser(user: { id?: string; email?: string; user_metadata?: any } 
 export async function GET(request: NextRequest) {
   try {
     const { user } = await getUser();
-    
+
     if (!isAdminUser(user)) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
@@ -45,7 +45,25 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Error al obtener planes' }, { status: 500 });
     }
 
-    return NextResponse.json(data || []);
+    // Para cada plan, contar usuarios activos
+    const plansWithCounts = await Promise.all(
+      (data || []).map(async (plan) => {
+        // Contar membresías activas y vigentes
+        const { count } = await supabaseAdmin
+          .from('gym_memberships')
+          .select('*', { count: 'exact', head: true })
+          .eq('plan_id', plan.id)
+          .eq('status', 'active')
+          .gte('end_date', new Date().toISOString().split('T')[0]);
+
+        return {
+          ...plan,
+          active_users_count: count || 0,
+        };
+      })
+    );
+
+    return NextResponse.json(plansWithCounts);
   } catch (error) {
     console.error('Error in GET /api/admin/gym/plans:', error);
     return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
@@ -56,7 +74,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const { user } = await getUser();
-    
+
     if (!isAdminUser(user)) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }

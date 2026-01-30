@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useImperativeHandle, forwardRef } from 'react';
-import { Plus, Edit, Trash2, X, Save, DollarSign, Calendar, Dumbbell } from 'lucide-react';
+import { Plus, Edit, Trash2, X, Save, DollarSign, Calendar, Dumbbell, Users } from 'lucide-react';
 import { GymPlan } from '@/types/gym';
 import ConfirmDialog from './ConfirmDialog';
 
@@ -63,7 +63,7 @@ const GymPlansManagement = forwardRef<GymPlansManagementRef>((props, ref) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const payload = {
       name: formData.name.trim(),
       description: formData.description.trim() || undefined,
@@ -76,7 +76,7 @@ const GymPlansManagement = forwardRef<GymPlansManagementRef>((props, ref) => {
     if (editingPlan) {
       const priceChanged = payload.price !== editingPlan.price;
       const durationChanged = payload.duration_days !== editingPlan.duration_days;
-      
+
       if (priceChanged || durationChanged) {
         // Guardar los datos pendientes y mostrar advertencia
         setPendingEditData(payload);
@@ -151,23 +151,23 @@ const GymPlansManagement = forwardRef<GymPlansManagementRef>((props, ref) => {
     setPlanToDelete(plan);
     setDeleteError(null);
     setIsDeleting(true);
-    
+
     // Verificar primero si hay usuarios activos antes de mostrar el modal
     try {
       const checkResponse = await fetch(`/api/admin/gym/memberships?plan_id=${plan.id}`);
-      
+
       if (checkResponse.ok) {
         const data = await checkResponse.json();
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        
+
         // Verificar si hay membresías activas y vigentes
         const activeMemberships = data.filter((m: any) => {
           const endDate = new Date(m.end_date);
           endDate.setHours(0, 0, 0, 0);
           return m.status === 'active' && endDate >= today;
         });
-        
+
         if (activeMemberships.length > 0) {
           setDeleteError(`No se puede eliminar este plan porque tiene ${activeMemberships.length} ${activeMemberships.length === 1 ? 'usuario activo' : 'usuarios activos'}. Debe esperar a que todas las membresías venzan o desactivar el plan en su lugar.`);
         }
@@ -391,11 +391,10 @@ const GymPlansManagement = forwardRef<GymPlansManagementRef>((props, ref) => {
           {plans.map((plan) => (
             <div
               key={plan.id}
-              className={`bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl border ${
-                plan.is_active
-                  ? 'border-gray-200 dark:border-white/10'
-                  : 'border-gray-300 dark:border-white/20 opacity-60'
-              } p-6 shadow-sm dark:shadow-none`}
+              className={`bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl border ${plan.is_active
+                ? 'border-gray-200 dark:border-white/10'
+                : 'border-gray-300 dark:border-white/20 opacity-60'
+                } p-6 shadow-sm dark:shadow-none`}
             >
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
@@ -422,6 +421,18 @@ const GymPlansManagement = forwardRef<GymPlansManagementRef>((props, ref) => {
                   <span className="text-sm text-[#164151]/80 dark:text-white/60">Duración:</span>
                   <span className="text-sm font-semibold text-[#164151] dark:text-white">
                     {plan.duration_days} días
+                  </span>
+                </div>
+                <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-white/5">
+                  <span className="text-sm text-[#164151]/80 dark:text-white/60 flex items-center gap-1.5">
+                    <Users className="w-3.5 h-3.5" />
+                    Clientes activos:
+                  </span>
+                  <span className={`text-sm font-bold px-2.5 py-1 rounded-full ${(plan.active_users_count || 0) > 0
+                    ? 'bg-[#85ea10]/10 text-[#85ea10]'
+                    : 'bg-gray-100 dark:bg-white/5 text-gray-500 dark:text-white/40'
+                    }`}>
+                    {plan.active_users_count || 0}
                   </span>
                 </div>
               </div>
@@ -453,11 +464,11 @@ const GymPlansManagement = forwardRef<GymPlansManagementRef>((props, ref) => {
         onConfirm={handleDeleteConfirm}
         title={deleteError ? "No se puede eliminar" : "Eliminar Plan"}
         message={
-          deleteError 
+          deleteError
             ? deleteError
             : planToDelete
-            ? `¿Estás seguro de eliminar el plan "${planToDelete.name}"? Esta acción no se puede deshacer.`
-            : ''
+              ? `¿Estás seguro de eliminar el plan "${planToDelete.name}"? Esta acción no se puede deshacer.`
+              : ''
         }
         type={deleteError ? 'danger' : 'warning'}
         confirmText={deleteError ? "Entendido" : "Eliminar"}
