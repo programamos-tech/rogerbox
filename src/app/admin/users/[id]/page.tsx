@@ -689,9 +689,9 @@ export default function UserDetailPage() {
                                 color: '#fff',
                                 fontSize: '12px'
                               }}
-                              formatter={(value: number, name: string, props: any) => [
-                                `$${value.toLocaleString('es-CO')}`,
-                                props.payload.plan
+                              formatter={(value) => [
+                                `$${(value as number || 0).toLocaleString('es-CO')}`,
+                                ''
                               ]}
                               labelStyle={{ color: '#85ea10', fontWeight: 'bold' }}
                             />
