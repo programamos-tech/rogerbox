@@ -163,10 +163,9 @@ const menuSections = [
   {
     title: 'Sede Física',
     items: [
-      { id: 'users', label: 'Usuarios', icon: Users, description: 'Gestiona usuarios y clientes físicos' },
       { id: 'gym-plans', label: 'Planes', icon: Dumbbell, description: 'Gestionar planes del gimnasio' },
+      { id: 'users', label: 'Usuarios', icon: Users, description: 'Gestiona usuarios y clientes físicos' },
       { id: 'gym-payments', label: 'Pagos', icon: CreditCard, description: 'Facturar planes a clientes físicos' },
-
     ],
   },
   {
@@ -885,16 +884,11 @@ function AdminDashboardContent() {
               <Menu className="w-4 h-4" />
             </button>
 
-            <div className="flex items-center gap-3">
-              <div>
-                <h1 className="text-xl font-black text-[#164151] dark:text-white uppercase tracking-tight">{activeItem.label}</h1>
-                <p className="text-xs text-[#164151]/80 dark:text-white/60 hidden sm:block font-medium">
-                  {activeItem.description}
-                </p>
-              </div>
-              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 text-[10px] font-bold uppercase tracking-wider">
-                beta
-              </span>
+            <div>
+              <h1 className="text-xl font-black text-[#164151] dark:text-white uppercase tracking-tight">{activeItem.label}</h1>
+              <p className="text-xs text-[#164151]/80 dark:text-white/60 hidden sm:block font-medium">
+                {activeItem.description}
+              </p>
             </div>
           </div>
 
@@ -1080,8 +1074,8 @@ function AdminDashboardContent() {
                       {/* Total */}
                       <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 p-6 shadow-lg">
                         <div className="flex items-center gap-3 mb-4">
-                          <div className="w-9 h-9 rounded-lg bg-[#164151]/10 dark:bg-[#164151]/20 flex items-center justify-center">
-                            <TrendingUp className="w-4 h-4 text-[#164151] dark:text-[#164151]" />
+                          <div className="w-9 h-9 rounded-lg bg-[#164151]/10 dark:bg-white/10 flex items-center justify-center">
+                            <TrendingUp className="w-4 h-4 text-[#164151] dark:text-white" />
                           </div>
                           <div>
                             <p className="text-xs font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide">Total</p>
@@ -1096,8 +1090,8 @@ function AdminDashboardContent() {
                       {/* Efectivo */}
                       <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 p-6 shadow-lg">
                         <div className="flex items-center gap-3 mb-4">
-                          <div className="w-9 h-9 rounded-lg bg-[#85ea10]/20 dark:bg-[#85ea10]/30 flex items-center justify-center">
-                            <Wallet className="w-4 h-4 text-[#164151] dark:text-[#164151]" />
+                          <div className="w-9 h-9 rounded-lg bg-[#85ea10]/20 dark:bg-[#85ea10]/20 flex items-center justify-center">
+                            <Wallet className="w-4 h-4 text-[#164151] dark:text-[#85ea10]" />
                           </div>
                           <div>
                             <p className="text-xs font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide">Efectivo</p>
@@ -1133,8 +1127,8 @@ function AdminDashboardContent() {
                       {/* Total */}
                       <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 p-6 shadow-lg">
                         <div className="flex items-center gap-3 mb-4">
-                          <div className="w-9 h-9 rounded-lg bg-[#164151]/10 dark:bg-[#164151]/20 flex items-center justify-center">
-                            <TrendingUp className="w-4 h-4 text-[#164151] dark:text-[#164151]" />
+                          <div className="w-9 h-9 rounded-lg bg-[#164151]/10 dark:bg-white/10 flex items-center justify-center">
+                            <TrendingUp className="w-4 h-4 text-[#164151] dark:text-white" />
                           </div>
                           <div>
                             <p className="text-xs font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide">Total</p>
@@ -1186,8 +1180,8 @@ function AdminDashboardContent() {
                       {/* Total */}
                       <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 p-6 shadow-lg">
                         <div className="flex items-center gap-3 mb-4">
-                          <div className="w-9 h-9 rounded-lg bg-[#164151]/10 dark:bg-[#164151]/20 flex items-center justify-center">
-                            <TrendingUp className="w-4 h-4 text-[#164151] dark:text-[#164151]" />
+                          <div className="w-9 h-9 rounded-lg bg-[#164151]/10 dark:bg-white/10 flex items-center justify-center">
+                            <TrendingUp className="w-4 h-4 text-[#164151] dark:text-white" />
                           </div>
                           <div>
                             <p className="text-xs font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide">Total</p>
@@ -1202,8 +1196,8 @@ function AdminDashboardContent() {
                       {/* Efectivo */}
                       <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 p-6 shadow-lg">
                         <div className="flex items-center gap-3 mb-4">
-                          <div className="w-9 h-9 rounded-lg bg-[#85ea10]/20 dark:bg-[#85ea10]/30 flex items-center justify-center">
-                            <Wallet className="w-4 h-4 text-[#164151] dark:text-[#164151]" />
+                          <div className="w-9 h-9 rounded-lg bg-[#85ea10]/20 dark:bg-[#85ea10]/20 flex items-center justify-center">
+                            <Wallet className="w-4 h-4 text-[#164151] dark:text-[#85ea10]" />
                           </div>
                           <div>
                             <p className="text-xs font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide">Efectivo</p>
@@ -1567,12 +1561,13 @@ function AdminDashboardContent() {
                                 const isInactive = user.is_inactive || false;
                                 // Solo mostrar botón de inactivar si tiene más de 30 días PERO NO está inactivo aún
                                 const shouldShowInactiveButton = hasExpiredMoreThan30Days && !isInactive;
+                                const isAdminUser = user.email === 'rogerbox@admin.com' || user.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL;
 
                                 return (
                                   <tr
                                     key={user.id}
-                                    onClick={() => router.push(`/admin/users/${user.id}`)}
-                                    className={`hover:bg-gray-100 dark:hover:bg-white/10 transition-all cursor-pointer group border-l-4 border-transparent hover:border-[#85ea10]/30 ${isInactive ? 'opacity-60 bg-gray-50 dark:bg-gray-900/30' : ''
+                                    onClick={() => !isAdminUser && router.push(`/admin/users/${user.id}`)}
+                                    className={`${isAdminUser ? '' : 'hover:bg-gray-100 dark:hover:bg-white/10 cursor-pointer hover:border-[#85ea10]/30'} transition-all group border-l-4 border-transparent ${isInactive ? 'opacity-60 bg-gray-50 dark:bg-gray-900/30' : ''
                                       }`}
                                   >
                                     <td className="px-4 py-4">
@@ -1630,33 +1625,70 @@ function AdminDashboardContent() {
                                           const activeMemberships = allMemberships.filter((m: any) => {
                                             const endDate = new Date(m.end_date);
                                             endDate.setHours(0, 0, 0, 0);
-                                            return endDate >= today;
+                                            return endDate >= today && m.status !== 'cancelled';
                                           });
                                           const expiredMemberships = allMemberships.filter((m: any) => {
                                             const endDate = new Date(m.end_date);
                                             endDate.setHours(0, 0, 0, 0);
-                                            return endDate < today;
+                                            return endDate < today && m.status !== 'cancelled';
                                           });
 
                                           // Construir lista completa de productos con estados
-                                          const allProducts: Array<{ name: string; type: 'membership' | 'course'; isActive: boolean; membership?: any }> = [];
+                                          const allProducts: Array<{ name: string; type: 'membership' | 'course'; isActive: boolean; isCancelled?: boolean; isScheduled?: boolean; membership?: any }> = [];
 
-                                          // Agregar membresías activas
+                                          // Membresías canceladas (para mostrar al final)
+                                          const cancelledMemberships = allMemberships.filter((m: any) => m.status === 'cancelled');
+
+                                          // 1. Primero: Agregar membresías activas actuales (no programadas)
                                           activeMemberships.forEach((m: any) => {
-                                            allProducts.push({
-                                              name: m.plan?.name || 'Plan',
-                                              type: 'membership',
-                                              isActive: true,
-                                              membership: m,
-                                            });
+                                            const startDate = new Date(m.start_date);
+                                            startDate.setHours(0, 0, 0, 0);
+                                            const isScheduled = startDate > today;
+                                            
+                                            if (!isScheduled) {
+                                              allProducts.push({
+                                                name: m.plan?.name || 'Plan',
+                                                type: 'membership',
+                                                isActive: true,
+                                                membership: m,
+                                              });
+                                            }
                                           });
 
-                                          // Agregar membresías vencidas
+                                          // 2. Segundo: Agregar membresías programadas (pagos anticipados)
+                                          activeMemberships.forEach((m: any) => {
+                                            const startDate = new Date(m.start_date);
+                                            startDate.setHours(0, 0, 0, 0);
+                                            const isScheduled = startDate > today;
+                                            
+                                            if (isScheduled) {
+                                              allProducts.push({
+                                                name: m.plan?.name || 'Plan',
+                                                type: 'membership',
+                                                isActive: true,
+                                                isScheduled: true,
+                                                membership: m,
+                                              });
+                                            }
+                                          });
+
+                                          // 3. Tercero: Agregar membresías vencidas (para renovar)
                                           expiredMemberships.forEach((m: any) => {
                                             allProducts.push({
                                               name: m.plan?.name || 'Plan',
                                               type: 'membership',
                                               isActive: false,
+                                              membership: m,
+                                            });
+                                          });
+
+                                          // 4. Cuarto: Agregar membresías canceladas
+                                          cancelledMemberships.forEach((m: any) => {
+                                            allProducts.push({
+                                              name: m.plan?.name || 'Plan',
+                                              type: 'membership',
+                                              isActive: false,
+                                              isCancelled: true,
                                               membership: m,
                                             });
                                           });
@@ -1723,18 +1755,18 @@ function AdminDashboardContent() {
                                     <td className="px-4 py-4">
                                       <div>
                                         {user.userType === 'both' && (
-                                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-[#164151]/15 text-[#164151] dark:bg-[#164151]/25 dark:text-[#164151]">
+                                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-[#164151]/15 text-[#164151] dark:bg-white/10 dark:text-white/70">
                                             Ambos
                                           </span>
                                         )}
                                         {user.userType === 'physical' && (
-                                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-[#164151]/15 text-[#164151] dark:bg-[#164151]/25 dark:text-[#164151]">
+                                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-[#164151]/15 text-[#164151] dark:bg-white/10 dark:text-white/70">
                                             <Dumbbell className="w-3 h-3" />
                                             Físico
                                           </span>
                                         )}
                                         {user.userType === 'online' && (
-                                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-[#164151]/15 text-[#164151] dark:bg-[#164151]/25 dark:text-[#164151]">
+                                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-cyan-100 text-cyan-700 dark:bg-cyan-500/15 dark:text-cyan-400">
                                             <Globe className="w-3 h-3" />
                                             Online
                                           </span>
@@ -1795,13 +1827,27 @@ function AdminDashboardContent() {
                                           const activeMemberships = allMemberships.filter((m: any) => {
                                             const endDate = new Date(m.end_date);
                                             endDate.setHours(0, 0, 0, 0);
-                                            return endDate >= today;
+                                            return endDate >= today && m.status !== 'cancelled';
                                           });
                                           const expiredMemberships = allMemberships.filter((m: any) => {
                                             const endDate = new Date(m.end_date);
                                             endDate.setHours(0, 0, 0, 0);
-                                            return endDate < today;
+                                            return endDate < today && m.status !== 'cancelled';
                                           });
+
+                                          // Membresías canceladas
+                                          const cancelledMemberships = allMemberships.filter((m: any) => m.status === 'cancelled');
+                                          const hasOnlyCancelled = cancelledMemberships.length > 0 && activeMemberships.length === 0 && expiredMemberships.length === 0;
+
+                                          // Si solo tiene membresías canceladas
+                                          if (hasOnlyCancelled) {
+                                            return (
+                                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-500/20 text-slate-600 dark:text-slate-400">
+                                                <X className="w-3 h-3" />
+                                                Cancelado
+                                              </span>
+                                            );
+                                          }
 
                                           // Si solo tiene cursos online
                                           if (allMemberships.length === 0 && allCourses.length > 0) {
@@ -1813,10 +1859,11 @@ function AdminDashboardContent() {
                                             );
                                           }
 
-                                          // Si solo tiene membresías físicas
-                                          if (allMemberships.length > 0 && allCourses.length === 0) {
+                                          // Si solo tiene membresías físicas (no canceladas)
+                                          const nonCancelledMemberships = allMemberships.filter((m: any) => m.status !== 'cancelled');
+                                          if (nonCancelledMemberships.length > 0 && allCourses.length === 0) {
                                             // Todos activos
-                                            if (activeMemberships.length === allMemberships.length && expiredMemberships.length === 0) {
+                                            if (activeMemberships.length === nonCancelledMemberships.length && expiredMemberships.length === 0) {
                                               return (
                                                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400">
                                                   <CheckCircle className="w-3 h-3" />
@@ -1825,7 +1872,7 @@ function AdminDashboardContent() {
                                               );
                                             }
                                             // Todos vencidos
-                                            if (expiredMemberships.length === allMemberships.length && activeMemberships.length === 0) {
+                                            if (expiredMemberships.length === nonCancelledMemberships.length && activeMemberships.length === 0) {
                                               // Siempre mostrar "Renovar" cuando está vencido (no importa cuántos días)
                                               return (
                                                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400">
@@ -1846,9 +1893,9 @@ function AdminDashboardContent() {
                                           }
 
                                           // Si tiene ambos (físico y online)
-                                          if (allMemberships.length > 0 && allCourses.length > 0) {
+                                          if (nonCancelledMemberships.length > 0 && allCourses.length > 0) {
                                             // Si todas las membresías están activas
-                                            if (activeMemberships.length === allMemberships.length && expiredMemberships.length === 0) {
+                                            if (activeMemberships.length === nonCancelledMemberships.length && expiredMemberships.length === 0) {
                                               return (
                                                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400">
                                                   <CheckCircle className="w-3 h-3" />
@@ -1889,12 +1936,12 @@ function AdminDashboardContent() {
                                           const activeMemberships = allMemberships.filter((m: any) => {
                                             const endDate = new Date(m.end_date);
                                             endDate.setHours(0, 0, 0, 0);
-                                            return endDate >= today;
+                                            return endDate >= today && m.status !== 'cancelled';
                                           });
                                           const expiredMemberships = allMemberships.filter((m: any) => {
                                             const endDate = new Date(m.end_date);
                                             endDate.setHours(0, 0, 0, 0);
-                                            return endDate < today;
+                                            return endDate < today && m.status !== 'cancelled';
                                           });
 
                                           const isInactive = user.is_inactive || false;
@@ -2000,21 +2047,24 @@ function AdminDashboardContent() {
                                             </button>
                                           );
                                         })()}
-                                        <button
-                                          onClick={() => router.push(`/admin/users/${user.id}`)}
-                                          className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-white/40 hover:bg-gray-200 dark:hover:bg-white/20 transition-colors"
-                                          title="Ver detalles"
-                                        >
-                                          <Eye className="w-4 h-4" />
-                                        </button>
-                                        <button
-                                          onClick={() => router.push(`/admin/users/${user.id}?edit=true`)}
-                                          className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-white/40 hover:bg-gray-200 dark:hover:bg-white/20 transition-colors"
-                                          title="Editar"
-                                        >
-                                          <Edit className="w-4 h-4" />
-                                        </button>
-
+                                        {!isAdminUser && (
+                                          <>
+                                            <button
+                                              onClick={() => router.push(`/admin/users/${user.id}`)}
+                                              className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-white/40 hover:bg-gray-200 dark:hover:bg-white/20 transition-colors"
+                                              title="Ver detalles"
+                                            >
+                                              <Eye className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                              onClick={() => router.push(`/admin/users/${user.id}?edit=true`)}
+                                              className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-white/40 hover:bg-gray-200 dark:hover:bg-white/20 transition-colors"
+                                              title="Editar"
+                                            >
+                                              <Edit className="w-4 h-4" />
+                                            </button>
+                                          </>
+                                        )}
                                       </div>
                                     </td>
                                   </tr>
@@ -2034,10 +2084,13 @@ function AdminDashboardContent() {
                             const activeMemberships = memberships.filter((m: any) => {
                               const endDate = new Date(m.end_date);
                               endDate.setHours(0, 0, 0, 0);
-                              return endDate >= today;
+                              return endDate >= today && m.status !== 'cancelled';
                             });
+                            const nonCancelledMemberships = memberships.filter((m: any) => m.status !== 'cancelled');
+                            const cancelledMemberships = memberships.filter((m: any) => m.status === 'cancelled');
                             const hasActive = activeMemberships.length > 0;
-                            const hasExpired = memberships.length > 0 && !hasActive;
+                            const hasExpired = nonCancelledMemberships.length > 0 && !hasActive;
+                            const hasOnlyCancelled = cancelledMemberships.length > 0 && nonCancelledMemberships.length === 0;
 
                             let statusColor = 'border-gray-300';
                             let statusBadge = null;
@@ -2051,15 +2104,20 @@ function AdminDashboardContent() {
                             } else if (hasExpired) {
                               statusColor = 'border-orange-400/60';
                               statusBadge = <span className="bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">Renovación</span>;
+                            } else if (hasOnlyCancelled) {
+                              statusColor = 'border-slate-400/60';
+                              statusBadge = <span className="bg-slate-100 dark:bg-slate-500/20 text-slate-600 dark:text-slate-400 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">Cancelado</span>;
                             } else {
                               statusBadge = <span className="bg-gray-100 dark:bg-gray-500/20 text-gray-500 dark:text-gray-400 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">Sin productos</span>;
                             }
 
+                            const isAdminUserMobile = user.email === 'rogerbox@admin.com' || user.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+
                             return (
                               <div
                                 key={user.id}
-                                onClick={() => router.push(`/admin/users/${user.id}`)}
-                                className={`p-4 hover:bg-gray-50 dark:hover:bg-white/5 transition-all cursor-pointer border-l-4 ${statusColor} active:bg-gray-100 relative group bg-white dark:bg-gray-900`}
+                                onClick={() => !isAdminUserMobile && router.push(`/admin/users/${user.id}`)}
+                                className={`p-4 ${isAdminUserMobile ? '' : 'hover:bg-gray-50 dark:hover:bg-white/5 cursor-pointer active:bg-gray-100'} transition-all border-l-4 ${statusColor} relative group bg-white dark:bg-gray-900`}
                               >
                                 <div className="flex justify-between items-start mb-2">
                                   <div className="flex-1 min-w-0">
@@ -2413,21 +2471,28 @@ function AdminDashboardContent() {
                           </p>
                           {product.membership && (
                             <p className="text-xs text-gray-500 dark:text-white/50">
-                              {product.isActive ? 'Vence' : 'Venció'}: {new Date(product.membership.end_date).toLocaleDateString('es-ES', {
-                                day: '2-digit',
-                                month: 'short',
-                              })}
+                              {product.isScheduled 
+                                ? `Inicia: ${new Date(product.membership.start_date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}`
+                                : product.isActive 
+                                  ? `Vence: ${new Date(product.membership.end_date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}`
+                                  : `Venció: ${new Date(product.membership.end_date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}`
+                              }
                             </p>
                           )}
                         </div>
                       </div>
                       <span
-                        className={`px-1.5 py-0.5 rounded text-xs font-medium flex-shrink-0 ${product.isActive
-                          ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400'
-                          : 'bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400'
+                        className={`px-1.5 py-0.5 rounded text-xs font-medium flex-shrink-0 ${
+                          product.isScheduled
+                            ? 'bg-cyan-100 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-400'
+                            : product.isActive
+                              ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400'
+                              : product.isCancelled
+                                ? 'bg-slate-100 dark:bg-slate-500/20 text-slate-600 dark:text-slate-400'
+                                : 'bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400'
                           }`}
                       >
-                        {product.isActive ? 'Al día' : 'Renovar'}
+                        {product.isScheduled ? 'Próximo' : product.isActive ? 'Al día' : product.isCancelled ? 'Cancelado' : 'Renovar'}
                       </span>
                     </div>
                   </div>

@@ -132,6 +132,9 @@ export default function UserDetailPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
+  const [cancellingMembershipId, setCancellingMembershipId] = useState<string | null>(null);
+  const [showCancelMembershipModal, setShowCancelMembershipModal] = useState(false);
+  const [membershipToCancel, setMembershipToCancel] = useState<any>(null);
 
   const userId = params?.id as string;
 
@@ -323,6 +326,38 @@ export default function UserDetailPage() {
       setDeleteError(error.message || 'Error al eliminar usuario');
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const openCancelMembershipModal = (membership: any) => {
+    setMembershipToCancel(membership);
+    setShowCancelMembershipModal(true);
+  };
+
+  const handleCancelMembership = async () => {
+    if (!membershipToCancel) return;
+
+    setCancellingMembershipId(membershipToCancel.id);
+
+    try {
+      const response = await fetch(`/api/admin/gym/memberships/${membershipToCancel.id}`, {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al cancelar membresía');
+      }
+
+      // Cerrar modal y recargar datos
+      setShowCancelMembershipModal(false);
+      setMembershipToCancel(null);
+      await loadUserData();
+    } catch (error: any) {
+      alert(error.message || 'Error al cancelar membresía');
+    } finally {
+      setCancellingMembershipId(null);
     }
   };
 
@@ -694,15 +729,15 @@ export default function UserDetailPage() {
                       const activeMemberships = allMemberships.filter((m: any) => {
                         const endDate = new Date(m.end_date);
                         endDate.setHours(0, 0, 0, 0);
-                        return endDate >= today;
+                        return endDate >= today && m.status !== 'cancelled';
                       });
                       const expiredMemberships = allMemberships.filter((m: any) => {
                         const endDate = new Date(m.end_date);
                         endDate.setHours(0, 0, 0, 0);
-                        return endDate < today;
+                        return endDate < today && m.status !== 'cancelled';
                       });
 
-                      // Solo puede inactivarse si tiene estado "Renovar" (todos vencidos, sin activos)
+                      // Solo puede inactivarse si tiene estado "Renovar" (todos vencidos, sin activos, excluyendo cancelados)
                       const hasOnlyExpiredMemberships = expiredMemberships.length > 0 && activeMemberships.length === 0;
 
                       const latestExpired = expiredMemberships.length > 0
@@ -1221,11 +1256,12 @@ export default function UserDetailPage() {
                   const today = new Date();
                   today.setHours(0, 0, 0, 0);
 
-                  // Filtrar membresías activas (no vencidas)
+                  // Filtrar membresías activas (vigentes o programadas/futuras)
                   const activeMemberships = (userData.gym_memberships || []).filter((membership: any) => {
                     const endDate = new Date(membership.end_date);
                     endDate.setHours(0, 0, 0, 0);
-                    return endDate >= today;
+                    // Incluir si: no está cancelada Y (fecha fin >= hoy O es membresía futura)
+                    return membership.status !== 'cancelled' && endDate >= today;
                   });
 
                   // Verificar si tiene cursos activos
@@ -1247,32 +1283,80 @@ export default function UserDetailPage() {
                         Productos Activos
                       </h2>
                       <div className="space-y-3">
-                        {/* Membresías activas */}
+                        {/* Membresías activas y programadas */}
                         {activeMemberships
-                          .sort((a: any, b: any) => new Date(b.end_date).getTime() - new Date(a.end_date).getTime())
+                          .sort((a: any, b: any) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime())
                           .map((membership: any) => {
+                            // Determinar si es membresía actual o programada (pago anticipado)
+                            const startDate = new Date(membership.start_date);
+                            startDate.setHours(0, 0, 0, 0);
+                            const isScheduled = startDate > today;
+                            
                             return (
-                              <div key={membership.id} className="p-4 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-200 dark:border-white/10">
+                              <div key={membership.id} className={`p-4 rounded-xl border ${isScheduled 
+                                ? 'bg-cyan-50 dark:bg-cyan-500/10 border-cyan-200 dark:border-cyan-500/20' 
+                                : 'bg-gray-50 dark:bg-white/5 border-gray-200 dark:border-white/10'}`}>
                                 <div className="flex items-center gap-3 mb-3">
-                                  <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-[#85ea10]/30 dark:bg-[#85ea10]/40">
-                                    <Dumbbell className="w-5 h-5 text-[#164151] dark:text-[#85ea10]" />
+                                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isScheduled 
+                                    ? 'bg-cyan-100 dark:bg-cyan-500/20' 
+                                    : 'bg-[#85ea10]/30 dark:bg-[#85ea10]/40'}`}>
+                                    <Dumbbell className={`w-5 h-5 ${isScheduled 
+                                      ? 'text-cyan-600 dark:text-cyan-400' 
+                                      : 'text-[#164151] dark:text-[#85ea10]'}`} />
                                   </div>
                                   <div className="flex-1">
                                     <div className="flex items-center justify-between mb-1">
                                       <p className="text-sm font-medium text-[#164151] dark:text-white">
                                         {membership.plan?.name || 'Plan'}
                                       </p>
-                                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[#85ea10]/30 text-[#164151] dark:bg-[#85ea10]/30 dark:text-[#85ea10]">
-                                        Al día
-                                      </span>
+                                      <div className="flex items-center gap-2">
+                                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${isScheduled 
+                                          ? 'bg-cyan-100 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-400' 
+                                          : 'bg-[#85ea10]/30 text-[#164151] dark:bg-[#85ea10]/30 dark:text-[#85ea10]'}`}>
+                                          {isScheduled ? 'Próximo' : 'Al día'}
+                                        </span>
+                                        <button
+                                          onClick={() => openCancelMembershipModal(membership)}
+                                          disabled={cancellingMembershipId === membership.id}
+                                          className="p-1 rounded-lg text-red-500 hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors disabled:opacity-50"
+                                          title="Cancelar membresía"
+                                        >
+                                          {cancellingMembershipId === membership.id ? (
+                                            <div className="w-4 h-4 border-2 border-red-300 border-t-red-500 rounded-full animate-spin" />
+                                          ) : (
+                                            <X className="w-4 h-4" />
+                                          )}
+                                        </button>
+                                      </div>
                                     </div>
                                     <p className="text-xs text-gray-500 dark:text-white/50">
-                                      Vence: {new Date(membership.end_date).toLocaleDateString('es-ES', {
-                                        day: '2-digit',
-                                        month: 'long',
-                                        year: 'numeric',
-                                      })}
+                                      {isScheduled ? (
+                                        <>
+                                          Inicia: {new Date(membership.start_date).toLocaleDateString('es-ES', {
+                                            day: '2-digit',
+                                            month: 'long',
+                                            year: 'numeric',
+                                          })}
+                                        </>
+                                      ) : (
+                                        <>
+                                          Vence: {new Date(membership.end_date).toLocaleDateString('es-ES', {
+                                            day: '2-digit',
+                                            month: 'long',
+                                            year: 'numeric',
+                                          })}
+                                        </>
+                                      )}
                                     </p>
+                                    {isScheduled && (
+                                      <p className="text-xs text-cyan-600 dark:text-cyan-400 mt-0.5">
+                                        Vence: {new Date(membership.end_date).toLocaleDateString('es-ES', {
+                                          day: '2-digit',
+                                          month: 'long',
+                                          year: 'numeric',
+                                        })}
+                                      </p>
+                                    )}
                                     {membership.payment?.invoice_number && (
                                       <p className="text-xs font-medium text-[#164151] dark:text-white mt-1">
                                         Factura: #{membership.payment.invoice_number}
@@ -1314,11 +1398,11 @@ export default function UserDetailPage() {
                   const today = new Date();
                   today.setHours(0, 0, 0, 0);
 
-                  // Filtrar membresías vencidas
+                  // Filtrar membresías vencidas (excluir canceladas)
                   const expiredMemberships = (userData.gym_memberships || []).filter((membership: any) => {
                     const endDate = new Date(membership.end_date);
                     endDate.setHours(0, 0, 0, 0);
-                    return endDate < today;
+                    return endDate < today && membership.status !== 'cancelled';
                   });
 
                   if (expiredMemberships.length === 0) {
@@ -1348,24 +1432,39 @@ export default function UserDetailPage() {
                                       <p className="text-sm font-medium text-[#164151] dark:text-white">
                                         {membership.plan?.name || 'Plan'}
                                       </p>
-                                      {(() => {
-                                        // Solo mostrar "Inactivo" si el usuario está marcado como inactivo en la BD
-                                        if (userData.is_inactive) {
+                                      <div className="flex items-center gap-2">
+                                        {(() => {
+                                          // Solo mostrar "Inactivo" si el usuario está marcado como inactivo en la BD
+                                          if (userData.is_inactive) {
+                                            return (
+                                              <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400">
+                                                Inactivo
+                                              </span>
+                                            );
+                                          }
+
+                                          // Si no está inactivo, siempre mostrar "Renovar"
                                           return (
-                                            <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400">
-                                              <X className="w-3 h-3 inline mr-1" />
-                                              Inactivo
+                                            <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-100 dark:bg-orange-500/20 text-orange-700 dark:text-orange-400">
+                                              Renovar
                                             </span>
                                           );
-                                        }
-
-                                        // Si no está inactivo, siempre mostrar "Renovar"
-                                        return (
-                                          <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-100 dark:bg-orange-500/20 text-orange-700 dark:text-orange-400">
-                                            Renovar
-                                          </span>
-                                        );
-                                      })()}
+                                        })()}
+                                        {membership.status !== 'cancelled' && (
+                                          <button
+                                            onClick={() => openCancelMembershipModal(membership)}
+                                            disabled={cancellingMembershipId === membership.id}
+                                            className="p-1 rounded-lg text-red-500 hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors disabled:opacity-50"
+                                            title="Cancelar membresía"
+                                          >
+                                            {cancellingMembershipId === membership.id ? (
+                                              <div className="w-4 h-4 border-2 border-red-300 border-t-red-500 rounded-full animate-spin" />
+                                            ) : (
+                                              <X className="w-4 h-4" />
+                                            )}
+                                          </button>
+                                        )}
+                                      </div>
                                     </div>
                                     <p className="text-xs text-gray-500 dark:text-white/50">
                                       Venció: {new Date(membership.end_date).toLocaleDateString('es-ES', {
@@ -1563,16 +1662,6 @@ export default function UserDetailPage() {
               </div>
             </div>
 
-            {/* Bottom Back Button */}
-            <div className="mt-8 mb-20 flex justify-center">
-              <button
-                onClick={() => router.push('/admin?tab=users')}
-                className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-4 bg-gray-100 dark:bg-white/10 text-[#164151] dark:text-white font-bold rounded-2xl hover:bg-gray-200 dark:hover:bg-white/20 transition-all shadow-sm"
-              >
-                <ArrowLeft className="w-5 h-5" />
-                Volver a usuarios
-              </button>
-            </div>
           </div>
         </div>
       </main>
@@ -1634,6 +1723,66 @@ export default function UserDetailPage() {
                   <>
                     <Trash2 className="w-4 h-4" />
                     Eliminar
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Confirmación de Cancelar Membresía */}
+      {showCancelMembershipModal && membershipToCancel && (
+        <div className="fixed inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-white/10 w-full max-w-md p-6 shadow-2xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-full bg-orange-100 dark:bg-orange-500/20 flex items-center justify-center">
+                <AlertTriangle className="w-6 h-6 text-orange-600 dark:text-orange-400" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-[#164151] dark:text-white">Cancelar Membresía</h3>
+                <p className="text-sm text-gray-500 dark:text-white/50">Esta acción no se puede deshacer</p>
+              </div>
+            </div>
+
+            <p className="text-[#164151] dark:text-white/80 mb-4">
+              ¿Estás seguro de que deseas cancelar el plan <strong>{membershipToCancel.plan?.name || 'seleccionado'}</strong>?
+            </p>
+
+            <div className="p-3 bg-gray-50 dark:bg-white/5 rounded-lg mb-4">
+              <p className="text-sm text-gray-600 dark:text-white/60">
+                <strong>Vencimiento:</strong> {new Date(membershipToCancel.end_date).toLocaleDateString('es-ES', {
+                  day: '2-digit',
+                  month: 'long',
+                  year: 'numeric',
+                })}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3 justify-end">
+              <button
+                onClick={() => {
+                  setShowCancelMembershipModal(false);
+                  setMembershipToCancel(null);
+                }}
+                className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-[#164151] dark:text-white font-medium transition-colors"
+              >
+                No, mantener
+              </button>
+              <button
+                onClick={handleCancelMembership}
+                disabled={cancellingMembershipId === membershipToCancel.id}
+                className="px-4 py-2 rounded-lg bg-orange-500 hover:bg-orange-600 text-white font-semibold transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {cancellingMembershipId === membershipToCancel.id ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Cancelando...
+                  </>
+                ) : (
+                  <>
+                    <X className="w-4 h-4" />
+                    Sí, cancelar
                   </>
                 )}
               </button>

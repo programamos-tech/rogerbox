@@ -53,6 +53,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
   const [hasActiveMembership, setHasActiveMembership] = useState(false);
   const [checkingMembership, setCheckingMembership] = useState(false);
   const [expiredMembershipToPay, setExpiredMembershipToPay] = useState<any>(null);
+  const [isAdvancePayment, setIsAdvancePayment] = useState(false);
   const [urlParamsProcessed, setUrlParamsProcessed] = useState(false);
 
   useEffect(() => {
@@ -179,6 +180,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
     setError('');
     setHasActiveMembership(false);
     setExpiredMembershipToPay(null);
+    setIsAdvancePayment(false);
 
     try {
       const membershipsRes = await fetch(
@@ -190,39 +192,55 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
-        // Buscar membresía activa SOLO para este plan específico
-        const activeMembershipForThisPlan = memberships.find(
-          (m: any) => {
-            const endDate = new Date(m.end_date);
-            endDate.setHours(0, 0, 0, 0);
-            return m.plan_id === planId && m.status === 'active' && endDate >= today;
-          }
-        );
-
-        if (activeMembershipForThisPlan) {
-          setHasActiveMembership(true);
-          setError('Este cliente ya tiene una membresía activa para este plan. Debe esperar a que venza para poder renovar.');
-          return;
-        }
-
-        // Verificar si hay alguna membresía vencida (estado "Renovar") para OTRO plan
-        const expiredMemberships = memberships.filter((m: any) => {
+        // Buscar membresía activa SOLO para el MISMO plan que se está pagando
+        const activeMembershipForThisPlan = memberships.find((m: any) => {
           const endDate = new Date(m.end_date);
           endDate.setHours(0, 0, 0, 0);
-          return (m.status === 'expired' || (m.status === 'active' && endDate < today)) && m.plan_id !== planId;
+          return m.plan_id === planId && m.status !== 'cancelled' && endDate >= today;
         });
 
-        if (expiredMemberships.length > 0) {
-          // Hay membresías vencidas de otros planes, solo permitir pagar esas
-          const expiredMembership = expiredMemberships[0]; // Tomar la primera vencida
-          setExpiredMembershipToPay(expiredMembership);
-          setError(`Debes pagar primero el plan "${expiredMembership.plan?.name || 'vencido'}" que está vencido.`);
-          setHasActiveMembership(true); // Usar el mismo flag para bloquear
+        // Si hay membresía activa para ESTE MISMO plan, es pago anticipado
+        if (activeMembershipForThisPlan) {
+          const latestEndDate = new Date(activeMembershipForThisPlan.end_date);
+          latestEndDate.setHours(0, 0, 0, 0);
+          
+          // El nuevo plan empieza el día siguiente
+          const newStartDate = new Date(latestEndDate);
+          newStartDate.setDate(newStartDate.getDate() + 1);
+          
+          // Calcular fecha de fin basada en la duración del plan seleccionado
+          const planDuration = selectedPlan?.duration_days || 30;
+          const newEndDate = new Date(newStartDate);
+          newEndDate.setDate(newEndDate.getDate() + planDuration - 1);
+          
+          // Actualizar las fechas del formulario automáticamente
+          setFormData(prev => ({
+            ...prev,
+            period_start: newStartDate.toISOString().split('T')[0],
+            period_end: newEndDate.toISOString().split('T')[0],
+          }));
+          
+          // Marcar como pago anticipado (permitido)
+          setIsAdvancePayment(true);
+          setHasActiveMembership(false);
+          setError('');
         } else {
-          // Limpiar error si no hay membresía activa ni vencida para otros planes
+          // No hay membresía activa para ESTE plan, fechas normales (desde hoy)
+          const planDuration = selectedPlan?.duration_days || 30;
+          const startDate = new Date();
+          const endDate = new Date(startDate);
+          endDate.setDate(endDate.getDate() + planDuration - 1);
+          
+          setFormData(prev => ({
+            ...prev,
+            period_start: startDate.toISOString().split('T')[0],
+            period_end: endDate.toISOString().split('T')[0],
+          }));
+          
           setError('');
           setHasActiveMembership(false);
           setExpiredMembershipToPay(null);
+          setIsAdvancePayment(false);
         }
       }
     } catch (error) {
@@ -301,7 +319,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
         return;
       }
 
-      // Primero, verificar si existe una membresía activa para este cliente y plan específico
+      // Verificar membresías existentes
       const membershipsRes = await fetch(
         `/api/admin/gym/memberships?client_info_id=${formData.client_info_id}`
       );
@@ -312,51 +330,20 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
-        // Buscar membresía activa SOLO para el plan específico que se está pagando
-        const activeMembershipForThisPlan = memberships.find(
-          (m: any) => {
-            const endDate = new Date(m.end_date);
-            endDate.setHours(0, 0, 0, 0);
-            return m.plan_id === formData.plan_id && m.status === 'active' && endDate >= today;
-          }
-        );
-
-        if (activeMembershipForThisPlan) {
-          // Si tiene membresía activa para ESTE plan específico, no permitir crear nuevo pago (no hay abonos)
-          setError('Este cliente ya tiene una membresía activa para este plan. Debe esperar a que venza para poder renovar.');
-          setIsSubmitting(false);
-          return;
-        }
-
-        // Verificar si hay membresías vencidas (estado "Renovar") para OTROS planes
-        const expiredMembershipsOtherPlans = memberships.filter((m: any) => {
-          const endDate = new Date(m.end_date);
-          endDate.setHours(0, 0, 0, 0);
-          return m.plan_id !== formData.plan_id && (m.status === 'expired' || (m.status === 'active' && endDate < today));
-        });
-
         // Buscar membresía vencida para este plan específico para reutilizarla
         const expiredMembershipForThisPlan = memberships.find(
           (m: any) => {
             const endDate = new Date(m.end_date);
             endDate.setHours(0, 0, 0, 0);
-            return m.plan_id === formData.plan_id && (m.status === 'expired' || (m.status === 'active' && endDate < today));
+            return m.plan_id === formData.plan_id && m.status !== 'cancelled' && (m.status === 'expired' || endDate < today);
           }
         );
 
-        // Si hay membresías vencidas de otros planes, solo permitir pagar esas
-        if (expiredMembershipsOtherPlans.length > 0 && !expiredMembershipForThisPlan) {
-          const expiredMembership = expiredMembershipsOtherPlans[0];
-          setError(`Debes pagar primero el plan "${expiredMembership.plan?.name || 'vencido'}" que está vencido.`);
-          setIsSubmitting(false);
-          return;
-        }
-
-        if (expiredMembershipForThisPlan) {
+        if (expiredMembershipForThisPlan && !isAdvancePayment) {
           // Usar membresía vencida existente (se renovará con el nuevo pago)
           membershipId = expiredMembershipForThisPlan.id;
         } else {
-          // No hay membresía para este plan (es un plan nuevo), crear nueva
+          // Crear nueva membresía (pago anticipado o plan nuevo o plan diferente)
           const membershipRes = await fetch('/api/admin/gym/memberships', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -451,6 +438,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
     setHasActiveMembership(false);
     setCheckingMembership(false);
     setExpiredMembershipToPay(null);
+    setIsAdvancePayment(false);
     setUrlParamsProcessed(false);
   };
 
@@ -733,6 +721,26 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
                 </div>
               )}
 
+              {/* Mensaje de pago anticipado */}
+              {isAdvancePayment && !error && (
+                <div className="p-4 bg-cyan-50 dark:bg-cyan-500/20 border border-cyan-200 dark:border-cyan-500/30 rounded-xl">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full bg-cyan-100 dark:bg-cyan-500/30 flex items-center justify-center flex-shrink-0">
+                      <svg className="w-4 h-4 text-cyan-600 dark:text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-cyan-700 dark:text-cyan-400">Pago Anticipado</p>
+                      <p className="text-sm text-cyan-600 dark:text-cyan-300 mt-1">
+                        Este cliente tiene un plan activo. El nuevo plan iniciará automáticamente el{' '}
+                        <strong>{new Date(formData.period_start).toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })}</strong>.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Selección de Cliente */}
               <div>
                 <label className="block text-sm font-semibold text-[#164151] dark:text-white mb-3">
@@ -891,14 +899,19 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
                   <div>
                     <label className="block text-sm font-semibold text-[#164151] dark:text-white mb-3">
                       Inicio del Período *
+                      {isAdvancePayment && (
+                        <span className="ml-2 text-xs font-normal text-cyan-600 dark:text-cyan-400">(automático)</span>
+                      )}
                     </label>
                     <div className="relative">
-                      <Calendar className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                      <Calendar className={`absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 ${isAdvancePayment ? 'text-cyan-500' : 'text-gray-400'}`} />
                       <input
                         type="date"
                         required
                         value={formData.period_start}
+                        readOnly={isAdvancePayment}
                         onChange={(e) => {
+                          if (isAdvancePayment) return; // No permitir cambio manual en pago anticipado
                           const startDate = new Date(e.target.value);
                           const endDate = new Date(startDate);
                           if (selectedPlan) {
@@ -912,7 +925,11 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
                             setFormData({ ...formData, period_start: e.target.value });
                           }
                         }}
-                        className="w-full pl-12 pr-5 py-3.5 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 focus:border-[#85ea10]/50 transition-all text-base"
+                        className={`w-full pl-12 pr-5 py-3.5 border rounded-xl text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 focus:border-[#85ea10]/50 transition-all text-base ${
+                          isAdvancePayment 
+                            ? 'bg-cyan-50 dark:bg-cyan-500/10 border-cyan-200 dark:border-cyan-500/30 cursor-not-allowed' 
+                            : 'bg-gray-50 dark:bg-white/5 border-gray-200 dark:border-white/10'
+                        }`}
                       />
                     </div>
                   </div>
@@ -920,15 +937,22 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
                   <div>
                     <label className="block text-sm font-semibold text-[#164151] dark:text-white mb-3">
                       Fin del Período *
+                      {isAdvancePayment && (
+                        <span className="ml-2 text-xs font-normal text-cyan-600 dark:text-cyan-400">(automático)</span>
+                      )}
                     </label>
                     <div className="relative">
-                      <Calendar className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                      <Calendar className={`absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 ${isAdvancePayment ? 'text-cyan-500' : 'text-gray-400'}`} />
                       <input
                         type="date"
                         required
                         value={formData.period_end}
                         readOnly
-                        className="w-full pl-12 pr-5 py-3.5 bg-gray-100 dark:bg-white/10 border border-gray-200 dark:border-white/10 rounded-xl text-[#164151] dark:text-white text-base cursor-not-allowed"
+                        className={`w-full pl-12 pr-5 py-3.5 border rounded-xl text-[#164151] dark:text-white text-base cursor-not-allowed ${
+                          isAdvancePayment 
+                            ? 'bg-cyan-50 dark:bg-cyan-500/10 border-cyan-200 dark:border-cyan-500/30' 
+                            : 'bg-gray-100 dark:bg-white/10 border-gray-200 dark:border-white/10'
+                        }`}
                       />
                     </div>
                   </div>

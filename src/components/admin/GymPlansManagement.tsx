@@ -388,7 +388,7 @@ const GymPlansManagement = forwardRef<GymPlansManagementRef>((props, ref) => {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {plans.map((plan) => (
+          {plans.filter((plan) => plan.is_active).map((plan) => (
             <div
               key={plan.id}
               className={`bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl border ${plan.is_active
