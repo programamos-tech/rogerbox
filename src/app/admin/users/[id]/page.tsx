@@ -40,8 +40,8 @@ import {
   UserX,
   Trash2,
 } from 'lucide-react';
-import QuickLoading from '@/components/QuickLoading';
 import { supabaseAdmin } from '@/lib/supabase';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts';
 
 // Función para traducir los goals a español
 const translateGoal = (goal: string): string => {
@@ -172,79 +172,45 @@ export default function UserDetailPage() {
   const loadUserData = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/admin/users');
+      // Cargar directamente el usuario específico (mucho más rápido)
+      const response = await fetch(`/api/admin/users/${userId}`);
       const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Error al cargar usuarios');
-      }
-
-      const foundUser = data.users?.find((u: any) => u.id === userId);
-      if (foundUser) {
-        setUserData(foundUser);
-        // Inicializar formulario de edición con los datos actuales
+      
+      if (response.ok && data.user) {
+        const user = data.user;
+        setUserData(user);
+        // Inicializar formulario de edición
         setEditForm({
-          name: foundUser.name || foundUser.full_name || '',
-          email: foundUser.email || '',
-          phone: foundUser.phone || foundUser.whatsapp || '',
-          whatsapp: foundUser.whatsapp || foundUser.phone || '',
-          document_id: foundUser.document_id || '',
-          document_type: foundUser.document_type || 'CC',
-          height: foundUser.height || '',
-          weight: foundUser.weight || foundUser.current_weight || '',
-          current_weight: foundUser.current_weight || foundUser.weight || '',
-          gender: foundUser.gender || '',
-          target_weight: foundUser.target_weight || '',
-          goals: Array.isArray(foundUser.goals) ? foundUser.goals : (foundUser.goals ? (typeof foundUser.goals === 'string' ? JSON.parse(foundUser.goals) : foundUser.goals) : []),
-          address: foundUser.address || '',
-          city: foundUser.city || '',
-          birth_date: foundUser.birth_date || '',
-          birth_year: foundUser.birth_year || '',
-          medical_restrictions: foundUser.medical_restrictions || '',
+          name: user.name || user.full_name || '',
+          email: user.email || '',
+          phone: user.phone || user.whatsapp || '',
+          whatsapp: user.whatsapp || user.phone || '',
+          document_id: user.document_id || '',
+          document_type: user.document_type || 'CC',
+          height: user.height || '',
+          weight: user.weight || user.current_weight || '',
+          current_weight: user.current_weight || user.weight || '',
+          gender: user.gender || '',
+          target_weight: user.target_weight || '',
+          goals: Array.isArray(user.goals) ? user.goals : (user.goals ? (typeof user.goals === 'string' ? JSON.parse(user.goals) : user.goals) : []),
+          address: user.address || '',
+          city: user.city || '',
+          birth_date: user.birth_date || '',
+          birth_year: user.birth_year || '',
+          medical_restrictions: user.medical_restrictions || '',
         });
-
+        
         // Activar modo edición si viene con query param edit=true
         if (searchParams.get('edit') === 'true') {
           setIsEditing(true);
         }
-      } else {
-        // Si no se encuentra en la lista, intentar cargar directamente
-        const directResponse = await fetch(`/api/admin/users/${userId}`);
-        const directData = await directResponse.json();
-        if (directResponse.ok && directData.user) {
-          setUserData(directData.user);
-          // Inicializar formulario de edición
-          setEditForm({
-            name: directData.user.name || directData.user.full_name || '',
-            email: directData.user.email || '',
-            phone: directData.user.phone || directData.user.whatsapp || '',
-            whatsapp: directData.user.whatsapp || directData.user.phone || '',
-            document_id: directData.user.document_id || '',
-            document_type: directData.user.document_type || 'CC',
-            height: directData.user.height || '',
-            weight: directData.user.weight || directData.user.current_weight || '',
-            current_weight: directData.user.current_weight || directData.user.weight || '',
-            gender: directData.user.gender || '',
-            target_weight: directData.user.target_weight || '',
-            goals: Array.isArray(directData.user.goals) ? directData.user.goals : (directData.user.goals ? (typeof directData.user.goals === 'string' ? JSON.parse(directData.user.goals) : directData.user.goals) : []),
-            address: directData.user.address || '',
-            city: directData.user.city || '',
-            birth_date: directData.user.birth_date || '',
-            birth_year: directData.user.birth_year || '',
-            medical_restrictions: directData.user.medical_restrictions || '',
-          });
-          // Cargar registros de peso si el usuario tiene user_id
-          if (directData.user.id && !directData.user.isUnregisteredClient) {
-            loadWeightRecords(directData.user.id);
-          }
-        } else {
-          console.warn('Usuario no encontrado');
+        
+        // Cargar registros de peso si el usuario tiene user_id
+        if (user.id && !user.isUnregisteredClient) {
+          loadWeightRecords(user.id);
         }
-      }
-
-      // Cargar registros de peso si el usuario tiene user_id
-      if (foundUser && foundUser.id && !foundUser.isUnregisteredClient) {
-        loadWeightRecords(foundUser.id);
+      } else {
+        console.warn('Usuario no encontrado');
       }
     } catch (error) {
       console.error('Error loading user data:', error);
@@ -362,7 +328,14 @@ export default function UserDetailPage() {
   };
 
   if (authLoading || loading) {
-    return <QuickLoading message="Cargando información del cliente..." duration={1000} />;
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-[#0a1628] flex items-center justify-center">
+        <div className="flex items-center gap-3">
+          <div className="w-5 h-5 border-2 border-[#85ea10] border-t-transparent rounded-full animate-spin" />
+          <span className="text-sm text-gray-500 dark:text-white/50">Cargando cliente...</span>
+        </div>
+      </div>
+    );
   }
 
   if (!userData) {
@@ -606,6 +579,140 @@ export default function UserDetailPage() {
         {/* Content */}
         <div className="flex-1 overflow-y-auto">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            {/* Client Stats Dashboard */}
+            {(() => {
+              const memberships = userData.gym_memberships || [];
+              const totalMemberships = memberships.filter((m: any) => m.status !== 'cancelled').length;
+              const totalPaid = memberships.reduce((sum: number, m: any) => {
+                return sum + (m.payment?.amount || 0);
+              }, 0);
+              const lastPayment = memberships
+                .filter((m: any) => m.payment?.payment_date)
+                .sort((a: any, b: any) => new Date(b.payment.payment_date).getTime() - new Date(a.payment.payment_date).getTime())[0];
+              const averageTicket = totalMemberships > 0 ? Math.round(totalPaid / totalMemberships) : 0;
+              
+              // Calcular meses entrenando (desde primera hasta última membresía)
+              const sortedByStart = [...memberships]
+                .filter((m: any) => m.start_date)
+                .sort((a: any, b: any) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime());
+              
+              let monthsTraining = 0;
+              if (sortedByStart.length > 0) {
+                const firstDate = new Date(sortedByStart[0].start_date);
+                const lastDate = sortedByStart.length > 1 
+                  ? new Date(sortedByStart[sortedByStart.length - 1].end_date)
+                  : new Date(sortedByStart[0].end_date);
+                const diffTime = Math.abs(lastDate.getTime() - firstDate.getTime());
+                monthsTraining = Math.ceil(diffTime / (1000 * 60 * 60 * 24 * 30));
+              }
+
+              // Preparar datos para la gráfica de pagos
+              const chartData = memberships
+                .filter((m: any) => m.payment?.payment_date && m.payment?.amount)
+                .sort((a: any, b: any) => new Date(a.payment.payment_date).getTime() - new Date(b.payment.payment_date).getTime())
+                .map((m: any) => ({
+                  date: new Date(m.payment.payment_date).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' }),
+                  amount: m.payment.amount,
+                  plan: m.plan?.name || 'Plan',
+                }));
+
+              return (
+                <div className="mb-6 space-y-4">
+                  {/* Stats Cards */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-xl border border-gray-200 dark:border-white/10 p-4 text-center">
+                      <div className="text-2xl font-bold text-[#164151] dark:text-white">{totalMemberships}</div>
+                      <div className="text-xs text-gray-500 dark:text-white/50 flex items-center justify-center gap-1">
+                        <CreditCard className="w-3 h-3" /> Membresías
+                      </div>
+                    </div>
+                    <div className="bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-xl border border-gray-200 dark:border-white/10 p-4 text-center">
+                      <div className={`text-2xl font-bold ${totalPaid > 0 ? 'text-[#85ea10]' : 'text-[#164151] dark:text-white'}`}>
+                        ${totalPaid.toLocaleString('es-CO')}
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-white/50 flex items-center justify-center gap-1">
+                        <TrendingUp className="w-3 h-3" /> Total Pagado
+                      </div>
+                    </div>
+                    <div className="bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-xl border border-gray-200 dark:border-white/10 p-4 text-center">
+                      <div className="text-2xl font-bold text-[#164151] dark:text-white">{monthsTraining}</div>
+                      <div className="text-xs text-gray-500 dark:text-white/50 flex items-center justify-center gap-1">
+                        <Dumbbell className="w-3 h-3" /> Meses en RogerBox
+                      </div>
+                    </div>
+                    <div className="bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-xl border border-gray-200 dark:border-white/10 p-4 text-center">
+                      <div className="text-2xl font-bold text-[#164151] dark:text-white">
+                        {lastPayment?.payment?.payment_date 
+                          ? new Date(lastPayment.payment.payment_date).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })
+                          : '-'}
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-white/50 flex items-center justify-center gap-1">
+                        <Calendar className="w-3 h-3" /> Último Pago
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Payment History Chart */}
+                  {chartData.length > 0 && (
+                    <div className="bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-xl border border-gray-200 dark:border-white/10 p-4">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-sm font-semibold text-gray-500 dark:text-white/50 flex items-center gap-2">
+                          <TrendingUp className="w-4 h-4" /> Historial de Pagos
+                        </h3>
+                      </div>
+                      <div className="h-40">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={chartData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+                            <defs>
+                              <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#85ea10" stopOpacity={0.3}/>
+                                <stop offset="95%" stopColor="#85ea10" stopOpacity={0}/>
+                              </linearGradient>
+                            </defs>
+                            <XAxis 
+                              dataKey="date" 
+                              axisLine={false}
+                              tickLine={false}
+                              tick={{ fontSize: 10, fill: '#9ca3af' }}
+                            />
+                            <YAxis 
+                              axisLine={false}
+                              tickLine={false}
+                              tick={{ fontSize: 10, fill: '#9ca3af' }}
+                              tickFormatter={(value) => `$${(value/1000).toFixed(0)}k`}
+                            />
+                            <Tooltip 
+                              contentStyle={{ 
+                                backgroundColor: 'rgba(22, 65, 81, 0.95)', 
+                                border: 'none', 
+                                borderRadius: '8px',
+                                color: '#fff',
+                                fontSize: '12px'
+                              }}
+                              formatter={(value: number, name: string, props: any) => [
+                                `$${value.toLocaleString('es-CO')}`,
+                                props.payload.plan
+                              ]}
+                              labelStyle={{ color: '#85ea10', fontWeight: 'bold' }}
+                            />
+                            <Area 
+                              type="monotone" 
+                              dataKey="amount" 
+                              stroke="#85ea10" 
+                              strokeWidth={2}
+                              fill="url(#colorAmount)"
+                              dot={{ fill: '#85ea10', strokeWidth: 2, r: 4 }}
+                              activeDot={{ r: 6, fill: '#85ea10' }}
+                            />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
             <div className={`grid grid-cols-1 lg:grid-cols-3 gap-6 ${userData.is_inactive ? 'opacity-75' : ''}`}>
               {/* Left Column - Información Personal y Fitness */}
               <div className="lg:col-span-2 space-y-6">

@@ -26,8 +26,48 @@ export async function GET(
     if (!profileError && profile) {
       // Enriquecer con membresías y pagos
       let gymMemberships: any[] = [];
+      let clientInfoId: string | null = null;
+      
+      // Primero buscar si existe un gym_client_info vinculado a este perfil
       try {
-        const { data: memberships, error: membershipsError } = await supabaseAdmin
+        // Buscar por user_id primero
+        let { data: linkedClient } = await supabaseAdmin
+          .from('gym_client_info')
+          .select('id')
+          .eq('user_id', id)
+          .maybeSingle();
+        
+        // Si no encontramos por user_id, buscar por document_id del perfil
+        if (!linkedClient && profile.document_id) {
+          const { data: clientByDoc } = await supabaseAdmin
+            .from('gym_client_info')
+            .select('id')
+            .eq('document_id', profile.document_id)
+            .maybeSingle();
+          
+          if (clientByDoc) {
+            linkedClient = clientByDoc;
+            // Vincular el gym_client_info con el perfil para futuras consultas
+            await supabaseAdmin
+              .from('gym_client_info')
+              .update({ user_id: id })
+              .eq('id', clientByDoc.id);
+          }
+        }
+        
+        if (linkedClient) {
+          clientInfoId = linkedClient.id;
+        }
+      } catch (e) {
+        // Continuar sin client_info_id
+      }
+      
+      try {
+        // Buscar membresías por user_id O por client_info_id (para datos migrados)
+        let memberships: any[] = [];
+        
+        // Primero por user_id
+        const { data: membershipsByUser, error: membershipsError } = await supabaseAdmin
           .from('gym_memberships')
           .select(`
             id,
@@ -39,7 +79,36 @@ export async function GET(
           `)
           .eq('user_id', id);
         
-        if (!membershipsError && memberships) {
+        if (!membershipsError && membershipsByUser) {
+          memberships = [...membershipsByUser];
+        }
+        
+        // También buscar por client_info_id si existe
+        if (clientInfoId) {
+          const { data: membershipsByClient } = await supabaseAdmin
+            .from('gym_memberships')
+            .select(`
+              id,
+              status,
+              start_date,
+              end_date,
+              client_info_id,
+              plan:gym_plans(name, id)
+            `)
+            .eq('client_info_id', clientInfoId);
+          
+          if (membershipsByClient) {
+            // Agregar solo las que no estén ya (evitar duplicados)
+            const existingIds = new Set(memberships.map(m => m.id));
+            membershipsByClient.forEach(m => {
+              if (!existingIds.has(m.id)) {
+                memberships.push(m);
+              }
+            });
+          }
+        }
+        
+        if (memberships.length > 0) {
           // Obtener pagos relacionados para cada membresía
           const membershipIds = memberships.map((m: any) => m.id);
           let paymentsMap: Record<string, any> = {};
@@ -101,22 +170,24 @@ export async function GET(
 
       // Obtener is_inactive del cliente físico si existe
       let isInactive = false;
-      let clientInfoId = null;
       let medicalRestrictions = null;
-      if (gymMemberships.length > 0) {
+      
+      // Si no tenemos clientInfoId aún, intentar obtenerlo de las membresías
+      if (!clientInfoId && gymMemberships.length > 0) {
         clientInfoId = gymMemberships[0].client_info_id;
-        if (clientInfoId) {
-          try {
-            const { data: clientInfo } = await supabaseAdmin
-              .from('gym_client_info')
-              .select('is_inactive, medical_restrictions')
-              .eq('id', clientInfoId)
-              .single();
-            isInactive = clientInfo?.is_inactive || false;
-            medicalRestrictions = clientInfo?.medical_restrictions || null;
-          } catch (e) {
-            // Continuar sin is_inactive si hay error
-          }
+      }
+      
+      if (clientInfoId) {
+        try {
+          const { data: clientInfo } = await supabaseAdmin
+            .from('gym_client_info')
+            .select('is_inactive, medical_restrictions')
+            .eq('id', clientInfoId)
+            .single();
+          isInactive = clientInfo?.is_inactive || false;
+          medicalRestrictions = clientInfo?.medical_restrictions || null;
+        } catch (e) {
+          // Continuar sin is_inactive si hay error
         }
       }
 

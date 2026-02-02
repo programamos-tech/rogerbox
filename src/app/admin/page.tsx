@@ -164,7 +164,7 @@ const menuSections = [
     title: 'Sede Física',
     items: [
       { id: 'gym-plans', label: 'Planes', icon: Dumbbell, description: 'Gestionar planes del gimnasio' },
-      { id: 'users', label: 'Usuarios', icon: Users, description: 'Gestiona usuarios y clientes físicos' },
+      { id: 'users', label: 'Clientes', icon: Users, description: 'Gestiona clientes de la sede física' },
       { id: 'gym-payments', label: 'Pagos', icon: CreditCard, description: 'Facturar planes a clientes físicos' },
     ],
   },
@@ -242,9 +242,11 @@ function AdminDashboardContent() {
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [userSearchTerm, setUserSearchTerm] = useState('');
   const [userTypeFilter, setUserTypeFilter] = useState<string>('all'); // 'all', 'physical', 'online', 'both'
-  const [paymentStatusFilter, setPaymentStatusFilter] = useState<string>('all'); // 'all', 'paid', 'unpaid', 'overdue'
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState<string>('all'); // 'all', 'active', 'renewal', 'no-products', 'inactive'
   const [currentPage, setCurrentPage] = useState(1);
-  const usersPerPage = 10;
+  const [totalPages, setTotalPages] = useState(1);
+  const [userCounts, setUserCounts] = useState({ total: 0, active: 0, renewal: 0, noProducts: 0, inactive: 0 });
+  const usersPerPage = 20;
   const [showClientForm, setShowClientForm] = useState(false);
   const [editingClient, setEditingClient] = useState<any | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -289,7 +291,7 @@ function AdminDashboardContent() {
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
   const [sedeFilter, setSedeFilter] = useState<'fisica' | 'online' | 'ambas'>('fisica');
-  const [showRevenueNumbers, setShowRevenueNumbers] = useState(false);
+  const [showRevenueNumbers, setShowRevenueNumbers] = useState(true);
   const [weeklyData, setWeeklyData] = useState<{ date: string; amount: number; dayName: string }[]>([]);
   const [loadingWeeklyData, setLoadingWeeklyData] = useState(false);
 
@@ -347,7 +349,7 @@ function AdminDashboardContent() {
     if (activeTab === 'courses') {
       loadCourses();
     } else if (activeTab === 'users') {
-      loadUsers();
+      loadUsers('', 'all', 1);
     } else if (activeTab === 'sales') {
       loadSales();
     } else if (activeTab === 'overview') {
@@ -358,6 +360,16 @@ function AdminDashboardContent() {
       loadWeeklyData();
     }
   }, [activeTab]);
+
+  // Recargar usuarios cuando cambien filtros o página
+  useEffect(() => {
+    if (activeTab === 'users') {
+      const timeoutId = setTimeout(() => {
+        loadUsers(userSearchTerm, paymentStatusFilter, currentPage);
+      }, userSearchTerm ? 300 : 0); // Debounce solo para búsqueda
+      return () => clearTimeout(timeoutId);
+    }
+  }, [userSearchTerm, paymentStatusFilter, currentPage]);
 
   // Cargar ingresos cuando cambien los filtros
   useEffect(() => {
@@ -522,17 +534,26 @@ function AdminDashboardContent() {
     }
   };
 
-  const loadUsers = async () => {
+  const loadUsers = async (search?: string, status?: string, page?: number) => {
     try {
       setLoadingUsers(true);
-      const response = await fetch('/api/admin/users');
+      const params = new URLSearchParams({
+        page: String(page || currentPage),
+        limit: String(usersPerPage),
+        search: search ?? userSearchTerm,
+        status: status ?? paymentStatusFilter,
+      });
+      
+      const response = await fetch(`/api/admin/users?${params}`);
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Error al cargar usuarios');
+        throw new Error(data.error || 'Error al cargar clientes');
       }
 
       setUsers(data.users || []);
+      setTotalPages(data.pagination?.totalPages || 1);
+      setUserCounts(data.counts || { total: 0, active: 0, renewal: 0, noProducts: 0, inactive: 0 });
     } catch (error) {
       console.error('Error loading users:', error);
     } finally {
@@ -914,7 +935,7 @@ function AdminDashboardContent() {
                     loadUsers();
                   }}
                   className="bg-gray-100 dark:bg-white/10 text-[#164151] dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 font-semibold p-2.5 sm:px-5 sm:py-2.5 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 text-sm shadow-lg hover:shadow-xl"
-                  title="Actualizar lista de usuarios"
+                  title="Actualizar lista de clientes"
                 >
                   <RefreshCw className="w-4 h-4" />
                   <span className="hidden sm:inline">Actualizar</span>
@@ -1381,6 +1402,42 @@ function AdminDashboardContent() {
           {/* Users Tab */}
           {activeTab === 'users' && (
             <div className="space-y-6">
+              {/* Status Summary - Compact */}
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => { setPaymentStatusFilter(paymentStatusFilter === 'active' ? 'all' : 'active'); setCurrentPage(1); }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${paymentStatusFilter === 'active' ? 'bg-[#85ea10] text-[#164151]' : 'bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-white/70 hover:bg-[#85ea10]/20'}`}
+                >
+                  <span className="font-bold">{userCounts.active}</span> Al día
+                </button>
+                <button
+                  onClick={() => { setPaymentStatusFilter(paymentStatusFilter === 'renewal' ? 'all' : 'renewal'); setCurrentPage(1); }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${paymentStatusFilter === 'renewal' ? 'bg-orange-500 text-white' : 'bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-white/70 hover:bg-orange-500/20'}`}
+                >
+                  <span className="font-bold">{userCounts.renewal}</span> Renovar
+                </button>
+                <button
+                  onClick={() => { setPaymentStatusFilter(paymentStatusFilter === 'no-products' ? 'all' : 'no-products'); setCurrentPage(1); }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${paymentStatusFilter === 'no-products' ? 'bg-gray-500 text-white' : 'bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-white/70 hover:bg-gray-500/20'}`}
+                >
+                  <span className="font-bold">{userCounts.noProducts}</span> Sin productos
+                </button>
+                <button
+                  onClick={() => { setPaymentStatusFilter(paymentStatusFilter === 'inactive' ? 'all' : 'inactive'); setCurrentPage(1); }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${paymentStatusFilter === 'inactive' ? 'bg-red-500 text-white' : 'bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-white/70 hover:bg-red-500/20'}`}
+                >
+                  <span className="font-bold">{userCounts.inactive}</span> Inactivos
+                </button>
+                {paymentStatusFilter !== 'all' && (
+                  <button
+                    onClick={() => { setPaymentStatusFilter('all'); setCurrentPage(1); }}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-200 dark:bg-white/20 text-gray-700 dark:text-white hover:bg-gray-300 dark:hover:bg-white/30 transition-all"
+                  >
+                    Ver todos ({userCounts.total})
+                  </button>
+                )}
+              </div>
+              
               {/* Search and Filters Bar */}
               <div className="bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl border border-gray-200 dark:border-white/10 p-4 shadow-sm dark:shadow-none">
                 <div className="flex flex-col sm:flex-row gap-4">
@@ -1389,7 +1446,7 @@ function AdminDashboardContent() {
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-white/40" />
                     <input
                       type="text"
-                      placeholder="Buscar usuarios por nombre o email..."
+                      placeholder="Buscar por cédula, nombre o correo..."
                       value={userSearchTerm}
                       onChange={(e) => {
                         setUserSearchTerm(e.target.value);
@@ -1412,7 +1469,7 @@ function AdminDashboardContent() {
                         }}
                         className="w-full pl-8 sm:pl-12 pr-4 sm:pr-10 py-2.5 sm:py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-[11px] sm:text-sm text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 appearance-none cursor-pointer"
                       >
-                        <option value="all">Usuarios: Todos</option>
+                        <option value="all">Clientes: Todos</option>
                         <option value="physical">Solo físicos</option>
                         <option value="online">Solo online</option>
                         <option value="both">Ambos</option>
@@ -1431,9 +1488,10 @@ function AdminDashboardContent() {
                         className="w-full pl-8 sm:pl-12 pr-4 sm:pr-10 py-2.5 sm:py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-[11px] sm:text-sm text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 appearance-none cursor-pointer"
                       >
                         <option value="all">Estado: Todos</option>
-                        <option value="paid">Al día</option>
-                        <option value="unpaid">Sin pagos</option>
-                        <option value="overdue">Vencidos</option>
+                        <option value="active">Al día</option>
+                        <option value="renewal">Renovar</option>
+                        <option value="no-products">Sin productos</option>
+                        <option value="inactive">Inactivos</option>
                       </select>
                     </div>
                   </div>
@@ -1443,74 +1501,15 @@ function AdminDashboardContent() {
               {/* Users Table */}
               <div className="bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl border border-gray-200 dark:border-white/10 overflow-hidden shadow-sm dark:shadow-none">
                 {loadingUsers ? (
-                  <LoadingState message="Cargando usuarios..." />
+                  <LoadingState message="Cargando clientes..." />
                 ) : users.length === 0 ? (
                   <EmptyState
-                    icon={Users}
-                    title="No hay usuarios registrados"
-                    description="Los usuarios aparecerán aquí cuando se registren"
+                    icon={userSearchTerm ? Search : Users}
+                    title={userSearchTerm ? "No se encontraron clientes" : "No hay clientes registrados"}
+                    description={userSearchTerm ? `No hay clientes que coincidan con "${userSearchTerm}"` : "Los clientes aparecerán aquí cuando se registren"}
                   />
                 ) : (
-                  (() => {
-                    // Filter users based on search term, type, and payment status
-                    let filteredUsers = users.filter((user) => {
-                      const searchLower = userSearchTerm.toLowerCase();
-                      const matchesSearch =
-                        user.name?.toLowerCase().includes(searchLower) ||
-                        user.email?.toLowerCase().includes(searchLower);
-
-                      // Filter by user type
-                      let matchesType = true;
-                      if (userTypeFilter === 'physical') {
-                        matchesType = user.hasGymMembership && !user.hasOnlinePurchase;
-                      } else if (userTypeFilter === 'online') {
-                        matchesType = user.hasOnlinePurchase && !user.hasGymMembership;
-                      } else if (userTypeFilter === 'both') {
-                        matchesType = user.hasGymMembership && user.hasOnlinePurchase;
-                      }
-
-                      // Filter by payment status
-                      let matchesPayment = true;
-                      if (paymentStatusFilter === 'paid') {
-                        matchesPayment = user.hasActiveGymMembership || user.hasOnlinePurchase;
-                      } else if (paymentStatusFilter === 'unpaid') {
-                        matchesPayment = !user.hasActiveGymMembership && !user.hasOnlinePurchase && user.hasGymMembership;
-                      } else if (paymentStatusFilter === 'overdue') {
-                        // Usuarios con membresías vencidas
-                        const hasExpiredMembership = user.gym_memberships?.some(
-                          (m: any) => m.status === 'expired' || (m.status === 'active' && new Date(m.end_date) < new Date())
-                        );
-                        matchesPayment = hasExpiredMembership;
-                      }
-
-                      return matchesSearch && matchesType && matchesPayment;
-                    });
-
-                    // Pagination calculations
-                    const totalUsers = filteredUsers.length;
-                    const totalPages = Math.ceil(totalUsers / usersPerPage);
-                    const startIndex = (currentPage - 1) * usersPerPage;
-                    const endIndex = startIndex + usersPerPage;
-                    const paginatedUsers = filteredUsers.slice(startIndex, endIndex);
-
-                    // Ensure current page is valid
-                    const validCurrentPage = Math.min(currentPage, Math.max(1, totalPages));
-                    if (validCurrentPage !== currentPage && totalPages > 0) {
-                      setCurrentPage(validCurrentPage);
-                    }
-
-                    if (filteredUsers.length === 0) {
-                      return (
-                        <EmptyState
-                          icon={Search}
-                          title="No se encontraron usuarios"
-                          description={`No hay usuarios que coincidan con "${userSearchTerm}"`}
-                        />
-                      );
-                    }
-
-                    return (
-                      <>
+                  <>
                         <div className="hidden md:block overflow-x-auto">
                           <table className="w-full">
                             <thead>
@@ -1539,7 +1538,7 @@ function AdminDashboardContent() {
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100 dark:divide-white/5">
-                              {paginatedUsers.map((user) => {
+                              {users.map((user) => {
                                 // Calcular si tiene más de 30 días sin pagar
                                 const today = new Date();
                                 today.setHours(0, 0, 0, 0);
@@ -2076,7 +2075,7 @@ function AdminDashboardContent() {
 
                         {/* Card view para móviles */}
                         <div className="md:hidden divide-y divide-gray-100 dark:divide-white/5">
-                          {paginatedUsers.map((user) => {
+                          {users.map((user) => {
                             // Calcular estados para la tarjeta
                             const today = new Date();
                             today.setHours(0, 0, 0, 0);
@@ -2226,13 +2225,13 @@ function AdminDashboardContent() {
                         <div className="px-6 py-4 mb-16 border-t border-gray-200 dark:border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4">
                           <div className="text-sm text-gray-500 dark:text-white/40">
                             Mostrando{' '}
-                            <span className="text-[#164151] dark:text-white font-medium">{startIndex + 1}</span>{' '}
+                            <span className="text-[#164151] dark:text-white font-medium">{((currentPage - 1) * usersPerPage) + 1}</span>{' '}
                             a{' '}
                             <span className="text-[#164151] dark:text-white font-medium">
-                              {Math.min(endIndex, totalUsers)}
+                              {Math.min(currentPage * usersPerPage, userCounts.total)}
                             </span>{' '}
-                            de <span className="text-[#164151] dark:text-white font-medium">{totalUsers}</span>{' '}
-                            usuarios
+                            de <span className="text-[#164151] dark:text-white font-medium">{userCounts.total}</span>{' '}
+                            clientes
                           </div>
 
                           <div className="flex items-center gap-2">
@@ -2365,8 +2364,6 @@ function AdminDashboardContent() {
                           </div>
                         </div>
                       </>
-                    );
-                  })()
                 )}
               </div>
             </div>
