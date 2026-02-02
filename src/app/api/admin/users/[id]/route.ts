@@ -413,3 +413,87 @@ export async function PUT(
     );
   }
 }
+
+// DELETE - Eliminar un usuario
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { session } = await getSession();
+    if (!session) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    }
+
+    // Verificar que es admin
+    const adminId = process.env.NEXT_PUBLIC_ADMIN_USER_ID;
+    const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'rogerbox@admin.com';
+    const isAdmin = session.user.id === adminId || 
+                    session.user.email === adminEmail ||
+                    session.user.user_metadata?.role === 'admin';
+
+    if (!isAdmin) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    }
+
+    const { id } = await params;
+
+    // Verificar si es un cliente de gym vinculado
+    const { data: gymClient } = await supabaseAdmin
+      .from('gym_client_info')
+      .select('id')
+      .eq('user_id', id)
+      .maybeSingle();
+
+    if (gymClient) {
+      // Verificar si tiene membresías activas
+      const today = new Date().toISOString().split('T')[0];
+      const { data: activeMemberships } = await supabaseAdmin
+        .from('gym_memberships')
+        .select('id')
+        .eq('client_info_id', gymClient.id)
+        .gte('end_date', today)
+        .limit(1);
+
+      if (activeMemberships && activeMemberships.length > 0) {
+        return NextResponse.json(
+          { error: 'No se puede eliminar un usuario con membresías activas' },
+          { status: 400 }
+        );
+      }
+
+      // Eliminar el registro de gym_client_info (esto eliminará membresías y pagos por CASCADE)
+      const { error: deleteClientError } = await supabaseAdmin
+        .from('gym_client_info')
+        .delete()
+        .eq('id', gymClient.id);
+
+      if (deleteClientError) {
+        console.error('Error deleting gym client:', deleteClientError);
+        return NextResponse.json({ error: 'Error al eliminar cliente del gym' }, { status: 500 });
+      }
+    }
+
+    // Eliminar el perfil del usuario
+    const { error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .delete()
+      .eq('id', id);
+
+    if (profileError) {
+      console.error('Error deleting profile:', profileError);
+      // No falla si no existe el perfil
+    }
+
+    // Nota: No podemos eliminar el usuario de auth.users directamente con supabaseAdmin
+    // Esto requeriría usar el servicio de admin de Supabase o marcar como eliminado
+
+    return NextResponse.json({ message: 'Usuario eliminado exitosamente' });
+  } catch (error: any) {
+    console.error('Error in DELETE user:', error);
+    return NextResponse.json(
+      { error: 'Error al eliminar usuario', details: error.message },
+      { status: 500 }
+    );
+  }
+}

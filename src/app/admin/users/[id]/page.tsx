@@ -38,6 +38,7 @@ import {
   MessageSquare,
   Ban,
   UserX,
+  Trash2,
 } from 'lucide-react';
 import QuickLoading from '@/components/QuickLoading';
 import { supabaseAdmin } from '@/lib/supabase';
@@ -128,6 +129,9 @@ export default function UserDetailPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [weightRecords, setWeightRecords] = useState<any[]>([]);
   const [loadingWeightRecords, setLoadingWeightRecords] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   const userId = params?.id as string;
 
@@ -290,6 +294,35 @@ export default function UserDetailPage() {
       setSaveError(error.message || 'Error al guardar cambios');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    setDeleteError('');
+
+    try {
+      // Determinar si es un cliente de gym o un usuario registrado
+      const endpoint = userData.isUnregisteredClient || userData.gym_client_id
+        ? `/api/admin/gym/clients/${userData.gym_client_id || userData.id}`
+        : `/api/admin/users/${userId}`;
+
+      const response = await fetch(endpoint, {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al eliminar usuario');
+      }
+
+      // Redirigir al listado de usuarios
+      router.push('/admin?tab=users');
+    } catch (error: any) {
+      setDeleteError(error.message || 'Error al eliminar usuario');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -513,14 +546,24 @@ export default function UserDetailPage() {
                 </button>
               </>
             ) : (
-              <button
-                onClick={() => setIsEditing(true)}
-                className="p-2 sm:px-4 sm:py-2 rounded-lg bg-[#164151] text-white hover:bg-[#1a4d5f] dark:bg-[#164151] dark:hover:bg-[#1a4d5f] font-semibold transition-colors flex items-center gap-2"
-                title="Editar"
-              >
-                <Edit className="w-5 h-5 sm:w-4 sm:h-4" />
-                <span className="hidden sm:inline">Editar</span>
-              </button>
+              <>
+                <button
+                  onClick={() => setIsEditing(true)}
+                  className="p-2 sm:px-4 sm:py-2 rounded-lg bg-[#164151] text-white hover:bg-[#1a4d5f] dark:bg-[#164151] dark:hover:bg-[#1a4d5f] font-semibold transition-colors flex items-center gap-2"
+                  title="Editar"
+                >
+                  <Edit className="w-5 h-5 sm:w-4 sm:h-4" />
+                  <span className="hidden sm:inline">Editar</span>
+                </button>
+                <button
+                  onClick={() => setShowDeleteModal(true)}
+                  className="p-2 sm:px-4 sm:py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white font-semibold transition-colors flex items-center gap-2"
+                  title="Eliminar"
+                >
+                  <Trash2 className="w-5 h-5 sm:w-4 sm:h-4" />
+                  <span className="hidden sm:inline">Eliminar</span>
+                </button>
+              </>
             )}
           </div>
         </header>
@@ -1533,6 +1576,71 @@ export default function UserDetailPage() {
           </div>
         </div>
       </main>
+
+      {/* Modal de Confirmación de Eliminación */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-white/10 w-full max-w-md p-6 shadow-2xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-500/20 flex items-center justify-center">
+                <Trash2 className="w-6 h-6 text-red-600 dark:text-red-400" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-[#164151] dark:text-white">Eliminar Usuario</h3>
+                <p className="text-sm text-gray-500 dark:text-white/50">Esta acción no se puede deshacer</p>
+              </div>
+            </div>
+
+            <p className="text-[#164151] dark:text-white/80 mb-4">
+              ¿Estás seguro de que deseas eliminar a <strong>{userData?.name || userData?.full_name || 'este usuario'}</strong>?
+            </p>
+
+            {userData?.hasActiveGymMembership && (
+              <div className="mb-4 p-3 bg-orange-100 dark:bg-orange-500/20 rounded-lg border border-orange-200 dark:border-orange-500/30">
+                <p className="text-sm text-orange-700 dark:text-orange-400 flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4" />
+                  Este usuario tiene membresías activas. No se puede eliminar.
+                </p>
+              </div>
+            )}
+
+            {deleteError && (
+              <div className="mb-4 p-3 bg-red-100 dark:bg-red-500/20 rounded-lg border border-red-200 dark:border-red-500/30">
+                <p className="text-sm text-red-700 dark:text-red-400">{deleteError}</p>
+              </div>
+            )}
+
+            <div className="flex items-center gap-3 justify-end">
+              <button
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setDeleteError('');
+                }}
+                className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-[#164151] dark:text-white font-medium transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={isDeleting || userData?.hasActiveGymMembership}
+                className="px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white font-semibold transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isDeleting ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Eliminando...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    Eliminar
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
