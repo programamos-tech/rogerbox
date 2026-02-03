@@ -53,6 +53,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
   const [hasActiveMembership, setHasActiveMembership] = useState(false);
   const [checkingMembership, setCheckingMembership] = useState(false);
   const [expiredMembershipToPay, setExpiredMembershipToPay] = useState<any>(null);
+  const [discountPercent, setDiscountPercent] = useState<number>(0);
   const [isAdvancePayment, setIsAdvancePayment] = useState(false);
   const [urlParamsProcessed, setUrlParamsProcessed] = useState(false);
 
@@ -155,25 +156,28 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
     }
   }, [loading, loadingPayments, clients, plans, urlParamsProcessed]);
 
+  // Solo al cambiar plan o cliente: verificar membresía y poner fechas por defecto. No al cambiar la fecha manualmente.
   useEffect(() => {
-    if (selectedPlan) {
+    if (selectedPlan && selectedClient) {
+      checkActiveMembershipForPlan(selectedClient.id, selectedPlan.id);
+    }
+  }, [selectedPlan?.id, selectedClient?.id]);
+
+  // Mantener period_end en sync cuando cambia el plan (amount, duration)
+  useEffect(() => {
+    if (selectedPlan && formData.period_start) {
       const startDate = new Date(formData.period_start);
       const endDate = new Date(startDate);
-      endDate.setDate(endDate.getDate() + selectedPlan.duration_days);
-
+      endDate.setDate(endDate.getDate() + (selectedPlan.duration_days || 30));
       setFormData(prev => ({
         ...prev,
         plan_id: selectedPlan.id,
         amount: selectedPlan.price,
         period_end: endDate.toISOString().split('T')[0],
       }));
-
-      // Verificar si hay membresía activa para este plan específico
-      if (selectedClient) {
-        checkActiveMembershipForPlan(selectedClient.id, selectedPlan.id);
-      }
+      setDiscountPercent(0);
     }
-  }, [selectedPlan, formData.period_start, selectedClient]);
+  }, [selectedPlan?.id]);
 
   const checkActiveMembershipForPlan = async (clientId: string, planId: string) => {
     setCheckingMembership(true);
@@ -387,6 +391,12 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
         membershipId = membershipData.id;
       }
 
+      // Monto final con descuento aplicado
+      const baseAmount = formData.amount;
+      const effectiveAmount = discountPercent > 0
+        ? Math.round(baseAmount * (1 - Math.min(99, discountPercent) / 100))
+        : baseAmount;
+
       // Registrar el pago
       const paymentRes = await fetch('/api/admin/gym/payments', {
         method: 'POST',
@@ -395,7 +405,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
           membership_id: membershipId,
           client_info_id: formData.client_info_id,
           plan_id: formData.plan_id,
-          amount: formData.amount,
+          amount: effectiveAmount,
           payment_method: formData.payment_method,
           payment_date: formData.payment_date,
           period_start: formData.period_start,
@@ -440,6 +450,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
     setExpiredMembershipToPay(null);
     setIsAdvancePayment(false);
     setUrlParamsProcessed(false);
+    setDiscountPercent(0);
   };
 
   const filteredClients = clients.filter((client) => {
@@ -839,6 +850,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
 
               {/* Información del Pago */}
               {selectedPlan && (
+                <>
                 <div className="grid grid-cols-2 gap-6">
                   <div>
                     <label className="block text-sm font-semibold text-[#164151] dark:text-white mb-3">
@@ -861,6 +873,40 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
 
                   <div>
                     <label className="block text-sm font-semibold text-[#164151] dark:text-white mb-3">
+                      Descuento (%)
+                    </label>
+                    <input
+                      type="number"
+                      min={0}
+                      max={99}
+                      step={1}
+                      value={discountPercent === 0 ? '' : discountPercent}
+                      onChange={(e) => {
+                        const v = e.target.value === '' ? 0 : parseInt(e.target.value, 10);
+                        setDiscountPercent(isNaN(v) ? 0 : Math.min(99, Math.max(0, v)));
+                      }}
+                      placeholder="0"
+                      className="w-full px-5 py-3.5 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-[#164151] dark:text-white placeholder-gray-400 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 focus:border-[#85ea10]/50 transition-all text-base"
+                    />
+                  </div>
+                </div>
+
+                {discountPercent > 0 && (
+                  <div className="mt-3 p-3 bg-[#85ea10]/10 dark:bg-[#85ea10]/20 rounded-xl border border-[#85ea10]/30">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-semibold text-[#164151] dark:text-white">
+                        Total a pagar ({discountPercent}% descuento)
+                      </span>
+                      <span className="text-lg font-bold text-[#85ea10]">
+                        ${Math.round(formData.amount * (1 - discountPercent / 100)).toLocaleString('es-CO')} COP
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-6 mt-6">
+                  <div>
+                    <label className="block text-sm font-semibold text-[#164151] dark:text-white mb-3">
                       Método de Pago *
                     </label>
                     <select
@@ -875,6 +921,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
                     </select>
                   </div>
                 </div>
+                </>
               )}
 
               {/* Fechas */}
