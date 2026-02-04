@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUser } from '@/lib/supabase-server';
 import { supabaseAdmin } from '@/lib/supabase';
+import { insertLog, STORE_ID_FISICA } from '@/lib/logs-service';
 import { GymClientInfoInsert, GymClientInfoUpdate } from '@/types/gym';
 
 function normalizeEmail(val?: string | null) {
@@ -115,6 +116,7 @@ export async function POST(request: NextRequest) {
         birth_date: birth_date || null,
         weight: weight || null,
         medical_restrictions: medical_restrictions?.trim() || null,
+        store_id: STORE_ID_FISICA,
       })
       .select()
       .single();
@@ -129,6 +131,15 @@ export async function POST(request: NextRequest) {
       }
       return NextResponse.json({ error: 'Error al crear cliente' }, { status: 500 });
     }
+
+    // Log de actividad (andres.st · Sede Física)
+    await insertLog({
+      user_id: user?.id ?? null,
+      action: 'client_create',
+      module: 'gym',
+      details: { client_info_id: data.id, name: data.name, description: `Nuevo cliente: ${data.name}` },
+      store_id: STORE_ID_FISICA,
+    });
 
     return NextResponse.json(data, { status: 201 });
   } catch (error) {
