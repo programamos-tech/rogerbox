@@ -69,6 +69,7 @@ export async function middleware(req: NextRequest) {
     '/reset-password',
     '/auth/callback',
     '/api/auth',
+    '/api/andres', // andres.st backstage sync (usa x-andres-api-key)
   ];
 
   const isPublicPath = publicPaths.some(path => pathname.startsWith(path));
