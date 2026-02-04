@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUser } from '@/lib/supabase-server';
 import { supabaseAdmin } from '@/lib/supabase';
+import { insertLog, STORE_ID_FISICA } from '@/lib/logs-service';
 import { GymMembershipInsert } from '@/types/gym';
 
 function normalizeEmail(val?: string | null) {
@@ -180,6 +181,7 @@ export async function POST(request: NextRequest) {
         end_date: finalEndDate,
         status: status || 'active',
         created_by: user?.id,
+        store_id: STORE_ID_FISICA,
       })
       .select(`
         *,
@@ -192,6 +194,14 @@ export async function POST(request: NextRequest) {
       console.error('Error creating gym membership:', error);
       return NextResponse.json({ error: 'Error al crear membresía' }, { status: 500 });
     }
+
+    await insertLog({
+      user_id: user?.id ?? finalUserId,
+      action: 'membership_create',
+      module: 'gym',
+      details: { plan_id, client_info_id, description: 'Nueva membresía sede física' },
+      store_id: STORE_ID_FISICA,
+    });
 
     // Indicar si es pago anticipado
     const isAdvancePayment = new Date(finalStartDate) > today;

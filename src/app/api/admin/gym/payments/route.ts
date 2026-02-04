@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUser } from '@/lib/supabase-server';
 import { supabaseAdmin } from '@/lib/supabase';
+import { insertLog, STORE_ID_FISICA } from '@/lib/logs-service';
 import { GymPaymentInsert } from '@/types/gym';
 
 function normalizeEmail(val?: string | null) {
@@ -134,7 +135,7 @@ export async function POST(request: NextRequest) {
     // Verificar que la membresía existe
     const { data: membership, error: membershipError } = await supabaseAdmin
       .from('gym_memberships')
-      .select('id, client_info_id, user_id, status, end_date, created_at')
+      .select('id, client_info_id, user_id, status, end_date, created_at, store_id')
       .eq('id', membership_id)
       .single();
 
@@ -219,6 +220,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const storeIdForPayment = membership.store_id ?? STORE_ID_FISICA;
     const { data, error } = await supabaseAdmin
       .from('gym_payments')
       .insert({
@@ -236,6 +238,7 @@ export async function POST(request: NextRequest) {
         invoice_pdf_url: null, // Se generará después si es necesario
         notes: notes || null,
         created_by: user?.id,
+        store_id: storeIdForPayment,
       })
       .select(`
         *,
@@ -257,6 +260,15 @@ export async function POST(request: NextRequest) {
         .update({ status: 'active', updated_at: new Date().toISOString() })
         .eq('id', membership_id);
     }
+
+    // Log de actividad (sede física / andres.st)
+    await insertLog({
+      user_id: user?.id ?? finalUserId,
+      action: 'payment_create',
+      module: 'gym',
+      details: { amount, payment_method, client_info_id, description: `Pago sede física: $${Number(amount).toLocaleString()}` },
+      store_id: storeIdForPayment,
+    });
 
     // Crear orden en la tabla orders para tracking de ventas
     await supabaseAdmin
