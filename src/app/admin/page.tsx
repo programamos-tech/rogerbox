@@ -1,5 +1,6 @@
 'use client';
 
+// Admin dashboard component
 import QuickLoading from '@/components/QuickLoading';
 import BannerManagement from '@/components/admin/BannerManagement';
 import BlogManagement from '@/components/admin/BlogManagement';
