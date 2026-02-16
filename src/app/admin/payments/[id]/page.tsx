@@ -267,7 +267,7 @@ export default function PaymentDetailPage() {
       {/* Overlay para móvil */}
       {mobileMenuOpen && (
         <div
-          className="fixed inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm z-40 lg:hidden"
+          className="fixed inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm z-40 md:hidden"
           onClick={() => setMobileMenuOpen(false)}
         />
       )}
@@ -275,9 +275,9 @@ export default function PaymentDetailPage() {
       {/* Sidebar - Mismo que en admin/page.tsx */}
       <aside
         className={`
-        fixed lg:static inset-y-0 left-0 z-50
+        fixed md:static inset-y-0 left-0 z-50
         ${sidebarCollapsed ? 'w-16' : 'w-56'}
-        ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+        ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
         bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-white/10
         flex flex-col
         transition-all duration-300 ease-in-out
@@ -309,7 +309,7 @@ export default function PaymentDetailPage() {
           )}
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="hidden lg:flex w-8 h-8 items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-gray-500 dark:text-white/60 hover:text-[#164151] dark:hover:text-white transition-colors"
+            className="hidden md:flex w-8 h-8 items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-gray-500 dark:text-white/60 hover:text-[#164151] dark:hover:text-white transition-colors"
           >
             <ChevronLeft className={`w-4 h-4 transition-transform ${sidebarCollapsed ? 'rotate-180' : ''}`} />
           </button>
@@ -414,7 +414,7 @@ export default function PaymentDetailPage() {
       {/* Main Content */}
       <main className="flex-1 flex flex-col min-h-screen overflow-hidden">
         {/* Header */}
-        <header className="h-16 bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-gray-200 dark:border-white/20 flex items-center justify-between px-4 lg:px-8 sticky top-0 z-30">
+        <header className="h-16 bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-gray-200 dark:border-white/20 flex items-center justify-between px-4 md:px-6 lg:px-8 sticky top-0 z-30">
           <div className="flex items-center gap-4">
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}

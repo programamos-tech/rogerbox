@@ -262,8 +262,8 @@ const GymPlansManagement = forwardRef<GymPlansManagementRef>((props, ref) => {
       {showForm && (
         <div className="fixed inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-white/10 w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl">
-            <div className="p-8 border-b border-gray-200 dark:border-white/10 flex items-center justify-between">
-              <h3 className="text-2xl font-bold text-[#164151] dark:text-white">
+            <div className="p-4 md:p-6 lg:p-8 border-b border-gray-200 dark:border-white/10 flex items-center justify-between">
+              <h3 className="text-xl md:text-2xl font-bold text-[#164151] dark:text-white">
                 {editingPlan ? 'Editar Plan' : 'Nuevo Plan'}
               </h3>
               <button
@@ -274,7 +274,7 @@ const GymPlansManagement = forwardRef<GymPlansManagementRef>((props, ref) => {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-8 space-y-6">
+            <form onSubmit={handleSubmit} className="p-4 md:p-6 lg:p-8 space-y-4 md:space-y-6">
               <div>
                 <label className="block text-sm font-semibold text-[#164151] dark:text-white mb-3">
                   Nombre del Plan *
@@ -302,7 +302,7 @@ const GymPlansManagement = forwardRef<GymPlansManagementRef>((props, ref) => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                 <div>
                   <label className="block text-sm font-semibold text-[#164151] dark:text-white mb-3">
                     Precio (COP) *

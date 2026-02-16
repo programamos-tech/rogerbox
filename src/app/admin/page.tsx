@@ -60,6 +60,7 @@ import {
   Ban,
   Wallet,
   TrendingUp,
+  Cake,
 } from 'lucide-react';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -294,6 +295,10 @@ function AdminDashboardContent() {
   const [showRevenueNumbers, setShowRevenueNumbers] = useState(true);
   const [weeklyData, setWeeklyData] = useState<{ date: string; amount: number; dayName: string }[]>([]);
   const [loadingWeeklyData, setLoadingWeeklyData] = useState(false);
+  const [dailyPayments, setDailyPayments] = useState<any[]>([]);
+  const [loadingDailyPayments, setLoadingDailyPayments] = useState(false);
+  const [birthdayClients, setBirthdayClients] = useState<any[]>([]);
+  const [loadingBirthdays, setLoadingBirthdays] = useState(false);
 
   const isAdmin = useMemo(() => {
     if (!user) return false;
@@ -358,6 +363,7 @@ function AdminDashboardContent() {
       const todayStr = today.toISOString().split('T')[0];
       loadRevenueStats(todayStr, todayStr, sedeFilter);
       loadWeeklyData();
+      loadBirthdayClients();
     }
   }, [activeTab]);
 
@@ -392,8 +398,13 @@ function AdminDashboardContent() {
 
       if (startDate && endDate) {
         loadRevenueStats(startDate, endDate, sedeFilter);
-        if (dateFilter === 'today') {
-          loadWeeklyData();
+        // Cargar datos de la gráfica: usar fechas personalizadas si están disponibles, si no usar últimos 7 días
+        if (dateFilter === 'custom' && customStartDate && customEndDate) {
+          loadWeeklyData(customStartDate, customEndDate);
+          loadDailyPayments(customStartDate, customEndDate);
+        } else if (dateFilter === 'today') {
+          loadWeeklyData(); // Sin parámetros = últimos 7 días por defecto
+          loadDailyPayments(startDate, endDate);
         }
       }
     }
@@ -457,16 +468,41 @@ function AdminDashboardContent() {
   };
 
 
-  const loadWeeklyData = async () => {
+  const loadWeeklyData = async (customStartDate?: string, customEndDate?: string) => {
     try {
       setLoadingWeeklyData(true);
-      const today = new Date();
       const weeklyDataArray: { date: string; amount: number; dayName: string }[] = [];
 
-      // Obtener datos de los últimos 7 días
-      for (let i = 6; i >= 0; i--) {
-        const date = new Date(today);
-        date.setDate(date.getDate() - i);
+      let startDate: Date;
+      let endDate: Date;
+
+      // Si hay fechas personalizadas, usarlas; si no, usar últimos 7 días
+      if (customStartDate && customEndDate) {
+        startDate = new Date(customStartDate);
+        endDate = new Date(customEndDate);
+      } else {
+        // Comportamiento por defecto: últimos 7 días
+        const today = new Date();
+        endDate = today;
+        startDate = new Date(today);
+        startDate.setDate(startDate.getDate() - 6);
+      }
+
+      // Asegurar que las fechas estén en el inicio y final del día
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setHours(23, 59, 59, 999);
+
+      // Calcular todos los días en el rango
+      const currentDate = new Date(startDate);
+      const dates: Date[] = [];
+
+      while (currentDate <= endDate) {
+        dates.push(new Date(currentDate));
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+
+      // Obtener datos para cada día en el rango
+      for (const date of dates) {
         const dateStr = date.toISOString().split('T')[0];
 
         const response = await fetch(`/api/admin/revenue-stats?start_date=${dateStr}&end_date=${dateStr}&sede=${sedeFilter}`);
@@ -500,6 +536,182 @@ function AdminDashboardContent() {
       console.error('Error loading weekly data:', error);
     } finally {
       setLoadingWeeklyData(false);
+    }
+  };
+
+  const loadDailyPayments = async (startDate: string, endDate: string) => {
+    try {
+      setLoadingDailyPayments(true);
+      const allPayments: any[] = [];
+      
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+
+      // Cargar pagos de sede física si el filtro lo permite
+      if (sedeFilter === 'fisica' || sedeFilter === 'ambas') {
+        const { data: gymPayments, error: gymError } = await supabaseAdmin
+          .from('gym_payments')
+          .select(`
+            *,
+            client_info:gym_client_info(
+              id,
+              name,
+              document_id,
+              email,
+              whatsapp
+            ),
+            plan:gym_plans(
+              id,
+              name,
+              price,
+              duration_days
+            )
+          `)
+          .gte('payment_date', start.toISOString().split('T')[0])
+          .lte('payment_date', end.toISOString().split('T')[0])
+          .order('payment_date', { ascending: false })
+          .order('created_at', { ascending: false });
+
+        if (gymError) {
+          console.error('Error loading gym payments:', gymError);
+        } else if (gymPayments) {
+          // Agregar tipo de sede a cada pago
+          gymPayments.forEach((payment: any) => {
+            allPayments.push({ ...payment, sede: 'fisica' });
+          });
+        }
+      }
+
+      // Cargar orders de sede online si el filtro lo permite
+      if (sedeFilter === 'online' || sedeFilter === 'ambas') {
+        const { data: orders, error: ordersError } = await supabaseAdmin
+          .from('orders')
+          .select(`
+            *,
+            user:profiles(
+              id,
+              name,
+              email
+            ),
+            course:courses(
+              id,
+              title
+            )
+          `)
+          .eq('status', 'approved')
+          .gte('created_at', start.toISOString())
+          .lte('created_at', end.toISOString())
+          .order('created_at', { ascending: false });
+
+        if (ordersError) {
+          console.error('Error loading orders:', ordersError);
+        } else if (orders) {
+          // Transformar orders a formato similar a payments
+          orders.forEach((order: any) => {
+            allPayments.push({
+              id: order.id,
+              amount: order.amount,
+              payment_method: 'transfer', // Orders siempre son transferencia
+              payment_date: order.created_at.split('T')[0],
+              created_at: order.created_at,
+              invoice_number: null,
+              client_info: {
+                name: order.user?.name || 'Cliente online',
+                document_id: null,
+                email: order.user?.email || null
+              },
+              plan: {
+                name: order.course?.title || 'Curso online',
+                price: order.amount,
+                duration_days: null
+              },
+              sede: 'online'
+            });
+          });
+        }
+      }
+
+      // Ordenar todos los pagos por fecha (más recientes primero)
+      allPayments.sort((a, b) => {
+        const dateA = new Date(a.payment_date || a.created_at).getTime();
+        const dateB = new Date(b.payment_date || b.created_at).getTime();
+        return dateB - dateA;
+      });
+
+      setDailyPayments(allPayments);
+    } catch (error) {
+      console.error('Error loading daily payments:', error);
+      setDailyPayments([]);
+    } finally {
+      setLoadingDailyPayments(false);
+    }
+  };
+
+  const loadBirthdayClients = async () => {
+    try {
+      setLoadingBirthdays(true);
+      const today = new Date();
+      const currentMonth = today.getMonth() + 1; // Mes (1-12)
+      const currentDay = today.getDate(); // Día del mes
+
+      // Obtener todos los clientes con fecha de nacimiento
+      const { data: clients, error } = await supabaseAdmin
+        .from('gym_client_info')
+        .select(`
+          *,
+          gym_memberships(
+            id,
+            status,
+            plan:gym_plans(
+              id,
+              name
+            )
+          )
+        `)
+        .not('birth_date', 'is', null);
+
+      if (error) {
+        console.error('Error loading birthday clients:', error);
+        setBirthdayClients([]);
+        return;
+      }
+
+      // Filtrar clientes que cumplen años hoy (mismo mes y día)
+      const todayBirthdays = (clients || []).filter((client: any) => {
+        if (!client.birth_date) return false;
+        
+        const birthDate = new Date(client.birth_date);
+        const birthMonth = birthDate.getMonth() + 1;
+        const birthDay = birthDate.getDate();
+
+        return birthMonth === currentMonth && birthDay === currentDay;
+      });
+
+      // Calcular la edad de cada cliente
+      const clientsWithAge = todayBirthdays.map((client: any) => {
+        const birthDate = new Date(client.birth_date);
+        const age = today.getFullYear() - birthDate.getFullYear();
+        const monthDiff = today.getMonth() - birthDate.getMonth();
+        const dayDiff = today.getDate() - birthDate.getDate();
+        
+        // Ajustar edad si aún no ha cumplido años este año
+        const finalAge = (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) ? age - 1 : age;
+
+        return {
+          ...client,
+          age: finalAge,
+          activeMembership: client.gym_memberships?.find((m: any) => m.status === 'active')
+        };
+      });
+
+      setBirthdayClients(clientsWithAge);
+    } catch (error) {
+      console.error('Error loading birthday clients:', error);
+      setBirthdayClients([]);
+    } finally {
+      setLoadingBirthdays(false);
     }
   };
 
@@ -756,7 +968,7 @@ function AdminDashboardContent() {
       {/* Overlay para móvil */}
       {mobileMenuOpen && (
         <div
-          className="fixed inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm z-40 lg:hidden"
+          className="fixed inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm z-40 md:hidden"
           onClick={() => setMobileMenuOpen(false)}
         />
       )}
@@ -764,9 +976,9 @@ function AdminDashboardContent() {
       {/* Sidebar */}
       <aside
         className={`
-        fixed lg:static inset-y-0 left-0 z-50
+        fixed md:static inset-y-0 left-0 z-50
         ${sidebarCollapsed ? 'w-16' : 'w-56'}
-        ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+        ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
         bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-white/10
         flex flex-col
         transition-all duration-300 ease-in-out
@@ -798,7 +1010,7 @@ function AdminDashboardContent() {
           )}
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="hidden lg:flex w-8 h-8 items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-gray-500 dark:text-white/60 hover:text-[#164151] dark:hover:text-white transition-colors"
+            className="hidden md:flex w-8 h-8 items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-gray-500 dark:text-white/60 hover:text-[#164151] dark:hover:text-white transition-colors"
           >
             <ChevronLeft className={`w-4 h-4 transition-transform ${sidebarCollapsed ? 'rotate-180' : ''}`} />
           </button>
@@ -895,12 +1107,12 @@ function AdminDashboardContent() {
       {/* Main Content */}
       <main className="flex-1 flex flex-col min-h-screen overflow-hidden">
         {/* Top Header */}
-        <header className="h-16 bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-gray-200 dark:border-white/20 flex items-center justify-between px-4 lg:px-8 sticky top-0 z-30">
+        <header className="h-16 bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-gray-200 dark:border-white/20 flex items-center justify-between px-4 md:px-6 lg:px-8 sticky top-0 z-30">
           <div className="flex items-center gap-4">
             {/* Mobile menu button */}
             <button
               onClick={() => setMobileMenuOpen(true)}
-              className="lg:hidden w-10 h-10 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-[#164151]/80 dark:text-white/60"
+              className="md:hidden w-10 h-10 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-[#164151]/80 dark:text-white/60"
             >
               <Menu className="w-4 h-4" />
             </button>
@@ -999,7 +1211,7 @@ function AdminDashboardContent() {
         </header>
 
         {/* Page Content */}
-        <div className="flex-1 overflow-y-auto p-4 lg:p-8 pb-20">
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 pb-20">
           {/* Overview Tab - Nuevo Dashboard de Ingresos */}
           {activeTab === 'overview' && (
             <div className="space-y-6">
@@ -1091,7 +1303,7 @@ function AdminDashboardContent() {
                 <>
                   {/* Dashboard Sede Física */}
                   {sedeFilter === 'fisica' && revenueStats.fisica && (
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {/* Total */}
                       <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 p-6 shadow-lg">
                         <div className="flex items-center gap-3 mb-4">
@@ -1144,7 +1356,7 @@ function AdminDashboardContent() {
 
                   {/* Dashboard Sede En Línea */}
                   {sedeFilter === 'online' && revenueStats.online && (
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {/* Total */}
                       <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 p-6 shadow-lg">
                         <div className="flex items-center gap-3 mb-4">
@@ -1197,7 +1409,7 @@ function AdminDashboardContent() {
 
                   {/* Dashboard Ambas Sedes (Resumen Combinado) */}
                   {sedeFilter === 'ambas' && (
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {/* Total */}
                       <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 p-6 shadow-lg">
                         <div className="flex items-center gap-3 mb-4">
@@ -1255,13 +1467,17 @@ function AdminDashboardContent() {
               )}
 
               {/* Gráfica de Ventas Semanales */}
-              {dateFilter === 'today' && (
+              {(dateFilter === 'today' || dateFilter === 'custom') && (
                 <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 px-6 pt-6 pb-2 shadow-lg mt-8">
                   <h3 className="text-sm font-semibold text-[#164151] dark:text-white uppercase tracking-wide mb-3">
-                    Ventas de la Última Semana
+                    {dateFilter === 'custom' && customStartDate && customEndDate
+                      ? `Ventas del Período (${new Date(customStartDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })} - ${new Date(customEndDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })})`
+                      : 'Ventas de la Última Semana'}
                   </h3>
                   <p className="text-xs text-gray-500 dark:text-white/50 mb-12">
-                    Visualización de los ingresos diarios de los últimos 7 días para analizar tendencias y patrones de venta
+                    {dateFilter === 'custom' && customStartDate && customEndDate
+                      ? `Visualización de los ingresos diarios del período seleccionado para analizar tendencias y patrones de venta`
+                      : 'Visualización de los ingresos diarios de los últimos 7 días para analizar tendencias y patrones de venta'}
                   </p>
 
                   {loadingWeeklyData ? (
@@ -1351,6 +1567,268 @@ function AdminDashboardContent() {
                   )}
                 </div>
               )}
+
+              {/* Facturas del Período y Cumpleaños - Grid de 2 columnas */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+                {/* Lista de Facturas del Período */}
+                {(dateFilter === 'today' || dateFilter === 'custom') && (
+                  <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 px-6 pt-6 pb-6 shadow-lg">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h3 className="text-sm font-semibold text-[#164151] dark:text-white uppercase tracking-wide">
+                          Facturas del Período
+                        </h3>
+                        <p className="text-xs text-gray-500 dark:text-white/50 mt-1">
+                          {dateFilter === 'custom' && customStartDate && customEndDate
+                            ? `Facturas emitidas del ${new Date(customStartDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })} al ${new Date(customEndDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })}`
+                            : `Facturas emitidas hoy (${new Date().toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })})`}
+                        </p>
+                      </div>
+                      {dailyPayments.length > 0 && (
+                        <div className="text-right">
+                          <p className="text-xs text-gray-500 dark:text-white/50">Total facturas</p>
+                          <p className="text-lg font-bold text-[#164151] dark:text-white">{dailyPayments.length}</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {loadingDailyPayments ? (
+                      <div className="flex items-center justify-center py-12">
+                        <div className="text-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#164151] mx-auto mb-4"></div>
+                          <p className="text-sm text-gray-500 dark:text-white/50">Cargando facturas...</p>
+                        </div>
+                      </div>
+                    ) : dailyPayments.length > 0 ? (
+                      <div className="space-y-3 mt-4 max-h-[600px] overflow-y-auto">
+                        {dailyPayments.map((payment) => {
+                          const paymentDate = new Date(payment.payment_date || payment.created_at);
+                          const paymentMethodLabels: { [key: string]: string } = {
+                            cash: 'Efectivo',
+                            transfer: 'Transferencia',
+                            mixed: 'Mixto'
+                          };
+                          
+                          // Determinar nombre del cliente y documento según la sede
+                          const clientName = payment.sede === 'online' 
+                            ? (payment.user?.name || payment.client_info?.name || 'Cliente online')
+                            : (payment.client_info?.name || 'Cliente sin nombre');
+                          const clientDoc = payment.sede === 'online'
+                            ? (payment.user?.email || 'Sin documento')
+                            : (payment.client_info?.document_id || 'Sin documento');
+                          const planName = payment.plan?.name || payment.course?.title || 'Producto no disponible';
+
+                          return (
+                            <div
+                              key={payment.id}
+                              className="bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-200 dark:border-white/10 p-4 hover:shadow-md transition-shadow"
+                            >
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-3 mb-2">
+                                    <div className="w-10 h-10 rounded-full bg-[#164151]/10 dark:bg-white/10 flex items-center justify-center">
+                                      <User className="w-5 h-5 text-[#164151] dark:text-white" />
+                                    </div>
+                                    <div className="flex-1">
+                                      <div className="flex items-center gap-2">
+                                        <p className="font-semibold text-[#164151] dark:text-white">
+                                          {clientName}
+                                        </p>
+                                        {payment.sede && (
+                                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                                            payment.sede === 'fisica' 
+                                              ? 'bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300'
+                                              : 'bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300'
+                                          }`}>
+                                            {payment.sede === 'fisica' ? 'Física' : 'Online'}
+                                          </span>
+                                        )}
+                                      </div>
+                                      <p className="text-xs text-gray-500 dark:text-white/50">
+                                        {clientDoc}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  
+                                  <div className="grid grid-cols-2 gap-4 mt-3 ml-13">
+                                    <div>
+                                      <p className="text-xs text-gray-500 dark:text-white/50 mb-1">
+                                        {payment.sede === 'online' ? 'Curso/Plan' : 'Plan'}
+                                      </p>
+                                      <p className="text-sm font-medium text-[#164151] dark:text-white">
+                                        {planName}
+                                      </p>
+                                    </div>
+                                    <div>
+                                      <p className="text-xs text-gray-500 dark:text-white/50 mb-1">Método de pago</p>
+                                      <p className="text-sm font-medium text-[#164151] dark:text-white">
+                                        {paymentMethodLabels[payment.payment_method] || payment.payment_method || 'Transferencia'}
+                                      </p>
+                                    </div>
+                                    <div>
+                                      <p className="text-xs text-gray-500 dark:text-white/50 mb-1">Fecha</p>
+                                      <p className="text-sm font-medium text-[#164151] dark:text-white">
+                                        {paymentDate.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                      </p>
+                                    </div>
+                                    {payment.invoice_number && (
+                                      <div>
+                                        <p className="text-xs text-gray-500 dark:text-white/50 mb-1">Factura</p>
+                                        <p className="text-sm font-medium text-[#164151] dark:text-white">
+                                          #{payment.invoice_number}
+                                        </p>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                                
+                                <div className="ml-4 text-right">
+                                  <p className="text-xs text-gray-500 dark:text-white/50 mb-1">Monto</p>
+                                  <p className="text-xl font-bold text-[#85ea10]">
+                                    {showRevenueNumbers ? `$${Number(payment.amount).toLocaleString('es-CO')}` : '••••••'}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="text-center py-12">
+                        <FileText className="w-12 h-12 text-gray-300 dark:text-white/20 mx-auto mb-4" />
+                        <p className="text-sm text-gray-500 dark:text-white/50">
+                          No se encontraron facturas para este período
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Clientes que Cumplen Años Hoy */}
+                {activeTab === 'overview' && (
+                  <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 px-6 pt-6 pb-6 shadow-lg">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-[#85ea10]/20 dark:bg-[#85ea10]/20 flex items-center justify-center">
+                          <Cake className="w-5 h-5 text-[#85ea10] dark:text-[#85ea10]" />
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-semibold text-[#164151] dark:text-white uppercase tracking-wide">
+                            🎉 Cumpleaños de Hoy
+                          </h3>
+                          <p className="text-xs text-gray-500 dark:text-white/50 mt-1">
+                            Clientes que cumplen años hoy ({new Date().toLocaleDateString('es-ES', { day: '2-digit', month: 'long' })})
+                          </p>
+                        </div>
+                      </div>
+                      {birthdayClients.length > 0 && (
+                        <div className="text-right">
+                          <p className="text-xs text-gray-500 dark:text-white/50">Total</p>
+                          <p className="text-lg font-bold text-[#164151] dark:text-white">{birthdayClients.length}</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {loadingBirthdays ? (
+                      <div className="flex items-center justify-center py-12">
+                        <div className="text-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#164151] mx-auto mb-4"></div>
+                          <p className="text-sm text-gray-500 dark:text-white/50">Cargando cumpleaños...</p>
+                        </div>
+                      </div>
+                    ) : birthdayClients.length > 0 ? (
+                      <div className="space-y-3 mt-4 max-h-[600px] overflow-y-auto">
+                        {birthdayClients.map((client) => {
+                          const birthDate = new Date(client.birth_date);
+                          const formattedBirthday = birthDate.toLocaleDateString('es-ES', { day: '2-digit', month: 'long' });
+
+                          return (
+                            <div
+                              key={client.id}
+                              className="bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-200 dark:border-white/10 p-4 hover:shadow-md transition-all"
+                            >
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-3 mb-2">
+                                    <div className="w-12 h-12 rounded-full bg-[#164151]/10 dark:bg-white/10 flex items-center justify-center text-[#164151] dark:text-white font-bold text-lg border-2 border-[#85ea10]/30">
+                                      {client.name.charAt(0).toUpperCase()}
+                                    </div>
+                                    <div className="flex-1">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <p className="font-bold text-lg text-[#164151] dark:text-white">
+                                          {client.name}
+                                        </p>
+                                        <span className="text-xs px-2 py-1 rounded-full bg-[#85ea10]/20 dark:bg-[#85ea10]/20 text-[#164151] dark:text-[#85ea10] font-semibold">
+                                          🎂 {client.age} años
+                                        </span>
+                                      </div>
+                                      <p className="text-xs text-gray-500 dark:text-white/50 mt-1">
+                                        {client.document_id || 'Sin documento'}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  
+                                  <div className="grid grid-cols-2 gap-4 mt-3 ml-15">
+                                    <div>
+                                      <p className="text-xs text-gray-500 dark:text-white/50 mb-1">Fecha de nacimiento</p>
+                                      <p className="text-sm font-medium text-[#164151] dark:text-white">
+                                        {formattedBirthday}
+                                      </p>
+                                    </div>
+                                    {client.activeMembership && (
+                                      <div>
+                                        <p className="text-xs text-gray-500 dark:text-white/50 mb-1">Plan activo</p>
+                                        <p className="text-sm font-medium text-[#85ea10]">
+                                          {client.activeMembership.plan?.name || 'Plan activo'}
+                                        </p>
+                                      </div>
+                                    )}
+                                    {client.whatsapp && (
+                                      <div>
+                                        <p className="text-xs text-gray-500 dark:text-white/50 mb-1">WhatsApp</p>
+                                        <p className="text-sm font-medium text-[#164151] dark:text-white">
+                                          {client.whatsapp}
+                                        </p>
+                                      </div>
+                                    )}
+                                    {client.email && (
+                                      <div>
+                                        <p className="text-xs text-gray-500 dark:text-white/50 mb-1">Email</p>
+                                        <p className="text-sm font-medium text-[#164151] dark:text-white">
+                                          {client.email}
+                                        </p>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                                
+                                <div className="ml-4 text-center">
+                                  <div className="w-12 h-12 rounded-full bg-[#85ea10]/20 dark:bg-[#85ea10]/20 flex items-center justify-center border-2 border-[#85ea10]/30">
+                                    <Cake className="w-6 h-6 text-[#85ea10]" />
+                                  </div>
+                                  <p className="text-xs text-[#164151] dark:text-white font-semibold mt-2">
+                                    ¡Feliz Cumpleaños!
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="text-center py-12">
+                        <Cake className="w-16 h-16 text-gray-300 dark:text-white/20 mx-auto mb-4" />
+                        <p className="text-sm text-gray-500 dark:text-white/50">
+                          No hay clientes que cumplan años hoy
+                        </p>
+                        <p className="text-xs text-gray-400 dark:text-white/40 mt-2">
+                          ¡Que tengas un excelente día! 🎉
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -1511,28 +1989,28 @@ function AdminDashboardContent() {
                 ) : (
                   <>
                         <div className="hidden md:block overflow-x-auto">
-                          <table className="w-full">
+                          <table className="w-full min-w-[800px]">
                             <thead>
                               <tr className="border-b border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-transparent">
-                                <th className="text-left px-4 py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
+                                <th className="text-left px-3 md:px-4 py-3 md:py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
                                   Cliente
                                 </th>
-                                <th className="text-left px-4 py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
+                                <th className="text-left px-3 md:px-4 py-3 md:py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
                                   Documento
                                 </th>
-                                <th className="text-left px-4 py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
+                                <th className="text-left px-3 md:px-4 py-3 md:py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
                                   Productos
                                 </th>
-                                <th className="text-left px-4 py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
+                                <th className="text-left px-3 md:px-4 py-3 md:py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
                                   Tipo
                                 </th>
-                                <th className="text-left px-4 py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
+                                <th className="text-left px-3 md:px-4 py-3 md:py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
                                   WhatsApp
                                 </th>
-                                <th className="text-left px-4 py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
+                                <th className="text-left px-3 md:px-4 py-3 md:py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
                                   Estado
                                 </th>
-                                <th className="text-right px-4 py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
+                                <th className="text-right px-3 md:px-4 py-3 md:py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
                                   Acciones
                                 </th>
                               </tr>
@@ -1569,7 +2047,7 @@ function AdminDashboardContent() {
                                     className={`${isAdminUser ? '' : 'hover:bg-gray-100 dark:hover:bg-white/10 cursor-pointer hover:border-[#85ea10]/30'} transition-all group border-l-4 border-transparent ${isInactive ? 'opacity-60 bg-gray-50 dark:bg-gray-900/30' : ''
                                       }`}
                                   >
-                                    <td className="px-4 py-4">
+                                    <td className="px-3 md:px-4 py-3 md:py-4">
                                       <div>
                                         <div className="flex items-center gap-2">
                                           <p className="text-sm font-medium text-[#164151] dark:text-white truncate">
@@ -1587,7 +2065,7 @@ function AdminDashboardContent() {
                                         </p>
                                       </div>
                                     </td>
-                                    <td className="px-4 py-4">
+                                    <td className="px-3 md:px-4 py-3 md:py-4">
                                       {user.document_id ? (
                                         <div className="flex items-center gap-1.5">
                                           <CreditCard className="w-3 h-3 text-gray-400" />
@@ -1599,7 +2077,7 @@ function AdminDashboardContent() {
                                         <span className="text-xs text-gray-400 dark:text-white/40">-</span>
                                       )}
                                     </td>
-                                    <td className="px-4 py-4">
+                                    <td className="px-3 md:px-4 py-3 md:py-4">
                                       <div onClick={(e) => e.stopPropagation()}>
                                         {(() => {
                                           const today = new Date();
@@ -1751,7 +2229,7 @@ function AdminDashboardContent() {
                                         })()}
                                       </div>
                                     </td>
-                                    <td className="px-4 py-4">
+                                    <td className="px-3 md:px-4 py-3 md:py-4">
                                       <div>
                                         {user.userType === 'both' && (
                                           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-[#164151]/15 text-[#164151] dark:bg-white/10 dark:text-white/70">
@@ -1775,7 +2253,7 @@ function AdminDashboardContent() {
                                         )}
                                       </div>
                                     </td>
-                                    <td className="px-4 py-4">
+                                    <td className="px-3 md:px-4 py-3 md:py-4">
                                       {user.phone || user.whatsapp ? (
                                         <a
                                           href={`https://wa.me/${(user.phone || user.whatsapp).replace(/\D/g, '')}`}
@@ -1790,7 +2268,7 @@ function AdminDashboardContent() {
                                         <span className="text-xs text-gray-400 dark:text-white/40">-</span>
                                       )}
                                     </td>
-                                    <td className="px-4 py-4">
+                                    <td className="px-3 md:px-4 py-3 md:py-4">
                                       <div>
                                         {(() => {
                                           // Si está inactivo, siempre mostrar "Inactivo" primero
@@ -1923,7 +2401,7 @@ function AdminDashboardContent() {
                                         })()}
                                       </div>
                                     </td>
-                                    <td className="px-4 py-4">
+                                    <td className="px-3 md:px-4 py-3 md:py-4">
                                       <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
                                         {/* Botón Recordatorio/Inactivar - visible solo cuando tiene estado "Renovar" (planes vencidos) */}
                                         {(() => {

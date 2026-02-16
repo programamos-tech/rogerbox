@@ -712,8 +712,8 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
       {showForm && (
         <div className="fixed inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-white/10 w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl">
-            <div className="p-8 border-b border-gray-200 dark:border-white/10 flex items-center justify-between">
-              <h3 className="text-2xl font-bold text-[#164151] dark:text-white">Registrar Pago</h3>
+            <div className="p-4 md:p-6 lg:p-8 border-b border-gray-200 dark:border-white/10 flex items-center justify-between">
+              <h3 className="text-xl md:text-2xl font-bold text-[#164151] dark:text-white">Registrar Pago</h3>
               <button
                 onClick={() => {
                   setShowForm(false);
@@ -725,7 +725,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-8 space-y-6">
+            <form onSubmit={handleSubmit} className="p-4 md:p-6 lg:p-8 space-y-4 md:space-y-6">
               {error && (
                 <div className="p-4 bg-red-50 dark:bg-red-500/20 border border-red-200 dark:border-red-500/30 rounded-xl">
                   <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
@@ -926,7 +926,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
 
               {/* Fechas */}
               {selectedPlan && (
-                <div className="grid grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
                   <div>
                     <label className="block text-sm font-semibold text-[#164151] dark:text-white mb-3">
                       Fecha de Pago *
@@ -1100,31 +1100,31 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
         ) : (
           <div className="bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl border border-gray-200 dark:border-white/10 overflow-hidden">
             <div className="hidden md:block overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full min-w-[900px]">
                 <thead>
                   <tr className="border-b border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-transparent">
-                    <th className="text-left px-4 py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
+                    <th className="text-left px-3 md:px-4 py-3 md:py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
                       ID Factura
                     </th>
-                    <th className="text-left px-4 py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
+                    <th className="text-left px-3 md:px-4 py-3 md:py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
                       Cliente
                     </th>
-                    <th className="text-left px-4 py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
+                    <th className="text-left px-3 md:px-4 py-3 md:py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
                       Plan
                     </th>
-                    <th className="text-left px-4 py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
+                    <th className="text-left px-3 md:px-4 py-3 md:py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
                       Monto
                     </th>
-                    <th className="text-left px-4 py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
+                    <th className="text-left px-3 md:px-4 py-3 md:py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
                       Método
                     </th>
-                    <th className="text-left px-4 py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
+                    <th className="text-left px-3 md:px-4 py-3 md:py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
                       Fecha de Pago
                     </th>
-                    <th className="text-left px-4 py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
+                    <th className="text-left px-3 md:px-4 py-3 md:py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
                       Período
                     </th>
-                    <th className="text-left px-4 py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
+                    <th className="text-left px-3 md:px-4 py-3 md:py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
                       Factura
                     </th>
                   </tr>
@@ -1145,12 +1145,12 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
                         onClick={() => router.push(`/admin/payments/${payment.id}`)}
                         className="hover:bg-gray-50 dark:hover:bg-white/5 transition-colors cursor-pointer"
                       >
-                        <td className="px-4 py-4">
+                        <td className="px-3 md:px-4 py-3 md:py-4">
                           <p className="text-sm font-semibold text-[#164151] dark:text-white">
                             {payment.invoice_number ? `#${payment.invoice_number.padStart(3, '0')}` : `#${(originalIndex + 1).toString().padStart(3, '0')}`}
                           </p>
                         </td>
-                        <td className="px-4 py-4">
+                        <td className="px-3 md:px-4 py-3 md:py-4">
                           <div>
                             <p className="text-sm font-medium text-[#164151] dark:text-white">
                               {payment.client_info?.name || 'Sin nombre'}
@@ -1160,17 +1160,17 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
                             </p>
                           </div>
                         </td>
-                        <td className="px-4 py-4">
+                        <td className="px-3 md:px-4 py-3 md:py-4">
                           <p className="text-xs font-medium text-[#164151] dark:text-white">
                             {payment.plan?.name || 'Plan'}
                           </p>
                         </td>
-                        <td className="px-4 py-4">
+                        <td className="px-3 md:px-4 py-3 md:py-4">
                           <p className="text-sm font-semibold text-[#164151] dark:text-white">
                             ${payment.amount.toLocaleString('es-CO')}
                           </p>
                         </td>
-                        <td className="px-4 py-4">
+                        <td className="px-3 md:px-4 py-3 md:py-4">
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-white/80">
                             {payment.payment_method === 'cash'
                               ? 'Efectivo'
@@ -1179,7 +1179,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
                                 : 'Mixto'}
                           </span>
                         </td>
-                        <td className="px-4 py-4">
+                        <td className="px-3 md:px-4 py-3 md:py-4">
                           <p className="text-xs text-[#164151] dark:text-white">
                             {new Date(payment.payment_date).toLocaleDateString('es-ES', {
                               day: '2-digit',
@@ -1188,7 +1188,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
                             })}
                           </p>
                         </td>
-                        <td className="px-4 py-4">
+                        <td className="px-3 md:px-4 py-3 md:py-4">
                           <p className="text-xs text-[#164151] dark:text-white">
                             {new Date(payment.period_start).toLocaleDateString('es-ES', {
                               day: '2-digit',
@@ -1202,7 +1202,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>((props, ref) 
                             })}
                           </p>
                         </td>
-                        <td className="px-4 py-4">
+                        <td className="px-3 md:px-4 py-3 md:py-4">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();

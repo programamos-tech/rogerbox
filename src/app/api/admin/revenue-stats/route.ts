@@ -35,6 +35,7 @@ export async function GET(request: NextRequest) {
     }
 
     const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0); // Inicio del día
     const end = new Date(endDate);
     end.setHours(23, 59, 59, 999); // Incluir todo el día final
 
@@ -49,11 +50,13 @@ export async function GET(request: NextRequest) {
 
     // Obtener ingresos de sede física (gym_payments)
     if (sede === 'fisica' || sede === 'ambas' || !sede) {
+      // Para payment_date, usar el formato ISO completo para asegurar que incluya todo el día final
+      // Si payment_date es DATE, esto funcionará igual. Si es TIMESTAMP, incluirá hasta las 23:59:59
       const { data: gymPayments, error: gymError } = await supabaseAdmin
         .from('gym_payments')
         .select('amount, payment_method, payment_date')
-        .gte('payment_date', startDate)
-        .lte('payment_date', endDate);
+        .gte('payment_date', start.toISOString())
+        .lte('payment_date', end.toISOString());
 
       if (gymError) {
         console.error('Error fetching gym payments:', gymError);

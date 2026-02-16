@@ -135,6 +135,9 @@ export default function UserDetailPage() {
   const [cancellingMembershipId, setCancellingMembershipId] = useState<string | null>(null);
   const [showCancelMembershipModal, setShowCancelMembershipModal] = useState(false);
   const [membershipToCancel, setMembershipToCancel] = useState<any>(null);
+  const [editingStartDateMembershipId, setEditingStartDateMembershipId] = useState<string | null>(null);
+  const [newStartDate, setNewStartDate] = useState('');
+  const [isUpdatingStartDate, setIsUpdatingStartDate] = useState(false);
 
   const userId = params?.id as string;
 
@@ -327,6 +330,55 @@ export default function UserDetailPage() {
     }
   };
 
+  const handleStartEditStartDate = (membership: any) => {
+    setEditingStartDateMembershipId(membership.id);
+    // Formatear la fecha para el input type="date" (YYYY-MM-DD)
+    const startDate = new Date(membership.start_date);
+    const formattedDate = startDate.toISOString().split('T')[0];
+    setNewStartDate(formattedDate);
+  };
+
+  const handleCancelEditStartDate = () => {
+    setEditingStartDateMembershipId(null);
+    setNewStartDate('');
+  };
+
+  const handleSaveStartDate = async (membershipId: string) => {
+    if (!newStartDate) {
+      alert('Por favor selecciona una fecha');
+      return;
+    }
+
+    setIsUpdatingStartDate(true);
+
+    try {
+      const response = await fetch(`/api/admin/gym/memberships/${membershipId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          start_date: newStartDate,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al actualizar fecha de inicio');
+      }
+
+      // Recargar datos y cerrar edición
+      await loadUserData();
+      setEditingStartDateMembershipId(null);
+      setNewStartDate('');
+    } catch (error: any) {
+      alert(error.message || 'Error al actualizar fecha de inicio');
+    } finally {
+      setIsUpdatingStartDate(false);
+    }
+  };
+
   if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-[#0a1628] flex items-center justify-center">
@@ -360,7 +412,7 @@ export default function UserDetailPage() {
       {/* Overlay para móvil */}
       {mobileMenuOpen && (
         <div
-          className="fixed inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm z-40 lg:hidden"
+          className="fixed inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm z-40 md:hidden"
           onClick={() => setMobileMenuOpen(false)}
         />
       )}
@@ -368,9 +420,9 @@ export default function UserDetailPage() {
       {/* Sidebar */}
       <aside
         className={`
-        fixed lg:static inset-y-0 left-0 z-50
+        fixed md:static inset-y-0 left-0 z-50
         ${sidebarCollapsed ? 'w-16' : 'w-56'}
-        ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+        ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
         bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-white/10
         flex flex-col
         transition-all duration-300 ease-in-out
@@ -402,7 +454,7 @@ export default function UserDetailPage() {
           )}
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="hidden lg:flex w-8 h-8 items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-gray-500 dark:text-white/60 hover:text-[#164151] dark:hover:text-white transition-colors"
+            className="hidden md:flex w-8 h-8 items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-gray-500 dark:text-white/60 hover:text-[#164151] dark:hover:text-white transition-colors"
           >
             <ChevronLeft className={`w-4 h-4 transition-transform ${sidebarCollapsed ? 'rotate-180' : ''}`} />
           </button>
@@ -502,12 +554,12 @@ export default function UserDetailPage() {
       {/* Main Content */}
       <main className="flex-1 flex flex-col min-h-screen overflow-hidden">
         {/* Top Header */}
-        <header className="h-16 bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-gray-200 dark:border-white/20 flex items-center justify-between px-4 lg:px-8 sticky top-0 z-30">
+        <header className="h-16 bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-gray-200 dark:border-white/20 flex items-center justify-between px-4 md:px-6 lg:px-8 sticky top-0 z-30">
           <div className="flex items-center gap-4">
             {/* Mobile menu button */}
             <button
               onClick={() => setMobileMenuOpen(true)}
-              className="lg:hidden w-10 h-10 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-[#164151]/80 dark:text-white/60"
+              className="md:hidden w-10 h-10 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-[#164151]/80 dark:text-white/60"
             >
               <Menu className="w-4 h-4" />
             </button>
@@ -713,9 +765,9 @@ export default function UserDetailPage() {
               );
             })()}
 
-            <div className={`grid grid-cols-1 lg:grid-cols-3 gap-6 ${userData.is_inactive ? 'opacity-75' : ''}`}>
+            <div className={`grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 ${userData.is_inactive ? 'opacity-75' : ''}`}>
               {/* Left Column - Información Personal y Fitness */}
-              <div className="lg:col-span-2 space-y-6">
+              <div className="lg:col-span-2 space-y-4 md:space-y-6">
                 {/* Estado y Tipo */}
                 <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-white/10 p-6">
                   <h2 className="text-sm font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider mb-4">
@@ -1436,34 +1488,62 @@ export default function UserDetailPage() {
                                         </button>
                                       </div>
                                     </div>
-                                    <p className="text-xs text-gray-500 dark:text-white/50">
-                                      {isScheduled ? (
-                                        <>
-                                          Inicia: {new Date(membership.start_date).toLocaleDateString('es-ES', {
-                                            day: '2-digit',
-                                            month: 'long',
-                                            year: 'numeric',
-                                          })}
-                                        </>
-                                      ) : (
-                                        <>
-                                          Vence: {new Date(membership.end_date).toLocaleDateString('es-ES', {
-                                            day: '2-digit',
-                                            month: 'long',
-                                            year: 'numeric',
-                                          })}
-                                        </>
-                                      )}
-                                    </p>
-                                    {isScheduled && (
-                                      <p className="text-xs text-cyan-600 dark:text-cyan-400 mt-0.5">
+                                    <div className="space-y-1">
+                                      <div className="flex items-center gap-2">
+                                        {editingStartDateMembershipId === membership.id ? (
+                                          <div className="flex items-center gap-2 flex-1">
+                                            <span className="text-xs text-gray-500 dark:text-white/50">Inicia:</span>
+                                            <input
+                                              type="date"
+                                              value={newStartDate}
+                                              onChange={(e) => setNewStartDate(e.target.value)}
+                                              className="px-2 py-1 text-xs rounded-lg border border-gray-300 dark:border-white/20 bg-white dark:bg-gray-800 text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#164151]/50"
+                                              disabled={isUpdatingStartDate}
+                                            />
+                                            <button
+                                              onClick={() => handleSaveStartDate(membership.id)}
+                                              disabled={isUpdatingStartDate}
+                                              className="px-2 py-1 text-xs bg-[#85ea10] text-[#164151] rounded-lg hover:bg-[#85ea10]/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                              title="Guardar fecha"
+                                            >
+                                              {isUpdatingStartDate ? '...' : '✓'}
+                                            </button>
+                                            <button
+                                              onClick={handleCancelEditStartDate}
+                                              disabled={isUpdatingStartDate}
+                                              className="px-2 py-1 text-xs bg-gray-200 dark:bg-white/10 text-gray-700 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-white/20 transition-colors disabled:opacity-50"
+                                              title="Cancelar"
+                                            >
+                                              ✕
+                                            </button>
+                                          </div>
+                                        ) : (
+                                          <>
+                                            <p className="text-xs text-gray-500 dark:text-white/50">
+                                              Inicia: {new Date(membership.start_date).toLocaleDateString('es-ES', {
+                                                day: '2-digit',
+                                                month: 'long',
+                                                year: 'numeric',
+                                              })}
+                                            </p>
+                                            <button
+                                              onClick={() => handleStartEditStartDate(membership)}
+                                              className="p-1.5 rounded-lg text-[#164151] dark:text-white hover:bg-[#164151]/10 dark:hover:bg-white/10 transition-colors border border-transparent hover:border-[#164151]/20 dark:hover:border-white/20"
+                                              title="Editar fecha de inicio"
+                                            >
+                                              <Edit className="w-4 h-4" />
+                                            </button>
+                                          </>
+                                        )}
+                                      </div>
+                                      <p className={`text-xs ${isScheduled ? 'text-cyan-600 dark:text-cyan-400' : 'text-gray-500 dark:text-white/50'}`}>
                                         Vence: {new Date(membership.end_date).toLocaleDateString('es-ES', {
                                           day: '2-digit',
                                           month: 'long',
                                           year: 'numeric',
                                         })}
                                       </p>
-                                    )}
+                                    </div>
                                     {membership.payment?.invoice_number && (
                                       <p className="text-xs font-medium text-[#164151] dark:text-white mt-1">
                                         Factura: #{membership.payment.invoice_number}

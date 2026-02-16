@@ -62,3 +62,15 @@ update-*.sh
 *MIGRATION*.md
 *SETUP*.md
 *INTEGRATION*.md
+
+# Archivos de migración y documentación
+docs/migrations/
+archive/
+*.xls
+*.xlsx
+build.log
+migration-*.sql
+migration-*.json
+
+# Archivos duplicados
+package-lock*.json
