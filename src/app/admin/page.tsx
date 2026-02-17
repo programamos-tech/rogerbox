@@ -62,6 +62,8 @@ import {
   Wallet,
   TrendingUp,
   Cake,
+  Code,
+  Zap,
 } from 'lucide-react';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -361,10 +363,14 @@ function AdminDashboardContent() {
     } else if (activeTab === 'overview') {
       // Cargar ingresos del día actual por defecto
       const today = new Date();
-      const todayStr = today.toISOString().split('T')[0];
+      // Usar fecha local en lugar de ISO para evitar problemas de zona horaria
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      const todayStr = `${year}-${month}-${day}`;
       loadRevenueStats(todayStr, todayStr, sedeFilter);
       loadWeeklyData();
-      loadBirthdayClients();
+      loadBirthdayClients(todayStr, todayStr);
     }
   }, [activeTab]);
 
@@ -386,7 +392,11 @@ function AdminDashboardContent() {
 
       if (dateFilter === 'today') {
         const today = new Date();
-        startDate = today.toISOString().split('T')[0];
+        // Usar fecha local en lugar de ISO para evitar problemas de zona horaria
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        startDate = `${year}-${month}-${day}`;
         endDate = startDate;
       } else if (dateFilter === 'custom') {
         if (customStartDate && customEndDate) {
@@ -403,9 +413,11 @@ function AdminDashboardContent() {
         if (dateFilter === 'custom' && customStartDate && customEndDate) {
           loadWeeklyData(customStartDate, customEndDate);
           loadDailyPayments(customStartDate, customEndDate);
+          loadBirthdayClients(customStartDate, customEndDate);
         } else if (dateFilter === 'today') {
           loadWeeklyData(); // Sin parámetros = últimos 7 días por defecto
           loadDailyPayments(startDate, endDate);
+          loadBirthdayClients(startDate, endDate);
         }
       }
     }
@@ -570,9 +582,8 @@ function AdminDashboardContent() {
               duration_days
             )
           `)
-          .gte('payment_date', start.toISOString().split('T')[0])
-          .lte('payment_date', end.toISOString().split('T')[0])
-          .order('payment_date', { ascending: false })
+          .gte('created_at', start.toISOString())
+          .lte('created_at', end.toISOString())
           .order('created_at', { ascending: false });
 
         if (gymError) {
@@ -634,10 +645,10 @@ function AdminDashboardContent() {
         }
       }
 
-      // Ordenar todos los pagos por fecha (más recientes primero)
+      // Ordenar todos los pagos por fecha de registro facturado (más recientes primero)
       allPayments.sort((a, b) => {
-        const dateA = new Date(a.payment_date || a.created_at).getTime();
-        const dateB = new Date(b.payment_date || b.created_at).getTime();
+        const dateA = new Date(a.created_at || a.payment_date).getTime();
+        const dateB = new Date(b.created_at || b.payment_date).getTime();
         return dateB - dateA;
       });
 
@@ -650,12 +661,36 @@ function AdminDashboardContent() {
     }
   };
 
-  const loadBirthdayClients = async () => {
+  const loadBirthdayClients = async (startDate?: string, endDate?: string) => {
     try {
       setLoadingBirthdays(true);
-      const today = new Date();
-      const currentMonth = today.getMonth() + 1; // Mes (1-12)
-      const currentDay = today.getDate(); // Día del mes
+      
+      // Determinar el rango de fechas a buscar
+      let searchStartDate: Date;
+      let searchEndDate: Date;
+      
+      if (startDate && endDate) {
+        // Parsear fechas correctamente para evitar problemas de zona horaria
+        // Las fechas vienen en formato YYYY-MM-DD, parsearlas como fecha local
+        const [startYear, startMonth, startDay] = startDate.split('-').map(Number);
+        const [endYear, endMonth, endDay] = endDate.split('-').map(Number);
+        
+        searchStartDate = new Date(startYear, startMonth - 1, startDay);
+        searchEndDate = new Date(endYear, endMonth - 1, endDay);
+        
+        // Si startDate y endDate son iguales, asegurarse de que searchEndDate sea el mismo día
+        if (startDate === endDate) {
+          searchEndDate = new Date(startYear, startMonth - 1, startDay);
+        }
+      } else {
+        // Por defecto: hoy
+        const today = new Date();
+        searchStartDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        searchEndDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      }
+      
+      searchStartDate.setHours(0, 0, 0, 0);
+      searchEndDate.setHours(0, 0, 0, 0); // Cambiar a inicio del día para comparación correcta
 
       // Obtener todos los clientes con fecha de nacimiento
       const { data: clients, error } = await supabaseAdmin
@@ -679,25 +714,154 @@ function AdminDashboardContent() {
         return;
       }
 
-      // Filtrar clientes que cumplen años hoy (mismo mes y día)
-      const todayBirthdays = (clients || []).filter((client: any) => {
+      // Filtrar clientes que cumplen años en el rango de fechas seleccionado
+      // Los cumpleaños se comparan por mes y día, no por año completo
+      const birthdaysInRange = (clients || []).filter((client: any) => {
         if (!client.birth_date) return false;
         
-        const birthDate = new Date(client.birth_date);
-        const birthMonth = birthDate.getMonth() + 1;
-        const birthDay = birthDate.getDate();
-
-        return birthMonth === currentMonth && birthDay === currentDay;
+        // Parsear fecha de nacimiento correctamente
+        // La fecha puede venir como string ISO (YYYY-MM-DD o YYYY-MM-DDTHH:mm:ss) o como Date object
+        let birthDateStr: string;
+        if (typeof client.birth_date === 'string') {
+          // Si viene como string, extraer solo la parte de la fecha YYYY-MM-DD
+          // Manejar tanto formato '1982-02-16' como '1982-02-16T00:00:00.000Z'
+          birthDateStr = client.birth_date.split('T')[0].split(' ')[0];
+          
+          // Validar que tenga el formato correcto YYYY-MM-DD
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(birthDateStr)) {
+            console.warn('Formato de fecha inválido:', client.birth_date);
+            return false;
+          }
+        } else {
+          // Si es un objeto Date o timestamp, parsear como fecha local
+          // IMPORTANTE: Usar métodos locales para evitar problemas de zona horaria
+          const tempDate = new Date(client.birth_date);
+          // Verificar que la fecha sea válida
+          if (isNaN(tempDate.getTime())) {
+            console.warn('Fecha inválida:', client.birth_date);
+            return false;
+          }
+          const year = tempDate.getFullYear();
+          const month = String(tempDate.getMonth() + 1).padStart(2, '0');
+          const day = String(tempDate.getDate()).padStart(2, '0');
+          birthDateStr = `${year}-${month}-${day}`;
+        }
+        
+        // Extraer mes y día directamente del string (evitar problemas de zona horaria)
+        const parts = birthDateStr.split('-');
+        if (parts.length !== 3) {
+          console.warn('Fecha no tiene formato YYYY-MM-DD:', birthDateStr);
+          return false;
+        }
+        
+        // Parsear directamente del string sin crear objetos Date
+        const birthYear = parseInt(parts[0], 10);
+        const birthMonthNum = parseInt(parts[1], 10); // Mes (1-12)
+        const birthDayNum = parseInt(parts[2], 10); // Día (1-31)
+        
+        // Validar que los valores sean válidos
+        if (isNaN(birthYear) || isNaN(birthMonthNum) || isNaN(birthDayNum)) {
+          console.warn('Valores de fecha inválidos:', { birthYear, birthMonthNum, birthDayNum });
+          return false;
+        }
+        
+        if (birthMonthNum < 1 || birthMonthNum > 12 || birthDayNum < 1 || birthDayNum > 31) {
+          console.warn('Valores de fecha fuera de rango:', { birthMonthNum, birthDayNum });
+          return false;
+        }
+        
+        // Crear un array de todas las fechas en el rango
+        // Usar las fechas parseadas directamente sin crear objetos Date para evitar problemas de zona horaria
+        const datesInRange: { month: number; day: number }[] = [];
+        
+        // Parsear fechas del rango desde los strings
+        const [startYear, startMonth, startDay] = startDate ? startDate.split('-').map(Number) : [
+          searchStartDate.getFullYear(), 
+          searchStartDate.getMonth() + 1, 
+          searchStartDate.getDate()
+        ];
+        const [endYear, endMonth, endDay] = endDate ? endDate.split('-').map(Number) : [
+          searchEndDate.getFullYear(), 
+          searchEndDate.getMonth() + 1, 
+          searchEndDate.getDate()
+        ];
+        
+        // Crear fechas locales sin problemas de zona horaria usando el constructor local
+        // Usar directamente los valores parseados para evitar problemas de zona horaria
+        let currentYear = startYear;
+        let currentMonth = startMonth;
+        let currentDayNum = startDay;
+        
+        // Comparar fechas usando números en lugar de objetos Date para evitar problemas de zona horaria
+        const endDateNum = endYear * 10000 + endMonth * 100 + endDay;
+        
+        // Iterar día por día hasta llegar al día final (inclusive)
+        while (true) {
+          // Calcular el número de fecha actual
+          const currentDateNum = currentYear * 10000 + currentMonth * 100 + currentDayNum;
+          
+          // Si ya pasamos la fecha final, salir del bucle
+          if (currentDateNum > endDateNum) {
+            break;
+          }
+          
+          // Agregar la fecha actual al rango
+          datesInRange.push({
+            month: currentMonth,
+            day: currentDayNum
+          });
+          
+          // Avanzar al siguiente día
+          currentDayNum++;
+          
+          // Manejar cambio de mes
+          const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
+          if (currentDayNum > daysInMonth) {
+            currentDayNum = 1;
+            currentMonth++;
+            // Manejar cambio de año
+            if (currentMonth > 12) {
+              currentMonth = 1;
+              currentYear++;
+            }
+          }
+        }
+        
+        // Verificar si el cumpleaños coincide con alguna fecha en el rango
+        const matches = datesInRange.some(date => 
+          date.month === birthMonthNum && date.day === birthDayNum
+        );
+        
+        // Debug temporal para Ana Julia
+        if (client.name && client.name.toLowerCase().includes('ana julia')) {
+          console.log('🔍 Debug Ana Julia:', {
+            nombre: client.name,
+            birth_date_original: client.birth_date,
+            birth_date_type: typeof client.birth_date,
+            birthDateStr: birthDateStr,
+            birthMonthNum,
+            birthDayNum,
+            datesInRange,
+            matches,
+            searchStartDate_str: startDate,
+            searchEndDate_str: endDate,
+            searchStartDate_parsed: `${startYear}-${String(startMonth).padStart(2, '0')}-${String(startDay).padStart(2, '0')}`,
+            searchEndDate_parsed: `${endYear}-${String(endMonth).padStart(2, '0')}-${String(endDay).padStart(2, '0')}`
+          });
+        }
+        
+        return matches;
       });
 
-      // Calcular la edad de cada cliente
-      const clientsWithAge = todayBirthdays.map((client: any) => {
+      // Calcular la edad de cada cliente usando la fecha de referencia (última fecha del rango o hoy)
+      const referenceDate = endDate ? new Date(endDate) : new Date();
+      const clientsWithAge = birthdaysInRange.map((client: any) => {
         const birthDate = new Date(client.birth_date);
-        const age = today.getFullYear() - birthDate.getFullYear();
-        const monthDiff = today.getMonth() - birthDate.getMonth();
-        const dayDiff = today.getDate() - birthDate.getDate();
+        const age = referenceDate.getFullYear() - birthDate.getFullYear();
+        const monthDiff = referenceDate.getMonth() - birthDate.getMonth();
+        const dayDiff = referenceDate.getDate() - birthDate.getDate();
         
-        // Ajustar edad si aún no ha cumplido años este año
+        // Ajustar edad si aún no ha cumplido años en la fecha de referencia
         const finalAge = (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) ? age - 1 : age;
 
         return {
@@ -1203,6 +1367,18 @@ function AdminDashboardContent() {
               </>
             )}
 
+            {/* Powered by */}
+            <a
+              href="https://andresruss.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 text-xs font-medium text-[#164151]/60 dark:text-white/50 hover:text-[#164151] dark:hover:text-white transition-colors mr-2"
+            >
+              <Zap className="w-3 h-3 text-[#85ea10]" />
+              <span className="font-semibold">powered by</span>
+              <span className="font-bold text-[#85ea10]">andresruss.st</span>
+            </a>
+
             {/* Notifications */}
             <button className="relative w-10 h-10 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-[#164151]/80 dark:text-white/60 hover:text-[#164151] dark:hover:text-white transition-colors">
               <Bell className="w-4 h-4" />
@@ -1467,108 +1643,6 @@ function AdminDashboardContent() {
                 </div>
               )}
 
-              {/* Gráfica de Ventas Semanales */}
-              {(dateFilter === 'today' || dateFilter === 'custom') && (
-                <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 px-6 pt-6 pb-2 shadow-lg mt-8">
-                  <h3 className="text-sm font-semibold text-[#164151] dark:text-white uppercase tracking-wide mb-3">
-                    {dateFilter === 'custom' && customStartDate && customEndDate
-                      ? `Ventas del Período (${new Date(customStartDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })} - ${new Date(customEndDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })})`
-                      : 'Ventas de la Última Semana'}
-                  </h3>
-                  <p className="text-xs text-gray-500 dark:text-white/50 mb-12">
-                    {dateFilter === 'custom' && customStartDate && customEndDate
-                      ? `Visualización de los ingresos diarios del período seleccionado para analizar tendencias y patrones de venta`
-                      : 'Visualización de los ingresos diarios de los últimos 7 días para analizar tendencias y patrones de venta'}
-                  </p>
-
-                  {loadingWeeklyData ? (
-                    <div className="flex items-center justify-center py-8">
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#164151]"></div>
-                    </div>
-                  ) : weeklyData.length > 0 ? (
-                    <div className="relative mt-8">
-                      {/* Gráfica */}
-                      <div className="relative h-64 flex items-end justify-between gap-1 mb-0">
-                        {weeklyData.map((day, index) => {
-                          const maxAmount = Math.max(...weeklyData.map(d => d.amount), 1);
-                          const height = maxAmount > 0 ? (day.amount / maxAmount) * 100 : 0;
-                          const barHeight = Math.max(height, 8);
-
-                          // Formatear fecha
-                          const date = new Date(day.date);
-                          const dayNumber = date.getDate();
-                          const month = date.toLocaleDateString('es-ES', { month: 'short' });
-
-                          return (
-                            <div key={index} className="flex-1 flex flex-col items-center gap-1 h-full relative group">
-                              {/* Tooltip con fecha e ingresos */}
-                              <div className="absolute -top-20 left-1/2 transform -translate-x-1/2 bg-[#164151] dark:bg-gray-800 text-white text-xs rounded-lg px-3 py-2 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 whitespace-nowrap">
-                                <p className="font-semibold mb-1">{day.dayName}, {dayNumber} {month}</p>
-                                <p className="text-[#85ea10] font-bold">
-                                  {showRevenueNumbers ? `$${day.amount.toLocaleString('es-CO')}` : '••••••'}
-                                </p>
-                              </div>
-
-                              {/* Valor sobre el punto */}
-                              <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 text-center w-full">
-                                <p className="text-xs font-semibold text-[#164151] dark:text-white">
-                                  {showRevenueNumbers ? `$${day.amount.toLocaleString('es-CO')}` : '••••'}
-                                </p>
-                              </div>
-
-                              {/* Contenedor de la barra */}
-                              <div className="flex-1 w-full flex items-end justify-center relative">
-                                {/* Línea vertical */}
-                                <div
-                                  className="w-3/4 bg-[#164151]/20 dark:bg-[#85ea10]/20 rounded-t transition-all duration-500 relative cursor-pointer hover:bg-[#164151]/30 dark:hover:bg-[#85ea10]/30"
-                                  style={{ height: `${barHeight}%` }}
-                                >
-                                  {/* Punto en la parte superior */}
-                                  <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 w-3 h-3 bg-[#85ea10] dark:bg-[#164151] rounded-full border-2 border-white dark:border-gray-900 shadow-md"></div>
-                                </div>
-                              </div>
-
-                              {/* Nombre del día y fecha */}
-                              <div className="text-center">
-                                <p className="text-[10px] font-medium text-gray-500 dark:text-white/50">
-                                  {day.dayName}
-                                </p>
-                                <p className="text-[9px] text-gray-400 dark:text-white/40">
-                                  {dayNumber}/{date.getMonth() + 1}
-                                </p>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-
-                      {/* Línea conectando los puntos */}
-                      <svg className="absolute top-8 left-0 right-0 h-40 pointer-events-none" style={{ zIndex: 1 }}>
-                        <polyline
-                          points={weeklyData.map((day, index) => {
-                            const maxAmount = Math.max(...weeklyData.map(d => d.amount), 1);
-                            const height = maxAmount > 0 ? (day.amount / maxAmount) * 100 : 0;
-                            const barHeight = Math.max(height, 8);
-                            const x = ((index + 0.5) / weeklyData.length) * 100;
-                            const y = 100 - barHeight;
-                            return `${x}%,${y}%`;
-                          }).join(' ')}
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeDasharray="3 3"
-                          className="text-[#85ea10]/40 dark:text-[#164151]/40"
-                        />
-                      </svg>
-                    </div>
-                  ) : (
-                    <div className="text-center py-8">
-                      <p className="text-sm text-gray-500 dark:text-white/50">No hay datos para mostrar</p>
-                    </div>
-                  )}
-                </div>
-              )}
-
               {/* Facturas del Período y Cumpleaños - Grid de 2 columnas */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
                 {/* Lista de Facturas del Período */}
@@ -1603,7 +1677,8 @@ function AdminDashboardContent() {
                     ) : dailyPayments.length > 0 ? (
                       <div className="space-y-3 mt-4 max-h-[600px] overflow-y-auto">
                         {dailyPayments.map((payment) => {
-                          const paymentDate = new Date(payment.payment_date || payment.created_at);
+                          // Usar created_at (fecha de registro facturado) como prioridad
+                          const paymentDate = new Date(payment.created_at || payment.payment_date);
                           const paymentMethodLabels: { [key: string]: string } = {
                             cash: 'Efectivo',
                             transfer: 'Transferencia',
@@ -1710,15 +1785,21 @@ function AdminDashboardContent() {
                   <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 px-6 pt-6 pb-6 shadow-lg">
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-[#85ea10]/20 dark:bg-[#85ea10]/20 flex items-center justify-center">
-                          <Cake className="w-5 h-5 text-[#85ea10] dark:text-[#85ea10]" />
-                        </div>
                         <div>
                           <h3 className="text-sm font-semibold text-[#164151] dark:text-white uppercase tracking-wide">
-                            🎉 Cumpleaños de Hoy
+                            🎉 Cumpleaños
+                            {dateFilter === 'custom' && customStartDate && customEndDate
+                              ? (customStartDate === customEndDate
+                                  ? ` del ${new Date(customStartDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'long' })}`
+                                  : ` del ${new Date(customStartDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'long' })} al ${new Date(customEndDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'long' })}`)
+                              : ' de Hoy'}
                           </h3>
                           <p className="text-xs text-gray-500 dark:text-white/50 mt-1">
-                            Clientes que cumplen años hoy ({new Date().toLocaleDateString('es-ES', { day: '2-digit', month: 'long' })})
+                            {dateFilter === 'custom' && customStartDate && customEndDate
+                              ? (customStartDate === customEndDate
+                                  ? `Clientes que cumplen años el ${new Date(customStartDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })}`
+                                  : `Clientes que cumplen años entre el ${new Date(customStartDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'long' })} y el ${new Date(customEndDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'long' })}`)
+                              : `Clientes que cumplen años hoy (${new Date().toLocaleDateString('es-ES', { day: '2-digit', month: 'long' })})`}
                           </p>
                         </div>
                       </div>
@@ -1740,8 +1821,27 @@ function AdminDashboardContent() {
                     ) : birthdayClients.length > 0 ? (
                       <div className="space-y-3 mt-4 max-h-[600px] overflow-y-auto">
                         {birthdayClients.map((client) => {
-                          const birthDate = new Date(client.birth_date);
-                          const formattedBirthday = birthDate.toLocaleDateString('es-ES', { day: '2-digit', month: 'long' });
+                          // Parsear fecha de nacimiento correctamente para evitar problemas de zona horaria
+                          let birthDateStr: string;
+                          if (typeof client.birth_date === 'string') {
+                            birthDateStr = client.birth_date.split('T')[0];
+                          } else {
+                            const tempDate = new Date(client.birth_date);
+                            const year = tempDate.getFullYear();
+                            const month = String(tempDate.getMonth() + 1).padStart(2, '0');
+                            const day = String(tempDate.getDate()).padStart(2, '0');
+                            birthDateStr = `${year}-${month}-${day}`;
+                          }
+                          
+                          // Extraer día y mes directamente del string para evitar problemas de zona horaria
+                          const parts = birthDateStr.split('-');
+                          const birthYear = parseInt(parts[0], 10);
+                          const birthMonth = parseInt(parts[1], 10);
+                          const birthDay = parseInt(parts[2], 10);
+                          
+                          // Formatear directamente sin crear objeto Date para evitar problemas de zona horaria
+                          const monthNames = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+                          const formattedBirthday = `${birthDay} de ${monthNames[birthMonth - 1]}`;
 
                           return (
                             <div
@@ -1769,27 +1869,30 @@ function AdminDashboardContent() {
                                     </div>
                                   </div>
                                   
-                                  <div className="grid grid-cols-2 gap-4 mt-3 ml-15">
+                                  <div className="grid grid-cols-2 gap-4 mt-3 ml-13">
                                     <div>
                                       <p className="text-xs text-gray-500 dark:text-white/50 mb-1">Fecha de nacimiento</p>
                                       <p className="text-sm font-medium text-[#164151] dark:text-white">
                                         {formattedBirthday}
                                       </p>
                                     </div>
-                                    {client.activeMembership && (
-                                      <div>
-                                        <p className="text-xs text-gray-500 dark:text-white/50 mb-1">Plan activo</p>
-                                        <p className="text-sm font-medium text-[#85ea10]">
-                                          {client.activeMembership.plan?.name || 'Plan activo'}
-                                        </p>
-                                      </div>
-                                    )}
                                     {client.whatsapp && (
                                       <div>
                                         <p className="text-xs text-gray-500 dark:text-white/50 mb-1">WhatsApp</p>
-                                        <p className="text-sm font-medium text-[#164151] dark:text-white">
-                                          {client.whatsapp}
-                                        </p>
+                                        <button
+                                          onClick={() => {
+                                            const phoneNumber = client.whatsapp.replace(/\D/g, '');
+                                            const message = encodeURIComponent(
+                                              `Hola ${client.name}! Felicidades desde Rogerbox, gracias por hacer parte de este equipo. ¡Que tengas un excelente día!`
+                                            );
+                                            const whatsappUrl = `https://wa.me/${phoneNumber}?text=${message}`;
+                                            window.open(whatsappUrl, '_blank');
+                                          }}
+                                          className="flex items-center gap-2 px-3 py-1.5 bg-[#25D366] hover:bg-[#20BA5A] text-white rounded-lg text-sm font-medium transition-all hover:shadow-md group"
+                                        >
+                                          <MessageSquare className="w-4 h-4" />
+                                          <span>{client.whatsapp}</span>
+                                        </button>
                                       </div>
                                     )}
                                     {client.email && (
@@ -1830,6 +1933,108 @@ function AdminDashboardContent() {
                   </div>
                 )}
               </div>
+
+              {/* Gráfica de Ventas Semanales */}
+              {(dateFilter === 'today' || dateFilter === 'custom') && (
+                <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 px-6 pt-6 pb-2 shadow-lg mt-8">
+                  <h3 className="text-sm font-semibold text-[#164151] dark:text-white uppercase tracking-wide mb-3">
+                    {dateFilter === 'custom' && customStartDate && customEndDate
+                      ? `Ventas del Período (${new Date(customStartDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })} - ${new Date(customEndDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })})`
+                      : 'Ventas de la Última Semana'}
+                  </h3>
+                  <p className="text-xs text-gray-500 dark:text-white/50 mb-12">
+                    {dateFilter === 'custom' && customStartDate && customEndDate
+                      ? `Visualización de los ingresos diarios del período seleccionado para analizar tendencias y patrones de venta`
+                      : 'Visualización de los ingresos diarios de los últimos 7 días para analizar tendencias y patrones de venta'}
+                  </p>
+
+                  {loadingWeeklyData ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#164151]"></div>
+                    </div>
+                  ) : weeklyData.length > 0 ? (
+                    <div className="relative mt-8">
+                      {/* Gráfica */}
+                      <div className="relative h-64 flex items-end justify-between gap-1 mb-0">
+                        {weeklyData.map((day, index) => {
+                          const maxAmount = Math.max(...weeklyData.map(d => d.amount), 1);
+                          const height = maxAmount > 0 ? (day.amount / maxAmount) * 100 : 0;
+                          const barHeight = Math.max(height, 8);
+
+                          // Formatear fecha
+                          const date = new Date(day.date);
+                          const dayNumber = date.getDate();
+                          const month = date.toLocaleDateString('es-ES', { month: 'short' });
+
+                          return (
+                            <div key={index} className="flex-1 flex flex-col items-center gap-1 h-full relative group">
+                              {/* Tooltip con fecha e ingresos */}
+                              <div className="absolute -top-20 left-1/2 transform -translate-x-1/2 bg-[#164151] dark:bg-gray-800 text-white text-xs rounded-lg px-3 py-2 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 whitespace-nowrap">
+                                <p className="font-semibold mb-1">{day.dayName}, {dayNumber} {month}</p>
+                                <p className="text-[#85ea10] font-bold">
+                                  {showRevenueNumbers ? `$${day.amount.toLocaleString('es-CO')}` : '••••••'}
+                                </p>
+                              </div>
+
+                              {/* Valor sobre el punto */}
+                              <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 text-center w-full">
+                                <p className="text-xs font-semibold text-[#164151] dark:text-white">
+                                  {showRevenueNumbers ? `$${day.amount.toLocaleString('es-CO')}` : '••••'}
+                                </p>
+                              </div>
+
+                              {/* Contenedor de la barra */}
+                              <div className="flex-1 w-full flex items-end justify-center relative">
+                                {/* Línea vertical */}
+                                <div
+                                  className="w-3/4 bg-[#164151]/20 dark:bg-[#85ea10]/20 rounded-t transition-all duration-500 relative cursor-pointer hover:bg-[#164151]/30 dark:hover:bg-[#85ea10]/30"
+                                  style={{ height: `${barHeight}%` }}
+                                >
+                                  {/* Punto en la parte superior */}
+                                  <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 w-3 h-3 bg-[#85ea10] dark:bg-[#164151] rounded-full border-2 border-white dark:border-gray-900 shadow-md"></div>
+                                </div>
+                              </div>
+
+                              {/* Nombre del día y fecha */}
+                              <div className="text-center">
+                                <p className="text-[10px] font-medium text-gray-500 dark:text-white/50">
+                                  {day.dayName}
+                                </p>
+                                <p className="text-[9px] text-gray-400 dark:text-white/40">
+                                  {dayNumber}/{date.getMonth() + 1}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Línea conectando los puntos */}
+                      <svg className="absolute top-8 left-0 right-0 h-40 pointer-events-none" style={{ zIndex: 1 }}>
+                        <polyline
+                          points={weeklyData.map((day, index) => {
+                            const maxAmount = Math.max(...weeklyData.map(d => d.amount), 1);
+                            const height = maxAmount > 0 ? (day.amount / maxAmount) * 100 : 0;
+                            const barHeight = Math.max(height, 8);
+                            const x = ((index + 0.5) / weeklyData.length) * 100;
+                            const y = 100 - barHeight;
+                            return `${x}%,${y}%`;
+                          }).join(' ')}
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeDasharray="3 3"
+                          className="text-[#85ea10]/40 dark:text-[#164151]/40"
+                        />
+                      </svg>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <p className="text-sm text-gray-500 dark:text-white/50">No hay datos para mostrar</p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
