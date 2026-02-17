@@ -557,10 +557,18 @@ function AdminDashboardContent() {
       setLoadingDailyPayments(true);
       const allPayments: any[] = [];
       
-      const start = new Date(startDate);
-      start.setHours(0, 0, 0, 0);
-      const end = new Date(endDate);
-      end.setHours(23, 59, 59, 999);
+      // Parsear fechas correctamente para evitar problemas de zona horaria
+      // Las fechas vienen en formato YYYY-MM-DD
+      const [startYear, startMonth, startDay] = startDate.split('-').map(Number);
+      const [endYear, endMonth, endDay] = endDate.split('-').map(Number);
+      
+      // Crear fechas locales sin problemas de zona horaria
+      const start = new Date(startYear, startMonth - 1, startDay, 0, 0, 0, 0);
+      const end = new Date(endYear, endMonth - 1, endDay, 23, 59, 59, 999);
+      
+      // Convertir a formato ISO para la consulta
+      const startISO = start.toISOString();
+      const endISO = end.toISOString();
 
       // Cargar pagos de sede física si el filtro lo permite
       if (sedeFilter === 'fisica' || sedeFilter === 'ambas') {
@@ -582,8 +590,8 @@ function AdminDashboardContent() {
               duration_days
             )
           `)
-          .gte('created_at', start.toISOString())
-          .lte('created_at', end.toISOString())
+          .gte('created_at', startISO)
+          .lte('created_at', endISO)
           .order('created_at', { ascending: false });
 
         if (gymError) {
@@ -613,8 +621,8 @@ function AdminDashboardContent() {
             )
           `)
           .eq('status', 'approved')
-          .gte('created_at', start.toISOString())
-          .lte('created_at', end.toISOString())
+          .gte('created_at', startISO)
+          .lte('created_at', endISO)
           .order('created_at', { ascending: false });
 
         if (ordersError) {
@@ -1643,6 +1651,108 @@ function AdminDashboardContent() {
                 </div>
               )}
 
+              {/* Gráfica de Ventas Semanales */}
+              {(dateFilter === 'today' || dateFilter === 'custom') && (
+                <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 px-6 pt-6 pb-2 shadow-lg mt-8">
+                  <h3 className="text-sm font-semibold text-[#164151] dark:text-white uppercase tracking-wide mb-3">
+                    {dateFilter === 'custom' && customStartDate && customEndDate
+                      ? `Ventas del Período (${new Date(customStartDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })} - ${new Date(customEndDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })})`
+                      : 'Ventas de la Última Semana'}
+                  </h3>
+                  <p className="text-xs text-gray-500 dark:text-white/50 mb-12">
+                    {dateFilter === 'custom' && customStartDate && customEndDate
+                      ? `Visualización de los ingresos diarios del período seleccionado para analizar tendencias y patrones de venta`
+                      : 'Visualización de los ingresos diarios de los últimos 7 días para analizar tendencias y patrones de venta'}
+                  </p>
+
+                  {loadingWeeklyData ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#164151]"></div>
+                    </div>
+                  ) : weeklyData.length > 0 ? (
+                    <div className="relative mt-8">
+                      {/* Gráfica */}
+                      <div className="relative h-64 flex items-end justify-between gap-1 mb-0">
+                        {weeklyData.map((day, index) => {
+                          const maxAmount = Math.max(...weeklyData.map(d => d.amount), 1);
+                          const height = maxAmount > 0 ? (day.amount / maxAmount) * 100 : 0;
+                          const barHeight = Math.max(height, 8);
+
+                          // Formatear fecha
+                          const date = new Date(day.date);
+                          const dayNumber = date.getDate();
+                          const month = date.toLocaleDateString('es-ES', { month: 'short' });
+
+                          return (
+                            <div key={index} className="flex-1 flex flex-col items-center gap-1 h-full relative group">
+                              {/* Tooltip con fecha e ingresos */}
+                              <div className="absolute -top-20 left-1/2 transform -translate-x-1/2 bg-[#164151] dark:bg-gray-800 text-white text-xs rounded-lg px-3 py-2 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 whitespace-nowrap">
+                                <p className="font-semibold mb-1">{day.dayName}, {dayNumber} {month}</p>
+                                <p className="text-[#85ea10] font-bold">
+                                  {showRevenueNumbers ? `$${day.amount.toLocaleString('es-CO')}` : '••••••'}
+                                </p>
+                              </div>
+
+                              {/* Valor sobre el punto */}
+                              <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 text-center w-full">
+                                <p className="text-xs font-semibold text-[#164151] dark:text-white">
+                                  {showRevenueNumbers ? `$${day.amount.toLocaleString('es-CO')}` : '••••'}
+                                </p>
+                              </div>
+
+                              {/* Contenedor de la barra */}
+                              <div className="flex-1 w-full flex items-end justify-center relative">
+                                {/* Línea vertical */}
+                                <div
+                                  className="w-3/4 bg-[#164151]/20 dark:bg-[#85ea10]/20 rounded-t transition-all duration-500 relative cursor-pointer hover:bg-[#164151]/30 dark:hover:bg-[#85ea10]/30"
+                                  style={{ height: `${barHeight}%` }}
+                                >
+                                  {/* Punto en la parte superior */}
+                                  <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 w-3 h-3 bg-[#85ea10] dark:bg-[#164151] rounded-full border-2 border-white dark:border-gray-900 shadow-md"></div>
+                                </div>
+                              </div>
+
+                              {/* Nombre del día y fecha */}
+                              <div className="text-center">
+                                <p className="text-[10px] font-medium text-gray-500 dark:text-white/50">
+                                  {day.dayName}
+                                </p>
+                                <p className="text-[9px] text-gray-400 dark:text-white/40">
+                                  {dayNumber}/{date.getMonth() + 1}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Línea conectando los puntos */}
+                      <svg className="absolute top-8 left-0 right-0 h-40 pointer-events-none" style={{ zIndex: 1 }}>
+                        <polyline
+                          points={weeklyData.map((day, index) => {
+                            const maxAmount = Math.max(...weeklyData.map(d => d.amount), 1);
+                            const height = maxAmount > 0 ? (day.amount / maxAmount) * 100 : 0;
+                            const barHeight = Math.max(height, 8);
+                            const x = ((index + 0.5) / weeklyData.length) * 100;
+                            const y = 100 - barHeight;
+                            return `${x}%,${y}%`;
+                          }).join(' ')}
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeDasharray="3 3"
+                          className="text-[#85ea10]/40 dark:text-[#164151]/40"
+                        />
+                      </svg>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <p className="text-sm text-gray-500 dark:text-white/50">No hay datos para mostrar</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Facturas del Período y Cumpleaños - Grid de 2 columnas */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
                 {/* Lista de Facturas del Período */}
@@ -1933,108 +2043,6 @@ function AdminDashboardContent() {
                   </div>
                 )}
               </div>
-
-              {/* Gráfica de Ventas Semanales */}
-              {(dateFilter === 'today' || dateFilter === 'custom') && (
-                <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 px-6 pt-6 pb-2 shadow-lg mt-8">
-                  <h3 className="text-sm font-semibold text-[#164151] dark:text-white uppercase tracking-wide mb-3">
-                    {dateFilter === 'custom' && customStartDate && customEndDate
-                      ? `Ventas del Período (${new Date(customStartDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })} - ${new Date(customEndDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })})`
-                      : 'Ventas de la Última Semana'}
-                  </h3>
-                  <p className="text-xs text-gray-500 dark:text-white/50 mb-12">
-                    {dateFilter === 'custom' && customStartDate && customEndDate
-                      ? `Visualización de los ingresos diarios del período seleccionado para analizar tendencias y patrones de venta`
-                      : 'Visualización de los ingresos diarios de los últimos 7 días para analizar tendencias y patrones de venta'}
-                  </p>
-
-                  {loadingWeeklyData ? (
-                    <div className="flex items-center justify-center py-8">
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#164151]"></div>
-                    </div>
-                  ) : weeklyData.length > 0 ? (
-                    <div className="relative mt-8">
-                      {/* Gráfica */}
-                      <div className="relative h-64 flex items-end justify-between gap-1 mb-0">
-                        {weeklyData.map((day, index) => {
-                          const maxAmount = Math.max(...weeklyData.map(d => d.amount), 1);
-                          const height = maxAmount > 0 ? (day.amount / maxAmount) * 100 : 0;
-                          const barHeight = Math.max(height, 8);
-
-                          // Formatear fecha
-                          const date = new Date(day.date);
-                          const dayNumber = date.getDate();
-                          const month = date.toLocaleDateString('es-ES', { month: 'short' });
-
-                          return (
-                            <div key={index} className="flex-1 flex flex-col items-center gap-1 h-full relative group">
-                              {/* Tooltip con fecha e ingresos */}
-                              <div className="absolute -top-20 left-1/2 transform -translate-x-1/2 bg-[#164151] dark:bg-gray-800 text-white text-xs rounded-lg px-3 py-2 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 whitespace-nowrap">
-                                <p className="font-semibold mb-1">{day.dayName}, {dayNumber} {month}</p>
-                                <p className="text-[#85ea10] font-bold">
-                                  {showRevenueNumbers ? `$${day.amount.toLocaleString('es-CO')}` : '••••••'}
-                                </p>
-                              </div>
-
-                              {/* Valor sobre el punto */}
-                              <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 text-center w-full">
-                                <p className="text-xs font-semibold text-[#164151] dark:text-white">
-                                  {showRevenueNumbers ? `$${day.amount.toLocaleString('es-CO')}` : '••••'}
-                                </p>
-                              </div>
-
-                              {/* Contenedor de la barra */}
-                              <div className="flex-1 w-full flex items-end justify-center relative">
-                                {/* Línea vertical */}
-                                <div
-                                  className="w-3/4 bg-[#164151]/20 dark:bg-[#85ea10]/20 rounded-t transition-all duration-500 relative cursor-pointer hover:bg-[#164151]/30 dark:hover:bg-[#85ea10]/30"
-                                  style={{ height: `${barHeight}%` }}
-                                >
-                                  {/* Punto en la parte superior */}
-                                  <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 w-3 h-3 bg-[#85ea10] dark:bg-[#164151] rounded-full border-2 border-white dark:border-gray-900 shadow-md"></div>
-                                </div>
-                              </div>
-
-                              {/* Nombre del día y fecha */}
-                              <div className="text-center">
-                                <p className="text-[10px] font-medium text-gray-500 dark:text-white/50">
-                                  {day.dayName}
-                                </p>
-                                <p className="text-[9px] text-gray-400 dark:text-white/40">
-                                  {dayNumber}/{date.getMonth() + 1}
-                                </p>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-
-                      {/* Línea conectando los puntos */}
-                      <svg className="absolute top-8 left-0 right-0 h-40 pointer-events-none" style={{ zIndex: 1 }}>
-                        <polyline
-                          points={weeklyData.map((day, index) => {
-                            const maxAmount = Math.max(...weeklyData.map(d => d.amount), 1);
-                            const height = maxAmount > 0 ? (day.amount / maxAmount) * 100 : 0;
-                            const barHeight = Math.max(height, 8);
-                            const x = ((index + 0.5) / weeklyData.length) * 100;
-                            const y = 100 - barHeight;
-                            return `${x}%,${y}%`;
-                          }).join(' ')}
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeDasharray="3 3"
-                          className="text-[#85ea10]/40 dark:text-[#164151]/40"
-                        />
-                      </svg>
-                    </div>
-                  ) : (
-                    <div className="text-center py-8">
-                      <p className="text-sm text-gray-500 dark:text-white/50">No hay datos para mostrar</p>
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
           )}
 
