@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
-import { CheckCircle, Zap, Award, Play, Calendar, Clock, ArrowRight, Pill, Weight, TrendingUp, Activity, Plus, Info, X, Edit } from 'lucide-react';
+import { CheckCircle, Zap, Award, Play, Calendar, Clock, ChevronRight, Pill, Weight, TrendingUp, Activity, Plus, Info, X, Edit } from 'lucide-react';
 import { supabase } from '@/lib/supabase-browser';
 import { getBMIColor } from '@/lib/goalSuggestion';
 import WeeklyWeightReminder from '@/components/WeeklyWeightReminder';
@@ -580,7 +580,7 @@ export default function InsightsSection({
           >
             <Pill className="w-5 h-5 group-hover:scale-110 transition-transform flex-shrink-0" />
             <span>Toma tu complemento</span>
-            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform flex-shrink-0" />
+            <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform flex-shrink-0" />
           </button>
 
           <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-4 mb-4">
@@ -600,7 +600,7 @@ export default function InsightsSection({
             className="w-full max-w-sm mx-auto bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 text-gray-700 dark:text-gray-200 font-medium py-2.5 px-4 rounded-lg transition-all duration-300 hover:bg-gray-50 dark:hover:bg-gray-600 flex items-center justify-center space-x-2 group mb-6"
           >
             <span>Ver planes nutricionales</span>
-            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform flex-shrink-0" />
+            <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform flex-shrink-0" />
           </button>
 
           <div className="flex justify-center mb-6 mt-2">
@@ -611,7 +611,7 @@ export default function InsightsSection({
 
           <div className="pt-6 mt-auto border-t border-gray-200 dark:border-gray-700">
             <div className="flex items-center space-x-2 text-gray-600 dark:text-gray-400">
-              <ArrowRight className="w-4 h-4 flex-shrink-0" />
+              <ChevronRight className="w-4 h-4 flex-shrink-0" />
                 <p className="text-sm font-medium">Nos vemos mañana</p>
             </div>
           </div>
@@ -729,7 +729,7 @@ export default function InsightsSection({
                 {/* Meta de peso con flecha */}
                 {localTargetWeight ? (
                   <>
-                    <ArrowRight className="w-4 h-4 text-[#85ea10] flex-shrink-0 mt-1" />
+                    <ChevronRight className="w-4 h-4 text-[#85ea10] flex-shrink-0 mt-1" />
                     <div className="flex flex-col">
                       <div className="text-lg font-bold text-[#1e3a8a] dark:text-[#85ea10]">
                         {localTargetWeight} kg

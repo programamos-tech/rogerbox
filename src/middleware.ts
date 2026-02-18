@@ -55,9 +55,21 @@ export async function middleware(req: NextRequest) {
     }
   );
 
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+  // Timeout: si Supabase local no responde, no bloquear la petición (evita "se queda cargando")
+  const SESSION_TIMEOUT_MS = 2500;
+  let session: { user: unknown } | null = null;
+  try {
+    const result = await Promise.race([
+      supabase.auth.getSession(),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Session timeout')), SESSION_TIMEOUT_MS)
+      ),
+    ]);
+    session = result?.data?.session ?? null;
+  } catch {
+    // Supabase inalcanzable o timeout: continuar sin sesión para que la página cargue
+    session = null;
+  }
 
   const { pathname } = req.nextUrl;
 
@@ -94,6 +106,8 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
+    // Incluir explícitamente la raíz para que la landing siempre pase por el middleware
+    '/',
     /*
      * Match all request paths except for the ones starting with:
      * - _next/static (static files)

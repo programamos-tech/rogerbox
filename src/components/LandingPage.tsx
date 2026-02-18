@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
-import { Play, Users, Clock, MapPin, CheckCircle, Star, ArrowRight, Zap, Shield, Globe, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { Play, Users, Clock, MapPin, CheckCircle, Star, ChevronRight, Zap, Shield, Globe, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 interface LandingPageProps {

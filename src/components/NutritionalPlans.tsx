@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Clock, Users, Star, Play, ShoppingCart, ArrowRight, Calendar, Utensils } from 'lucide-react';
+import { Clock, Users, Star, Play, ShoppingCart, ChevronRight, Calendar, Utensils } from 'lucide-react';
 import { NutritionalPlan } from '@/types';
 
 interface NutritionalPlansProps {
@@ -48,7 +48,7 @@ export default function NutritionalPlans({ plans, onPurchase }: NutritionalPlans
                 onClick={() => setSelectedPlan(null)}
                 className="flex items-center text-white/80 hover:text-white transition-colors"
               >
-                <ArrowRight className="w-5 h-5 mr-2 rotate-180" />
+                <ChevronRight className="w-5 h-5 mr-2 rotate-180" />
                 Volver a los planes
               </button>
               <div className="text-[#85ea10] font-bold text-lg">ROGERBOX</div>

@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
-import { Play, Clock, Users, Star, Filter, Search, ArrowRight, Trophy, Target, Zap, Utensils, BookOpen, ChefHat, User, LogOut, ChevronDown, Settings, Bookmark } from 'lucide-react';
+import { Play, Clock, Users, Star, Filter, Search, ChevronRight, Trophy, Target, Zap, Utensils, BookOpen, ChefHat, User, LogOut, ChevronDown, Settings, Bookmark } from 'lucide-react';
 // ComplementSection removed - focusing on courses only
 
 interface Course {

@@ -25,8 +25,21 @@ export function useSupabaseAuth() {
   const router = useRouter();
 
   useEffect(() => {
+    let cancelled = false;
+
+    // Timeout de seguridad: si Supabase no responde (ej. local no está arriba), mostrar landing
+    const fallbackTimer = setTimeout(() => {
+      if (cancelled) return;
+      setLoading((prev) => {
+        if (prev) console.warn('Auth: timeout esperando sesión (¿Supabase accesible?)');
+        return false;
+      });
+    }, 3000);
+
     // Obtener sesión inicial
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (cancelled) return;
+      clearTimeout(fallbackTimer);
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
@@ -34,6 +47,11 @@ export function useSupabaseAuth() {
       } else {
         setLoading(false);
       }
+    }).catch((err) => {
+      if (cancelled) return;
+      clearTimeout(fallbackTimer);
+      console.error('Auth getSession error:', err);
+      setLoading(false);
     });
 
     // Escuchar cambios de autenticación
@@ -50,7 +68,11 @@ export function useSupabaseAuth() {
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      cancelled = true;
+      clearTimeout(fallbackTimer);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const loadProfile = async (userId: string) => {

@@ -40,6 +40,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "caniuse-lite": "^1.0.30001770",
     "eslint": "^9",
     "eslint-config-next": "15.5.3",
     "tailwindcss": "^4",

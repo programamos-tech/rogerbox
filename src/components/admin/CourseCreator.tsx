@@ -18,6 +18,9 @@ import {
   Calendar,
   DollarSign,
   Tag,
+  FileText,
+  CheckCircle,
+  ListVideo,
   Target
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase-browser';
@@ -67,6 +70,8 @@ interface CourseCreatorProps {
   onClose: () => void;
   onSuccess: () => void;
   courseToEdit?: any; // Curso existente para editar
+  /** Si es true, se renderiza como vista de página completa (sin modal) */
+  asPage?: boolean;
 }
 
 // Categorías hardcoded - Las 6 categorías exactas del onboarding
@@ -130,7 +135,7 @@ const HARDCODED_CATEGORIES: Category[] = [
 // Key para localStorage
 const STORAGE_KEY = 'rogerbox_course_draft';
 
-export default function CourseCreator({ onClose, onSuccess, courseToEdit }: CourseCreatorProps) {
+export default function CourseCreator({ onClose, onSuccess, courseToEdit, asPage = false }: CourseCreatorProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [categories] = useState<Category[]>(HARDCODED_CATEGORIES);
@@ -356,14 +361,13 @@ export default function CourseCreator({ onClose, onSuccess, courseToEdit }: Cour
   };
 
   const addLesson = () => {
-    // Agregar al inicio y reordenar
     const newLesson: LessonData = {
-      title: `Día ${lessons.length + 1}`,
+      title: `Clase ${lessons.length + 1}`,
       description: '',
       preview_image: null,
       video_url: '',
-      lesson_number: 1,
-      lesson_order: 1,
+      lesson_number: lessons.length + 1,
+      lesson_order: lessons.length + 1,
       duration_minutes: 30,
       is_preview: false
     };
@@ -409,10 +413,9 @@ export default function CourseCreator({ onClose, onSuccess, courseToEdit }: Cour
     return price.toLocaleString('es-CO');
   };
 
-  // Función para parsear precio desde string con puntos
+  // Función para parsear precio desde string (quita puntos de miles y comas)
   const parsePrice = (priceString: string) => {
-    // Remover puntos y convertir a número
-    const cleanPrice = priceString.replace(/\./g, '');
+    const cleanPrice = priceString.replace(/\./g, '').replace(/,/g, '').trim();
     return parseFloat(cleanPrice) || 0;
   };
 
@@ -747,60 +750,74 @@ export default function CourseCreator({ onClose, onSuccess, courseToEdit }: Cour
   };
 
   const steps = [
-    { number: 1, title: 'Información Básica', icon: Target },
+    { number: 1, title: 'Información Básica', icon: FileText },
     { number: 2, title: 'Detalles del Curso', icon: DollarSign },
-    { number: 3, title: 'Lecciones', icon: Play },
-    { number: 4, title: 'Revisar y Crear', icon: Eye }
+    { number: 3, title: 'Lecciones', icon: ListVideo },
+    { number: 4, title: 'Revisar y Crear', icon: CheckCircle }
   ];
 
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-            {courseToEdit ? 'Editar Curso' : 'Crear Nuevo Curso'}
-          </h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-          >
-            <X className="w-6 h-6" />
-          </button>
-        </div>
+  const header = !asPage ? (
+    <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700 dark:border-white/10">
+      <h2 className="text-2xl font-bold text-[#164151] dark:text-white">
+        {courseToEdit ? 'Editar Curso' : 'Crear Nuevo Curso'}
+      </h2>
+      <button
+        onClick={onClose}
+        className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1"
+      >
+        <X className="w-6 h-6" />
+      </button>
+    </div>
+  ) : null;
 
-        {/* Progress Steps */}
-        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex items-center justify-between">
+  const innerContent = (
+    <>
+        {header}
+
+        {/* Progress Steps - organizado: iconos, etiquetas completas, líneas visibles */}
+        <div className="px-6 py-5 border-b border-gray-200 dark:border-white/10">
+          <div className="flex items-center w-full gap-0">
             {steps.map((step, index) => {
               const Icon = step.icon;
               const isActive = currentStep === step.number;
               const isCompleted = currentStep > step.number;
-              
               return (
-                <div key={step.number} className="flex items-center">
-                  <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
-                    isActive || isCompleted
-                      ? 'bg-[#85ea10] border-[#85ea10] text-black'
-                      : 'border-gray-300 text-gray-400'
-                  }`}>
-                    {isCompleted ? (
-                      <X className="w-5 h-5" />
-                    ) : (
-                      <Icon className="w-5 h-5" />
-                    )}
-                  </div>
-                  <div className="ml-3">
-                    <p className={`text-sm font-medium ${
-                      isActive ? 'text-[#85ea10]' : 'text-gray-500'
-                    }`}>
+                <div key={step.number} className="contents">
+                  <div className="flex items-center gap-2.5 flex-shrink-0 py-1">
+                    <div
+                      className={`flex items-center justify-center w-10 h-10 rounded-xl border-2 flex-shrink-0 transition-colors ${
+                        isActive
+                          ? 'border-[#164151] dark:border-white bg-[#164151] dark:bg-white text-white dark:text-[#164151]'
+                          : isCompleted
+                            ? 'border-gray-400 dark:border-white/40 bg-gray-200 dark:bg-white/20 text-[#164151] dark:text-white'
+                            : 'border-gray-300 dark:border-white/20 bg-gray-100 dark:bg-white/10 text-[#164151]/70 dark:text-white/70'
+                      }`}
+                    >
+                      {isCompleted ? (
+                        <CheckCircle className="w-5 h-5 flex-shrink-0" strokeWidth={2.5} />
+                      ) : (
+                        <Icon className="w-5 h-5 flex-shrink-0" strokeWidth={2} />
+                      )}
+                    </div>
+                    <p
+                      className={`text-xs font-semibold whitespace-nowrap ${
+                        isActive
+                          ? 'text-[#164151] dark:text-white'
+                          : isCompleted
+                            ? 'text-[#164151]/80 dark:text-white/80'
+                            : 'text-[#164151]/70 dark:text-white/70'
+                      }`}
+                    >
                       {step.title}
                     </p>
                   </div>
                   {index < steps.length - 1 && (
-                    <div className={`w-16 h-0.5 mx-4 ${
-                      isCompleted ? 'bg-[#85ea10]' : 'bg-gray-300'
-                    }`} />
+                    <div
+                      className={`flex-1 min-w-[24px] h-1 mx-3 rounded-full transition-colors ${
+                        isCompleted ? 'bg-gray-400 dark:bg-white/40' : 'bg-gray-300 dark:bg-white/20'
+                      }`}
+                      aria-hidden
+                    />
                   )}
                 </div>
               );
@@ -809,18 +826,18 @@ export default function CourseCreator({ onClose, onSuccess, courseToEdit }: Cour
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto max-h-[60vh]">
+        <div className={`p-6 overflow-y-auto ${asPage ? 'min-h-[50vh]' : 'max-h-[60vh]'}`}>
           {/* Alertas de validación */}
           {validationErrors.length > 0 && (
-            <div data-validation-alerts className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+            <div data-validation-alerts className="mb-6 p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-xl">
               <div className="flex items-start">
                 <div className="flex-shrink-0">
-                  <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                  <svg className="h-5 w-5 text-red-500 dark:text-red-400" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                   </svg>
                 </div>
                 <div className="ml-3">
-                  <h3 className="text-sm font-medium text-red-800 dark:text-red-200">
+                  <h3 className="text-sm font-semibold text-red-800 dark:text-red-200">
                     Por favor corrige los siguientes errores:
                   </h3>
                   <div className="mt-2 text-sm text-red-700 dark:text-red-300">
@@ -836,13 +853,12 @@ export default function CourseCreator({ onClose, onSuccess, courseToEdit }: Cour
           )}
           {currentStep === 1 && (
             <div className="space-y-6">
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+              <h3 className="text-lg font-bold text-[#164151] dark:text-white mb-4">
                 Información Básica
               </h3>
               
-              {/* Título del curso */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-sm font-semibold text-[#164151] dark:text-white mb-2">
                   Nombre del Curso * ({courseData.title.length}/100)
                 </label>
                 <input
@@ -852,10 +868,10 @@ export default function CourseCreator({ onClose, onSuccess, courseToEdit }: Cour
                     setCourseData(prev => ({ ...prev, title: e.target.value }));
                     clearValidationErrors();
                   }}
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#85ea10] focus:border-[#85ea10] bg-white dark:bg-gray-800 text-gray-900 dark:text-white ${
+                  className={`w-full px-5 py-3.5 rounded-xl border transition-all bg-gray-50 dark:bg-white/5 text-[#164151] dark:text-white placeholder-gray-400 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#164151]/40 dark:focus:ring-white/40 focus:border-[#164151]/40 dark:focus:border-white/40 ${
                     courseData.title.length > 100 
                       ? 'border-red-500 dark:border-red-500' 
-                      : 'border-gray-300 dark:border-gray-600'
+                      : 'border-gray-200 dark:border-white/10'
                   }`}
                   placeholder="Ej: Transformación Total 90 Días (máx. 100 caracteres)"
                   maxLength={100}
@@ -865,19 +881,18 @@ export default function CourseCreator({ onClose, onSuccess, courseToEdit }: Cour
                 )}
               </div>
 
-              {/* Descripción corta */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-sm font-semibold text-[#164151] dark:text-white mb-2">
                   Descripción Corta * ({courseData.short_description.length}/200)
                 </label>
                 <input
                   type="text"
                   value={courseData.short_description}
                   onChange={(e) => setCourseData(prev => ({ ...prev, short_description: e.target.value }))}
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#85ea10] focus:border-[#85ea10] bg-white dark:bg-gray-800 text-gray-900 dark:text-white ${
+                  className={`w-full px-5 py-3.5 rounded-xl border transition-all bg-gray-50 dark:bg-white/5 text-[#164151] dark:text-white placeholder-gray-400 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#164151]/40 dark:focus:ring-white/40 focus:border-[#164151]/40 dark:focus:border-white/40 ${
                     courseData.short_description.length > 200 
                       ? 'border-red-500 dark:border-red-500' 
-                      : 'border-gray-300 dark:border-gray-600'
+                      : 'border-gray-200 dark:border-white/10'
                   }`}
                   placeholder="Una descripción breve del curso (máx. 200 caracteres)"
                   maxLength={200}
@@ -887,9 +902,8 @@ export default function CourseCreator({ onClose, onSuccess, courseToEdit }: Cour
                 )}
               </div>
 
-              {/* Slug del curso */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-sm font-semibold text-[#164151] dark:text-white mb-2">
                   Slug del Curso * ({courseData.slug.length}/100)
                 </label>
                 <input
@@ -898,21 +912,21 @@ export default function CourseCreator({ onClose, onSuccess, courseToEdit }: Cour
                   onChange={(e) => {
                     const slug = e.target.value
                       .toLowerCase()
-                      .replace(/[^a-z0-9\s-]/g, '') // Solo letras, números, espacios y guiones
-                      .replace(/\s+/g, '-') // Reemplazar espacios con guiones
-                      .replace(/-+/g, '-') // Reemplazar múltiples guiones con uno solo
+                      .replace(/[^a-z0-9\s-]/g, '')
+                      .replace(/\s+/g, '-')
+                      .replace(/-+/g, '-')
                       .trim();
                     setCourseData(prev => ({ ...prev, slug }));
                   }}
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#85ea10] focus:border-[#85ea10] bg-white dark:bg-gray-800 text-gray-900 dark:text-white ${
+                  className={`w-full px-5 py-3.5 rounded-xl border transition-all bg-gray-50 dark:bg-white/5 text-[#164151] dark:text-white placeholder-gray-400 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#164151]/40 dark:focus:ring-white/40 focus:border-[#164151]/40 dark:focus:border-white/40 ${
                     courseData.slug.length > 100 
                       ? 'border-red-500 dark:border-red-500' 
-                      : 'border-gray-300 dark:border-gray-600'
+                      : 'border-gray-200 dark:border-white/10'
                   }`}
                   placeholder="curso-hiit-intenso-cardio"
                   maxLength={100}
                 />
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                <p className="text-sm text-[#164151]/60 dark:text-white/60 mt-1.5">
                   URL amigable para el curso (ej: curso-hiit-intenso-cardio)
                 </p>
                 {courseData.slug.length > 100 && (
@@ -920,28 +934,24 @@ export default function CourseCreator({ onClose, onSuccess, courseToEdit }: Cour
                 )}
               </div>
 
-              {/* Categoría */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-sm font-semibold text-[#164151] dark:text-white mb-3">
                   Categoría *
                 </label>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                   {categories.map(category => (
                     <button
                       key={category.id}
+                      type="button"
                       onClick={() => setCourseData(prev => ({ ...prev, category: category.id }))}
-                      className={`flex items-center space-x-2 p-3 rounded-lg border-2 transition-all ${
+                      className={`flex items-center gap-2.5 p-3.5 rounded-xl border-2 transition-all text-left ${
                         courseData.category === category.id
-                          ? 'border-[#85ea10] bg-[#85ea10]/10 text-[#85ea10]'
-                          : 'border-gray-300 dark:border-gray-600 hover:border-[#85ea10]/50'
+                          ? 'border-[#164151] dark:border-white bg-[#164151]/10 dark:bg-white/10 text-[#164151] dark:text-white'
+                          : 'border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 text-[#164151] dark:text-white/80 hover:border-gray-300 dark:hover:border-white/20'
                       }`}
-                      style={{
-                        borderColor: courseData.category === category.id ? category.color : undefined,
-                        backgroundColor: courseData.category === category.id ? category.color + '20' : undefined
-                      }}
                     >
-                      <span className="text-lg">{category.icon}</span>
-                      <span className="text-sm font-medium">{category.name}</span>
+                      <span className="text-xl">{category.icon}</span>
+                      <span className="text-sm font-semibold">{category.name}</span>
                     </button>
                   ))}
                 </div>
@@ -951,38 +961,36 @@ export default function CourseCreator({ onClose, onSuccess, courseToEdit }: Cour
 
           {currentStep === 2 && (
             <div className="space-y-6">
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+              <h3 className="text-lg font-bold text-[#164151] dark:text-white mb-4">
                 Detalles del Curso
               </h3>
               
-              {/* Precio y descuento */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label className="block text-sm font-semibold text-[#164151] dark:text-white mb-2">
                     Precio (COP) *
                   </label>
                   <div className="relative">
-                    <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <DollarSign className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-[#164151]/50 dark:text-white/50" />
                     <input
                       type="text"
                       value={formattedPrice}
                       onChange={(e) => {
                         const parsedPrice = parsePrice(e.target.value);
                         setCourseData(prev => ({ ...prev, price: parsedPrice }));
-                        setFormattedPrice(e.target.value);
+                        setFormattedPrice(formatPrice(parsedPrice));
                         clearValidationErrors();
                       }}
-                      onBlur={(e) => {
-                        const parsedPrice = parsePrice(e.target.value);
-                        setFormattedPrice(formatPrice(parsedPrice));
+                      onBlur={() => {
+                        setFormattedPrice(formatPrice(courseData.price));
                       }}
-                      className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#85ea10] focus:border-[#85ea10] bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                      className="w-full pl-12 pr-5 py-3.5 rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 text-[#164151] dark:text-white placeholder-gray-400 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#164151]/40 dark:focus:ring-white/40 focus:border-[#164151]/40 dark:focus:border-white/40 transition-all"
                       placeholder="50.000"
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label className="block text-sm font-semibold text-[#164151] dark:text-white mb-2">
                     Descuento (%)
                   </label>
                   <input
@@ -993,7 +1001,7 @@ export default function CourseCreator({ onClose, onSuccess, courseToEdit }: Cour
                       setCourseData(prev => ({ ...prev, discount_percentage: discountValue }));
                       clearValidationErrors();
                     }}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#85ea10] focus:border-[#85ea10] bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                    className="w-full px-3 py-2 border border-gray-200 dark:border-white/10 rounded-xl bg-gray-50 dark:bg-white/5 text-[#164151] dark:text-white placeholder-gray-400 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#164151]/40 dark:focus:ring-white/40 focus:border-[#164151]/40 dark:focus:border-white/40 transition-all"
                     placeholder="0"
                     min="0"
                     max="100"
@@ -1019,32 +1027,32 @@ export default function CourseCreator({ onClose, onSuccess, courseToEdit }: Cour
               {/* Duración y calorías */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label className="block text-sm font-semibold text-[#164151] dark:text-white mb-2">
                     Duración (días) *
                   </label>
                   <div className="relative">
-                    <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <Calendar className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-[#164151]/50 dark:text-white/50" />
                     <input
                       type="number"
                       value={courseData.duration_days || ''}
                       onChange={(e) => setCourseData(prev => ({ ...prev, duration_days: parseInt(e.target.value) || null }))}
-                      className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#85ea10] focus:border-[#85ea10] bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                      className="w-full pl-12 pr-5 py-3.5 border border-gray-200 dark:border-white/10 rounded-xl bg-gray-50 dark:bg-white/5 text-[#164151] dark:text-white placeholder-gray-400 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#164151]/40 dark:focus:ring-white/40 focus:border-[#164151]/40 dark:focus:border-white/40 transition-all"
                       placeholder="30"
                       min="1"
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label className="block text-sm font-semibold text-[#164151] dark:text-white mb-2">
                     Calorías Quemadas
                   </label>
                   <div className="relative">
-                    <Flame className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <Flame className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-[#164151]/50 dark:text-white/50" />
                     <input
                       type="number"
                       value={courseData.calories_burned || ''}
                       onChange={(e) => setCourseData(prev => ({ ...prev, calories_burned: parseInt(e.target.value) || null }))}
-                      className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#85ea10] focus:border-[#85ea10] bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                      className="w-full pl-12 pr-5 py-3.5 border border-gray-200 dark:border-white/10 rounded-xl bg-gray-50 dark:bg-white/5 text-[#164151] dark:text-white placeholder-gray-400 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#164151]/40 dark:focus:ring-white/40 focus:border-[#164151]/40 dark:focus:border-white/40 transition-all"
                       placeholder="500"
                       min="0"
                     />
@@ -1055,15 +1063,15 @@ export default function CourseCreator({ onClose, onSuccess, courseToEdit }: Cour
 
               {/* Nivel del curso */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-sm font-semibold text-[#164151] dark:text-white mb-2">
                   Nivel del Curso *
                 </label>
                 <div className="relative">
-                  <Target className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <Target className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-[#164151]/50 dark:text-white/50" />
                   <select
                     value={courseData.level}
                     onChange={(e) => setCourseData(prev => ({ ...prev, level: e.target.value }))}
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#85ea10] focus:border-[#85ea10] bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                    className="w-full pl-12 pr-5 py-3.5 border border-gray-200 dark:border-white/10 rounded-xl bg-gray-50 dark:bg-white/5 text-[#164151] dark:text-white placeholder-gray-400 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#164151]/40 dark:focus:ring-white/40 focus:border-[#164151]/40 dark:focus:border-white/40 transition-all"
                   >
                     <option value="beginner">Principiante</option>
                     <option value="intermediate">Intermedio</option>
@@ -1075,34 +1083,34 @@ export default function CourseCreator({ onClose, onSuccess, courseToEdit }: Cour
 
               {/* Mux Playback ID del video introductorio */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-sm font-semibold text-[#164151] dark:text-white mb-2">
                   Mux Playback ID del Video Introductorio
                 </label>
                 <div className="relative">
-                  <Video className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <Video className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-[#164151]/50 dark:text-white/50" />
                   <input
                     type="text"
                     value={courseData.mux_playback_id}
                     onChange={(e) => setCourseData(prev => ({ ...prev, mux_playback_id: e.target.value }))}
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#85ea10] focus:border-[#85ea10] bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                    className="w-full pl-12 pr-5 py-3.5 border border-gray-200 dark:border-white/10 rounded-xl bg-gray-50 dark:bg-white/5 text-[#164151] dark:text-white placeholder-gray-400 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#164151]/40 dark:focus:ring-white/40 focus:border-[#164151]/40 dark:focus:border-white/40 transition-all"
                     placeholder="8wRPxlLcp01JrCKhEsyq00BPSrah1qkRY01aOvr01p4suEU"
                   />
                 </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                <p className="text-xs text-[#164151]/60 dark:text-white/60 mt-1">
                   Ingresa el Playback ID de Mux (no la URL completa)
                 </p>
               </div>
 
               {/* Preview Image */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-sm font-semibold text-[#164151] dark:text-white mb-2">
                   Imagen de Preview
                 </label>
                 <div
-                  className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer hover:border-[#85ea10] ${
+                  className={`border-2 border-dashed rounded-xl p-6 text-center transition-colors cursor-pointer hover:border-gray-300 dark:hover:border-white/20 ${
                     dragActive
-                      ? 'border-[#85ea10] bg-[#85ea10]/10'
-                      : 'border-gray-300 dark:border-gray-600'
+                      ? 'border-[#164151] dark:border-white bg-[#164151]/5 dark:bg-white/10'
+                      : 'border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5'
                   }`}
                   onDragEnter={handleDrag}
                   onDragLeave={handleDragLeave}
@@ -1143,7 +1151,7 @@ export default function CourseCreator({ onClose, onSuccess, courseToEdit }: Cour
                   ) : (
                     <div>
                       <ImageIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                      <p className="text-gray-600 dark:text-gray-400 mb-2">
+                      <p className="text-[#164151]/60 dark:text-white/60 mb-2">
                         Arrastra una imagen aquí o haz clic para seleccionar
                       </p>
                       <button
@@ -1160,7 +1168,7 @@ export default function CourseCreator({ onClose, onSuccess, courseToEdit }: Cour
                           };
                           input.click();
                         }}
-                        className="bg-[#85ea10] hover:bg-[#7dd30f] text-black px-4 py-2 rounded-lg transition-colors"
+                        className="border-2 border-[#164151] dark:border-white bg-transparent hover:bg-[#164151]/10 dark:hover:bg-white/10 text-[#164151] dark:text-white px-4 py-2 rounded-lg transition-colors"
                       >
                         Seleccionar Imagen
                       </button>
@@ -1184,14 +1192,15 @@ export default function CourseCreator({ onClose, onSuccess, courseToEdit }: Cour
 
           {currentStep === 3 && (
             <div className="space-y-4">
-              {/* Header con controles */}
-              <div className="flex flex-wrap items-center justify-between gap-4 sticky top-0 bg-white dark:bg-gray-900 py-2 z-10">
+              {/* Header: título + Agregar clase (principal) */}
+              <div className="flex flex-wrap items-center justify-between gap-4">
                 <div className="flex items-center gap-2">
-                  <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
-                    Lecciones ({lessons.length})
+                  <h3 className="text-lg font-bold text-[#164151] dark:text-white">
+                    Lecciones {lessons.length > 0 && `(${lessons.length})`}
                   </h3>
                   {lessons.length > 0 && (
                     <button
+                      type="button"
                       onClick={() => {
                         if (expandedLessons.size === lessons.length) {
                           setExpandedLessons(new Set());
@@ -1199,142 +1208,101 @@ export default function CourseCreator({ onClose, onSuccess, courseToEdit }: Cour
                           setExpandedLessons(new Set(lessons.map((_, i) => i)));
                         }
                       }}
-                      className="text-sm text-[#85ea10] hover:underline"
+                      className="text-sm text-[#164151] dark:text-white font-medium hover:underline"
                     >
                       {expandedLessons.size === lessons.length ? 'Colapsar todo' : 'Expandir todo'}
                     </button>
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  {/* Agregar una lección */}
                   <button
+                    type="button"
                     onClick={() => {
                       addLesson();
-                      // Expandir la nueva lección y scroll
                       setTimeout(() => {
                         setExpandedLessons(prev => new Set([...prev, lessons.length]));
-                        lessonsContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+                        lessonsContainerRef.current?.scrollTo({ top: lessonsContainerRef.current?.scrollHeight ?? 0, behavior: 'smooth' });
                       }, 100);
                     }}
-                    className="bg-[#85ea10] hover:bg-[#7dd30f] text-black px-3 py-2 rounded-lg transition-colors flex items-center gap-1 text-sm"
+                    className="border-2 border-[#164151] dark:border-white bg-transparent hover:bg-[#164151]/10 dark:hover:bg-white/10 text-[#164151] dark:text-white px-4 py-2.5 rounded-xl font-semibold flex items-center gap-2 text-sm transition-colors"
                   >
                     <Plus className="w-4 h-4" />
-                    <span>+1</span>
+                    Agregar clase
                   </button>
-                  {/* Agregar en bloque */}
-                  <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
-                    <input
-                      type="number"
-                      value={bulkAddCount}
-                      onChange={(e) => setBulkAddCount(Math.max(1, Math.min(100, parseInt(e.target.value) || 1)))}
-                      className="w-12 px-2 py-1 text-center text-sm border-0 bg-transparent text-gray-900 dark:text-white focus:ring-0"
-                      min="1"
-                      max="100"
-                    />
-                    <button
-                      onClick={() => {
-                        const newLessons: LessonData[] = [];
-                        for (let i = 0; i < bulkAddCount; i++) {
-                          newLessons.push({
-                            title: `Día ${lessons.length + i + 1}`,
-                            description: '',
-                            preview_image: null,
-                            video_url: '',
-                            lesson_number: lessons.length + i + 1,
-                            lesson_order: lessons.length + i + 1,
-                            duration_minutes: 30,
-                            is_preview: false
-                          });
-                        }
-                        setLessons([...newLessons, ...lessons]); // Agregar al inicio
-                        setExpandedLessons(new Set([0])); // Expandir la primera
-                      }}
-                      className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm transition-colors"
-                    >
-                      Agregar {bulkAddCount}
-                    </button>
-                  </div>
+                  {lessons.length > 0 && (
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="number"
+                        value={bulkAddCount}
+                        onChange={(e) => setBulkAddCount(Math.max(1, Math.min(100, parseInt(e.target.value) || 1)))}
+                        className="w-11 px-1.5 py-1.5 text-center text-sm border border-gray-200 dark:border-white/10 rounded-lg bg-gray-50 dark:bg-white/5 text-[#164151] dark:text-white"
+                        min={1}
+                        max={100}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newLessons: LessonData[] = [];
+                          for (let i = 0; i < bulkAddCount; i++) {
+                            newLessons.push({
+                              title: `Clase ${lessons.length + i + 1}`,
+                              description: '',
+                              preview_image: null,
+                              video_url: '',
+                              lesson_number: lessons.length + i + 1,
+                              lesson_order: lessons.length + i + 1,
+                              duration_minutes: 30,
+                              is_preview: false
+                            });
+                          }
+                          setLessons([...newLessons, ...lessons]);
+                          setExpandedLessons(new Set([0]));
+                        }}
+                        className="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-gray-100 dark:bg-white/10 text-[#164151] dark:text-white/80 hover:bg-gray-200 dark:hover:bg-white/20 border border-gray-200 dark:border-white/10"
+                      >
+                        +{bulkAddCount}
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
 
               {lessons.length === 0 ? (
-                <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-                  <Play className="w-20 h-20 mx-auto mb-6 text-[#85ea10]" />
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white mb-2">¿Cuántas clases tendrá tu curso?</p>
-                  <p className="text-sm mb-8 text-gray-500">Ingresa el número de lecciones y las crearemos por ti</p>
-                  
-                  <div className="flex items-center justify-center gap-4 mb-6">
-                    <input
-                      type="number"
-                      value={bulkAddCount}
-                      onChange={(e) => setBulkAddCount(Math.max(1, Math.min(365, parseInt(e.target.value) || 1)))}
-                      className="w-24 px-4 py-3 text-center text-2xl font-bold border-2 border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#85ea10] focus:border-[#85ea10]"
-                      min="1"
-                      max="365"
-                      placeholder="30"
-                    />
-                    <span className="text-lg text-gray-600 dark:text-gray-400">lecciones</span>
-                  </div>
-
-                  <button
-                    onClick={() => {
-                      const newLessons: LessonData[] = [];
-                      for (let i = 0; i < bulkAddCount; i++) {
-                        newLessons.push({
-                          title: `Día ${i + 1}`,
-                          description: '',
-                          preview_image: null,
-                          video_url: '',
-                          lesson_number: i + 1,
-                          lesson_order: i + 1,
-                          duration_minutes: 30,
-                          is_preview: i === 0 // Primera lección como preview
-                        });
-                      }
-                      setLessons(newLessons);
-                      setExpandedLessons(new Set([0])); // Expandir la primera
-                    }}
-                    className="bg-[#85ea10] hover:bg-[#7dd30f] text-black px-8 py-4 rounded-xl transition-colors text-lg font-bold"
-                  >
-                    Crear {bulkAddCount} {bulkAddCount === 1 ? 'lección' : 'lecciones'}
-                  </button>
-
-                  <div className="mt-8 flex justify-center gap-3">
+                <div className="rounded-2xl border-2 border-dashed border-gray-200 dark:border-white/10 bg-gray-50/50 dark:bg-white/5 p-10 text-center">
+                  <div className="max-w-sm mx-auto">
+                    <div className="w-14 h-14 rounded-xl bg-gray-200 dark:bg-white/10 flex items-center justify-center mx-auto mb-4">
+                      <ListVideo className="w-7 h-7 text-[#164151]/70 dark:text-white/70" />
+                    </div>
+                    <h4 className="text-lg font-bold text-[#164151] dark:text-white mb-2">
+                      Agrega las clases de tu curso
+                    </h4>
+                    <p className="text-sm text-[#164151]/70 dark:text-white/70 mb-6">
+                      Cada clase tiene nombre, descripción, imagen y tiempo. Agrega la primera para comenzar.
+                    </p>
                     <button
-                      onClick={() => setBulkAddCount(7)}
-                      className={`px-4 py-2 rounded-lg text-sm transition-colors ${bulkAddCount === 7 ? 'bg-[#85ea10] text-black' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'}`}
+                      type="button"
+                      onClick={() => {
+                        addLesson();
+                        setTimeout(() => {
+                          setExpandedLessons(new Set([0]));
+                        }, 100);
+                      }}
+                      className="border-2 border-[#164151] dark:border-white bg-transparent hover:bg-[#164151]/10 dark:hover:bg-white/10 text-[#164151] dark:text-white px-6 py-3 rounded-xl font-semibold flex items-center gap-2 mx-auto transition-colors"
                     >
-                      1 semana
-                    </button>
-                    <button
-                      onClick={() => setBulkAddCount(30)}
-                      className={`px-4 py-2 rounded-lg text-sm transition-colors ${bulkAddCount === 30 ? 'bg-[#85ea10] text-black' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'}`}
-                    >
-                      1 mes
-                    </button>
-                    <button
-                      onClick={() => setBulkAddCount(60)}
-                      className={`px-4 py-2 rounded-lg text-sm transition-colors ${bulkAddCount === 60 ? 'bg-[#85ea10] text-black' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'}`}
-                    >
-                      2 meses
-                    </button>
-                    <button
-                      onClick={() => setBulkAddCount(90)}
-                      className={`px-4 py-2 rounded-lg text-sm transition-colors ${bulkAddCount === 90 ? 'bg-[#85ea10] text-black' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'}`}
-                    >
-                      3 meses
+                      <Plus className="w-5 h-5" />
+                      Agregar primera clase
                     </button>
                   </div>
                 </div>
               ) : (
-                <div ref={lessonsContainerRef} className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
+                <div ref={lessonsContainerRef} className="space-y-3 max-h-[480px] overflow-y-auto pr-1">
                   {lessons.map((lesson, index) => {
                     const isExpanded = expandedLessons.has(index);
                     return (
-                      <div key={index} className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                      <div key={index} className="border border-gray-200 dark:border-white/10 rounded-xl overflow-hidden bg-white dark:bg-gray-900/30">
                         {/* Header compacto - siempre visible */}
-                        <div 
-                          className={`flex items-center justify-between p-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 ${isExpanded ? 'bg-gray-50 dark:bg-gray-800' : ''}`}
+                          <div 
+                          className={`flex items-center justify-between p-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 transition-colors ${isExpanded ? 'bg-gray-50 dark:bg-white/5' : ''}`}
                           onClick={() => {
                             setExpandedLessons(prev => {
                               const newSet = new Set(prev);
@@ -1348,8 +1316,8 @@ export default function CourseCreator({ onClose, onSuccess, courseToEdit }: Cour
                           }}
                         >
                           <div className="flex items-center gap-3 flex-1 min-w-0">
-                            <span className="flex-shrink-0 w-8 h-8 bg-[#85ea10] text-black rounded-full flex items-center justify-center text-sm font-bold">
-                              {lesson.lesson_order}
+                            <span className="flex-shrink-0 w-8 h-8 bg-[#164151] dark:bg-white/20 text-white dark:text-white rounded-full flex items-center justify-center text-sm font-bold">
+                              {index + 1}
                             </span>
                             <input
                               type="text"
@@ -1359,10 +1327,10 @@ export default function CourseCreator({ onClose, onSuccess, courseToEdit }: Cour
                                 updateLesson(index, 'title', e.target.value);
                               }}
                               onClick={(e) => e.stopPropagation()}
-                              className="flex-1 min-w-0 px-2 py-1 border-0 bg-transparent text-gray-900 dark:text-white focus:ring-1 focus:ring-[#85ea10] rounded"
-                              placeholder={`Título de lección ${lesson.lesson_order}`}
+                              className="flex-1 min-w-0 px-2 py-1 border-0 bg-transparent text-gray-900 dark:text-white focus:ring-1 focus:ring-[#164151] dark:focus:ring-white rounded"
+                              placeholder="Nombre de la clase"
                             />
-                            <span className="flex-shrink-0 text-xs text-gray-500">
+                            <span className="flex-shrink-0 text-xs text-[#164151]/60 dark:text-white/60">
                               {lesson.duration_minutes}min
                             </span>
                             {lesson.preview_image && (
@@ -1388,66 +1356,43 @@ export default function CourseCreator({ onClose, onSuccess, courseToEdit }: Cour
                           </div>
                         </div>
 
-                        {/* Contenido expandido */}
+                        {/* Contenido expandido: nombre, descripción, imagen, tiempo */}
                         {isExpanded && (
-                          <div className="p-4 pt-2 border-t border-gray-200 dark:border-gray-700 space-y-3">
-                            {/* Título de la lección */}
+                          <div className="p-4 pt-2 border-t border-gray-200 dark:border-white/10 space-y-4">
                             <div>
-                              <label className="block text-xs font-medium text-gray-500 mb-1">Título de la Lección * ({lesson.title.length}/100)</label>
+                              <label className="block text-sm font-semibold text-[#164151] dark:text-white mb-1.5">Nombre de la clase *</label>
                               <input
                                 type="text"
                                 value={lesson.title}
                                 onChange={(e) => updateLesson(index, 'title', e.target.value)}
-                                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#85ea10] focus:border-[#85ea10] bg-white dark:bg-gray-800 text-gray-900 dark:text-white ${
-                                  lesson.title.length > 100 
-                                    ? 'border-red-500' 
-                                    : 'border-gray-300 dark:border-gray-600'
+                                className={`w-full px-3 py-2.5 border rounded-xl bg-gray-50 dark:bg-white/5 text-[#164151] dark:text-white placeholder-gray-400 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#164151]/40 dark:focus:ring-white/40 focus:border-[#164151]/40 dark:focus:border-white/40 text-sm ${
+                                  lesson.title.length > 100 ? 'border-red-500' : 'border-gray-200 dark:border-white/10'
                                 }`}
-                                placeholder="Ej: Día 1 - Introducción al HIIT"
+                                placeholder="Ej: Introducción al HIIT"
                                 maxLength={100}
                               />
+                              <p className="text-xs text-[#164151]/60 dark:text-white/60 mt-0.5">{lesson.title.length}/100</p>
                             </div>
-                            
-                            <div className="grid grid-cols-2 gap-3">
-                              <div>
-                                <label className="block text-xs font-medium text-gray-500 mb-1">Duración (min)</label>
-                                <input
-                                  type="number"
-                                  value={lesson.duration_minutes}
-                                  onChange={(e) => updateLesson(index, 'duration_minutes', parseInt(e.target.value) || 0)}
-                                  className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-[#85ea10] bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-xs font-medium text-gray-500 mb-1">Playback ID (Mux)</label>
-                                <input
-                                  type="text"
-                                  value={lesson.video_url}
-                                  onChange={(e) => updateLesson(index, 'video_url', e.target.value)}
-                                  className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-[#85ea10] bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                                  placeholder="abc123def456"
-                                />
-                              </div>
-                            </div>
+
                             <div>
-                              <label className="block text-xs font-medium text-gray-500 mb-1">Descripción</label>
+                              <label className="block text-sm font-semibold text-[#164151] dark:text-white mb-1.5">Descripción de la clase</label>
                               <textarea
                                 value={lesson.description}
                                 onChange={(e) => updateLesson(index, 'description', e.target.value)}
                                 rows={2}
-                                className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-[#85ea10] bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                                placeholder="Descripción de la lección..."
+                                className="w-full px-3 py-2.5 text-sm border border-gray-200 dark:border-white/10 rounded-xl bg-gray-50 dark:bg-white/5 text-[#164151] dark:text-white placeholder-gray-400 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#164151]/40 dark:focus:ring-white/40"
+                                placeholder="Qué verás en esta clase..."
                               />
                             </div>
-                            {/* Imagen de preview */}
+
                             <div>
-                              <label className="block text-xs font-medium text-gray-500 mb-1">Imagen de Preview</label>
+                              <label className="block text-sm font-semibold text-[#164151] dark:text-white mb-1.5">Imagen de la clase</label>
                               {lesson.preview_image ? (
                                 <div className="relative inline-block">
                                   <img
                                     src={lesson.preview_image}
                                     alt="Preview"
-                                    className="w-32 h-20 object-cover rounded border border-gray-300"
+                                    className="w-32 h-20 object-cover rounded-xl border border-gray-200 dark:border-white/10"
                                   />
                                   <button
                                     onClick={async () => {
@@ -1473,23 +1418,46 @@ export default function CourseCreator({ onClose, onSuccess, courseToEdit }: Cour
                                     };
                                     input.click();
                                   }}
-                                  className="w-32 h-20 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded flex flex-col items-center justify-center cursor-pointer hover:border-[#85ea10] transition-colors"
+                                  className="w-32 h-20 border-2 border-dashed border-gray-200 dark:border-white/10 rounded-xl flex flex-col items-center justify-center cursor-pointer hover:border-gray-300 dark:hover:border-white/20 bg-gray-50 dark:bg-white/5 transition-colors"
                                 >
-                                  <ImageIcon className="w-6 h-6 text-gray-400 mb-1" />
-                                  <span className="text-xs text-gray-500">Subir imagen</span>
+                                  <ImageIcon className="w-6 h-6 text-[#164151]/40 dark:text-white/40 mb-1" />
+                                  <span className="text-xs text-[#164151]/60 dark:text-white/60">Subir imagen</span>
                                 </div>
                               )}
                             </div>
 
-                            <div className="flex items-center">
-                              <label className="flex items-center gap-2 text-sm">
+                            <div>
+                              <label className="block text-sm font-semibold text-[#164151] dark:text-white mb-1.5">Tiempo de la clase (minutos)</label>
+                              <input
+                                type="number"
+                                value={lesson.duration_minutes}
+                                onChange={(e) => updateLesson(index, 'duration_minutes', parseInt(e.target.value) || 0)}
+                                min={1}
+                                className="w-full max-w-[120px] px-3 py-2.5 text-sm border border-gray-200 dark:border-white/10 rounded-xl bg-gray-50 dark:bg-white/5 text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#164151]/40 dark:focus:ring-white/40"
+                                placeholder="30"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-sm font-semibold text-[#164151] dark:text-white mb-1.5">Video (ID Mux)</label>
+                              <input
+                                type="text"
+                                value={lesson.video_url}
+                                onChange={(e) => updateLesson(index, 'video_url', e.target.value)}
+                                className="w-full px-3 py-2.5 text-sm border border-gray-200 dark:border-white/10 rounded-xl bg-gray-50 dark:bg-white/5 text-[#164151] dark:text-white placeholder-gray-400 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#164151]/40 dark:focus:ring-white/40"
+                                placeholder="ID del video en Mux"
+                              />
+                            </div>
+
+                            <div className="flex items-center pt-1">
+                              <label className="flex items-center gap-2 text-sm cursor-pointer">
                                 <input
                                   type="checkbox"
                                   checked={lesson.is_preview}
                                   onChange={(e) => updateLesson(index, 'is_preview', e.target.checked)}
-                                  className="h-4 w-4 text-[#85ea10] focus:ring-[#85ea10] border-gray-300 rounded"
+                                  className="h-4 w-4 rounded border-gray-200 dark:border-white/20 accent-[#164151] dark:accent-white focus:ring-[#164151]/40 dark:focus:ring-white/40"
                                 />
-                                <span className="text-gray-700 dark:text-gray-300">Preview gratuito</span>
+                                <span className="text-[#164151] dark:text-white/80">Clase de preview gratuito</span>
                               </label>
                             </div>
                           </div>
@@ -1504,7 +1472,7 @@ export default function CourseCreator({ onClose, onSuccess, courseToEdit }: Cour
 
           {currentStep === 4 && (
             <div className="space-y-6">
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+              <h3 className="text-lg font-bold text-[#164151] dark:text-white mb-4">
                 {courseToEdit ? 'Revisar y Actualizar Curso' : 'Revisar y Crear Curso'}
               </h3>
               
@@ -1527,31 +1495,31 @@ export default function CourseCreator({ onClose, onSuccess, courseToEdit }: Cour
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Título</p>
+                    <p className="text-sm text-[#164151]/60 dark:text-white/60">Título</p>
                     <p className="font-medium text-gray-900 dark:text-white">{courseData.title || 'Sin título'}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Categoría</p>
+                    <p className="text-sm text-[#164151]/60 dark:text-white/60">Categoría</p>
                     <p className="font-medium text-gray-900 dark:text-white">
                       {categories.find(c => c.id === courseData.category)?.name || 'Sin categoría'}
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Precio</p>
+                    <p className="text-sm text-[#164151]/60 dark:text-white/60">Precio</p>
                     <p className="font-medium text-gray-900 dark:text-white">
                       ${courseData.price} {courseData.discount_percentage && courseData.discount_percentage > 0 && `(${courseData.discount_percentage}% descuento)`}
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Duración</p>
+                    <p className="text-sm text-[#164151]/60 dark:text-white/60">Duración</p>
                     <p className="font-medium text-gray-900 dark:text-white">{courseData.duration_days} días</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Calorías</p>
+                    <p className="text-sm text-[#164151]/60 dark:text-white/60">Calorías</p>
                     <p className="font-medium text-gray-900 dark:text-white">{courseData.calories_burned} cal</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Lecciones</p>
+                    <p className="text-sm text-[#164151]/60 dark:text-white/60">Lecciones</p>
                     <p className="font-medium text-gray-900 dark:text-white">{lessons.length} lecciones</p>
                   </div>
                 </div>
@@ -1594,7 +1562,7 @@ export default function CourseCreator({ onClose, onSuccess, courseToEdit }: Cour
                           <p className="font-medium text-gray-900 dark:text-white">
                             {lesson.lesson_order}. {lesson.title || 'Sin título'}
                           </p>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                          <p className="text-sm text-[#164151]/60 dark:text-white/60">
                             {lesson.duration_minutes} min {lesson.is_preview && '(Preview)'}
                           </p>
                         </div>
@@ -1607,20 +1575,21 @@ export default function CourseCreator({ onClose, onSuccess, courseToEdit }: Cour
           )}
         </div>
 
-        {/* Footer */}
-        <div className="flex items-center justify-between p-6 border-t border-gray-200 dark:border-gray-700">
+        {/* Footer - estilos dashboard/planes */}
+        <div className="flex items-center justify-between p-6 border-t border-gray-200 dark:border-white/10">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
+            className="px-5 py-2.5 rounded-xl bg-gray-100 dark:bg-white/10 text-[#164151] dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 transition-colors text-sm font-semibold"
           >
             Cancelar
           </button>
           
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center gap-3">
             {currentStep > 1 && (
               <button
                 onClick={() => setCurrentStep(currentStep - 1)}
-                className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                type="button"
+                className="px-5 py-2.5 rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 text-[#164151] dark:text-white hover:bg-gray-100 dark:hover:bg-white/10 transition-colors text-sm font-semibold"
               >
                 Anterior
               </button>
@@ -1630,7 +1599,8 @@ export default function CourseCreator({ onClose, onSuccess, courseToEdit }: Cour
               <button
                 onClick={() => setCurrentStep(currentStep + 1)}
                 disabled={!courseData.title || !courseData.slug || !courseData.short_description}
-                className="px-4 py-2 bg-[#85ea10] hover:bg-[#7dd30f] text-black font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                type="button"
+                className="px-5 py-2.5 rounded-xl bg-[#85ea10] hover:bg-[#7dd30f] text-black font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
               >
                 Siguiente
               </button>
@@ -1638,7 +1608,8 @@ export default function CourseCreator({ onClose, onSuccess, courseToEdit }: Cour
               <button
                 onClick={handleSubmit}
                 disabled={loading}
-                className="px-4 py-2 bg-[#85ea10] hover:bg-[#7dd30f] text-black font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                type="button"
+                className="px-5 py-2.5 rounded-xl bg-[#85ea10] hover:bg-[#7dd30f] text-black font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
               >
                 {loading ? (
                   <>
@@ -1662,9 +1633,25 @@ export default function CourseCreator({ onClose, onSuccess, courseToEdit }: Cour
             )}
           </div>
         </div>
-      </div>
+    </>
+  );
 
-      {/* Success Modal */}
+  return (
+    <>
+      {asPage ? (
+        <div className="w-full">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-white/10 overflow-hidden shadow-sm">
+            {innerContent}
+          </div>
+        </div>
+      ) : (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden">
+            {innerContent}
+          </div>
+        </div>
+      )}
+
       <RogerAlert
         isOpen={showSuccessModal}
         onClose={() => {
@@ -1675,6 +1662,6 @@ export default function CourseCreator({ onClose, onSuccess, courseToEdit }: Cour
         message={courseToEdit ? "El curso ha sido actualizado correctamente. Los cambios se reflejarán inmediatamente en el dashboard." : "El curso ha sido creado y está listo para ser publicado. Los estudiantes podrán verlo en el dashboard."}
         type="success"
       />
-    </div>
+    </>
   );
 }

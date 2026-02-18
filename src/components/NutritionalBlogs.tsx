@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { NutritionalBlog } from '@/types';
-import { Clock, User, Calendar, ArrowRight, BookOpen } from 'lucide-react';
+import { Clock, User, Calendar, ChevronRight, BookOpen } from 'lucide-react';
 
 export default function NutritionalBlogs() {
   const router = useRouter();
@@ -141,7 +141,7 @@ export default function NutritionalBlogs() {
                   <span className="text-sm text-[#85ea10] font-medium group-hover:text-[#6bc20a] transition-colors">
                     Leer más
                   </span>
-                  <ArrowRight className="w-4 h-4 text-[#85ea10] group-hover:translate-x-1 transition-transform" />
+                  <ChevronRight className="w-4 h-4 text-[#85ea10] group-hover:translate-x-1 transition-transform" />
                 </div>
               </div>
             </div>

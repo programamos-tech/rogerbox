@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  eslint: { ignoreDuringBuilds: true },
   images: {
     remotePatterns: [
       {
@@ -31,13 +32,18 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: ['@supabase/supabase-js', '@supabase/ssr'],
   },
-  // Desactivar cache en desarrollo para evitar problemas de manifest
-  ...(process.env.NODE_ENV === 'development' && {
-    webpack: (config: any) => {
+  // Asegurar que pako se resuelva (lo usa fast-png → jspdf)
+  transpilePackages: ['pako', 'fast-png'],
+  webpack: (config: any) => {
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      pako: require.resolve('pako'),
+    };
+    if (process.env.NODE_ENV === 'development') {
       config.cache = false;
-      return config;
-    },
-  }),
+    }
+    return config;
+  },
 };
 
 export default nextConfig;

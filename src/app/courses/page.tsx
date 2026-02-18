@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Play, Users, Star, Filter, Search, ArrowRight, User, BookOpen, TrendingUp, Zap } from 'lucide-react';
+import { Play, Users, Star, Filter, Search, ChevronRight, User, BookOpen, TrendingUp, Zap } from 'lucide-react';
 import Footer from '@/components/Footer';
 import { useSimpleCourses } from '@/hooks/useSimpleCourses';
 
@@ -554,7 +554,7 @@ export default function CoursesPage() {
                       className="bg-[#85ea10] hover:bg-[#7dd30f] text-black font-bold px-6 py-3 rounded-xl transition-all duration-300 hover:scale-105 flex items-center space-x-2"
                     >
                       <span>Ver Curso</span>
-                      <ArrowRight className="w-4 h-4" />
+                      <ChevronRight className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
@@ -595,7 +595,7 @@ export default function CoursesPage() {
               className="bg-[#85ea10] hover:bg-[#7dd30f] text-black font-bold px-8 py-4 rounded-xl text-lg transition-all duration-300 hover:scale-105 flex items-center justify-center space-x-2"
             >
               <span>Comenzar Ahora</span>
-              <ArrowRight className="w-5 h-5" />
+              <ChevronRight className="w-5 h-5" />
             </button>
             <button
               onClick={() => router.push('/contact')}

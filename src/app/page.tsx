@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useRouter } from 'next/navigation';
-import { Play, Clock, Users, Star, Search, ArrowRight, User, BookOpen, Award, TrendingUp, Zap, Utensils, Target, CheckCircle, ShoppingCart, Flame, Dumbbell, Home, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Play, Clock, Users, Star, Search, User, BookOpen, Award, TrendingUp, Zap, Utensils, Target, CheckCircle, ShoppingCart, Flame, Dumbbell, Home, ChevronLeft, ChevronRight } from 'lucide-react';
 import QuickLoading from '@/components/QuickLoading';
 import Footer from '@/components/Footer';
 import { trackCourseView } from '@/lib/analytics';

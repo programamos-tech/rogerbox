@@ -7,7 +7,6 @@ import BlogManagement from '@/components/admin/BlogManagement';
 import UnderConstruction from '@/components/UnderConstruction';
 import ComplementManagement from '@/components/admin/ComplementManagement';
 import ConfirmDialog from '@/components/admin/ConfirmDialog';
-import CourseCreator from '@/components/admin/CourseCreator';
 import GymPlansManagement, { GymPlansManagementRef } from '@/components/admin/GymPlansManagement';
 import GymPaymentsManagement, { GymPaymentsManagementRef } from '@/components/admin/GymPaymentsManagement';
 
@@ -238,8 +237,6 @@ function AdminDashboardContent() {
   const [activeTab, setActiveTab] = useState('overview');
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showCourseCreator, setShowCourseCreator] = useState(false);
-  const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [courses, setCourses] = useState<Course[]>([]);
   const [loadingCourses, setLoadingCourses] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
@@ -302,6 +299,13 @@ function AdminDashboardContent() {
   const [loadingDailyPayments, setLoadingDailyPayments] = useState(false);
   const [birthdayClients, setBirthdayClients] = useState<any[]>([]);
   const [loadingBirthdays, setLoadingBirthdays] = useState(false);
+
+  // Parsear YYYY-MM-DD en hora local para que no cambie el día (evita UTC → 10 en vez de 11)
+  const parseLocalDate = (dateStr: string): Date => {
+    if (!dateStr) return new Date();
+    const [y, m, d] = dateStr.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  };
 
   const isAdmin = useMemo(() => {
     if (!user) return false;
@@ -484,61 +488,45 @@ function AdminDashboardContent() {
   const loadWeeklyData = async (customStartDate?: string, customEndDate?: string) => {
     try {
       setLoadingWeeklyData(true);
-      const weeklyDataArray: { date: string; amount: number; dayName: string }[] = [];
-
       let startDate: Date;
       let endDate: Date;
 
-      // Si hay fechas personalizadas, usarlas; si no, usar últimos 7 días
       if (customStartDate && customEndDate) {
-        startDate = new Date(customStartDate);
-        endDate = new Date(customEndDate);
+        const [sy, sm, sd] = customStartDate.split('-').map(Number);
+        const [ey, em, ed] = customEndDate.split('-').map(Number);
+        startDate = new Date(sy, sm - 1, sd, 0, 0, 0, 0);
+        endDate = new Date(ey, em - 1, ed, 23, 59, 59, 999);
       } else {
-        // Comportamiento por defecto: últimos 7 días
         const today = new Date();
-        endDate = today;
-        startDate = new Date(today);
+        endDate = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
+        startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0, 0);
         startDate.setDate(startDate.getDate() - 6);
       }
 
-      // Asegurar que las fechas estén en el inicio y final del día
-      startDate.setHours(0, 0, 0, 0);
-      endDate.setHours(23, 59, 59, 999);
+      const startStr = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${String(startDate.getDate()).padStart(2, '0')}`;
+      const endStr = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`;
 
-      // Calcular todos los días en el rango
-      const currentDate = new Date(startDate);
-      const dates: Date[] = [];
+      // Una sola petición con desglose por día (evita 7–11 peticiones)
+      const response = await fetch(`/api/admin/revenue-stats?start_date=${startStr}&end_date=${endStr}&sede=${sedeFilter}&group_by=day`);
+      const data = await response.json();
 
-      while (currentDate <= endDate) {
-        dates.push(new Date(currentDate));
-        currentDate.setDate(currentDate.getDate() + 1);
-      }
+      const weeklyDataArray: { date: string; amount: number; dayName: string }[] = [];
+      const byDay = data.byDay || [];
 
-      // Obtener datos para cada día en el rango
-      for (const date of dates) {
-        const dateStr = date.toISOString().split('T')[0];
-
-        const response = await fetch(`/api/admin/revenue-stats?start_date=${dateStr}&end_date=${dateStr}&sede=${sedeFilter}`);
-        const data = await response.json();
-
+      for (const day of byDay) {
         let totalAmount = 0;
-        if (data.results) {
-          const ambasData = data.results.find((r: any) => r.sede === 'ambas');
-          const fisicaData = data.results.find((r: any) => r.sede === 'fisica');
-          const onlineData = data.results.find((r: any) => r.sede === 'online');
-
-          if (sedeFilter === 'ambas' && ambasData) {
-            totalAmount = ambasData.total;
-          } else if (sedeFilter === 'fisica' && fisicaData) {
-            totalAmount = fisicaData.total;
-          } else if (sedeFilter === 'online' && onlineData) {
-            totalAmount = onlineData.total;
-          }
+        if (day.results) {
+          const ambasData = day.results.find((r: any) => r.sede === 'ambas');
+          const fisicaData = day.results.find((r: any) => r.sede === 'fisica');
+          const onlineData = day.results.find((r: any) => r.sede === 'online');
+          if (sedeFilter === 'ambas' && ambasData) totalAmount = ambasData.total;
+          else if (sedeFilter === 'fisica' && fisicaData) totalAmount = fisicaData.total;
+          else if (sedeFilter === 'online' && onlineData) totalAmount = onlineData.total;
         }
-
-        const dayName = date.toLocaleDateString('es-ES', { weekday: 'short' });
+        const dateObj = new Date(day.date + 'T12:00:00');
+        const dayName = dateObj.toLocaleDateString('es-ES', { weekday: 'short' });
         weeklyDataArray.push({
-          date: dateStr,
+          date: day.date,
           amount: totalAmount,
           dayName: dayName.charAt(0).toUpperCase() + dayName.slice(1),
         });
@@ -1024,15 +1012,7 @@ function AdminDashboardContent() {
   };
 
   const editCourse = (courseId: string) => {
-    const course = courses.find((c) => c.id === courseId);
-    if (course) {
-      const courseWithLessons = {
-        ...course,
-        lessons: course.course_lessons || [],
-      };
-      setEditingCourse(courseWithLessons);
-      setShowCourseCreator(true);
-    }
+    router.push(`/admin/courses/${courseId}/edit`);
   };
 
   const deleteCourse = (courseId: string, courseTitle: string) => {
@@ -1302,10 +1282,7 @@ function AdminDashboardContent() {
             {/* Quick Actions */}
             {activeTab === 'courses' && (
               <button
-                onClick={() => {
-                  setEditingCourse(null);
-                  setShowCourseCreator(true);
-                }}
+                onClick={() => router.push('/admin/courses/new')}
                 className="bg-[#164151] text-white hover:bg-[#1a4d5f] dark:bg-[#164151] dark:hover:bg-[#1a4d5f] font-semibold px-5 py-2.5 rounded-lg transition-all duration-200 flex items-center gap-2 text-sm shadow-lg hover:shadow-xl"
               >
                 <Plus className="w-3.5 h-3.5" />
@@ -1454,22 +1431,40 @@ function AdminDashboardContent() {
                       </button>
                     </div>
 
-                    {/* Selector de fechas personalizadas */}
+                    {/* Selector de fechas personalizadas: clic en todo el campo abre calendario, icono blanco */}
                     {dateFilter === 'custom' && (
                       <div className="flex items-center gap-2">
-                        <input
-                          type="date"
-                          value={customStartDate}
-                          onChange={(e) => setCustomStartDate(e.target.value)}
-                          className="px-3 py-2 rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-gray-800 text-[#164151] dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#164151]/50"
-                        />
+                        <div
+                          className="relative flex items-center rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-gray-800 focus-within:ring-2 focus-within:ring-[#164151]/50 cursor-pointer min-w-[140px]"
+                          onClick={(e) => {
+                            const target = (e.target as HTMLElement).closest('div')?.querySelector('input[type="date"]') as HTMLInputElement | null;
+                            target?.showPicker?.();
+                          }}
+                        >
+                          <input
+                            type="date"
+                            value={customStartDate}
+                            onChange={(e) => setCustomStartDate(e.target.value)}
+                            className="w-full pl-3 pr-9 py-2 rounded-lg bg-transparent text-[#164151] dark:text-white text-sm focus:outline-none cursor-pointer [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+                          />
+                          <Calendar className="absolute right-2.5 w-4 h-4 text-[#164151] dark:text-white pointer-events-none" />
+                        </div>
                         <span className="text-gray-500 dark:text-white/50">-</span>
-                        <input
-                          type="date"
-                          value={customEndDate}
-                          onChange={(e) => setCustomEndDate(e.target.value)}
-                          className="px-3 py-2 rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-gray-800 text-[#164151] dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#164151]/50"
-                        />
+                        <div
+                          className="relative flex items-center rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-gray-800 focus-within:ring-2 focus-within:ring-[#164151]/50 cursor-pointer min-w-[140px]"
+                          onClick={(e) => {
+                            const target = (e.target as HTMLElement).closest('div')?.querySelector('input[type="date"]') as HTMLInputElement | null;
+                            target?.showPicker?.();
+                          }}
+                        >
+                          <input
+                            type="date"
+                            value={customEndDate}
+                            onChange={(e) => setCustomEndDate(e.target.value)}
+                            className="w-full pl-3 pr-9 py-2 rounded-lg bg-transparent text-[#164151] dark:text-white text-sm focus:outline-none cursor-pointer [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+                          />
+                          <Calendar className="absolute right-2.5 w-4 h-4 text-[#164151] dark:text-white pointer-events-none" />
+                        </div>
                       </div>
                     )}
                   </div>
@@ -1656,7 +1651,7 @@ function AdminDashboardContent() {
                 <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 px-6 pt-6 pb-2 shadow-lg mt-8">
                   <h3 className="text-sm font-semibold text-[#164151] dark:text-white uppercase tracking-wide mb-3">
                     {dateFilter === 'custom' && customStartDate && customEndDate
-                      ? `Ventas del Período (${new Date(customStartDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })} - ${new Date(customEndDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })})`
+                      ? `Ventas del Período (${parseLocalDate(customStartDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })} - ${parseLocalDate(customEndDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })})`
                       : 'Ventas de la Última Semana'}
                   </h3>
                   <p className="text-xs text-gray-500 dark:text-white/50 mb-12">
@@ -1678,8 +1673,8 @@ function AdminDashboardContent() {
                           const height = maxAmount > 0 ? (day.amount / maxAmount) * 100 : 0;
                           const barHeight = Math.max(height, 8);
 
-                          // Formatear fecha
-                          const date = new Date(day.date);
+                          // Formatear fecha en hora local (evita que 11 se muestre como 10 por UTC)
+                          const date = parseLocalDate(day.date);
                           const dayNumber = date.getDate();
                           const month = date.toLocaleDateString('es-ES', { month: 'short' });
 
@@ -1765,7 +1760,7 @@ function AdminDashboardContent() {
                         </h3>
                         <p className="text-xs text-gray-500 dark:text-white/50 mt-1">
                           {dateFilter === 'custom' && customStartDate && customEndDate
-                            ? `Facturas emitidas del ${new Date(customStartDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })} al ${new Date(customEndDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })}`
+                            ? `Facturas emitidas del ${parseLocalDate(customStartDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })} al ${parseLocalDate(customEndDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })}`
                             : `Facturas emitidas hoy (${new Date().toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })})`}
                         </p>
                       </div>
@@ -1785,7 +1780,7 @@ function AdminDashboardContent() {
                         </div>
                       </div>
                     ) : dailyPayments.length > 0 ? (
-                      <div className="space-y-3 mt-4 max-h-[600px] overflow-y-auto">
+                      <div className="space-y-3 mt-4 max-h-[600px] overflow-y-auto scrollbar-hide">
                         {dailyPayments.map((payment) => {
                           // Usar created_at (fecha de registro facturado) como prioridad
                           const paymentDate = new Date(payment.created_at || payment.payment_date);
@@ -1900,15 +1895,15 @@ function AdminDashboardContent() {
                             🎉 Cumpleaños
                             {dateFilter === 'custom' && customStartDate && customEndDate
                               ? (customStartDate === customEndDate
-                                  ? ` del ${new Date(customStartDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'long' })}`
-                                  : ` del ${new Date(customStartDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'long' })} al ${new Date(customEndDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'long' })}`)
+                                  ? ` del ${parseLocalDate(customStartDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'long' })}`
+                                  : ` del ${parseLocalDate(customStartDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'long' })} al ${parseLocalDate(customEndDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'long' })}`)
                               : ' de Hoy'}
                           </h3>
                           <p className="text-xs text-gray-500 dark:text-white/50 mt-1">
                             {dateFilter === 'custom' && customStartDate && customEndDate
                               ? (customStartDate === customEndDate
-                                  ? `Clientes que cumplen años el ${new Date(customStartDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })}`
-                                  : `Clientes que cumplen años entre el ${new Date(customStartDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'long' })} y el ${new Date(customEndDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'long' })}`)
+                                  ? `Clientes que cumplen años el ${parseLocalDate(customStartDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })}`
+                                  : `Clientes que cumplen años entre el ${parseLocalDate(customStartDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'long' })} y el ${parseLocalDate(customEndDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'long' })}`)
                               : `Clientes que cumplen años hoy (${new Date().toLocaleDateString('es-ES', { day: '2-digit', month: 'long' })})`}
                           </p>
                         </div>
@@ -1929,7 +1924,7 @@ function AdminDashboardContent() {
                         </div>
                       </div>
                     ) : birthdayClients.length > 0 ? (
-                      <div className="space-y-3 mt-4 max-h-[600px] overflow-y-auto">
+                      <div className="space-y-3 mt-4 max-h-[600px] overflow-y-auto scrollbar-hide">
                         {birthdayClients.map((client) => {
                           // Parsear fecha de nacimiento correctamente para evitar problemas de zona horaria
                           let birthDateStr: string;
@@ -2048,11 +2043,37 @@ function AdminDashboardContent() {
 
           {/* Courses Tab */}
           {activeTab === 'courses' && (
-            <UnderConstruction
-              title="Cursos Online"
-              icon={BookOpen}
-              description="La gestión de cursos y contenido digital está en mantenimiento programado. Pronto podrás crear y editar tu contenido aquí."
-            />
+            <div className="space-y-6">
+              {loadingCourses ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {[1, 2, 3].map((i) => (
+                    <LoadingState key={i} message="Cargando cursos..." />
+                  ))}
+                </div>
+              ) : courses.length === 0 ? (
+                <EmptyState
+                  icon={BookOpen}
+                  title="No hay cursos"
+                  description="Crea tu primer curso para que los usuarios puedan verlo en el dashboard."
+                  action={{
+                    label: 'Crear Curso',
+                    onClick: () => router.push('/admin/courses/new'),
+                  }}
+                />
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {courses.map((course) => (
+                    <CourseCard
+                      key={course.id}
+                      course={course}
+                      onEdit={() => editCourse(course.id)}
+                      onDelete={() => deleteCourse(course.id, course.title)}
+                      onTogglePublish={() => toggleCoursePublish(course.id, course.is_published)}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
           )}
 
           {/* Blogs Tab */}
@@ -3081,23 +3102,6 @@ function AdminDashboardContent() {
         </div>
       </main>
 
-      {/* Course Creator Modal */}
-      {showCourseCreator && (
-        <CourseCreator
-          onClose={() => {
-            setShowCourseCreator(false);
-            setEditingCourse(null);
-          }}
-          onSuccess={() => {
-            setShowCourseCreator(false);
-            setEditingCourse(null);
-            loadAdminData();
-            loadCourses();
-          }}
-          courseToEdit={editingCourse}
-        />
-      )}
-
       {/* Confirm Dialog */}
       <ConfirmDialog
         isOpen={confirmDialog.isOpen}
@@ -3236,26 +3240,25 @@ interface CourseCardProps {
 
 function CourseCard({ course, onEdit, onDelete, onTogglePublish }: CourseCardProps) {
   return (
-    <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 hover:border-[#85ea10]/50 transition-all group shadow-lg hover:shadow-xl overflow-hidden">
+    <div className="bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl border border-gray-200 dark:border-white/10 shadow-sm dark:shadow-none hover:shadow-lg hover:border-[#85ea10]/30 transition-all duration-200 overflow-hidden">
       {/* Imagen del curso */}
-      <div className="relative w-full aspect-video bg-gray-200 dark:bg-gray-800 overflow-hidden">
+      <div className="relative w-full aspect-video bg-gray-200 dark:bg-gray-800 overflow-hidden rounded-t-2xl">
         {course.preview_image ? (
           <img
             src={course.preview_image}
             alt={course.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            className="w-full h-full object-cover"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-800 dark:to-gray-900">
+          <div className="w-full h-full flex items-center justify-center">
             <BookOpen className="w-16 h-16 text-gray-400 dark:text-gray-600" />
           </div>
         )}
-        {/* Badge de estado sobre la imagen */}
         <div className="absolute top-3 right-3">
           <span
-            className={`px-3 py-1 text-xs font-black rounded-full ${course.is_published
+            className={`px-2.5 py-1 text-xs font-semibold rounded-full ${course.is_published
               ? 'bg-[#85ea10] text-black'
-              : 'bg-gray-800/80 dark:bg-white/20 text-white dark:text-white/90 backdrop-blur-sm'
+              : 'bg-gray-100 dark:bg-white/10 text-[#164151] dark:text-white/70'
               }`}
           >
             {course.is_published ? 'Publicado' : 'Borrador'}
@@ -3263,55 +3266,64 @@ function CourseCard({ course, onEdit, onDelete, onTogglePublish }: CourseCardPro
         </div>
       </div>
 
-      {/* Contenido */}
-      <div className="p-5">
-        <h3 className="text-base font-black text-[#164151] dark:text-white line-clamp-2 mb-2 uppercase tracking-tight">
-          {course.title}
-        </h3>
-
-        <p className="text-xs font-medium text-[#164151]/80 dark:text-white/60 line-clamp-2 mb-4">{course.short_description}</p>
-
-        <div className="grid grid-cols-2 gap-2 mb-4">
-          <div className="bg-gray-100 dark:bg-white/10 rounded-lg px-3 py-2 border border-gray-200 dark:border-white/20">
-            <p className="text-[10px] font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide mb-0.5">Precio</p>
-            <p className="text-sm font-semibold text-[#164151] dark:text-white">
-              ${course.price?.toLocaleString('es-CO')}
-            </p>
-          </div>
-          <div className="bg-gray-100 dark:bg-white/10 rounded-lg px-3 py-2 border border-gray-200 dark:border-white/20">
-            <p className="text-[10px] font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide mb-0.5">Duración</p>
-            <p className="text-sm font-semibold text-[#164151] dark:text-white">{course.duration_days} días</p>
-          </div>
-          <div className="bg-gray-100 dark:bg-white/10 rounded-lg px-3 py-2 border border-gray-200 dark:border-white/20">
-            <p className="text-[10px] font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide mb-0.5">Nivel</p>
-            <p className="text-sm font-semibold text-[#164151] dark:text-white capitalize">{course.level}</p>
-          </div>
-          <div className="bg-gray-100 dark:bg-white/10 rounded-lg px-3 py-2 border border-gray-200 dark:border-white/20">
-            <p className="text-[10px] font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide mb-0.5">Estudiantes</p>
-            <p className="text-sm font-semibold text-[#164151] dark:text-white">{course.students_count}</p>
+      {/* Contenido - mismo estilo que planes */}
+      <div className="p-6">
+        <div className="flex items-start justify-between mb-4">
+          <div className="flex-1 min-w-0">
+            <h3 className="text-lg font-bold text-[#164151] dark:text-white mb-1 line-clamp-2">
+              {course.title}
+            </h3>
+            {course.short_description && (
+              <p className="text-sm text-[#164151]/60 dark:text-white/60 line-clamp-2">{course.short_description}</p>
+            )}
           </div>
         </div>
 
-        <div className="flex gap-2">
+        <div className="space-y-2 mb-4">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-[#164151]/80 dark:text-white/60">Precio:</span>
+            <span className="text-lg font-bold text-[#164151] dark:text-white">
+              ${Number(course.price ?? 0).toLocaleString('es-CO')}
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-[#164151]/80 dark:text-white/60">Duración:</span>
+            <span className="text-sm font-semibold text-[#164151] dark:text-white">
+              {course.duration_days} días
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-[#164151]/80 dark:text-white/60">Nivel:</span>
+            <span className="text-sm font-semibold text-[#164151] dark:text-white capitalize">{course.level}</span>
+          </div>
+          <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-white/5">
+            <span className="text-sm text-[#164151]/80 dark:text-white/60">Estudiantes:</span>
+            <span className={`text-sm font-bold px-2.5 py-1 rounded-full ${(course.students_count ?? 0) > 0 ? 'bg-[#85ea10]/10 text-[#85ea10]' : 'bg-gray-100 dark:bg-white/5 text-gray-500 dark:text-white/40'}`}>
+              {course.students_count ?? 0}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 pt-4 border-t border-gray-200 dark:border-white/10">
           <button
             onClick={onEdit}
-            className="flex-1 bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 border border-gray-200 dark:border-white/20 text-[#164151] dark:text-white px-3 py-2.5 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1.5"
+            className="flex-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-white/10 text-[#164151] dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 transition-colors flex items-center justify-center gap-2 text-sm"
           >
             <Edit className="w-3.5 h-3.5" />
             Editar
           </button>
           <button
             onClick={onDelete}
-            className="flex-1 bg-red-100 dark:bg-red-500/20 hover:bg-red-200 dark:hover:bg-red-500/30 border border-red-300 dark:border-red-500/30 text-red-600 dark:text-red-400 px-3 py-2.5 rounded-lg text-xs font-black transition-colors flex items-center justify-center gap-1.5 uppercase tracking-tight"
+            className="px-3 py-2 rounded-lg bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors"
+            title="Eliminar"
           >
             <Trash2 className="w-3.5 h-3.5" />
-            Eliminar
           </button>
           <button
             onClick={onTogglePublish}
-            className={`flex-1 px-3 py-2.5 rounded-lg text-xs font-black transition-colors flex items-center justify-center gap-1.5 uppercase tracking-tight ${course.is_published
-              ? 'bg-orange-100 dark:bg-orange-500/20 hover:bg-orange-200 dark:hover:bg-orange-500/30 border border-orange-300 dark:border-orange-500/30 text-orange-600 dark:text-orange-400'
-              : 'bg-[#85ea10] hover:bg-[#7dd30f] text-black border border-[#85ea10]'
+            className={`flex-1 px-3 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${course.is_published
+              ? 'bg-gray-100 dark:bg-white/10 text-[#164151] dark:text-white/80 hover:bg-gray-200 dark:hover:bg-white/20'
+              : 'bg-[#85ea10] hover:bg-[#7dd30f] text-black'
               }`}
           >
             {course.is_published ? (
@@ -3334,10 +3346,10 @@ function CourseCard({ course, onEdit, onDelete, onTogglePublish }: CourseCardPro
 
 function LoadingState({ message }: { message: string }) {
   return (
-    <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 p-10 shadow-lg">
+    <div className="bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl border border-gray-200 dark:border-white/10 p-10 shadow-sm dark:shadow-none">
       <div className="flex flex-col items-center justify-center">
         <div className="w-12 h-12 border-4 border-[#85ea10]/30 border-t-[#85ea10] rounded-full animate-spin mb-3"></div>
-        <p className="text-xs font-semibold text-[#164151]/80 dark:text-white/70">{message}</p>
+        <p className="text-sm font-medium text-[#164151]/80 dark:text-white/70">{message}</p>
       </div>
     </div>
   );
@@ -3355,23 +3367,19 @@ interface EmptyStateProps {
 
 function EmptyState({ icon: Icon, title, description, action }: EmptyStateProps) {
   return (
-    <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 p-10 shadow-lg">
-      <div className="flex flex-col items-center justify-center text-center">
-        <div className="w-16 h-16 rounded-2xl bg-gray-100 dark:bg-white/10 flex items-center justify-center mb-4">
-          <Icon className="w-8 h-8 text-[#164151]/70 dark:text-white/70" />
-        </div>
-        <h3 className="text-lg font-bold text-[#164151] dark:text-white mb-2">{title}</h3>
-        <p className="text-xs font-medium text-[#164151]/80 dark:text-white/60 mb-6 max-w-sm">{description}</p>
-        {action && (
-          <button
-            onClick={action.onClick}
-            className="bg-[#164151] text-white hover:bg-[#1a4d5f] dark:bg-[#164151] dark:hover:bg-[#1a4d5f] font-semibold px-6 py-2.5 rounded-lg transition-all flex items-center gap-2 text-sm shadow-lg hover:shadow-xl"
-          >
-            <Plus className="w-4 h-4" />
-            {action.label}
-          </button>
-        )}
-      </div>
+    <div className="bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl border border-gray-200 dark:border-white/10 p-12 text-center shadow-sm dark:shadow-none">
+      <Icon className="w-12 h-12 text-gray-300 dark:text-white/20 mx-auto mb-4" />
+      <p className="text-[#164151] dark:text-white font-medium mb-2">{title}</p>
+      <p className="text-sm text-[#164151]/60 dark:text-white/60 mb-6 max-w-sm mx-auto">{description}</p>
+      {action && (
+        <button
+          onClick={action.onClick}
+          className="bg-[#164151] text-white hover:bg-[#1a4d5f] dark:bg-[#164151] dark:hover:bg-[#1a4d5f] font-semibold px-5 py-2.5 rounded-lg transition-all flex items-center gap-2 text-sm mx-auto"
+        >
+          <Plus className="w-4 h-4" />
+          {action.label}
+        </button>
+      )}
     </div>
   );
 }

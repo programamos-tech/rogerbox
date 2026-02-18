@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Calendar, Clock, Users, Zap, CheckCircle, Star, ArrowRight, Play, Trophy, Target, Flame, Calendar as CalendarIcon, Video, Dumbbell, MapPin } from 'lucide-react';
+import { Calendar, Clock, Users, Zap, CheckCircle, Star, ChevronRight, Play, Trophy, Target, Flame, Calendar as CalendarIcon, Video, Dumbbell, MapPin } from 'lucide-react';
 import { appStore } from '@/lib/store';
 import { User, Class } from '@/types';
 import { format, addDays, startOfWeek, endOfWeek, isSameDay, isToday, isTomorrow } from 'date-fns';
@@ -97,7 +97,7 @@ export default function StudentDashboard({ user, onBack }: StudentDashboardProps
             onClick={() => router.push('/')}
             className="flex items-center space-x-2 text-white hover:text-[#85ea10] transition-colors"
           >
-            <ArrowRight className="w-5 h-5 rotate-180" />
+            <ChevronRight className="w-5 h-5 rotate-180" />
             <span className="font-semibold">Volver</span>
           </button>
           <h1 className="text-3xl font-black text-white">
@@ -351,7 +351,7 @@ export default function StudentDashboard({ user, onBack }: StudentDashboardProps
             onClick={() => router.push('/')}
             className="flex items-center space-x-2 text-white hover:text-[#85ea10] transition-colors"
           >
-            <ArrowRight className="w-5 h-5 rotate-180" />
+            <ChevronRight className="w-5 h-5 rotate-180" />
             <span className="font-semibold">Volver</span>
           </button>
           <div className="text-center">

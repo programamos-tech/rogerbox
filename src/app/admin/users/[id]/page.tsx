@@ -41,7 +41,6 @@ import {
   Trash2,
 } from 'lucide-react';
 import { supabaseAdmin } from '@/lib/supabase';
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts';
 
 // Función para traducir los goals a español
 const translateGoal = (goal: string): string => {
@@ -58,6 +57,15 @@ const translateGoal = (goal: string): string => {
     endurance: 'Resistencia',
   };
   return translations[goal] || goal;
+};
+
+// Parsear fecha en hora local para no restar un día (UTC medianoche → día anterior en zonas como Colombia)
+const parseLocalDate = (dateStr: string): Date => {
+  if (!dateStr) return new Date();
+  const dateOnly = String(dateStr).slice(0, 10);
+  const [y, m, d] = dateOnly.split('-').map(Number);
+  if (!y || !m || !d) return new Date(dateStr);
+  return new Date(y, m - 1, d);
 };
 
 // Función para formatear múltiples goals
@@ -138,6 +146,7 @@ export default function UserDetailPage() {
   const [editingStartDateMembershipId, setEditingStartDateMembershipId] = useState<string | null>(null);
   const [newStartDate, setNewStartDate] = useState('');
   const [isUpdatingStartDate, setIsUpdatingStartDate] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const userId = params?.id as string;
 
@@ -175,10 +184,15 @@ export default function UserDetailPage() {
   const loadUserData = async () => {
     try {
       setLoading(true);
-      // Cargar directamente el usuario específico (mucho más rápido)
-      const response = await fetch(`/api/admin/users/${userId}`);
+      setLoadError(null);
+      // Timeout para no quedarse cargando si la API no responde (ej. Supabase lento)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 12000);
+
+      const response = await fetch(`/api/admin/users/${userId}`, { signal: controller.signal });
+      clearTimeout(timeoutId);
       const data = await response.json();
-      
+
       if (response.ok && data.user) {
         const user = data.user;
         setUserData(user);
@@ -213,10 +227,15 @@ export default function UserDetailPage() {
           loadWeightRecords(user.id);
         }
       } else {
-        console.warn('Usuario no encontrado');
+        setLoadError(data.error || 'Usuario no encontrado');
       }
-    } catch (error) {
-      console.error('Error loading user data:', error);
+    } catch (error: any) {
+      if (error?.name === 'AbortError') {
+        setLoadError('Tiempo de espera agotado. Comprueba la conexión o intenta de nuevo.');
+      } else {
+        console.error('Error loading user data:', error);
+        setLoadError('No se pudo cargar el usuario. Intenta de nuevo.');
+      }
     } finally {
       setLoading(false);
     }
@@ -332,9 +351,8 @@ export default function UserDetailPage() {
 
   const handleStartEditStartDate = (membership: any) => {
     setEditingStartDateMembershipId(membership.id);
-    // Formatear la fecha para el input type="date" (YYYY-MM-DD)
-    const startDate = new Date(membership.start_date);
-    const formattedDate = startDate.toISOString().split('T')[0];
+    const d = parseLocalDate(membership.start_date);
+    const formattedDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     setNewStartDate(formattedDate);
   };
 
@@ -390,6 +408,31 @@ export default function UserDetailPage() {
     );
   }
 
+  if (loadError && !userData) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center max-w-md px-4">
+          <h1 className="text-2xl font-bold text-[#164151] dark:text-white mb-4">Error al cargar</h1>
+          <p className="text-[#164151]/80 dark:text-gray-400 mb-6">{loadError}</p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <button
+              onClick={() => { setLoadError(null); loadUserData(); }}
+              className="bg-[#85ea10] hover:bg-[#7dd30f] text-black font-semibold px-6 py-2.5 rounded-lg transition-all"
+            >
+              Reintentar
+            </button>
+            <button
+              onClick={() => router.push('/admin?tab=users')}
+              className="bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-white/90 font-semibold px-6 py-2.5 rounded-lg transition-all"
+            >
+              Volver al Admin
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!userData) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
@@ -397,7 +440,7 @@ export default function UserDetailPage() {
           <h1 className="text-2xl font-bold text-[#164151] dark:text-white mb-4">Cliente no encontrado</h1>
           <p className="text-[#164151]/80 dark:text-gray-400 mb-4">No se pudo cargar la información del cliente.</p>
           <button
-            onClick={() => router.push('/admin')}
+            onClick={() => router.push('/admin?tab=users')}
             className="bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-white/90 font-semibold px-6 py-2.5 rounded-lg transition-all"
           >
             Volver al Admin
@@ -704,63 +747,37 @@ export default function UserDetailPage() {
                     </div>
                   </div>
 
-                  {/* Payment History Chart */}
-                  {chartData.length > 0 && (
-                    <div className="bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-xl border border-gray-200 dark:border-white/10 p-4">
-                      <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-sm font-semibold text-gray-500 dark:text-white/50 flex items-center gap-2">
-                          <TrendingUp className="w-4 h-4" /> Historial de Pagos
-                        </h3>
+                  {/* Historial de pagos - barras simples (sin recharts para evitar error de build d3-array) */}
+                  {chartData.length > 0 && (() => {
+                    const maxAmount = Math.max(...chartData.map((d: { amount: number }) => d.amount), 1);
+                    return (
+                      <div className="bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-xl border border-gray-200 dark:border-white/10 p-4">
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="text-sm font-semibold text-gray-500 dark:text-white/50 flex items-center gap-2">
+                            <TrendingUp className="w-4 h-4" /> Historial de Pagos
+                          </h3>
+                        </div>
+                        <div className="h-40 flex items-end gap-1">
+                          {chartData.map((d: { date: string; amount: number }, i: number) => (
+                            <div key={i} className="flex-1 flex flex-col items-center gap-1 group relative">
+                              <div
+                                className="w-full min-h-[4px] rounded-t bg-[#85ea10]/30 hover:bg-[#85ea10]/50 transition-colors"
+                                style={{ height: `${Math.max((d.amount / maxAmount) * 100, 8)}%` }}
+                                title={`${d.date}: $${d.amount.toLocaleString('es-CO')}`}
+                              />
+                              <span className="text-[9px] text-gray-500 dark:text-white/50 truncate max-w-full">
+                                {d.date.slice(5)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="flex justify-between mt-1 text-[10px] text-gray-500 dark:text-white/50">
+                          <span>${(0).toLocaleString('es-CO')}</span>
+                          <span>${(maxAmount / 1000).toFixed(0)}k</span>
+                        </div>
                       </div>
-                      <div className="h-40">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <AreaChart data={chartData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
-                            <defs>
-                              <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#85ea10" stopOpacity={0.3}/>
-                                <stop offset="95%" stopColor="#85ea10" stopOpacity={0}/>
-                              </linearGradient>
-                            </defs>
-                            <XAxis 
-                              dataKey="date" 
-                              axisLine={false}
-                              tickLine={false}
-                              tick={{ fontSize: 10, fill: '#9ca3af' }}
-                            />
-                            <YAxis 
-                              axisLine={false}
-                              tickLine={false}
-                              tick={{ fontSize: 10, fill: '#9ca3af' }}
-                              tickFormatter={(value) => `$${(value/1000).toFixed(0)}k`}
-                            />
-                            <Tooltip 
-                              contentStyle={{ 
-                                backgroundColor: 'rgba(22, 65, 81, 0.95)', 
-                                border: 'none', 
-                                borderRadius: '8px',
-                                color: '#fff',
-                                fontSize: '12px'
-                              }}
-                              formatter={(value) => [
-                                `$${(value as number || 0).toLocaleString('es-CO')}`,
-                                ''
-                              ]}
-                              labelStyle={{ color: '#85ea10', fontWeight: 'bold' }}
-                            />
-                            <Area 
-                              type="monotone" 
-                              dataKey="amount" 
-                              stroke="#85ea10" 
-                              strokeWidth={2}
-                              fill="url(#colorAmount)"
-                              dot={{ fill: '#85ea10', strokeWidth: 2, r: 4 }}
-                              activeDot={{ r: 6, fill: '#85ea10' }}
-                            />
-                          </AreaChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </div>
-                  )}
+                    );
+                  })()}
                 </div>
               );
             })()}
@@ -1431,8 +1448,7 @@ export default function UserDetailPage() {
 
                   // Filtrar membresías activas (vigentes o programadas/futuras)
                   const activeMemberships = (userData.gym_memberships || []).filter((membership: any) => {
-                    const endDate = new Date(membership.end_date);
-                    endDate.setHours(0, 0, 0, 0);
+                    const endDate = parseLocalDate(membership.end_date);
                     // Incluir si: no está cancelada Y (fecha fin >= hoy O es membresía futura)
                     return membership.status !== 'cancelled' && endDate >= today;
                   });
@@ -1461,8 +1477,7 @@ export default function UserDetailPage() {
                           .sort((a: any, b: any) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime())
                           .map((membership: any) => {
                             // Determinar si es membresía actual o programada (pago anticipado)
-                            const startDate = new Date(membership.start_date);
-                            startDate.setHours(0, 0, 0, 0);
+                            const startDate = parseLocalDate(membership.start_date);
                             const isScheduled = startDate > today;
                             
                             return (
@@ -1534,7 +1549,7 @@ export default function UserDetailPage() {
                                         ) : (
                                           <>
                                             <p className="text-xs text-gray-500 dark:text-white/50">
-                                              Inicia: {new Date(membership.start_date).toLocaleDateString('es-ES', {
+                                              Inicia: {parseLocalDate(membership.start_date).toLocaleDateString('es-ES', {
                                                 day: '2-digit',
                                                 month: 'long',
                                                 year: 'numeric',
@@ -1551,7 +1566,7 @@ export default function UserDetailPage() {
                                         )}
                                       </div>
                                       <p className={`text-xs ${isScheduled ? 'text-cyan-600 dark:text-cyan-400' : 'text-gray-500 dark:text-white/50'}`}>
-                                        Vence: {new Date(membership.end_date).toLocaleDateString('es-ES', {
+                                        Vence: {parseLocalDate(membership.end_date).toLocaleDateString('es-ES', {
                                           day: '2-digit',
                                           month: 'long',
                                           year: 'numeric',
@@ -1601,8 +1616,7 @@ export default function UserDetailPage() {
 
                   // Filtrar membresías vencidas (excluir canceladas)
                   const expiredMemberships = (userData.gym_memberships || []).filter((membership: any) => {
-                    const endDate = new Date(membership.end_date);
-                    endDate.setHours(0, 0, 0, 0);
+                    const endDate = parseLocalDate(membership.end_date);
                     return endDate < today && membership.status !== 'cancelled';
                   });
 
@@ -1619,8 +1633,7 @@ export default function UserDetailPage() {
                         {expiredMemberships
                           .sort((a: any, b: any) => new Date(b.end_date).getTime() - new Date(a.end_date).getTime())
                           .map((membership: any) => {
-                            const endDate = new Date(membership.end_date);
-                            endDate.setHours(0, 0, 0, 0);
+                            const endDate = parseLocalDate(membership.end_date);
 
                             return (
                               <div key={membership.id} className="p-4 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-200 dark:border-white/10">
@@ -1668,7 +1681,7 @@ export default function UserDetailPage() {
                                       </div>
                                     </div>
                                     <p className="text-xs text-gray-500 dark:text-white/50">
-                                      Venció: {new Date(membership.end_date).toLocaleDateString('es-ES', {
+                                      Venció: {parseLocalDate(membership.end_date).toLocaleDateString('es-ES', {
                                         day: '2-digit',
                                         month: 'long',
                                         year: 'numeric',
@@ -1685,7 +1698,7 @@ export default function UserDetailPage() {
                                   {/* Botón Invitar a renovar (WhatsApp) */}
                                   {userData.whatsapp || userData.phone ? (() => {
                                     const planName = membership.plan?.name || 'tu plan';
-                                    const endDateFormatted = new Date(membership.end_date).toLocaleDateString('es-ES', {
+                                    const endDateFormatted = parseLocalDate(membership.end_date).toLocaleDateString('es-ES', {
                                       day: '2-digit',
                                       month: 'long',
                                       year: 'numeric',
@@ -1779,8 +1792,7 @@ export default function UserDetailPage() {
                           // Verificar dinámicamente si está vencida
                           const today = new Date();
                           today.setHours(0, 0, 0, 0);
-                          const endDate = new Date(membership.end_date);
-                          endDate.setHours(0, 0, 0, 0);
+                          const endDate = parseLocalDate(membership.end_date);
                           const isExpired = endDate < today;
                           const isActive = !isExpired && membership.status === 'active';
 
@@ -1814,7 +1826,7 @@ export default function UserDetailPage() {
                               </div>
                               <div className="space-y-1">
                                 <p className="text-xs text-gray-500 dark:text-white/50">
-                                  {isExpired ? 'Venció' : 'Vence'}: {new Date(membership.end_date).toLocaleDateString('es-ES', {
+                                  {isExpired ? 'Venció' : 'Vence'}: {parseLocalDate(membership.end_date).toLocaleDateString('es-ES', {
                                     day: '2-digit',
                                     month: 'long',
                                     year: 'numeric',
@@ -1952,7 +1964,7 @@ export default function UserDetailPage() {
 
             <div className="p-3 bg-gray-50 dark:bg-white/5 rounded-lg mb-4">
               <p className="text-sm text-gray-600 dark:text-white/60">
-                <strong>Vencimiento:</strong> {new Date(membershipToCancel.end_date).toLocaleDateString('es-ES', {
+                <strong>Vencimiento:</strong> {parseLocalDate(membershipToCancel.end_date).toLocaleDateString('es-ES', {
                   day: '2-digit',
                   month: 'long',
                   year: 'numeric',

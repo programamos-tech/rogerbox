@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { supabase } from '@/lib/supabase-browser';
 import { useUserPurchases } from '@/hooks/useUserPurchases';
-import { CheckCircle, XCircle, Clock, ArrowRight, CheckCircle2, Sparkles, Download } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, ChevronRight, CheckCircle2, Sparkles, Download } from 'lucide-react';
 import CourseStartDateModal from '@/components/CourseStartDateModal';
 
 interface OrderResult {
@@ -823,7 +823,7 @@ function PaymentResultContent() {
             className="w-full bg-[#85ea10] text-black font-bold py-3 px-6 rounded-xl hover:bg-[#6bc20a] transition-colors flex items-center justify-center gap-2"
           >
             Seleccionar Fecha de Inicio
-            <ArrowRight className="w-5 h-5" />
+            <ChevronRight className="w-5 h-5" />
           </button>
         ) : (
         <button
@@ -831,7 +831,7 @@ function PaymentResultContent() {
             className="w-full bg-[#85ea10] text-black font-bold py-3 px-6 rounded-xl hover:bg-[#6bc20a] transition-colors flex items-center justify-center gap-2"
         >
           {order.status === 'approved' ? 'Ir al Dashboard' : 'Ver Cursos'}
-          <ArrowRight className="w-5 h-5" />
+          <ChevronRight className="w-5 h-5" />
         </button>
         )}
 

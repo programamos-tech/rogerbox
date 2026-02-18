@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Building2, Users, Shield, Award, Clock, CheckCircle, Star, Phone, Mail, MapPin, ArrowRight, Zap, Target, Heart, TrendingUp } from 'lucide-react';
+import { ArrowLeft, Building2, Users, Shield, Award, Clock, CheckCircle, Star, Phone, Mail, MapPin, ChevronRight, Zap, Target, Heart, TrendingUp } from 'lucide-react';
 import Footer from '@/components/Footer';
 
 export default function EnterprisesPage() {
@@ -161,7 +161,7 @@ export default function EnterprisesPage() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <button className="bg-[#85ea10] hover:bg-[#7dd30f] text-black font-bold px-8 py-4 rounded-xl text-lg transition-all duration-300 hover:scale-105 flex items-center justify-center space-x-2">
                 <span>Solicitar Demo</span>
-                <ArrowRight className="w-5 h-5" />
+                <ChevronRight className="w-5 h-5" />
               </button>
               <button className="border-2 border-[#85ea10] text-[#85ea10] hover:bg-[#85ea10] hover:text-black font-bold px-8 py-4 rounded-xl text-lg transition-all duration-300">
                 Ver Planes y Precios

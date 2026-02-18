@@ -146,11 +146,6 @@ export default function DashboardPage() {
 
 
 
-  // Debug logs
-  console.log('📊 Dashboard: realCourses length:', realCourses.length);
-  console.log('📊 Dashboard: loadingCourses:', loadingCourses);
-  console.log('📊 Dashboard: coursesError:', coursesError);
-
   // Funciones de precios
   const calculateFinalPrice = (course: any) => {
     const price = course.price || 0;
@@ -191,51 +186,25 @@ export default function DashboardPage() {
 
 
 
-  // Debug logs
-  console.log('📊 Dashboard: realCourses length:', realCourses?.length || 0);
-  console.log('📊 Dashboard: loadingCourses:', loadingCourses);
-  console.log('📊 Dashboard: coursesError:', coursesError);
+  // Cursos recomendados y filtrados memoizados para evitar re-renders y miles de peticiones
+  const recommendedCourses = useMemo(
+    () => realCourses?.filter(course => (course.rating ?? 0) >= 4.5).slice(0, 3) || [],
+    [realCourses]
+  );
+  const recommendedIds = useMemo(() => new Set(recommendedCourses.map(c => c.id)), [recommendedCourses]);
 
-  // Cursos recomendados (por rating alto) y evitar duplicarlos en "Todos los Cursos"
-  const recommendedCourses = realCourses?.filter(course => (course.rating ?? 0) >= 4.5).slice(0, 3) || [];
-  const recommendedIds = new Set(recommendedCourses.map(c => c.id));
-
-  // Debug logs para recomendados
-  console.log('📊 Dashboard: recommendedCourses length:', recommendedCourses.length);
-  if (realCourses && realCourses.length > 0) {
-    console.log('📊 Dashboard: Primer curso rating:', realCourses[0].rating);
-  }
-
-  // Filtrar cursos
-  const filteredCourses = realCourses?.filter(course => {
-    const matchesCategory = selectedCategory === 'all' || course.category_name === selectedCategory;
-    const matchesSearch = !searchQuery ||
-      course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      course.short_description?.toLowerCase().includes(searchQuery.toLowerCase());
-    // Excluir los que ya aparecen como recomendados para evitar duplicados visuales
-    const notRecommended = !recommendedIds.has(course.id);
-
-    // Debug logs (simplificados)
-    if (!matchesCategory || !matchesSearch || !notRecommended) {
-      console.log(`🔍 Curso "${course.title}" filtrado:`, {
-        matchesCategory,
-        matchesSearch,
-        notRecommended,
-        category: course.category_name,
-        rating: course.rating
-      });
-    }
-
-    return matchesCategory && matchesSearch && notRecommended;
-  }) || [];
-
-  console.log('📊 Dashboard: filteredCourses length:', filteredCourses.length);
-  if (realCourses && realCourses.length > 0) {
-    console.log('📊 Dashboard: Primer curso:', realCourses[0]);
-    console.log('📊 Dashboard: Thumbnail del primer curso:', realCourses[0].thumbnail);
-    console.log('📊 Dashboard: Preview_image del primer curso:', realCourses[0].preview_image);
-    console.log('📊 Dashboard: Image URL final:', realCourses[0].preview_image || realCourses[0].thumbnail || '/images/course-placeholder.jpg');
-  }
+  const filteredCourses = useMemo(
+    () =>
+      realCourses?.filter(course => {
+        const matchesCategory = selectedCategory === 'all' || course.category_name === selectedCategory;
+        const matchesSearch = !searchQuery ||
+          course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          course.short_description?.toLowerCase().includes(searchQuery.toLowerCase());
+        const notRecommended = !recommendedIds.has(course.id);
+        return matchesCategory && matchesSearch && notRecommended;
+      }) || [],
+    [realCourses, selectedCategory, searchQuery, recommendedIds]
+  );
 
   const [showGoalModal, setShowGoalModal] = useState(false);
   const [goalData, setGoalData] = useState({
@@ -1435,7 +1404,9 @@ export default function DashboardPage() {
                               style={{ objectPosition: 'center center', display: 'block' }}
                               onError={(e) => {
                                 const target = e.target as HTMLImageElement;
-                                target.src = '/images/course-placeholder.jpg';
+                                if (!target.src?.endsWith('course-placeholder.jpg')) {
+                                  target.src = '/images/course-placeholder.jpg';
+                                }
                               }}
                             />
                             <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-all duration-300 flex items-center justify-center opacity-0 hover:opacity-100 z-10">
@@ -1676,7 +1647,7 @@ export default function DashboardPage() {
 
             {/* Cards de blogs - Horizontal scroll */}
             <div className="flex gap-6 overflow-x-auto scrollbar-hide pb-4">
-              {nutritionalBlogs.map((blog) => (
+              {nutritionalBlogs.slice(0, 15).map((blog) => (
                 <div
                   key={blog.id}
                   onClick={() => router.push(`/blog/${blog.slug}`)}
@@ -1692,7 +1663,9 @@ export default function DashboardPage() {
                           className="w-full h-full object-cover"
                           onError={(e) => {
                             const target = e.target as HTMLImageElement;
-                            target.src = '/images/course-placeholder.jpg';
+                            if (!target.src?.endsWith('course-placeholder.jpg')) {
+                              target.src = '/images/course-placeholder.jpg';
+                            }
                           }}
                         />
                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all duration-300"></div>

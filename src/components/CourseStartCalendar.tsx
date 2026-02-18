@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Calendar, Clock, CheckCircle, ArrowRight } from 'lucide-react';
+import { Calendar, Clock, CheckCircle, ChevronRight } from 'lucide-react';
 
 interface CourseStartCalendarProps {
   course: {
@@ -177,7 +177,7 @@ export default function CourseStartCalendar({
             ) : (
               <>
                 <span>¡Comenzar Curso!</span>
-                <ArrowRight className="w-4 h-4" />
+                <ChevronRight className="w-4 h-4" />
               </>
             )}
           </button>
