@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validar que el bucket sea válido
-    const validBuckets = ['course-images', 'lesson-images', 'banners'];
+    const validBuckets = ['course-image', 'lesson-image', 'lesson-images', 'banners'];
     if (!validBuckets.includes(bucket)) {
       return NextResponse.json(
         { error: `Bucket inválido. Debe ser uno de: ${validBuckets.join(', ')}` },
@@ -48,11 +48,28 @@ export async function POST(request: NextRequest) {
     console.log(`📤 Subiendo imagen a ${bucket}/${filePath} (${buffer.length} bytes)`);
     console.log('🔧 Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321');
 
-    // Primero verificar que el bucket existe
+    // Verificar que el bucket existe; si no, crearlo (solo para buckets conocidos)
     const { data: buckets, error: listError } = await supabaseAdmin.storage.listBuckets();
-    console.log('📦 Buckets disponibles:', buckets?.map(b => b.name) || 'Error listando');
+    const bucketNames = buckets?.map(b => b.name) ?? [];
+    console.log('📦 Buckets disponibles:', bucketNames);
     if (listError) {
       console.error('❌ Error listando buckets:', listError);
+    }
+
+    if (!bucketNames.includes(bucket)) {
+      console.log(`📦 Creando bucket "${bucket}"...`);
+      const { error: createError } = await supabaseAdmin.storage.createBucket(bucket, {
+        public: true,
+        fileSizeLimit: 5 * 1024 * 1024 // 5MB
+      });
+      if (createError) {
+        console.error('❌ Error creando bucket:', createError);
+        return NextResponse.json(
+          { error: `Bucket "${bucket}" no existe y no se pudo crear: ${createError.message}` },
+          { status: 500 }
+        );
+      }
+      console.log(`✅ Bucket "${bucket}" creado`);
     }
 
     // Subir archivo a Supabase Storage usando supabaseAdmin

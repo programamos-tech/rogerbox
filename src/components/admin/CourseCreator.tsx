@@ -266,7 +266,7 @@ export default function CourseCreator({ onClose, onSuccess, courseToEdit, asPage
       console.log(`📤 Procesando imagen ${type}:`, file.name);
       
       // Determinar el bucket y folder según el tipo
-      const bucket = type === 'course' ? 'course-images' : 'lesson-images';
+      const bucket = type === 'course' ? 'course-image' : 'lesson-images';
       const folder = type === 'course' ? 'courses' : 'lessons';
       
       // Generar nombre único para el archivo
@@ -310,7 +310,7 @@ export default function CourseCreator({ onClose, onSuccess, courseToEdit, asPage
         
         if (bucket && path) {
           console.log(`🗑️ Eliminando imagen de Storage: ${bucket}/${path}`);
-          const deleted = await deleteImage(bucket as 'course-images' | 'lesson-images', path);
+          const deleted = await deleteImage(bucket as 'course-image' | 'lesson-images', path);
           
           if (deleted) {
             console.log('✅ Imagen eliminada de Storage');

@@ -2086,13 +2086,7 @@ function AdminDashboardContent() {
           )}
 
           {/* Complements Tab */}
-          {activeTab === 'complements' && (
-            <UnderConstruction
-              title="Complementos"
-              icon={Play}
-              description="La sección de videos semanales y guías se encuentra en fase de mejora técnica."
-            />
-          )}
+          {activeTab === 'complements' && <ComplementManagement />}
 
           {/* Banners Tab */}
           {activeTab === 'banners' && (

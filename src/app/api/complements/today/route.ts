@@ -39,20 +39,17 @@ export async function GET() {
       .eq('year', currentYear)
       .eq('day_of_week', targetDay)
       .eq('is_published', true)
-      .single();
+      .maybeSingle();
 
     if (error) {
-      console.log('❌ Error o no encontrado:', error.message);
-      return NextResponse.json({ 
-        complement: null, 
-        isWeekend,
-        dayOfWeek,
-        targetDay,
-        debug: { currentWeek, currentYear, error: error.message }
-      });
+      console.log('❌ Error:', error.message);
+      return NextResponse.json({ complement: null, isWeekend, dayOfWeek, targetDay });
     }
 
-    console.log('✅ Complemento encontrado:', data.title);
+    if (!data) {
+      return NextResponse.json({ complement: null, isWeekend, dayOfWeek, targetDay });
+    }
+
     return NextResponse.json({ 
       complement: data, 
       isWeekend,

@@ -60,7 +60,7 @@ async function convertToWebP(file: File, quality: number = 0.85): Promise<File> 
 /**
  * Sube una imagen a Supabase Storage (convierte a WebP automáticamente)
  * @param file - Archivo de imagen
- * @param bucket - Bucket de destino ('course-images' o 'lesson-images')
+ * @param bucket - Bucket de destino ('course-image' o 'lesson-images')
  * @param folder - Carpeta dentro del bucket (ej: 'courses', 'lessons')
  * @param filename - Nombre del archivo (opcional, se genera automáticamente si no se proporciona)
  * @param convertToWebP - Si debe convertir a WebP (default: true)
@@ -69,7 +69,7 @@ async function convertToWebP(file: File, quality: number = 0.85): Promise<File> 
  */
 export async function uploadImage(
   file: File,
-  bucket: 'course-images' | 'lesson-images',
+  bucket: 'course-image' | 'lesson-images',
   folder: string,
   filename?: string,
   shouldConvertToWebP: boolean = true,
@@ -154,7 +154,7 @@ export async function uploadImage(
  * @returns Promise<boolean>
  */
 export async function deleteImage(
-  bucket: 'course-images' | 'lesson-images',
+  bucket: 'course-image' | 'lesson-image' | 'lesson-images',
   path: string
 ): Promise<boolean> {
   try {
@@ -186,7 +186,7 @@ export async function deleteImage(
 export function getImagePathFromUrl(url: string): string | null {
   try {
     // Extraer el path de la URL de Supabase Storage
-    // Ejemplo: https://vzearvitzpwzscxhqfut.supabase.co/storage/v1/object/public/course-images/courses/123.jpg
+    // Ejemplo: https://vzearvitzpwzscxhqfut.supabase.co/storage/v1/object/public/course-image/courses/123.jpg
     // Resultado: courses/123.jpg
     const match = url.match(/\/storage\/v1\/object\/public\/([^\/]+)\/(.+)$/);
     if (match && match[2]) {
