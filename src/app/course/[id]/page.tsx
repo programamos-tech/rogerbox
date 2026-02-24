@@ -1,13 +1,28 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import {
+  Bell,
+  CheckCircle,
+  ChevronDown,
+  Clock,
+  CreditCard,
+  Dumbbell,
+  Lock,
+  LogOut,
+  Play,
+  Shield,
+  ShoppingCart,
+  Star,
+  User,
+  Users,
+  Zap,
+} from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import Footer from '@/components/Footer';
+import WompiCheckout from '@/components/WompiCheckout';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { supabase } from '@/lib/supabase';
-import { Star, Clock, Users, Play, ShoppingCart, Heart, ArrowLeft, CheckCircle, Zap, Target, Award, Shield, Tag, CreditCard, User, ChevronDown, Settings, LogOut, Dumbbell, Bell, Lock } from 'lucide-react';
-import WompiCheckout from '@/components/WompiCheckout';
-import RogerBoxMuxPlayer from '@/components/RogerBoxMuxPlayer';
-import Footer from '@/components/Footer';
 
 interface Course {
   id: string;
@@ -52,16 +67,16 @@ export default function CourseDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { user, profile, loading: authLoading } = useSupabaseAuth();
-  
+
   const [course, setCourse] = useState<Course | null>(null);
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isEnrolled, setIsEnrolled] = useState(false);
-  const [isFavorite, setIsFavorite] = useState(false);
+  const [_isFavorite, setIsFavorite] = useState(false);
   const [categoryMap, setCategoryMap] = useState<{ [key: string]: string }>({});
   const [showPaymentWidget, setShowPaymentWidget] = useState(false);
-  const [showFullDescription, setShowFullDescription] = useState(false);
+  const [_showFullDescription, _setShowFullDescription] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showVideoLogo, setShowVideoLogo] = useState(false);
@@ -85,29 +100,29 @@ export default function CourseDetailPage() {
           .order('sort_order', { ascending: true });
 
         if (error) throw error;
-        
+
         // Crear mapeo de categorías
         const map: { [key: string]: string } = {};
-        (data || []).forEach(cat => {
+        (data || []).forEach((cat) => {
           map[cat.id] = cat.name;
         });
         setCategoryMap(map);
-      } catch (error) {
-        console.error('Error fetching categories:', error);
-      }
+      } catch (_error) {}
     };
 
     fetchCategories();
   }, []);
 
-  const getCategoryName = (categoryId: string | undefined): string => {
+  const _getCategoryName = (categoryId: string | undefined): string => {
     if (!categoryId) return 'Sin categoría';
     return categoryMap[categoryId] || 'Sin categoría';
   };
 
   // Resolver parámetros de manera segura
   const resolvedParams = params || {};
-  const courseId = Array.isArray(resolvedParams.id) ? resolvedParams.id[0] : resolvedParams.id;
+  const courseId = Array.isArray(resolvedParams.id)
+    ? resolvedParams.id[0]
+    : resolvedParams.id;
 
   // Cargar perfil del usuario si está autenticado
   useEffect(() => {
@@ -124,13 +139,11 @@ export default function CourseDetailPage() {
           if (data) {
             setUserProfile(data);
           }
-        } catch (error) {
-          console.error('Error fetching user profile:', error);
-        }
+        } catch (_error) {}
       }
     };
 
-    if (!!user) {
+    if (user) {
       fetchUserProfile();
     }
   }, [user]);
@@ -157,7 +170,7 @@ export default function CourseDetailPage() {
     if (courseId) {
       loadCourseData();
     }
-  }, [courseId]);
+  }, [courseId, loadCourseData]);
 
   const loadCourseData = async () => {
     try {
@@ -224,7 +237,7 @@ export default function CourseDetailPage() {
         } else {
           setLessons(lessons || []);
         }
-      } catch (error) {
+      } catch (_error) {
         setLessons([]);
       }
 
@@ -240,7 +253,7 @@ export default function CourseDetailPage() {
             .maybeSingle();
 
           setIsEnrolled(!!enrollment);
-        } catch (error) {
+        } catch (_error) {
           setIsEnrolled(false);
         }
       }
@@ -256,14 +269,13 @@ export default function CourseDetailPage() {
             .maybeSingle();
 
           setIsFavorite(!!favorite);
-        } catch (error) {
+        } catch (_error) {
           setIsFavorite(false);
         }
       }
 
       setLoading(false);
-    } catch (error) {
-      console.error('Error loading course data:', error);
+    } catch (_error) {
       setError('Error al cargar el curso');
       setLoading(false);
     }
@@ -271,7 +283,7 @@ export default function CourseDetailPage() {
 
   const handlePurchase = () => {
     if (!course) return;
-    
+
     // MANDATORY: Validar que el usuario esté autenticado ANTES de permitir compra
     if (!user) {
       const currentUrl = window.location.pathname;
@@ -281,17 +293,21 @@ export default function CourseDetailPage() {
 
     // Validar si el usuario ya compró este curso
     if (isEnrolled) {
-      alert('Ya tienes acceso a este curso. Ve a tu dashboard para empezar a entrenar! 💪');
+      alert(
+        'Ya tienes acceso a este curso. Ve a tu dashboard para empezar a entrenar! 💪',
+      );
       router.push('/dashboard');
       return;
     }
 
     // Validar que el usuario tenga email (requerido por Wompi)
     if (!user.email) {
-      alert('Tu cuenta no tiene un email asociado. Por favor actualiza tu perfil.');
+      alert(
+        'Tu cuenta no tiene un email asociado. Por favor actualiza tu perfil.',
+      );
       return;
     }
-    
+
     // Usuario autenticado correctamente, mostrar widget de pago
     setShowPaymentWidget(true);
   };
@@ -317,8 +333,12 @@ export default function CourseDetailPage() {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Curso no encontrado</h1>
-          <p className="text-gray-600 dark:text-gray-300 mb-6">El curso que buscas no existe o no está disponible</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+            Curso no encontrado
+          </h1>
+          <p className="text-gray-600 dark:text-gray-300 mb-6">
+            El curso que buscas no existe o no está disponible
+          </p>
           <button
             onClick={() => router.push('/dashboard')}
             className="bg-[#85ea10] hover:bg-[#7dd30f] text-black font-bold py-3 px-6 rounded-lg transition-colors duration-150"
@@ -333,9 +353,10 @@ export default function CourseDetailPage() {
   // Calcular precio con descuento
   const discountPercentage = course.discount_percentage || 0;
   const originalPrice = course.price;
-  const finalPrice = discountPercentage > 0 
-    ? Math.round(originalPrice * (1 - discountPercentage / 100)) 
-    : originalPrice;
+  const finalPrice =
+    discountPercentage > 0
+      ? Math.round(originalPrice * (1 - discountPercentage / 100))
+      : originalPrice;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
@@ -378,14 +399,19 @@ export default function CourseDetailPage() {
                   <div className="w-7 h-7 sm:w-8 sm:h-8 bg-[#85ea10] rounded-full flex items-center justify-center">
                     <User className="w-4 h-4 sm:w-5 sm:h-5 text-black" />
                   </div>
-                  <span className="hidden sm:block text-sm font-medium">{userProfile?.name || 'RogerBox'}</span>
+                  <span className="hidden sm:block text-sm font-medium">
+                    {userProfile?.name || 'RogerBox'}
+                  </span>
                   <ChevronDown className="w-3 h-3 sm:w-4 sm:h-4" />
                 </button>
               )}
 
               {showUserMenu && (
                 <div className="absolute right-4 top-14 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-50">
-                  <a href="/profile" className="flex items-center space-x-2 px-4 py-2 text-sm text-gray-700 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">
+                  <a
+                    href="/profile"
+                    className="flex items-center space-x-2 px-4 py-2 text-sm text-gray-700 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
+                  >
                     <User className="w-4 h-4" />
                     <span>Mi Perfil</span>
                   </a>
@@ -411,7 +437,9 @@ export default function CourseDetailPage() {
             {/* Video */}
             <div className="relative bg-gray-900 rounded-xl overflow-hidden shadow-lg">
               {/* Logo RogerBox - esquina superior derecha, aparece después de 3s */}
-              <div className={`absolute top-3 right-3 z-20 transition-all duration-500 ${showVideoLogo ? 'opacity-50' : 'opacity-0'}`}>
+              <div
+                className={`absolute top-3 right-3 z-20 transition-all duration-500 ${showVideoLogo ? 'opacity-50' : 'opacity-0'}`}
+              >
                 <span className="text-white font-black text-sm tracking-tight">
                   ROGER<span className="text-[#85ea10]">BOX</span>
                 </span>
@@ -441,33 +469,43 @@ export default function CourseDetailPage() {
 
             {/* Título y Stats */}
             <div className="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-lg">
-              <h1 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-2">{course.title}</h1>
-              
+              <h1 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-2">
+                {course.title}
+              </h1>
+
               {/* Descripción */}
               <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
-                {course.description || course.short_description || 'Transforma tu cuerpo con este programa intensivo de entrenamiento diseñado para quemar grasa y tonificar músculos.'}
+                {course.description ||
+                  course.short_description ||
+                  'Transforma tu cuerpo con este programa intensivo de entrenamiento diseñado para quemar grasa y tonificar músculos.'}
               </p>
 
               {/* Stats en badges */}
               <div className="flex flex-wrap items-center gap-2">
                 <span className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 dark:bg-gray-700 rounded-full text-sm">
-                  <Clock className="w-4 h-4 text-[#85ea10]" />{course.duration || '8 semanas'}
+                  <Clock className="w-4 h-4 text-[#85ea10]" />
+                  {course.duration || '8 semanas'}
                 </span>
                 <span className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 dark:bg-gray-700 rounded-full text-sm">
-                  <Star className="w-4 h-4 text-yellow-400 fill-current" />{course.rating || '4.8'}
+                  <Star className="w-4 h-4 text-yellow-400 fill-current" />
+                  {course.rating || '4.8'}
                 </span>
                 <span className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 dark:bg-gray-700 rounded-full text-sm">
-                  <Users className="w-4 h-4 text-[#85ea10]" />{course.students_count || 0} estudiantes
+                  <Users className="w-4 h-4 text-[#85ea10]" />
+                  {course.students_count || 0} estudiantes
                 </span>
                 <span className="flex items-center gap-1.5 px-3 py-1.5 bg-[#85ea10]/10 rounded-full text-sm text-[#85ea10] font-medium">
-                  <Play className="w-4 h-4" />{lessons.length} clases
+                  <Play className="w-4 h-4" />
+                  {lessons.length} clases
                 </span>
               </div>
             </div>
 
             {/* Lo que incluye */}
             <div className="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-lg">
-              <h3 className="font-bold text-gray-900 dark:text-white mb-4">Lo que incluye este curso</h3>
+              <h3 className="font-bold text-gray-900 dark:text-white mb-4">
+                Lo que incluye este curso
+              </h3>
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
                   <CheckCircle className="w-5 h-5 text-[#85ea10] flex-shrink-0" />
@@ -495,7 +533,6 @@ export default function CourseDetailPage() {
                 </div>
               </div>
             </div>
-
           </div>
 
           {/* Sidebar - Precio (Sticky) */}
@@ -505,9 +542,12 @@ export default function CourseDetailPage() {
               <div className="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-lg border-2 border-[#85ea10]/20">
                 {/* Cómo funciona - arriba */}
                 <div className="mb-4 p-3 bg-[#85ea10]/10 rounded-lg border border-[#85ea10]/30">
-                  <p className="text-sm font-bold text-[#85ea10] mb-1">💪 ¿Cómo funciona?</p>
+                  <p className="text-sm font-bold text-[#85ea10] mb-1">
+                    💪 ¿Cómo funciona?
+                  </p>
                   <p className="text-xs text-gray-600 dark:text-gray-300">
-                    Al comprar, eliges cuándo empezar. Cada día se desbloquea una nueva clase. ¡Mantén la constancia!
+                    Al comprar, eliges cuándo empezar. Cada día se desbloquea
+                    una nueva clase. ¡Mantén la constancia!
                   </p>
                 </div>
 
@@ -515,21 +555,31 @@ export default function CourseDetailPage() {
                 <div className="mb-4">
                   <div className="flex items-center justify-center gap-3">
                     {discountPercentage > 0 && (
-                      <span className="text-lg text-gray-400 line-through">${originalPrice?.toLocaleString('es-CO')}</span>
+                      <span className="text-lg text-gray-400 line-through">
+                        ${originalPrice?.toLocaleString('es-CO')}
+                      </span>
                     )}
-                    <span className="text-3xl font-bold text-gray-900 dark:text-white">${finalPrice?.toLocaleString('es-CO')}</span>
+                    <span className="text-3xl font-bold text-gray-900 dark:text-white">
+                      ${finalPrice?.toLocaleString('es-CO')}
+                    </span>
                     {discountPercentage > 0 && (
-                      <span className="bg-[#85ea10] text-black text-xs font-bold px-2 py-0.5 rounded-full">-{discountPercentage}%</span>
+                      <span className="bg-[#85ea10] text-black text-xs font-bold px-2 py-0.5 rounded-full">
+                        -{discountPercentage}%
+                      </span>
                     )}
                   </div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 text-center">Pago único • Sin suscripciones</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 text-center">
+                    Pago único • Sin suscripciones
+                  </p>
                 </div>
 
                 <button
                   onClick={handlePurchase}
                   disabled={isEnrolled}
                   className={`w-full py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 transition-all ${
-                    isEnrolled ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-[#85ea10] hover:bg-[#7dd30f] text-black shadow-lg hover:shadow-xl hover:scale-[1.02]'
+                    isEnrolled
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-[#85ea10] hover:bg-[#7dd30f] text-black shadow-lg hover:shadow-xl hover:scale-[1.02]'
                   }`}
                 >
                   <ShoppingCart className="w-5 h-5" />
@@ -538,9 +588,18 @@ export default function CourseDetailPage() {
 
                 {/* Info de pago - horizontal */}
                 <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 flex flex-wrap items-center justify-center gap-3 text-xs text-gray-500 dark:text-gray-400">
-                  <span className="flex items-center gap-1"><Shield className="w-3 h-3 text-[#85ea10]" />Seguro</span>
-                  <span className="flex items-center gap-1"><CheckCircle className="w-3 h-3 text-[#85ea10]" />Inmediato</span>
-                  <span className="flex items-center gap-1"><CreditCard className="w-3 h-3 text-[#85ea10]" />Nequi/PSE</span>
+                  <span className="flex items-center gap-1">
+                    <Shield className="w-3 h-3 text-[#85ea10]" />
+                    Seguro
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <CheckCircle className="w-3 h-3 text-[#85ea10]" />
+                    Inmediato
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <CreditCard className="w-3 h-3 text-[#85ea10]" />
+                    Nequi/PSE
+                  </span>
                 </div>
               </div>
 
@@ -556,21 +615,23 @@ export default function CourseDetailPage() {
                   {lessons.slice(0, 5).map((lesson, i) => {
                     const isFirst = i === 0;
                     const daysUntilUnlock = i;
-                    
+
                     return (
-                      <div 
-                        key={lesson.id} 
+                      <div
+                        key={lesson.id}
                         className={`flex gap-3 p-3 rounded-lg border transition-all ${
-                          isFirst 
-                            ? 'bg-[#85ea10]/10 border-[#85ea10]/30' 
+                          isFirst
+                            ? 'bg-[#85ea10]/10 border-[#85ea10]/30'
                             : 'bg-gray-50 dark:bg-gray-700/30 border-gray-200 dark:border-gray-600 opacity-60'
                         }`}
                       >
                         {/* Thumbnail */}
-                        <div className={`relative w-14 h-14 rounded-lg overflow-hidden flex-shrink-0 ${!isFirst ? 'grayscale' : ''}`}>
+                        <div
+                          className={`relative w-14 h-14 rounded-lg overflow-hidden flex-shrink-0 ${!isFirst ? 'grayscale' : ''}`}
+                        >
                           {lesson.preview_image ? (
-                            <img 
-                              src={lesson.preview_image} 
+                            <img
+                              src={lesson.preview_image}
                               alt={lesson.title}
                               className="w-full h-full object-cover"
                             />
@@ -585,34 +646,43 @@ export default function CourseDetailPage() {
                             </div>
                           )}
                         </div>
-                        
+
                         {/* Info */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-2">
-                            <p className={`text-sm font-medium ${isFirst ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>
+                            <p
+                              className={`text-sm font-medium ${isFirst ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}
+                            >
                               {lesson.title}
                             </p>
-                            <span className="text-xs text-gray-500 flex-shrink-0">{lesson.duration_minutes}m</span>
+                            <span className="text-xs text-gray-500 flex-shrink-0">
+                              {lesson.duration_minutes}m
+                            </span>
                           </div>
-                          
+
                           {lesson.description && (
-                            <p className={`text-xs mt-0.5 line-clamp-1 ${isFirst ? 'text-gray-600 dark:text-gray-300' : 'text-gray-400'}`}>
+                            <p
+                              className={`text-xs mt-0.5 line-clamp-1 ${isFirst ? 'text-gray-600 dark:text-gray-300' : 'text-gray-400'}`}
+                            >
                               {lesson.description}
                             </p>
                           )}
-                          
+
                           {/* Estado */}
                           <div className="mt-1 flex items-center gap-1">
                             {isFirst ? (
                               <>
                                 <CheckCircle className="w-3 h-3 text-[#85ea10]" />
-                                <span className="text-xs text-[#85ea10] font-medium">Disponible hoy</span>
+                                <span className="text-xs text-[#85ea10] font-medium">
+                                  Disponible hoy
+                                </span>
                               </>
                             ) : (
                               <>
                                 <Lock className="w-3 h-3 text-gray-400" />
                                 <span className="text-xs text-gray-400">
-                                  Se habilita en {daysUntilUnlock} {daysUntilUnlock === 1 ? 'día' : 'días'}
+                                  Se habilita en {daysUntilUnlock}{' '}
+                                  {daysUntilUnlock === 1 ? 'día' : 'días'}
                                 </span>
                               </>
                             )}

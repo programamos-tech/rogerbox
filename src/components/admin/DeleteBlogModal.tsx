@@ -1,6 +1,6 @@
 'use client';
 
-import { X, Trash2, AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Trash2, X } from 'lucide-react';
 
 interface DeleteBlogModalProps {
   isOpen: boolean;
@@ -15,7 +15,7 @@ export default function DeleteBlogModal({
   onClose,
   onConfirm,
   blogTitle,
-  isLoading = false
+  isLoading = false,
 }: DeleteBlogModalProps) {
   if (!isOpen) return null;
 

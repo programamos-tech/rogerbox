@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { AlertCircle, ArrowLeft, CheckCircle, Eye, EyeOff } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Eye, EyeOff, AlertCircle, CheckCircle, ArrowLeft } from 'lucide-react';
+import { Suspense, useEffect, useState } from 'react';
 
 function ResetPasswordContent() {
   const router = useRouter();
@@ -20,17 +20,19 @@ function ResetPasswordContent() {
     // Verificar si hay un token válido en la URL
     const accessToken = searchParams.get('access_token');
     const refreshToken = searchParams.get('refresh_token');
-    
+
     if (accessToken && refreshToken) {
       setIsValidToken(true);
     } else {
-      setError('Enlace inválido o expirado. Por favor, solicita un nuevo enlace de recuperación.');
+      setError(
+        'Enlace inválido o expirado. Por favor, solicita un nuevo enlace de recuperación.',
+      );
     }
   }, [searchParams]);
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!password) {
       setError('La contraseña es requerida');
       return;
@@ -52,22 +54,20 @@ function ResetPasswordContent() {
     try {
       // Importar supabase dinámicamente
       const { supabase } = await import('@/lib/supabase');
-      
+
       const { error } = await supabase.auth.updateUser({
-        password: password
+        password: password,
       });
 
       if (error) {
-        console.error('Error updating password:', error);
-        setError('Error al actualizar la contraseña. Por favor, intenta nuevamente.');
+        setError(
+          'Error al actualizar la contraseña. Por favor, intenta nuevamente.',
+        );
         return;
       }
 
       setSuccess(true);
-      console.log('Password updated successfully');
-      
-    } catch (error) {
-      console.error('Reset password error:', error);
+    } catch (_error) {
       setError('Error inesperado. Por favor, intenta nuevamente.');
     } finally {
       setIsResetting(false);
@@ -82,7 +82,7 @@ function ResetPasswordContent() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black">
         <div className="fixed inset-0 bg-gradient-to-r from-[#164151]/80 via-[#29839c]/70 to-[#164151]/60 backdrop-blur-sm z-0"></div>
-        
+
         <div className="relative z-10 flex items-center justify-center min-h-screen">
           <div className="w-full max-w-md p-8">
             <div className="text-center mb-8">
@@ -117,7 +117,7 @@ function ResetPasswordContent() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black">
       <div className="fixed inset-0 bg-gradient-to-r from-[#164151]/80 via-[#29839c]/70 to-[#164151]/60 backdrop-blur-sm z-0"></div>
-      
+
       <div className="relative z-10">
         {/* Header */}
         <header className="bg-transparent">
@@ -130,7 +130,7 @@ function ResetPasswordContent() {
                   <span className="text-[#85ea10]">BOX</span>
                 </h1>
               </div>
-              
+
               {/* Back Button */}
               <button
                 onClick={handleBackToLogin}
@@ -148,7 +148,6 @@ function ResetPasswordContent() {
           <div className="relative z-10 w-full">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="flex justify-center items-center min-h-screen py-20">
-                
                 {/* Reset Password Form Container */}
                 <div className="w-full max-w-md">
                   <div className="text-center mb-8">
@@ -169,7 +168,8 @@ function ResetPasswordContent() {
                         </div>
                         <div className="flex-1">
                           <p className="text-green-200 text-sm leading-relaxed">
-                            ¡Contraseña actualizada exitosamente! Ya puedes iniciar sesión con tu nueva contraseña.
+                            ¡Contraseña actualizada exitosamente! Ya puedes
+                            iniciar sesión con tu nueva contraseña.
                           </p>
                         </div>
                       </div>
@@ -208,7 +208,11 @@ function ResetPasswordContent() {
                             className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
                             disabled={isResetting}
                           >
-                            {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                            {showPassword ? (
+                              <EyeOff className="w-5 h-5" />
+                            ) : (
+                              <Eye className="w-5 h-5" />
+                            )}
                           </button>
                         </div>
                       </div>
@@ -228,11 +232,17 @@ function ResetPasswordContent() {
                           />
                           <button
                             type="button"
-                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                            onClick={() =>
+                              setShowConfirmPassword(!showConfirmPassword)
+                            }
                             className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
                             disabled={isResetting}
                           >
-                            {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                            {showConfirmPassword ? (
+                              <EyeOff className="w-5 h-5" />
+                            ) : (
+                              <Eye className="w-5 h-5" />
+                            )}
                           </button>
                         </div>
                       </div>
@@ -285,7 +295,13 @@ function ResetPasswordContent() {
 
 export default function ResetPasswordPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-black text-white flex items-center justify-center">Cargando...</div>}>
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-black text-white flex items-center justify-center">
+          Cargando...
+        </div>
+      }
+    >
       <ResetPasswordContent />
     </Suspense>
   );

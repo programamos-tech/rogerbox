@@ -1,7 +1,7 @@
 'use client';
 
+import { Building2, CreditCard, Smartphone } from 'lucide-react';
 import { useState } from 'react';
-import { CreditCard, Smartphone, Building2, CheckCircle, XCircle } from 'lucide-react';
 
 interface WompiPaymentFormProps {
   course: {
@@ -17,12 +17,12 @@ interface WompiPaymentFormProps {
 
 type PaymentMethod = 'CARD' | 'NEQUI' | 'PSE';
 
-export default function WompiPaymentForm({ 
-  course, 
-  customerEmail, 
-  customerName, 
-  onPaymentSuccess, 
-  onPaymentError 
+export default function WompiPaymentForm({
+  course,
+  customerEmail,
+  customerName,
+  onPaymentSuccess,
+  onPaymentError,
 }: WompiPaymentFormProps) {
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>('CARD');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -34,12 +34,12 @@ export default function WompiPaymentForm({
     nequiPhone: '',
     pseBank: '',
     pseDocument: '',
-    pseDocumentType: 'CC'
+    pseDocumentType: 'CC',
   });
 
   const handlePayment = async () => {
     setIsProcessing(true);
-    
+
     try {
       // Crear orden primero
       const orderResponse = await fetch('/api/payments/create-order', {
@@ -53,7 +53,7 @@ export default function WompiPaymentForm({
           customerEmail,
           customerName,
           paymentMethod: selectedMethod,
-          paymentData
+          paymentData,
         }),
       });
 
@@ -62,23 +62,25 @@ export default function WompiPaymentForm({
       }
 
       const orderResult = await orderResponse.json();
-      console.log('✅ Orden creada:', orderResult);
 
       // Simular procesamiento de pago exitoso
       setTimeout(() => {
         onPaymentSuccess(orderResult.transactionId || 'test-transaction-123');
         setIsProcessing(false);
       }, 2000);
-
     } catch (error) {
-      console.error('❌ Error en el pago:', error);
-      onPaymentError(error instanceof Error ? error.message : 'Error desconocido');
+      onPaymentError(
+        error instanceof Error ? error.message : 'Error desconocido',
+      );
       setIsProcessing(false);
     }
   };
 
   const formatCardNumber = (value: string) => {
-    return value.replace(/\s/g, '').replace(/(.{4})/g, '$1 ').trim();
+    return value
+      .replace(/\s/g, '')
+      .replace(/(.{4})/g, '$1 ')
+      .trim();
   };
 
   const formatExpiry = (value: string) => {
@@ -97,7 +99,9 @@ export default function WompiPaymentForm({
 
       {/* Métodos de pago */}
       <div className="mb-6">
-        <h3 className="text-lg font-semibold mb-3 text-white">Método de pago</h3>
+        <h3 className="text-lg font-semibold mb-3 text-white">
+          Método de pago
+        </h3>
         <div className="grid grid-cols-3 gap-3">
           <button
             onClick={() => setSelectedMethod('CARD')}
@@ -107,10 +111,16 @@ export default function WompiPaymentForm({
                 : 'border-gray-600 hover:border-gray-500 bg-gray-700'
             }`}
           >
-            <CreditCard className={`w-6 h-6 mx-auto mb-1 ${selectedMethod === 'CARD' ? 'text-[#85ea10]' : 'text-gray-400'}`} />
-            <span className={`text-xs ${selectedMethod === 'CARD' ? 'text-[#85ea10]' : 'text-gray-400'}`}>Tarjeta</span>
+            <CreditCard
+              className={`w-6 h-6 mx-auto mb-1 ${selectedMethod === 'CARD' ? 'text-[#85ea10]' : 'text-gray-400'}`}
+            />
+            <span
+              className={`text-xs ${selectedMethod === 'CARD' ? 'text-[#85ea10]' : 'text-gray-400'}`}
+            >
+              Tarjeta
+            </span>
           </button>
-          
+
           <button
             onClick={() => setSelectedMethod('NEQUI')}
             className={`p-3 rounded-lg border-2 transition-all ${
@@ -119,10 +129,16 @@ export default function WompiPaymentForm({
                 : 'border-gray-600 hover:border-gray-500 bg-gray-700'
             }`}
           >
-            <Smartphone className={`w-6 h-6 mx-auto mb-1 ${selectedMethod === 'NEQUI' ? 'text-[#85ea10]' : 'text-gray-400'}`} />
-            <span className={`text-xs ${selectedMethod === 'NEQUI' ? 'text-[#85ea10]' : 'text-gray-400'}`}>Nequi</span>
+            <Smartphone
+              className={`w-6 h-6 mx-auto mb-1 ${selectedMethod === 'NEQUI' ? 'text-[#85ea10]' : 'text-gray-400'}`}
+            />
+            <span
+              className={`text-xs ${selectedMethod === 'NEQUI' ? 'text-[#85ea10]' : 'text-gray-400'}`}
+            >
+              Nequi
+            </span>
           </button>
-          
+
           <button
             onClick={() => setSelectedMethod('PSE')}
             className={`p-3 rounded-lg border-2 transition-all ${
@@ -131,8 +147,14 @@ export default function WompiPaymentForm({
                 : 'border-gray-600 hover:border-gray-500 bg-gray-700'
             }`}
           >
-            <Building2 className={`w-6 h-6 mx-auto mb-1 ${selectedMethod === 'PSE' ? 'text-[#85ea10]' : 'text-gray-400'}`} />
-            <span className={`text-xs ${selectedMethod === 'PSE' ? 'text-[#85ea10]' : 'text-gray-400'}`}>PSE</span>
+            <Building2
+              className={`w-6 h-6 mx-auto mb-1 ${selectedMethod === 'PSE' ? 'text-[#85ea10]' : 'text-gray-400'}`}
+            />
+            <span
+              className={`text-xs ${selectedMethod === 'PSE' ? 'text-[#85ea10]' : 'text-gray-400'}`}
+            >
+              PSE
+            </span>
           </button>
         </div>
       </div>
@@ -149,15 +171,17 @@ export default function WompiPaymentForm({
                 type="text"
                 placeholder="1234 5678 9012 3456"
                 value={paymentData.cardNumber}
-                onChange={(e) => setPaymentData({
-                  ...paymentData,
-                  cardNumber: formatCardNumber(e.target.value)
-                })}
+                onChange={(e) =>
+                  setPaymentData({
+                    ...paymentData,
+                    cardNumber: formatCardNumber(e.target.value),
+                  })
+                }
                 className="w-full px-3 py-2 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-[#85ea10] bg-gray-700 text-white placeholder-gray-400"
                 maxLength={19}
               />
             </div>
-            
+
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">
@@ -167,15 +191,17 @@ export default function WompiPaymentForm({
                   type="text"
                   placeholder="MM/AA"
                   value={paymentData.cardExpiry}
-                  onChange={(e) => setPaymentData({
-                    ...paymentData,
-                    cardExpiry: formatExpiry(e.target.value)
-                  })}
+                  onChange={(e) =>
+                    setPaymentData({
+                      ...paymentData,
+                      cardExpiry: formatExpiry(e.target.value),
+                    })
+                  }
                   className="w-full px-3 py-2 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-[#85ea10] bg-gray-700 text-white placeholder-gray-400"
                   maxLength={5}
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">
                   CVV
@@ -184,16 +210,18 @@ export default function WompiPaymentForm({
                   type="text"
                   placeholder="123"
                   value={paymentData.cardCvv}
-                  onChange={(e) => setPaymentData({
-                    ...paymentData,
-                    cardCvv: e.target.value.replace(/\D/g, '')
-                  })}
+                  onChange={(e) =>
+                    setPaymentData({
+                      ...paymentData,
+                      cardCvv: e.target.value.replace(/\D/g, ''),
+                    })
+                  }
                   className="w-full px-3 py-2 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-[#85ea10] bg-gray-700 text-white placeholder-gray-400"
                   maxLength={4}
                 />
               </div>
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1">
                 Nombre en la tarjeta
@@ -202,10 +230,12 @@ export default function WompiPaymentForm({
                 type="text"
                 placeholder="Juan Pérez"
                 value={paymentData.cardName}
-                onChange={(e) => setPaymentData({
-                  ...paymentData,
-                  cardName: e.target.value
-                })}
+                onChange={(e) =>
+                  setPaymentData({
+                    ...paymentData,
+                    cardName: e.target.value,
+                  })
+                }
                 className="w-full px-3 py-2 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-[#85ea10] bg-gray-700 text-white placeholder-gray-400"
               />
             </div>
@@ -221,10 +251,12 @@ export default function WompiPaymentForm({
               type="tel"
               placeholder="3001234567"
               value={paymentData.nequiPhone}
-              onChange={(e) => setPaymentData({
-                ...paymentData,
-                nequiPhone: e.target.value.replace(/\D/g, '')
-              })}
+              onChange={(e) =>
+                setPaymentData({
+                  ...paymentData,
+                  nequiPhone: e.target.value.replace(/\D/g, ''),
+                })
+              }
               className="w-full px-3 py-2 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-[#85ea10] bg-gray-700 text-white placeholder-gray-400"
             />
             <p className="text-xs text-gray-400 mt-1">
@@ -241,10 +273,12 @@ export default function WompiPaymentForm({
               </label>
               <select
                 value={paymentData.pseBank}
-                onChange={(e) => setPaymentData({
-                  ...paymentData,
-                  pseBank: e.target.value
-                })}
+                onChange={(e) =>
+                  setPaymentData({
+                    ...paymentData,
+                    pseBank: e.target.value,
+                  })
+                }
                 className="w-full px-3 py-2 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-[#85ea10] bg-gray-700 text-white"
               >
                 <option value="">Selecciona tu banco</option>
@@ -255,7 +289,7 @@ export default function WompiPaymentForm({
                 <option value="SCOTIABANK">Scotiabank</option>
               </select>
             </div>
-            
+
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">
@@ -263,10 +297,12 @@ export default function WompiPaymentForm({
                 </label>
                 <select
                   value={paymentData.pseDocumentType}
-                  onChange={(e) => setPaymentData({
-                    ...paymentData,
-                    pseDocumentType: e.target.value
-                  })}
+                  onChange={(e) =>
+                    setPaymentData({
+                      ...paymentData,
+                      pseDocumentType: e.target.value,
+                    })
+                  }
                   className="w-full px-3 py-2 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-[#85ea10] bg-gray-700 text-white"
                 >
                   <option value="CC">Cédula</option>
@@ -274,7 +310,7 @@ export default function WompiPaymentForm({
                   <option value="PP">Pasaporte</option>
                 </select>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">
                   Número de documento
@@ -283,10 +319,12 @@ export default function WompiPaymentForm({
                   type="text"
                   placeholder="12345678"
                   value={paymentData.pseDocument}
-                  onChange={(e) => setPaymentData({
-                    ...paymentData,
-                    pseDocument: e.target.value
-                  })}
+                  onChange={(e) =>
+                    setPaymentData({
+                      ...paymentData,
+                      pseDocument: e.target.value,
+                    })
+                  }
                   className="w-full px-3 py-2 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-[#85ea10] bg-gray-700 text-white placeholder-gray-400"
                 />
               </div>

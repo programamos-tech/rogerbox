@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { coursesService, Course } from '@/services/coursesService';
+import { useCallback, useEffect, useState } from 'react';
+import { type Course, coursesService } from '@/services/coursesService';
 
 interface UseCoursesReturn {
   courses: Course[];
@@ -27,20 +27,14 @@ export const useCourses = (): UseCoursesReturn => {
     try {
       setLoading(true);
       setError(null);
-      
-      console.log('🔄 useCourses: Cargando cursos...');
-      const startTime = performance.now();
-      
+      const _startTime = performance.now();
+
       const coursesData = await coursesService.getCourses(forceRefresh);
-      
-      const endTime = performance.now();
-      console.log(`✅ useCourses: Cursos cargados en ${(endTime - startTime).toFixed(2)}ms`);
-      console.log(`📊 useCourses: ${coursesData.length} cursos obtenidos`);
-      
+
+      const _endTime = performance.now();
+
       setCourses(coursesData);
-      
     } catch (err) {
-      console.error('❌ useCourses: Error cargando cursos:', err);
       setError(err instanceof Error ? err.message : 'Error desconocido');
     } finally {
       setLoading(false);
@@ -51,31 +45,37 @@ export const useCourses = (): UseCoursesReturn => {
    * Refresca los cursos (fuerza recarga)
    */
   const refresh = useCallback(async () => {
-    console.log('🔄 useCourses: Refrescando cursos...');
     await loadCourses(true);
   }, [loadCourses]);
 
   /**
    * Busca cursos por término
    */
-  const searchCourses = useCallback((query: string): Course[] => {
-    if (!query.trim()) return courses;
-    
-    const lowercaseQuery = query.toLowerCase();
-    return courses.filter(course => 
-      course.title.toLowerCase().includes(lowercaseQuery) ||
-      course.short_description.toLowerCase().includes(lowercaseQuery) ||
-      course.description.toLowerCase().includes(lowercaseQuery) ||
-      course.category_name.toLowerCase().includes(lowercaseQuery)
-    );
-  }, [courses]);
+  const searchCourses = useCallback(
+    (query: string): Course[] => {
+      if (!query.trim()) return courses;
+
+      const lowercaseQuery = query.toLowerCase();
+      return courses.filter(
+        (course) =>
+          course.title.toLowerCase().includes(lowercaseQuery) ||
+          course.short_description.toLowerCase().includes(lowercaseQuery) ||
+          course.description.toLowerCase().includes(lowercaseQuery) ||
+          course.category_name.toLowerCase().includes(lowercaseQuery),
+      );
+    },
+    [courses],
+  );
 
   /**
    * Filtra cursos por categoría
    */
-  const getCoursesByCategory = useCallback((categoryId: string): Course[] => {
-    return courses.filter(course => course.category_id === categoryId);
-  }, [courses]);
+  const getCoursesByCategory = useCallback(
+    (categoryId: string): Course[] => {
+      return courses.filter((course) => course.category_id === categoryId);
+    },
+    [courses],
+  );
 
   // Cargar cursos al montar el componente
   useEffect(() => {
@@ -88,7 +88,7 @@ export const useCourses = (): UseCoursesReturn => {
     error,
     refresh,
     searchCourses,
-    getCoursesByCategory
+    getCoursesByCategory,
   };
 };
 

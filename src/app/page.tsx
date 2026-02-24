@@ -1,12 +1,24 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import {
+  BookOpen,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  Dumbbell,
+  Flame,
+  Home,
+  Play,
+  ShoppingCart,
+  Star,
+  Users,
+  Zap,
+} from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { Play, Clock, Users, Star, Search, User, BookOpen, Award, TrendingUp, Zap, Utensils, Target, CheckCircle, ShoppingCart, Flame, Dumbbell, Home, ChevronLeft, ChevronRight } from 'lucide-react';
-import QuickLoading from '@/components/QuickLoading';
+import { useEffect, useRef, useState } from 'react';
 import Footer from '@/components/Footer';
-import { trackCourseView } from '@/lib/analytics';
+import QuickLoading from '@/components/QuickLoading';
+import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useUnifiedCourses } from '@/hooks/useUnifiedCourses';
 
 interface Course {
@@ -41,19 +53,22 @@ interface Course {
   duration?: string;
 }
 
-
 export default function HomePage() {
   const { user, loading: authLoading } = useSupabaseAuth();
   const router = useRouter();
   // Usar el hook ULTRA RÁPIDO
-  const { courses, loading: loadingCourses, error: coursesError } = useUnifiedCourses();
+  const {
+    courses,
+    loading: loadingCourses,
+    error: coursesError,
+  } = useUnifiedCourses();
 
   // Estado para controlar el navbar
   const [isScrolled, setIsScrolled] = useState(false);
   // Estado para controlar la carga del video
   const [videoLoaded, setVideoLoaded] = useState(false);
   // Estado para controlar el carrusel
-  const [currentCourseIndex, setCurrentCourseIndex] = useState(0);
+  const [_currentCourseIndex, _setCurrentCourseIndex] = useState(0);
 
   // Refs para el carrusel
   const carouselContainerRef = useRef<HTMLDivElement>(null);
@@ -87,7 +102,11 @@ export default function HomePage() {
 
   // Efecto para centrar el curso principal en el carrusel al cargar
   useEffect(() => {
-    if (displayedCourses.length === 1 && carouselContainerRef.current && mainCourseRef.current) {
+    if (
+      displayedCourses.length === 1 &&
+      carouselContainerRef.current &&
+      mainCourseRef.current
+    ) {
       // Usar setTimeout para asegurar que el DOM esté completamente renderizado
       setTimeout(() => {
         const container = carouselContainerRef.current;
@@ -100,17 +119,18 @@ export default function HomePage() {
           const mainCourseWidth = mainCourse.offsetWidth;
 
           // Centrar el curso principal horizontalmente
-          const scrollPosition = mainCourseLeft - (containerWidth / 2) + (mainCourseWidth / 2);
+          const scrollPosition =
+            mainCourseLeft - containerWidth / 2 + mainCourseWidth / 2;
 
           // Hacer scroll al centro (sin behavior smooth para que sea instantáneo al cargar)
           container.scrollTo({
             left: scrollPosition,
-            behavior: 'auto'
+            behavior: 'auto',
           });
         }
       }, 100);
     }
-  }, [displayedCourses.length, courses]);
+  }, [displayedCourses.length]);
 
   // Efecto para centrar el plan principal en el carrusel al cargar
   useEffect(() => {
@@ -127,11 +147,12 @@ export default function HomePage() {
 
           // En móvil, cada plan ocupa el 100% del ancho, así que centramos el Plan Avanzado
           // En desktop, también lo centramos
-          const scrollPosition = mainPlanLeft - (containerWidth / 2) + (mainPlanWidth / 2);
+          const scrollPosition =
+            mainPlanLeft - containerWidth / 2 + mainPlanWidth / 2;
 
           container.scrollTo({
             left: scrollPosition,
-            behavior: 'auto'
+            behavior: 'auto',
           });
         }
       }, 200);
@@ -139,7 +160,7 @@ export default function HomePage() {
   }, []);
 
   // Funciones para navegar el carrusel
-  const scrollCarousel = (direction: 'left' | 'right') => {
+  const _scrollCarousel = (direction: 'left' | 'right') => {
     if (carouselContainerRef.current) {
       const container = carouselContainerRef.current;
       const scrollAmount = 400; // Cantidad de scroll en píxeles
@@ -152,7 +173,7 @@ export default function HomePage() {
     }
   };
 
-  const scrollNutritionCarousel = (direction: 'left' | 'right') => {
+  const _scrollNutritionCarousel = (direction: 'left' | 'right') => {
     if (nutritionCarouselRef.current) {
       const container = nutritionCarouselRef.current;
       const scrollAmount = 400; // Cantidad de scroll en píxeles
@@ -172,30 +193,38 @@ export default function HomePage() {
 
   // Si el usuario está autenticado, mostrar loading mientras redirige
   if (user) {
-    return <QuickLoading message="Redirigiendo al dashboard..." duration={3000} />;
+    return (
+      <QuickLoading message="Redirigiendo al dashboard..." duration={3000} />
+    );
   }
 
   // Cursos "en progreso" de ejemplo (estos serían cursos que tienen is_published: false o un campo in_progress)
-  const inProgressCourses: Partial<Course>[] = [
+  const _inProgressCourses: Partial<Course>[] = [
     {
       id: 'in-progress-1',
       title: 'Entrenamiento Funcional Avanzado',
       preview_image: '/images/curso1.jpeg',
-      category_name: 'Funcional'
+      category_name: 'Funcional',
     },
     {
       id: 'in-progress-2',
       title: 'Yoga y Meditación',
       preview_image: '/images/curso2.jpeg',
-      category_name: 'Bienestar'
-    }
+      category_name: 'Bienestar',
+    },
   ];
 
-  const getSectionTitle = () => {
+  const _getSectionTitle = () => {
     return 'Nuestros Cursos';
   };
 
-  type CourseLike = Partial<Course> & { category_name?: string; category?: string; lessons_count?: number; duration?: string; students?: number };
+  type CourseLike = Partial<Course> & {
+    category_name?: string;
+    category?: string;
+    lessons_count?: number;
+    duration?: string;
+    students?: number;
+  };
   const calculateFinalPrice = (course: CourseLike) => {
     const price = course.price || 0;
     const discount = course.discount_percentage || 0;
@@ -212,7 +241,8 @@ export default function HomePage() {
     general: 'General',
   };
   const getCategoryDisplayName = (course: CourseLike) => {
-    if (course.category_name && !String(course.category_name).includes('_')) return course.category_name;
+    if (course.category_name && !String(course.category_name).includes('_'))
+      return course.category_name;
     const code = course.category_name || course.category || '';
     return categoryNames[code] || code || 'General';
   };
@@ -221,8 +251,13 @@ export default function HomePage() {
     const container = document.getElementById('landing-courses-carousel');
     if (!container) return;
     const firstCard = container.querySelector('div > div') as HTMLElement;
-    const scrollAmount = firstCard ? firstCard.offsetWidth + (window.innerWidth < 640 ? 16 : 32) : 400;
-    container.scrollBy({ left: direction === 'left' ? -scrollAmount : scrollAmount, behavior: 'smooth' });
+    const scrollAmount = firstCard
+      ? firstCard.offsetWidth + (window.innerWidth < 640 ? 16 : 32)
+      : 400;
+    container.scrollBy({
+      left: direction === 'left' ? -scrollAmount : scrollAmount,
+      behavior: 'smooth',
+    });
   };
 
   return (
@@ -230,7 +265,9 @@ export default function HomePage() {
       {/* Video Background - Fixed behind hero and navbar only */}
       <div className="fixed inset-0 z-0" style={{ height: '100vh' }}>
         {/* Fondo negro mientras carga el video */}
-        <div className={`absolute inset-0 bg-black transition-opacity duration-500 ${videoLoaded ? 'opacity-0' : 'opacity-100'}`}></div>
+        <div
+          className={`absolute inset-0 bg-black transition-opacity duration-500 ${videoLoaded ? 'opacity-0' : 'opacity-100'}`}
+        ></div>
 
         <video
           autoPlay
@@ -242,7 +279,6 @@ export default function HomePage() {
           onLoadedData={() => setVideoLoaded(true)}
           onCanPlay={() => setVideoLoaded(true)}
           onError={() => {
-            console.warn('⚠️ Video de fondo no disponible, usando fondo negro');
             // Mantener el fondo negro si el video no se puede cargar
             setVideoLoaded(false);
           }}
@@ -255,10 +291,13 @@ export default function HomePage() {
       </div>
 
       {/* Header */}
-      <header className={`sticky top-0 z-20 backdrop-blur-md transition-all duration-300 overflow-visible ${isScrolled
-          ? 'bg-white/80 dark:bg-gray-900/80 border-b border-gray-200/50 dark:border-gray-700/50'
-          : 'bg-transparent border-b border-transparent'
-        }`}>
+      <header
+        className={`sticky top-0 z-20 backdrop-blur-md transition-all duration-300 overflow-visible ${
+          isScrolled
+            ? 'bg-white/80 dark:bg-gray-900/80 border-b border-gray-200/50 dark:border-gray-700/50'
+            : 'bg-transparent border-b border-transparent'
+        }`}
+      >
         <div className="w-full px-4 md:px-12 lg:px-20 xl:px-32">
           <div className="flex items-center justify-between h-20 w-full">
             <div className="flex items-center flex-shrink-0">
@@ -270,8 +309,14 @@ export default function HomePage() {
                 style={{ minWidth: 'fit-content' }}
               >
                 <h1 className="text-xl md:text-2xl lg:text-3xl font-black uppercase tracking-tight whitespace-nowrap">
-                  <span className={`${isScrolled ? 'text-gray-900 dark:text-white' : 'text-white dark:text-white'} drop-shadow-md group-hover:text-[#85ea10] transition-colors duration-300`}>ROGER</span>
-                  <span className="text-[#85ea10] drop-shadow-md group-hover:text-gray-900 dark:group-hover:text-white transition-colors duration-300">BOX</span>
+                  <span
+                    className={`${isScrolled ? 'text-gray-900 dark:text-white' : 'text-white dark:text-white'} drop-shadow-md group-hover:text-[#85ea10] transition-colors duration-300`}
+                  >
+                    ROGER
+                  </span>
+                  <span className="text-[#85ea10] drop-shadow-md group-hover:text-gray-900 dark:group-hover:text-white transition-colors duration-300">
+                    BOX
+                  </span>
                 </h1>
               </button>
             </div>
@@ -304,10 +349,11 @@ export default function HomePage() {
             <div className="flex items-center space-x-2 md:space-x-4">
               <button
                 onClick={() => router.push('/login')}
-                className={`transition-all duration-300 font-semibold px-3 py-2 md:px-6 md:py-3 rounded-xl hover:scale-105 hover:shadow-lg text-sm md:text-base ${isScrolled
+                className={`transition-all duration-300 font-semibold px-3 py-2 md:px-6 md:py-3 rounded-xl hover:scale-105 hover:shadow-lg text-sm md:text-base ${
+                  isScrolled
                     ? 'text-gray-900 hover:text-gray-700 hover:bg-gray-100 dark:text-white dark:hover:text-white dark:hover:bg-white/10'
                     : 'text-white hover:text-white hover:bg-white/10 dark:text-white dark:hover:text-white dark:hover:bg-white/10'
-                  }`}
+                }`}
               >
                 Iniciar Sesión
               </button>
@@ -330,14 +376,18 @@ export default function HomePage() {
             {/* Main Title */}
             <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-white mb-4 md:mb-5 uppercase tracking-tight leading-[1.2]">
               <div className="drop-shadow-lg">QUEMA GRASA CON</div>
-              <div className="text-[#85ea10] drop-shadow-lg">ENTRENAMIENTOS HIIT</div>
+              <div className="text-[#85ea10] drop-shadow-lg">
+                ENTRENAMIENTOS HIIT
+              </div>
             </h1>
 
             {/* Subtitle */}
             <p className="text-lg sm:text-xl md:text-xl lg:text-xl text-white/95 mb-6 md:mb-7 font-medium leading-relaxed max-w-3xl mx-auto line-clamp-3 sm:line-clamp-none">
               Transforma tu cuerpo con entrenamientos intensos de alta calidad.
               <br className="hidden md:block" />
-              <span className="text-[#85ea10] font-bold">¡Cada día una nueva clase te espera!</span>
+              <span className="text-[#85ea10] font-bold">
+                ¡Cada día una nueva clase te espera!
+              </span>
             </p>
 
             {/* CTA Buttons */}
@@ -351,15 +401,18 @@ export default function HomePage() {
               <button
                 onClick={() => {
                   setTimeout(() => {
-                    const tituloSection = document.getElementById('titulo-cursos');
+                    const tituloSection =
+                      document.getElementById('titulo-cursos');
                     if (tituloSection) {
                       const headerOffset = 80; // Altura del header sticky
-                      const elementPosition = tituloSection.getBoundingClientRect().top;
-                      const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+                      const elementPosition =
+                        tituloSection.getBoundingClientRect().top;
+                      const offsetPosition =
+                        elementPosition + window.pageYOffset - headerOffset;
 
                       window.scrollTo({
                         top: offsetPosition,
-                        behavior: 'smooth'
+                        behavior: 'smooth',
                       });
                     }
                   }, 100);
@@ -376,22 +429,34 @@ export default function HomePage() {
                 <div className="flex justify-center mb-2">
                   <Flame className="w-8 h-8 md:w-10 md:h-10 text-[#85ea10]" />
                 </div>
-                <div className="text-white font-semibold text-sm md:text-base mb-1">Quema de Grasa</div>
-                <div className="text-white/80 text-xs md:text-sm">Resultados visibles en 2 semanas</div>
+                <div className="text-white font-semibold text-sm md:text-base mb-1">
+                  Quema de Grasa
+                </div>
+                <div className="text-white/80 text-xs md:text-sm">
+                  Resultados visibles en 2 semanas
+                </div>
               </div>
               <div className="text-center">
                 <div className="flex justify-center mb-2">
                   <Dumbbell className="w-8 h-8 md:w-10 md:h-10 text-[#85ea10]" />
                 </div>
-                <div className="text-white font-semibold text-sm md:text-base mb-1">Mejor Estado Físico</div>
-                <div className="text-white/80 text-xs md:text-sm">Fuerza y resistencia</div>
+                <div className="text-white font-semibold text-sm md:text-base mb-1">
+                  Mejor Estado Físico
+                </div>
+                <div className="text-white/80 text-xs md:text-sm">
+                  Fuerza y resistencia
+                </div>
               </div>
               <div className="text-center">
                 <div className="flex justify-center mb-2">
                   <Home className="w-8 h-8 md:w-10 md:h-10 text-[#85ea10]" />
                 </div>
-                <div className="text-white font-semibold text-sm md:text-base mb-1">Desde Casa</div>
-                <div className="text-white/80 text-xs md:text-sm">Sin gimnasio, sin excusas</div>
+                <div className="text-white font-semibold text-sm md:text-base mb-1">
+                  Desde Casa
+                </div>
+                <div className="text-white/80 text-xs md:text-sm">
+                  Sin gimnasio, sin excusas
+                </div>
               </div>
             </div>
           </div>
@@ -408,7 +473,10 @@ export default function HomePage() {
       </section>
 
       {/* Cursos Disponibles - Mismo componente que dashboard */}
-      <section id="titulo-cursos" className="relative py-16 md:py-20 bg-white dark:bg-gray-900 w-full z-10 overflow-visible">
+      <section
+        id="titulo-cursos"
+        className="relative py-16 md:py-20 bg-white dark:bg-gray-900 w-full z-10 overflow-visible"
+      >
         <div className="w-full px-4 md:px-12 lg:px-20 xl:px-32 max-w-7xl mx-auto">
           {loadingCourses ? (
             <div className="flex items-center justify-center py-16">
@@ -459,42 +527,65 @@ export default function HomePage() {
               <div
                 id="landing-courses-carousel"
                 className="overflow-x-auto scrollbar-hide -mx-3 sm:-mx-4 md:mx-0"
-                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}
+                style={{
+                  scrollbarWidth: 'none',
+                  msOverflowStyle: 'none',
+                  WebkitOverflowScrolling: 'touch',
+                }}
               >
                 <div className="flex gap-4 sm:gap-6 md:gap-8 px-3 sm:px-4 md:px-6 justify-start md:justify-center">
                   {displayedCourses.map((course) => (
-                    <div key={course.id} className="flex-shrink-0 w-[calc(100vw-2rem)] sm:w-[calc(100vw-4rem)] md:w-[850px]">
+                    <div
+                      key={course.id}
+                      className="flex-shrink-0 w-[calc(100vw-2rem)] sm:w-[calc(100vw-4rem)] md:w-[850px]"
+                    >
                       <div
-                        onClick={() => router.push(`/course/${course.slug || course.id}`)}
+                        onClick={() =>
+                          router.push(`/course/${course.slug || course.id}`)
+                        }
                         className="flex flex-col md:flex-row bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl hover:shadow-[#85ea10]/10 hover:border-[#85ea10]/30 transition-all duration-200 rounded-2xl cursor-pointer w-full overflow-hidden"
                       >
                         {/* Bloque de imagen con altura fija para que nunca se corte */}
                         <div className="w-full md:w-[320px] h-[220px] sm:h-[260px] md:h-[280px] flex-shrink-0 relative bg-gray-100 dark:bg-gray-700">
                           <div className="absolute inset-0 w-full h-full rounded-t-2xl md:rounded-l-2xl md:rounded-tr-none overflow-hidden">
                             <img
-                              src={course.thumbnail || course.preview_image || '/images/course-placeholder.jpg'}
+                              src={
+                                course.thumbnail ||
+                                course.preview_image ||
+                                '/images/course-placeholder.jpg'
+                              }
                               alt={course.title}
                               className="w-full h-full object-cover object-center"
                               onError={(e) => {
                                 const t = e.target as HTMLImageElement;
-                                if (!t.src?.endsWith('course-placeholder.jpg')) t.src = '/images/course-placeholder.jpg';
+                                if (!t.src?.endsWith('course-placeholder.jpg'))
+                                  t.src = '/images/course-placeholder.jpg';
                               }}
                             />
                             <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-all duration-300 flex items-center justify-center opacity-0 hover:opacity-100 z-10">
-                              <Play className="w-12 h-12 text-white drop-shadow-lg" fill="currentColor" />
+                              <Play
+                                className="w-12 h-12 text-white drop-shadow-lg"
+                                fill="currentColor"
+                              />
                             </div>
                           </div>
                           <div className="absolute top-3 left-3 flex gap-2 z-20">
                             {course.isPopular && (
-                              <span className="bg-orange-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">POPULAR</span>
+                              <span className="bg-orange-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">
+                                POPULAR
+                              </span>
                             )}
                             {course.isNew && (
-                              <span className="bg-[#85ea10] text-black text-xs font-bold px-2 py-1 rounded-full shadow-lg">NUEVO</span>
+                              <span className="bg-[#85ea10] text-black text-xs font-bold px-2 py-1 rounded-full shadow-lg">
+                                NUEVO
+                              </span>
                             )}
                           </div>
                           <div className="absolute bottom-3 right-3 flex items-center space-x-1 bg-black/70 backdrop-blur-sm text-white px-3 py-1.5 rounded-full z-10">
                             <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                            <span className="text-sm font-semibold">{course.rating || '4.8'}</span>
+                            <span className="text-sm font-semibold">
+                              {course.rating || '4.8'}
+                            </span>
                           </div>
                         </div>
                         <div className="flex-1 flex flex-col min-w-0 p-4 md:p-5 lg:p-6 md:justify-between">
@@ -513,19 +604,30 @@ export default function HomePage() {
                             <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 mb-4">
                               <div className="flex items-center gap-1.5">
                                 <Play className="w-4 h-4 text-[#85ea10]" />
-                                <span className="text-sm text-gray-600 dark:text-white/80">{course.lessons_count ?? 0} clases</span>
+                                <span className="text-sm text-gray-600 dark:text-white/80">
+                                  {course.lessons_count ?? 0} clases
+                                </span>
                               </div>
                               <div className="flex items-center gap-1.5">
                                 <Clock className="w-4 h-4 text-[#85ea10]" />
-                                <span className="text-sm text-gray-600 dark:text-white/80">{course.duration || ((course as CourseLike).duration_days ? `${(course as CourseLike).duration_days} semanas` : '8 semanas')}</span>
+                                <span className="text-sm text-gray-600 dark:text-white/80">
+                                  {course.duration ||
+                                    ((course as CourseLike).duration_days
+                                      ? `${(course as CourseLike).duration_days} semanas`
+                                      : '8 semanas')}
+                                </span>
                               </div>
                               <div className="flex items-center gap-1.5">
                                 <Users className="w-4 h-4 text-[#85ea10]" />
-                                <span className="text-sm text-gray-600 dark:text-white/80">{course.students_count ?? 0} estudiantes</span>
+                                <span className="text-sm text-gray-600 dark:text-white/80">
+                                  {course.students_count ?? 0} estudiantes
+                                </span>
                               </div>
                               <div className="flex items-center gap-1.5">
                                 <Zap className="w-4 h-4 text-[#85ea10]" />
-                                <span className="text-sm text-gray-600 dark:text-white/80">{course.level || 'Todos'}</span>
+                                <span className="text-sm text-gray-600 dark:text-white/80">
+                                  {course.level || 'Todos'}
+                                </span>
                               </div>
                             </div>
                           </div>
@@ -534,25 +636,37 @@ export default function HomePage() {
                               {(course.discount_percentage ?? 0) > 0 ? (
                                 <>
                                   <span className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
-                                    ${calculateFinalPrice(course).toLocaleString('es-CO')}
+                                    $
+                                    {calculateFinalPrice(course).toLocaleString(
+                                      'es-CO',
+                                    )}
                                   </span>
                                   <span className="text-lg md:text-xl text-gray-500 dark:text-white/50 line-through">
-                                    ${calculateOriginalPrice(course).toLocaleString('es-CO')}
+                                    $
+                                    {calculateOriginalPrice(
+                                      course,
+                                    ).toLocaleString('es-CO')}
                                   </span>
                                   <span className="text-xs md:text-sm text-[#85ea10] font-bold bg-[#85ea10]/10 px-2 py-1 rounded-lg">
-                                    {course.discount_percentage ?? 0}% de descuento
+                                    {course.discount_percentage ?? 0}% de
+                                    descuento
                                   </span>
                                 </>
                               ) : (
                                 <span className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
-                                  ${calculateFinalPrice(course).toLocaleString('es-CO')}
+                                  $
+                                  {calculateFinalPrice(course).toLocaleString(
+                                    'es-CO',
+                                  )}
                                 </span>
                               )}
                             </div>
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                router.push(`/course/${course.slug || course.id}`);
+                                router.push(
+                                  `/course/${course.slug || course.id}`,
+                                );
                               }}
                               className="w-full bg-[#85ea10] hover:bg-[#7dd30f] text-black font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors shadow-lg"
                             >
@@ -566,21 +680,35 @@ export default function HomePage() {
                   ))}
                   {/* Card PRÓXIMAMENTE */}
                   <div className="flex-shrink-0 w-[calc(100vw-2rem)] sm:w-[calc(100vw-4rem)] md:w-[850px]">
-                    <div className="flex flex-col md:flex-row bg-gray-100 dark:bg-gray-800 rounded-2xl w-full overflow-hidden h-auto md:min-h-[280px]" style={{ filter: 'grayscale(100%)' }}>
+                    <div
+                      className="flex flex-col md:flex-row bg-gray-100 dark:bg-gray-800 rounded-2xl w-full overflow-hidden h-auto md:min-h-[280px]"
+                      style={{ filter: 'grayscale(100%)' }}
+                    >
                       <div className="w-full md:w-[320px] h-[200px] sm:h-[250px] md:h-full flex-shrink-0 relative">
                         <div className="absolute inset-0 bg-gradient-to-br from-gray-300 to-gray-400 dark:from-gray-600 dark:to-gray-700 flex items-center justify-center rounded-t-2xl md:rounded-l-2xl md:rounded-tr-none">
                           <Play className="w-16 h-16 text-gray-400 dark:text-gray-600" />
                         </div>
                         <div className="absolute top-3 left-3 z-20">
-                          <span className="bg-gray-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">PRÓXIMAMENTE</span>
+                          <span className="bg-gray-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">
+                            PRÓXIMAMENTE
+                          </span>
                         </div>
                       </div>
                       <div className="flex-1 flex flex-col justify-center p-4 md:p-6">
-                        <h3 className="text-lg md:text-xl font-bold text-gray-400 dark:text-gray-600">Curso en preparación</h3>
-                        <p className="text-sm text-gray-400 dark:text-gray-600 mt-1">Estamos trabajando en este contenido...</p>
-                        <span className="inline-flex mt-3 px-3 py-1.5 rounded-full text-sm bg-gray-400 text-white w-fit">Próximamente</span>
+                        <h3 className="text-lg md:text-xl font-bold text-gray-400 dark:text-gray-600">
+                          Curso en preparación
+                        </h3>
+                        <p className="text-sm text-gray-400 dark:text-gray-600 mt-1">
+                          Estamos trabajando en este contenido...
+                        </p>
+                        <span className="inline-flex mt-3 px-3 py-1.5 rounded-full text-sm bg-gray-400 text-white w-fit">
+                          Próximamente
+                        </span>
                         <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                          <button disabled className="w-full bg-gray-400 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 opacity-50 cursor-not-allowed">
+                          <button
+                            disabled
+                            className="w-full bg-gray-400 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 opacity-50 cursor-not-allowed"
+                          >
                             <ShoppingCart className="w-4 h-4" />
                             Próximamente
                           </button>
@@ -596,8 +724,12 @@ export default function HomePage() {
           {!loadingCourses && displayedCourses.length === 0 && (
             <div className="rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 p-12 text-center">
               <BookOpen className="w-12 h-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
-              <p className="text-gray-600 dark:text-gray-400 font-medium">Próximamente más cursos</p>
-              <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">Estamos preparando nuevos programas para ti.</p>
+              <p className="text-gray-600 dark:text-gray-400 font-medium">
+                Próximamente más cursos
+              </p>
+              <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">
+                Estamos preparando nuevos programas para ti.
+              </p>
             </div>
           )}
         </div>

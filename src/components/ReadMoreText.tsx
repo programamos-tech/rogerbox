@@ -8,7 +8,11 @@ interface ReadMoreTextProps {
   className?: string;
 }
 
-export default function ReadMoreText({ text, maxLength = 100, className = '' }: ReadMoreTextProps) {
+export default function ReadMoreText({
+  text,
+  maxLength = 100,
+  className = '',
+}: ReadMoreTextProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   // Si el texto es más corto que maxLength, no necesitamos el botón
@@ -17,13 +21,11 @@ export default function ReadMoreText({ text, maxLength = 100, className = '' }: 
   }
 
   const truncatedText = text.slice(0, maxLength);
-  const displayText = isExpanded ? text : truncatedText + '...';
+  const displayText = isExpanded ? text : `${truncatedText}...`;
 
   return (
     <div>
-      <p className={className}>
-        {displayText}
-      </p>
+      <p className={className}>{displayText}</p>
       <button
         onClick={(e) => {
           e.stopPropagation();

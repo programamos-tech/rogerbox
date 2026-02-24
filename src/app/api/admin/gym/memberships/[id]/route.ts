@@ -1,16 +1,20 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getUser } from '@/lib/supabase-server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import { GymMembershipUpdate } from '@/types/gym';
+import { getUser } from '@/lib/supabase-server';
+import type { GymMembershipUpdate } from '@/types/gym';
 
 function normalizeEmail(val?: string | null) {
   return (val || '').trim().toLowerCase();
 }
 
-function isAdminUser(user: { id?: string; email?: string; user_metadata?: any } | null) {
+function isAdminUser(
+  user: { id?: string; email?: string; user_metadata?: any } | null,
+) {
   if (!user) return false;
   const envId = (process.env.NEXT_PUBLIC_ADMIN_USER_ID || '').trim();
-  const envEmail = normalizeEmail(process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'rogerbox@admin.com');
+  const envEmail = normalizeEmail(
+    process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'rogerbox@admin.com',
+  );
   const matchId = !!envId && user.id === envId;
   const matchEmail = normalizeEmail(user.email) === envEmail;
   const matchRole = user.user_metadata?.role === 'admin';
@@ -19,12 +23,12 @@ function isAdminUser(user: { id?: string; email?: string; user_metadata?: any } 
 
 // GET - Obtener una membresía por ID
 export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { user } = await getUser();
-    
+
     if (!isAdminUser(user)) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
@@ -43,27 +47,34 @@ export async function GET(
 
     if (error) {
       if (error.code === 'PGRST116') {
-        return NextResponse.json({ error: 'Membresía no encontrada' }, { status: 404 });
+        return NextResponse.json(
+          { error: 'Membresía no encontrada' },
+          { status: 404 },
+        );
       }
-      console.error('Error fetching gym membership:', error);
-      return NextResponse.json({ error: 'Error al obtener membresía' }, { status: 500 });
+      return NextResponse.json(
+        { error: 'Error al obtener membresía' },
+        { status: 500 },
+      );
     }
 
     return NextResponse.json(data);
-  } catch (error) {
-    console.error('Error in GET /api/admin/gym/memberships/[id]:', error);
-    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
+  } catch (_error) {
+    return NextResponse.json(
+      { error: 'Error interno del servidor' },
+      { status: 500 },
+    );
   }
 }
 
 // PUT - Actualizar una membresía
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { user } = await getUser();
-    
+
     if (!isAdminUser(user)) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
@@ -76,7 +87,8 @@ export async function PUT(
     const toNoonUTC = (d: string) => {
       if (!d || d.length < 10) return d;
       const dateOnly = d.slice(0, 10);
-      if (/^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) return `${dateOnly}T12:00:00.000Z`;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dateOnly))
+        return `${dateOnly}T12:00:00.000Z`;
       return d;
     };
 
@@ -116,7 +128,8 @@ export async function PUT(
     }
 
     if (plan_id !== undefined) updateData.plan_id = plan_id;
-    if (end_date !== undefined && start_date === undefined) updateData.end_date = toNoonUTC(String(end_date));
+    if (end_date !== undefined && start_date === undefined)
+      updateData.end_date = toNoonUTC(String(end_date));
     if (status !== undefined) updateData.status = status;
     if (user_id !== undefined) updateData.user_id = user_id || null;
 
@@ -133,27 +146,34 @@ export async function PUT(
 
     if (error) {
       if (error.code === 'PGRST116') {
-        return NextResponse.json({ error: 'Membresía no encontrada' }, { status: 404 });
+        return NextResponse.json(
+          { error: 'Membresía no encontrada' },
+          { status: 404 },
+        );
       }
-      console.error('Error updating gym membership:', error);
-      return NextResponse.json({ error: 'Error al actualizar membresía' }, { status: 500 });
+      return NextResponse.json(
+        { error: 'Error al actualizar membresía' },
+        { status: 500 },
+      );
     }
 
     return NextResponse.json(data);
-  } catch (error) {
-    console.error('Error in PUT /api/admin/gym/memberships/[id]:', error);
-    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
+  } catch (_error) {
+    return NextResponse.json(
+      { error: 'Error interno del servidor' },
+      { status: 500 },
+    );
   }
 }
 
 // DELETE - Cancelar una membresía
 export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { user } = await getUser();
-    
+
     if (!isAdminUser(user)) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
@@ -173,15 +193,25 @@ export async function DELETE(
 
     if (error) {
       if (error.code === 'PGRST116') {
-        return NextResponse.json({ error: 'Membresía no encontrada' }, { status: 404 });
+        return NextResponse.json(
+          { error: 'Membresía no encontrada' },
+          { status: 404 },
+        );
       }
-      console.error('Error cancelling gym membership:', error);
-      return NextResponse.json({ error: 'Error al cancelar membresía' }, { status: 500 });
+      return NextResponse.json(
+        { error: 'Error al cancelar membresía' },
+        { status: 500 },
+      );
     }
 
-    return NextResponse.json({ message: 'Membresía cancelada exitosamente', data });
-  } catch (error) {
-    console.error('Error in DELETE /api/admin/gym/memberships/[id]:', error);
-    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
+    return NextResponse.json({
+      message: 'Membresía cancelada exitosamente',
+      data,
+    });
+  } catch (_error) {
+    return NextResponse.json(
+      { error: 'Error interno del servidor' },
+      { status: 500 },
+    );
   }
 }

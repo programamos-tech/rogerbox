@@ -1,16 +1,20 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getSession } from '@/lib/supabase-server';
-import { supabaseAdmin } from '@/lib/supabase';
 import { cookies } from 'next/headers';
+import { type NextRequest, NextResponse } from 'next/server';
+import { supabaseAdmin } from '@/lib/supabase';
+import { getSession } from '@/lib/supabase-server';
 
 function normalizeEmail(val?: string | null) {
   return (val || '').trim().toLowerCase();
 }
 
-function isAdminUser(user: { id?: string; email?: string; user_metadata?: any } | null) {
+function isAdminUser(
+  user: { id?: string; email?: string; user_metadata?: any } | null,
+) {
   if (!user) return false;
   const envId = (process.env.NEXT_PUBLIC_ADMIN_USER_ID || '').trim();
-  const envEmail = normalizeEmail(process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'rogerbox@admin.com');
+  const envEmail = normalizeEmail(
+    process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'rogerbox@admin.com',
+  );
   const matchId = !!envId && user.id === envId;
   const matchEmail = normalizeEmail(user.email) === envEmail;
   const matchRole = user.user_metadata?.role === 'admin';
@@ -21,7 +25,6 @@ async function getSessionUser() {
   try {
     const { session, error: sessionError } = await getSession();
     if (sessionError) {
-      console.error('Session error:', sessionError);
       // Intentar recuperar token desde cookie sb-*-auth-token y validar con supabaseAdmin (fallback)
       const token = await extractAccessTokenFromCookies();
       if (token) {
@@ -44,8 +47,7 @@ async function getSessionUser() {
     }
 
     return null;
-  } catch (err) {
-    console.error('Session unexpected error:', err);
+  } catch (_err) {
     return null;
   }
 }
@@ -58,7 +60,7 @@ async function extractAccessTokenFromCookies(): Promise<string | null> {
     if (!authCookie?.value) return null;
     const parsed = JSON.parse(authCookie.value);
     return parsed?.access_token || null;
-  } catch (err) {
+  } catch (_err) {
     return null;
   }
 }
@@ -67,13 +69,6 @@ export async function GET() {
   const user = await getSessionUser();
 
   if (!isAdminUser(user)) {
-    console.error('Categories GET unauthorized', {
-      userId: user?.id,
-      userEmail: user?.email,
-      envId: process.env.NEXT_PUBLIC_ADMIN_USER_ID,
-      envEmail: process.env.NEXT_PUBLIC_ADMIN_EMAIL,
-      role: user?.user_metadata?.role,
-    });
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
   }
 
@@ -83,7 +78,6 @@ export async function GET() {
     .order('sort_order', { ascending: true });
 
   if (error) {
-    console.error('Categories GET error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
@@ -95,16 +89,11 @@ export async function POST(request: NextRequest) {
 
   if (!isAdminUser(user)) {
     // Fallback dev bypass: si no hay session pero estamos en dev y hay service key, permitir
-    if (process.env.NODE_ENV !== 'production' && process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      console.warn('Bypassing admin check in dev for categories POST');
+    if (
+      process.env.NODE_ENV !== 'production' &&
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    ) {
     } else {
-      console.error('Categories POST unauthorized', {
-        userId: user?.id,
-        userEmail: user?.email,
-        envId: process.env.NEXT_PUBLIC_ADMIN_USER_ID,
-        envEmail: process.env.NEXT_PUBLIC_ADMIN_EMAIL,
-        role: user?.user_metadata?.role,
-      });
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
   }
@@ -112,19 +101,18 @@ export async function POST(request: NextRequest) {
   const body = await request.json();
   const { name, description, icon, color, sort_order } = body;
 
-  const { error } = await supabaseAdmin
-    .from('course_categories')
-    .insert([{
+  const { error } = await supabaseAdmin.from('course_categories').insert([
+    {
       name,
       description,
       icon,
       color,
       sort_order: sort_order ?? 0,
       is_active: true,
-    }]);
+    },
+  ]);
 
   if (error) {
-    console.error('Categories POST error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
@@ -138,15 +126,7 @@ export async function PUT(request: NextRequest) {
     const nodeEnv = String(process.env.NODE_ENV || 'development');
     const isNotProduction = nodeEnv !== 'production' && nodeEnv !== 'prod';
     if (isNotProduction && process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      console.warn('Bypassing admin check in dev for categories PUT');
     } else {
-      console.error('Categories PUT unauthorized', {
-        userId: user?.id,
-        userEmail: user?.email,
-        envId: process.env.NEXT_PUBLIC_ADMIN_USER_ID,
-        envEmail: process.env.NEXT_PUBLIC_ADMIN_EMAIL,
-        role: user?.user_metadata?.role,
-      });
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
   }
@@ -163,7 +143,6 @@ export async function PUT(request: NextRequest) {
     .eq('id', id);
 
   if (error) {
-    console.error('Categories PUT error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
@@ -177,15 +156,7 @@ export async function DELETE(request: NextRequest) {
     const nodeEnv = String(process.env.NODE_ENV || 'development');
     const isNotProduction = nodeEnv !== 'production' && nodeEnv !== 'prod';
     if (isNotProduction && process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      console.warn('Bypassing admin check in dev for categories DELETE');
     } else {
-      console.error('Categories DELETE unauthorized', {
-        userId: user?.id,
-        userEmail: user?.email,
-        envId: process.env.NEXT_PUBLIC_ADMIN_USER_ID,
-        envEmail: process.env.NEXT_PUBLIC_ADMIN_EMAIL,
-        role: user?.user_metadata?.role,
-      });
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
   }
@@ -203,10 +174,8 @@ export async function DELETE(request: NextRequest) {
     .eq('id', id);
 
   if (error) {
-    console.error('Categories DELETE error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true });
 }
-

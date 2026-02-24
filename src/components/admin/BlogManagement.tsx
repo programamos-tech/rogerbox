@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { NutritionalBlog } from '@/types';
-import { Plus, Edit, Trash2, Eye, EyeOff, Calendar, User, Clock, BookOpen } from 'lucide-react';
+import { BookOpen, Edit, Plus, Trash2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import type { NutritionalBlog } from '@/types';
 import DeleteBlogModal from './DeleteBlogModal';
 
 export default function BlogManagement() {
@@ -11,7 +11,9 @@ export default function BlogManagement() {
   const [showForm, setShowForm] = useState(false);
   const [editingBlog, setEditingBlog] = useState<NutritionalBlog | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [blogToDelete, setBlogToDelete] = useState<NutritionalBlog | null>(null);
+  const [blogToDelete, setBlogToDelete] = useState<NutritionalBlog | null>(
+    null,
+  );
   const [isDeleting, setIsDeleting] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
@@ -26,15 +28,14 @@ export default function BlogManagement() {
   // Cargar blogs
   useEffect(() => {
     fetchBlogs();
-  }, []);
+  }, [fetchBlogs]);
 
   const fetchBlogs = async () => {
     try {
       const response = await fetch('/api/blogs/admin');
       const data = await response.json();
       setBlogs(data.blogs || []);
-    } catch (error) {
-      console.error('Error fetching blogs:', error);
+    } catch (_error) {
     } finally {
       setLoading(false);
     }
@@ -42,11 +43,11 @@ export default function BlogManagement() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     try {
       const url = editingBlog ? `/api/blogs/${editingBlog.id}` : '/api/blogs';
       const method = editingBlog ? 'PUT' : 'POST';
-      
+
       const response = await fetch(url, {
         method,
         headers: {
@@ -63,8 +64,7 @@ export default function BlogManagement() {
         const error = await response.json();
         alert(`Error: ${error.error}`);
       }
-    } catch (error) {
-      console.error('Error saving blog:', error);
+    } catch (_error) {
       alert('Error al guardar el blog');
     }
   };
@@ -104,8 +104,7 @@ export default function BlogManagement() {
       } else {
         alert('Error al eliminar el blog');
       }
-    } catch (error) {
-      console.error('Error deleting blog:', error);
+    } catch (_error) {
       alert('Error al eliminar el blog');
     } finally {
       setIsDeleting(false);
@@ -173,7 +172,7 @@ export default function BlogManagement() {
           <h3 className="text-lg font-semibold mb-4">
             {editingBlog ? 'Editar Blog' : 'Crear Nuevo Blog'}
           </h3>
-          
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -183,12 +182,14 @@ export default function BlogManagement() {
                 <input
                   type="text"
                   value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, title: e.target.value })
+                  }
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-[#85ea10] bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   required
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Autor *
@@ -196,7 +197,9 @@ export default function BlogManagement() {
                 <input
                   type="text"
                   value={formData.author}
-                  onChange={(e) => setFormData({ ...formData, author: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, author: e.target.value })
+                  }
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-[#85ea10] bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   required
                 />
@@ -212,12 +215,17 @@ export default function BlogManagement() {
                   type="number"
                   min="1"
                   value={formData.reading_time}
-                  onChange={(e) => setFormData({ ...formData, reading_time: parseInt(e.target.value) })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      reading_time: parseInt(e.target.value, 10),
+                    })
+                  }
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-[#85ea10] bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   required
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   URL de imagen destacada
@@ -225,7 +233,12 @@ export default function BlogManagement() {
                 <input
                   type="url"
                   value={formData.featured_image_url}
-                  onChange={(e) => setFormData({ ...formData, featured_image_url: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      featured_image_url: e.target.value,
+                    })
+                  }
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-[#85ea10] bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
               </div>
@@ -237,7 +250,9 @@ export default function BlogManagement() {
               </label>
               <textarea
                 value={formData.excerpt}
-                onChange={(e) => setFormData({ ...formData, excerpt: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, excerpt: e.target.value })
+                }
                 rows={3}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-[#85ea10] bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 placeholder="Breve descripción del blog..."
@@ -251,7 +266,9 @@ export default function BlogManagement() {
               </label>
               <textarea
                 value={formData.content}
-                onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, content: e.target.value })
+                }
                 rows={8}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-[#85ea10] bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 placeholder="Contenido completo del blog..."
@@ -264,10 +281,15 @@ export default function BlogManagement() {
                 type="checkbox"
                 id="is_published"
                 checked={formData.is_published}
-                onChange={(e) => setFormData({ ...formData, is_published: e.target.checked })}
+                onChange={(e) =>
+                  setFormData({ ...formData, is_published: e.target.checked })
+                }
                 className="h-4 w-4 text-[#85ea10] focus:ring-[#85ea10] border-gray-300 rounded"
               />
-              <label htmlFor="is_published" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
+              <label
+                htmlFor="is_published"
+                className="ml-2 block text-sm text-gray-700 dark:text-gray-300"
+              >
                 Publicar inmediatamente
               </label>
             </div>
@@ -297,7 +319,10 @@ export default function BlogManagement() {
       {/* Grid de blogs */}
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
         {blogs.map((blog) => (
-          <div key={blog.id} className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 hover:border-[#85ea10]/50 transition-all group shadow-lg hover:shadow-xl overflow-hidden">
+          <div
+            key={blog.id}
+            className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 hover:border-[#85ea10]/50 transition-all group shadow-lg hover:shadow-xl overflow-hidden"
+          >
             {/* Imagen del blog */}
             <div className="relative w-full aspect-video bg-gray-200 dark:bg-gray-800 overflow-hidden">
               {blog.featured_image_url ? (
@@ -334,22 +359,34 @@ export default function BlogManagement() {
                 {blog.title}
               </h3>
 
-              <p className="text-xs font-medium text-gray-600 dark:text-white/60 line-clamp-2 mb-4">{blog.excerpt}</p>
+              <p className="text-xs font-medium text-gray-600 dark:text-white/60 line-clamp-2 mb-4">
+                {blog.excerpt}
+              </p>
 
               <div className="grid grid-cols-2 gap-2 mb-4">
                 <div className="bg-[#85ea10]/10 rounded-lg px-3 py-2 border border-[#85ea10]/20">
-                  <p className="text-[10px] font-bold text-gray-600 dark:text-white/60 uppercase tracking-wide mb-0.5">Autor</p>
+                  <p className="text-[10px] font-bold text-gray-600 dark:text-white/60 uppercase tracking-wide mb-0.5">
+                    Autor
+                  </p>
                   <p className="text-sm font-black text-gray-900 dark:text-white line-clamp-1">
                     {blog.author}
                   </p>
                 </div>
                 <div className="bg-[#85ea10]/10 rounded-lg px-3 py-2 border border-[#85ea10]/20">
-                  <p className="text-[10px] font-bold text-gray-600 dark:text-white/60 uppercase tracking-wide mb-0.5">Lectura</p>
-                  <p className="text-sm font-black text-gray-900 dark:text-white">{blog.reading_time} min</p>
+                  <p className="text-[10px] font-bold text-gray-600 dark:text-white/60 uppercase tracking-wide mb-0.5">
+                    Lectura
+                  </p>
+                  <p className="text-sm font-black text-gray-900 dark:text-white">
+                    {blog.reading_time} min
+                  </p>
                 </div>
                 <div className="bg-[#85ea10]/10 rounded-lg px-3 py-2 border border-[#85ea10]/20 col-span-2">
-                  <p className="text-[10px] font-bold text-gray-600 dark:text-white/60 uppercase tracking-wide mb-0.5">Fecha</p>
-                  <p className="text-sm font-black text-gray-900 dark:text-white">{formatDate(blog.created_at)}</p>
+                  <p className="text-[10px] font-bold text-gray-600 dark:text-white/60 uppercase tracking-wide mb-0.5">
+                    Fecha
+                  </p>
+                  <p className="text-sm font-black text-gray-900 dark:text-white">
+                    {formatDate(blog.created_at)}
+                  </p>
                 </div>
               </div>
 

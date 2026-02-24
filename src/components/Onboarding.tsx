@@ -1,8 +1,19 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import {
+  Activity,
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+  Ruler,
+  Target,
+  TrendingDown,
+  TrendingUp,
+  User,
+  Weight,
+} from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { ChevronRight, ChevronLeft, User, Target, Weight, Ruler, Calendar, TrendingDown, TrendingUp, Activity } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 interface OnboardingProps {
   onComplete: (profile: UserProfile) => void;
@@ -21,17 +32,21 @@ interface UserProfile {
   dietaryHabits?: string[];
 }
 
-export default function Onboarding({ onComplete, isUpdating = false, userName = 'Usuario' }: OnboardingProps) {
-  const router = useRouter();
+export default function Onboarding({
+  onComplete,
+  isUpdating = false,
+  userName = 'Usuario',
+}: OnboardingProps) {
+  const _router = useRouter();
   const [currentStep, setCurrentStep] = useState(0);
-  
+
   // Función para formatear el nombre
   const formatName = (fullName: string) => {
     if (!fullName || fullName.trim() === '') return 'Usuario';
-    
+
     // Tomar solo el primer nombre
     const firstName = fullName.trim().split(' ')[0];
-    
+
     // Convertir a camelCase: primera letra mayúscula, resto minúsculas
     return firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
   };
@@ -43,95 +58,101 @@ export default function Onboarding({ onComplete, isUpdating = false, userName = 
     weight: 70,
     birthYear: 1995,
     goals: [],
-    dietaryHabits: []
+    dietaryHabits: [],
   });
 
   // Calcular IMC según OMS
   const calculateBMI = (weight: number, height: number): number => {
-    return weight / Math.pow(height / 100, 2);
+    return weight / (height / 100) ** 2;
   };
 
   // Obtener condición según IMC de la OMS
-  const getBMICondition = (bmi: number): { category: string; description: string; color: string } => {
+  const getBMICondition = (
+    bmi: number,
+  ): { category: string; description: string; color: string } => {
     if (bmi < 18.5) {
       return {
         category: 'Bajo peso',
         description: 'Tu IMC está por debajo del rango normal según la OMS',
-        color: 'text-blue-600 dark:text-blue-400'
+        color: 'text-blue-600 dark:text-blue-400',
       };
     } else if (bmi >= 18.5 && bmi < 25) {
       return {
         category: 'Peso normal',
         description: 'Tu IMC está dentro del rango saludable según la OMS',
-        color: 'text-green-600 dark:text-green-400'
+        color: 'text-green-600 dark:text-green-400',
       };
     } else if (bmi >= 25 && bmi < 30) {
       return {
         category: 'Sobrepeso',
         description: 'Tu IMC indica sobrepeso según la OMS',
-        color: 'text-orange-600 dark:text-orange-400'
+        color: 'text-orange-600 dark:text-orange-400',
       };
     } else if (bmi >= 30 && bmi < 35) {
       return {
         category: 'Obesidad grado I',
         description: 'Tu IMC indica obesidad grado I según la OMS',
-        color: 'text-red-600 dark:text-red-400'
+        color: 'text-red-600 dark:text-red-400',
       };
     } else if (bmi >= 35 && bmi < 40) {
       return {
         category: 'Obesidad grado II',
         description: 'Tu IMC indica obesidad grado II según la OMS',
-        color: 'text-red-700 dark:text-red-500'
+        color: 'text-red-700 dark:text-red-500',
       };
     } else {
       return {
         category: 'Obesidad grado III',
         description: 'Tu IMC indica obesidad grado III según la OMS',
-        color: 'text-red-800 dark:text-red-600'
+        color: 'text-red-800 dark:text-red-600',
       };
     }
   };
 
   // Calcular peso objetivo basado en IMC de la OMS
-  const calculateTargetWeightFromBMI = (height: number, weight: number): { targetWeight: number; weightToLose: number; recommendation: string } => {
+  const calculateTargetWeightFromBMI = (
+    height: number,
+    weight: number,
+  ): { targetWeight: number; weightToLose: number; recommendation: string } => {
     const currentBMI = calculateBMI(weight, height);
-    const condition = getBMICondition(currentBMI);
-    
+    const _condition = getBMICondition(currentBMI);
+
     // Si está en sobrepeso u obesidad, calcular peso para IMC de 22.5 (centro del rango normal)
     if (currentBMI >= 25) {
       const targetBMI = 22.5; // Centro del rango normal (18.5-24.9)
-      const targetWeight = Math.round(targetBMI * Math.pow(height / 100, 2));
+      const targetWeight = Math.round(targetBMI * (height / 100) ** 2);
       const weightToLose = weight - targetWeight;
-      
+
       return {
         targetWeight,
         weightToLose,
-        recommendation: `Para alcanzar un IMC saludable (22.5), tu peso objetivo es ${targetWeight} kg. Deberías bajar ${weightToLose} kg.`
+        recommendation: `Para alcanzar un IMC saludable (22.5), tu peso objetivo es ${targetWeight} kg. Deberías bajar ${weightToLose} kg.`,
       };
     } else if (currentBMI >= 18.5 && currentBMI < 25) {
       // Si está en peso normal, mantener peso pero sugerir tonificar
       return {
         targetWeight: weight,
         weightToLose: 0,
-        recommendation: 'Tu peso está en el rango normal. Te recomendamos enfocarte en tonificar y ganar masa muscular.'
+        recommendation:
+          'Tu peso está en el rango normal. Te recomendamos enfocarte en tonificar y ganar masa muscular.',
       };
     } else {
       // Si está bajo peso, sugerir ganar peso saludablemente
       const targetBMI = 21; // Centro del rango normal
-      const targetWeight = Math.round(targetBMI * Math.pow(height / 100, 2));
+      const targetWeight = Math.round(targetBMI * (height / 100) ** 2);
       const weightToGain = targetWeight - weight;
-      
+
       return {
         targetWeight,
         weightToLose: -weightToGain,
-        recommendation: `Para alcanzar un IMC saludable, tu peso objetivo es ${targetWeight} kg. Deberías ganar ${weightToGain} kg de forma saludable.`
+        recommendation: `Para alcanzar un IMC saludable, tu peso objetivo es ${targetWeight} kg. Deberías ganar ${weightToGain} kg de forma saludable.`,
       };
     }
   };
 
   const steps = [
     {
-      title: "¿Cuál es tu altura?",
+      title: '¿Cuál es tu altura?',
       icon: <Ruler className="w-8 h-8 text-[#85ea10]" />,
       component: (
         <div className="space-y-6">
@@ -144,7 +165,9 @@ export default function Onboarding({ onComplete, isUpdating = false, userName = 
               min="140"
               max="220"
               value={profile.height}
-              onChange={(e) => setProfile({...profile, height: parseInt(e.target.value)})}
+              onChange={(e) =>
+                setProfile({ ...profile, height: parseInt(e.target.value, 10) })
+              }
               className="w-full h-2 bg-gray-200 dark:bg-white/20 rounded-lg appearance-none cursor-pointer slider"
             />
           </div>
@@ -153,21 +176,23 @@ export default function Onboarding({ onComplete, isUpdating = false, userName = 
             <span>220 cm</span>
           </div>
         </div>
-      )
+      ),
     },
     {
-      title: "¿Cuál es tu sexo?",
+      title: '¿Cuál es tu sexo?',
       icon: <User className="w-8 h-8 text-[#85ea10]" />,
       component: (
         <div className="grid grid-cols-3 gap-4">
           {[
             { value: 'male', label: 'Hombre', emoji: '👨🏽' },
             { value: 'female', label: 'Mujer', emoji: '👩🏽' },
-            { value: 'other', label: 'Otro', emoji: '🧑🏽' }
+            { value: 'other', label: 'Otro', emoji: '🧑🏽' },
           ].map((option) => (
             <button
               key={option.value}
-              onClick={() => setProfile({...profile, gender: option.value as any})}
+              onClick={() =>
+                setProfile({ ...profile, gender: option.value as any })
+              }
               className={`p-6 rounded-2xl border-2 transition-all duration-300 ${
                 profile.gender === option.value
                   ? 'border-[#85ea10] bg-[#85ea10]/10 text-[#85ea10]'
@@ -179,10 +204,10 @@ export default function Onboarding({ onComplete, isUpdating = false, userName = 
             </button>
           ))}
         </div>
-      )
+      ),
     },
     {
-      title: "¿Cuál es tu peso actual?",
+      title: '¿Cuál es tu peso actual?',
       icon: <Weight className="w-8 h-8 text-[#85ea10]" />,
       component: (
         <div className="space-y-6">
@@ -195,7 +220,9 @@ export default function Onboarding({ onComplete, isUpdating = false, userName = 
               min="40"
               max="150"
               value={profile.weight}
-              onChange={(e) => setProfile({...profile, weight: parseInt(e.target.value)})}
+              onChange={(e) =>
+                setProfile({ ...profile, weight: parseInt(e.target.value, 10) })
+              }
               className="w-full h-2 bg-gray-200 dark:bg-white/20 rounded-lg appearance-none cursor-pointer slider"
             />
           </div>
@@ -206,9 +233,15 @@ export default function Onboarding({ onComplete, isUpdating = false, userName = 
           {profile.goals.length > 0 && (
             <div className="mt-6 p-4 bg-[#85ea10]/10 border border-[#85ea10]/30 rounded-xl">
               <div className="text-center">
-                <div className="text-sm text-gray-600 dark:text-white/80 mb-2">Tu meta de peso recomendada:</div>
+                <div className="text-sm text-gray-600 dark:text-white/80 mb-2">
+                  Tu meta de peso recomendada:
+                </div>
                 <div className="text-2xl font-bold text-[#85ea10]">
-                  {calculateTargetWeightFromBMI(profile.height, profile.weight).targetWeight} kg
+                  {
+                    calculateTargetWeightFromBMI(profile.height, profile.weight)
+                      .targetWeight
+                  }{' '}
+                  kg
                 </div>
                 <div className="text-xs text-gray-500 dark:text-white/60 mt-1">
                   Basado en tu IMC según la OMS
@@ -217,10 +250,10 @@ export default function Onboarding({ onComplete, isUpdating = false, userName = 
             </div>
           )}
         </div>
-      )
+      ),
     },
     {
-      title: "¿En qué año naciste?",
+      title: '¿En qué año naciste?',
       icon: <Calendar className="w-8 h-8 text-[#85ea10]" />,
       component: (
         <div className="space-y-6">
@@ -233,7 +266,12 @@ export default function Onboarding({ onComplete, isUpdating = false, userName = 
               min="1950"
               max="2010"
               value={profile.birthYear}
-              onChange={(e) => setProfile({...profile, birthYear: parseInt(e.target.value)})}
+              onChange={(e) =>
+                setProfile({
+                  ...profile,
+                  birthYear: parseInt(e.target.value, 10),
+                })
+              }
               className="w-full h-2 bg-gray-200 dark:bg-white/20 rounded-lg appearance-none cursor-pointer slider"
             />
           </div>
@@ -242,13 +280,17 @@ export default function Onboarding({ onComplete, isUpdating = false, userName = 
             <span>2010</span>
           </div>
           <div className="text-center text-sm text-gray-500 dark:text-white/60">
-            Edad: {profile.birthYear ? new Date().getFullYear() - profile.birthYear : 'No especificada'} años
+            Edad:{' '}
+            {profile.birthYear
+              ? new Date().getFullYear() - profile.birthYear
+              : 'No especificada'}{' '}
+            años
           </div>
         </div>
-      )
+      ),
     },
     {
-      title: "¿Qué quieres lograr?",
+      title: '¿Qué quieres lograr?',
       icon: <Target className="w-8 h-8 text-[#85ea10]" />,
       component: (
         <div className="grid grid-cols-2 gap-4">
@@ -258,15 +300,15 @@ export default function Onboarding({ onComplete, isUpdating = false, userName = 
             { id: 'gain_muscle', label: 'Ganar músculo', emoji: '🏋️' },
             { id: 'endurance', label: 'Resistencia', emoji: '🏃' },
             { id: 'flexibility', label: 'Flexibilidad', emoji: '🧘' },
-            { id: 'strength', label: 'Fuerza', emoji: '⚡' }
+            { id: 'strength', label: 'Fuerza', emoji: '⚡' },
           ].map((goal) => (
             <button
               key={goal.id}
               onClick={() => {
                 const newGoals = profile.goals.includes(goal.id)
-                  ? profile.goals.filter(g => g !== goal.id)
+                  ? profile.goals.filter((g) => g !== goal.id)
                   : [...profile.goals, goal.id];
-                setProfile({...profile, goals: newGoals});
+                setProfile({ ...profile, goals: newGoals });
               }}
               className={`p-4 rounded-xl border-2 transition-all duration-300 ${
                 profile.goals.includes(goal.id)
@@ -279,145 +321,162 @@ export default function Onboarding({ onComplete, isUpdating = false, userName = 
             </button>
           ))}
         </div>
-      )
+      ),
     },
     {
-      title: "Tu meta de peso objetivo",
+      title: 'Tu meta de peso objetivo',
       icon: <Target className="w-8 h-8 text-[#85ea10]" />,
       component: (() => {
         // Componente interno para manejar la actualización del estado
         const WeightGoalStepContent = () => {
           const currentBMI = calculateBMI(profile.weight, profile.height);
           const condition = getBMICondition(currentBMI);
-          const targetData = calculateTargetWeightFromBMI(profile.height, profile.weight);
-          
+          const targetData = calculateTargetWeightFromBMI(
+            profile.height,
+            profile.weight,
+          );
+
           // Calcular posición del indicador en la barra de IMC
           const bmiRange = 40 - 15; // Rango total de IMC mostrado (15 a 40)
           const bmiPosition = ((currentBMI - 15) / bmiRange) * 100;
           const indicatorPosition = Math.min(Math.max(bmiPosition, 0), 100);
-          
+
           // Actualizar el targetWeight en el perfil automáticamente usando useEffect
           useEffect(() => {
-            const newTargetWeight = calculateTargetWeightFromBMI(profile.height, profile.weight).targetWeight;
+            const newTargetWeight = calculateTargetWeightFromBMI(
+              profile.height,
+              profile.weight,
+            ).targetWeight;
             if (profile.targetWeight !== newTargetWeight) {
-              setProfile(prev => ({...prev, targetWeight: newTargetWeight}));
+              setProfile((prev) => ({
+                ...prev,
+                targetWeight: newTargetWeight,
+              }));
             }
-          }, [profile.weight, profile.height, profile.targetWeight]);
-          
+          }, []);
+
           return (
-          <div className="space-y-3">
-            {/* Información del IMC actual */}
-            <div className="bg-gradient-to-br from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 rounded-xl p-4 border border-gray-200 dark:border-white/20">
-              <div className="text-center mb-3">
-                <div className="text-xs text-gray-600 dark:text-white/60 mb-1">Tu IMC actual</div>
-                <div className="text-4xl font-black text-gray-900 dark:text-white mb-1">
-                  {currentBMI.toFixed(1)}
-                </div>
-                <div className={`text-base font-bold ${condition.color} mb-1`}>
-                  {condition.category}
-                </div>
-                <div className="text-xs text-gray-600 dark:text-white/70">
-                  {condition.description}
-                </div>
-              </div>
-              
-              {/* Barra de rango IMC */}
-              <div className="mt-3">
-                <div className="flex justify-between text-xs text-gray-500 dark:text-white/50 mb-1.5">
-                  <span>Bajo peso</span>
-                  <span>Normal</span>
-                  <span>Sobrepeso</span>
-                  <span>Obesidad</span>
-                </div>
-                <div className="relative h-3 bg-gray-200 dark:bg-white/20 rounded-full overflow-hidden">
-                  {/* Rangos de color */}
-                  <div className="absolute inset-0 flex">
-                    <div className="flex-1 bg-blue-200 dark:bg-blue-900/30"></div>
-                    <div className="flex-1 bg-green-200 dark:bg-green-900/30"></div>
-                    <div className="flex-1 bg-orange-200 dark:bg-orange-900/30"></div>
-                    <div className="flex-1 bg-red-200 dark:bg-red-900/30"></div>
+            <div className="space-y-3">
+              {/* Información del IMC actual */}
+              <div className="bg-gradient-to-br from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 rounded-xl p-4 border border-gray-200 dark:border-white/20">
+                <div className="text-center mb-3">
+                  <div className="text-xs text-gray-600 dark:text-white/60 mb-1">
+                    Tu IMC actual
                   </div>
-                  {/* Indicador de posición actual */}
-                  <div 
-                    className="absolute top-0 bottom-0 w-1 bg-gray-900 dark:bg-white z-10"
-                    style={{ 
-                      left: `${indicatorPosition}%` 
-                    }}
-                  ></div>
+                  <div className="text-4xl font-black text-gray-900 dark:text-white mb-1">
+                    {currentBMI.toFixed(1)}
+                  </div>
+                  <div
+                    className={`text-base font-bold ${condition.color} mb-1`}
+                  >
+                    {condition.category}
+                  </div>
+                  <div className="text-xs text-gray-600 dark:text-white/70">
+                    {condition.description}
+                  </div>
                 </div>
-                <div className="flex justify-between text-xs text-gray-500 dark:text-white/50 mt-0.5">
-                  <span>15</span>
-                  <span>18.5</span>
-                  <span>25</span>
-                  <span>30</span>
-                  <span>40</span>
+
+                {/* Barra de rango IMC */}
+                <div className="mt-3">
+                  <div className="flex justify-between text-xs text-gray-500 dark:text-white/50 mb-1.5">
+                    <span>Bajo peso</span>
+                    <span>Normal</span>
+                    <span>Sobrepeso</span>
+                    <span>Obesidad</span>
+                  </div>
+                  <div className="relative h-3 bg-gray-200 dark:bg-white/20 rounded-full overflow-hidden">
+                    {/* Rangos de color */}
+                    <div className="absolute inset-0 flex">
+                      <div className="flex-1 bg-blue-200 dark:bg-blue-900/30"></div>
+                      <div className="flex-1 bg-green-200 dark:bg-green-900/30"></div>
+                      <div className="flex-1 bg-orange-200 dark:bg-orange-900/30"></div>
+                      <div className="flex-1 bg-red-200 dark:bg-red-900/30"></div>
+                    </div>
+                    {/* Indicador de posición actual */}
+                    <div
+                      className="absolute top-0 bottom-0 w-1 bg-gray-900 dark:bg-white z-10"
+                      style={{
+                        left: `${indicatorPosition}%`,
+                      }}
+                    ></div>
+                  </div>
+                  <div className="flex justify-between text-xs text-gray-500 dark:text-white/50 mt-0.5">
+                    <span>15</span>
+                    <span>18.5</span>
+                    <span>25</span>
+                    <span>30</span>
+                    <span>40</span>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Meta de peso objetivo */}
-            <div className={`rounded-xl p-4 border-2 ${
-              currentBMI >= 25 
-                ? 'border-orange-300 dark:border-orange-700 bg-orange-50 dark:bg-orange-900/20'
-                : currentBMI < 18.5
-                ? 'border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20'
-                : 'border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20'
-            }`}>
-              <div className="text-center">
-                <div className="flex items-center justify-center mb-2">
-                  {currentBMI >= 25 ? (
-                    <TrendingDown className="w-6 h-6 text-orange-600 dark:text-orange-400 mr-2" />
-                  ) : currentBMI < 18.5 ? (
-                    <TrendingUp className="w-6 h-6 text-blue-600 dark:text-blue-400 mr-2" />
-                  ) : (
-                    <Activity className="w-6 h-6 text-green-600 dark:text-green-400 mr-2" />
+              {/* Meta de peso objetivo */}
+              <div
+                className={`rounded-xl p-4 border-2 ${
+                  currentBMI >= 25
+                    ? 'border-orange-300 dark:border-orange-700 bg-orange-50 dark:bg-orange-900/20'
+                    : currentBMI < 18.5
+                      ? 'border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20'
+                      : 'border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20'
+                }`}
+              >
+                <div className="text-center">
+                  <div className="flex items-center justify-center mb-2">
+                    {currentBMI >= 25 ? (
+                      <TrendingDown className="w-6 h-6 text-orange-600 dark:text-orange-400 mr-2" />
+                    ) : currentBMI < 18.5 ? (
+                      <TrendingUp className="w-6 h-6 text-blue-600 dark:text-blue-400 mr-2" />
+                    ) : (
+                      <Activity className="w-6 h-6 text-green-600 dark:text-green-400 mr-2" />
+                    )}
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                      Tu meta objetivo
+                    </h3>
+                  </div>
+
+                  <div className="text-3xl font-black text-gray-900 dark:text-white mb-1">
+                    {targetData.targetWeight} kg
+                  </div>
+
+                  {targetData.weightToLose > 0 && (
+                    <div className="text-base text-orange-600 dark:text-orange-400 font-semibold mb-2">
+                      Bajar {targetData.weightToLose} kg
+                    </div>
                   )}
-                  <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-                    Tu meta objetivo
-                  </h3>
-                </div>
-                
-                <div className="text-3xl font-black text-gray-900 dark:text-white mb-1">
-                  {targetData.targetWeight} kg
-                </div>
-                
-                {targetData.weightToLose > 0 && (
-                  <div className="text-base text-orange-600 dark:text-orange-400 font-semibold mb-2">
-                    Bajar {targetData.weightToLose} kg
-                  </div>
-                )}
-                
-                {targetData.weightToLose < 0 && (
-                  <div className="text-base text-blue-600 dark:text-blue-400 font-semibold mb-2">
-                    Ganar {Math.abs(targetData.weightToLose)} kg
-                  </div>
-                )}
-                
-                {targetData.weightToLose === 0 && (
-                  <div className="text-base text-green-600 dark:text-green-400 font-semibold mb-2">
-                    Mantener peso y tonificar
-                  </div>
-                )}
-                
-                <div className="text-xs text-gray-700 dark:text-white/80 mt-2 p-2 bg-white/50 dark:bg-gray-800/50 rounded-lg">
-                  {targetData.recommendation}
-                </div>
-              </div>
-            </div>
 
-            {/* Información adicional */}
-            <div className="bg-[#85ea10]/10 border border-[#85ea10]/30 rounded-xl p-3">
-              <div className="text-xs text-gray-700 dark:text-white/80 text-center">
-                <span className="font-semibold text-[#85ea10]">💡 Nota:</span> Esta meta se establecerá como tu objetivo principal en ROGERBOX y se ajustará automáticamente según tu progreso.
+                  {targetData.weightToLose < 0 && (
+                    <div className="text-base text-blue-600 dark:text-blue-400 font-semibold mb-2">
+                      Ganar {Math.abs(targetData.weightToLose)} kg
+                    </div>
+                  )}
+
+                  {targetData.weightToLose === 0 && (
+                    <div className="text-base text-green-600 dark:text-green-400 font-semibold mb-2">
+                      Mantener peso y tonificar
+                    </div>
+                  )}
+
+                  <div className="text-xs text-gray-700 dark:text-white/80 mt-2 p-2 bg-white/50 dark:bg-gray-800/50 rounded-lg">
+                    {targetData.recommendation}
+                  </div>
+                </div>
+              </div>
+
+              {/* Información adicional */}
+              <div className="bg-[#85ea10]/10 border border-[#85ea10]/30 rounded-xl p-3">
+                <div className="text-xs text-gray-700 dark:text-white/80 text-center">
+                  <span className="font-semibold text-[#85ea10]">💡 Nota:</span>{' '}
+                  Esta meta se establecerá como tu objetivo principal en
+                  ROGERBOX y se ajustará automáticamente según tu progreso.
+                </div>
               </div>
             </div>
-        </div>
           );
         };
-        
+
         return <WeightGoalStepContent />;
-      })()
-    }
+      })(),
+    },
   ];
 
   const handleNext = () => {
@@ -435,18 +494,21 @@ export default function Onboarding({ onComplete, isUpdating = false, userName = 
         alert('Por favor selecciona al menos un objetivo para finalizar.');
         return;
       }
-      
+
       // Calcular peso objetivo basado en IMC de la OMS antes de completar
-      const targetData = calculateTargetWeightFromBMI(profile.height, profile.weight);
+      const targetData = calculateTargetWeightFromBMI(
+        profile.height,
+        profile.weight,
+      );
       const formattedName = formatName(userName);
-      
+
       // Asegurar que el targetWeight esté establecido
       const finalProfile = {
         ...profile,
         targetWeight: targetData.targetWeight,
-        name: formattedName
+        name: formattedName,
       };
-      
+
       onComplete(finalProfile);
     }
   };
@@ -456,7 +518,6 @@ export default function Onboarding({ onComplete, isUpdating = false, userName = 
       setCurrentStep(currentStep - 1);
     }
   };
-
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
@@ -470,7 +531,11 @@ export default function Onboarding({ onComplete, isUpdating = false, userName = 
             </h1>
             <div className="p-2 bg-[#85ea10]/10 border border-[#85ea10]/30 rounded-lg">
               <p className="text-xs text-gray-700 dark:text-white/80">
-                <span className="font-semibold text-[#85ea10]">Importante:</span> Esta información es esencial para crear tu plan personalizado de entrenamiento.
+                <span className="font-semibold text-[#85ea10]">
+                  Importante:
+                </span>{' '}
+                Esta información es esencial para crear tu plan personalizado de
+                entrenamiento.
               </p>
             </div>
           </div>
@@ -478,13 +543,19 @@ export default function Onboarding({ onComplete, isUpdating = false, userName = 
           {/* Progress Bar */}
           <div className="mb-4">
             <div className="flex justify-between text-gray-600 dark:text-white/60 text-sm mb-2">
-              <span>Paso {currentStep + 1} de {steps.length}</span>
-              <span>{Math.round(((currentStep + 1) / steps.length) * 100)}%</span>
+              <span>
+                Paso {currentStep + 1} de {steps.length}
+              </span>
+              <span>
+                {Math.round(((currentStep + 1) / steps.length) * 100)}%
+              </span>
             </div>
             <div className="w-full bg-gray-200 dark:bg-white/20 rounded-full h-2">
-              <div 
+              <div
                 className="bg-[#85ea10] h-2 rounded-full transition-all duration-500"
-                style={{ width: `${((currentStep + 1) / steps.length) * 100}%` }}
+                style={{
+                  width: `${((currentStep + 1) / steps.length) * 100}%`,
+                }}
               ></div>
             </div>
           </div>
@@ -513,7 +584,7 @@ export default function Onboarding({ onComplete, isUpdating = false, userName = 
                   </button>
                 )}
               </div>
-              
+
               <button
                 onClick={handleNext}
                 disabled={isUpdating}
@@ -526,7 +597,11 @@ export default function Onboarding({ onComplete, isUpdating = false, userName = 
                   </>
                 ) : (
                   <>
-                    <span>{currentStep === steps.length - 1 ? 'Finalizar' : 'Siguiente'}</span>
+                    <span>
+                      {currentStep === steps.length - 1
+                        ? 'Finalizar'
+                        : 'Siguiente'}
+                    </span>
                     <ChevronRight className="w-5 h-5" />
                   </>
                 )}

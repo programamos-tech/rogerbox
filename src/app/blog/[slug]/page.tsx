@@ -1,10 +1,21 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import {
+  ArrowLeft,
+  BookOpen,
+  Calendar,
+  Clock,
+  Facebook,
+  Instagram,
+  Linkedin,
+  MessageCircle,
+  Share2,
+  User,
+} from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
-import { NutritionalBlog } from '@/types';
-import { ArrowLeft, Clock, User, Calendar, Share2, BookOpen, Facebook, Instagram, Linkedin, MessageCircle } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import Footer from '@/components/Footer';
+import type { NutritionalBlog } from '@/types';
 
 export default function BlogPostPage() {
   const params = useParams();
@@ -19,16 +30,18 @@ export default function BlogPostPage() {
     if (params.slug) {
       fetchBlog();
     }
-  }, [params.slug]);
+  }, [params.slug, fetchBlog]);
 
   const fetchBlog = async () => {
     try {
       setLoading(true);
       const response = await fetch('/api/blogs');
       const data = await response.json();
-      
+
       if (data.blogs) {
-        const foundBlog = data.blogs.find((b: NutritionalBlog) => b.slug === params.slug);
+        const foundBlog = data.blogs.find(
+          (b: NutritionalBlog) => b.slug === params.slug,
+        );
         if (foundBlog) {
           setBlog(foundBlog);
         } else {
@@ -37,8 +50,7 @@ export default function BlogPostPage() {
       } else {
         setError('Error al cargar el blog');
       }
-    } catch (error) {
-      console.error('Error fetching blog:', error);
+    } catch (_error) {
       setError('Error al cargar el blog');
     } finally {
       setLoading(false);
@@ -55,7 +67,7 @@ export default function BlogPostPage() {
 
   const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
   const shareTitle = blog?.title || '';
-  const shareText = blog?.excerpt || '';
+  const _shareText = blog?.excerpt || '';
 
   const shareToFacebook = () => {
     const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`;
@@ -77,7 +89,7 @@ export default function BlogPostPage() {
     window.open(url, '_blank');
   };
 
-  const shareToTwitter = () => {
+  const _shareToTwitter = () => {
     const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareTitle)}&url=${encodeURIComponent(shareUrl)}`;
     window.open(url, '_blank', 'width=600,height=400');
   };
@@ -119,7 +131,6 @@ export default function BlogPostPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
-
       {/* Hero Section - Full Width */}
       <div className="relative h-96 md:h-[500px] bg-gradient-to-br from-[#85ea10]/20 to-[#6bc20a]/20 dark:from-gray-800 dark:to-gray-900">
         {blog.featured_image_url ? (
@@ -137,14 +148,14 @@ export default function BlogPostPage() {
         ) : (
           <div className="absolute inset-0 bg-gradient-to-br from-[#85ea10]/10 to-[#6bc20a]/10"></div>
         )}
-        
+
         {/* Title Overlay */}
         <div className="absolute bottom-0 left-0 right-0 p-6 md:p-12">
           <div className="max-w-6xl mx-auto">
             <h1 className="text-4xl md:text-6xl font-bold text-white mb-4 leading-tight">
               {blog.title}
             </h1>
-            
+
             <div className="flex flex-wrap items-center gap-6 text-white/90 mb-6">
               <div className="flex items-center gap-2">
                 <User className="w-5 h-5" />
@@ -152,11 +163,15 @@ export default function BlogPostPage() {
               </div>
               <div className="flex items-center gap-2">
                 <Clock className="w-5 h-5" />
-                <span className="text-lg">{blog.reading_time} min de lectura</span>
+                <span className="text-lg">
+                  {blog.reading_time} min de lectura
+                </span>
               </div>
               <div className="flex items-center gap-2">
                 <Calendar className="w-5 h-5" />
-                <span className="text-lg">{formatDate(blog.published_at || blog.created_at)}</span>
+                <span className="text-lg">
+                  {formatDate(blog.published_at || blog.created_at)}
+                </span>
               </div>
             </div>
 
@@ -185,7 +200,7 @@ export default function BlogPostPage() {
               <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6">
                 ¿Te gustó este artículo? ¡Compártelo!
               </h3>
-              
+
               <button
                 onClick={() => setShowShareModal(true)}
                 className="bg-[#85ea10] hover:bg-[#6bc20a] text-black font-bold py-3 px-8 rounded-lg transition-colors inline-flex items-center gap-2 text-lg shadow-lg hover:shadow-xl"
@@ -302,15 +317,26 @@ export default function BlogPostPage() {
           <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 max-w-sm w-full shadow-2xl text-center">
             <div className="mb-6">
               <div className="w-16 h-16 bg-[#85ea10]/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-8 h-8 text-[#85ea10]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                <svg
+                  className="w-8 h-8 text-[#85ea10]"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 13l4 4L19 7"
+                  />
                 </svg>
               </div>
               <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
                 ¡Link copiado!
               </h3>
               <p className="text-gray-600 dark:text-gray-400">
-                El enlace se ha copiado al portapapeles. Ya puedes compartirlo donde quieras.
+                El enlace se ha copiado al portapapeles. Ya puedes compartirlo
+                donde quieras.
               </p>
             </div>
 

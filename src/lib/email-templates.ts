@@ -145,8 +145,8 @@ export const emailTemplates = {
       
       ---
       RogerBox - Entrenamientos HIIT profesionales
-    `
-  }
+    `,
+  },
 };
 
 // Función para obtener el template de reset password

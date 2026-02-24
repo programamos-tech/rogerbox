@@ -1,9 +1,16 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import {
+  Clock,
+  CreditCard,
+  Download,
+  Play,
+  ShoppingCart,
+  Star,
+} from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { appStore } from '@/lib/store';
-import { User, Video, VideoPurchase } from '@/types';
-import { Play, ShoppingCart, Clock, Star, CreditCard, Download } from 'lucide-react';
+import type { User, Video, VideoPurchase } from '@/types';
 
 export default function VideoLibraryModule() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -33,12 +40,12 @@ export default function VideoLibraryModule() {
   if (!currentUser) return null;
 
   const isVideoPurchased = (videoId: string) => {
-    return videoPurchases.some(purchase => purchase.videoId === videoId);
+    return videoPurchases.some((purchase) => purchase.videoId === videoId);
   };
 
   const handlePurchaseVideo = async (video: Video) => {
     setIsPurchasing(video.id);
-    
+
     // Simulate payment processing
     setTimeout(() => {
       const success = appStore.purchaseVideo(currentUser.id, video.id);
@@ -53,7 +60,7 @@ export default function VideoLibraryModule() {
 
   const handlePurchaseDigitalRoutine = async () => {
     setIsPurchasing('digital-routine');
-    
+
     // Simulate payment processing
     setTimeout(() => {
       const success = appStore.purchaseDigitalRoutine(currentUser.id);
@@ -68,19 +75,27 @@ export default function VideoLibraryModule() {
 
   const getLevelColor = (level: string) => {
     switch (level) {
-      case 'Beginner': return 'bg-green-500';
-      case 'Intermediate': return 'bg-blue-500';
-      case 'Advanced': return 'bg-gray-600';
-      default: return 'bg-gray-500';
+      case 'Beginner':
+        return 'bg-green-500';
+      case 'Intermediate':
+        return 'bg-blue-500';
+      case 'Advanced':
+        return 'bg-gray-600';
+      default:
+        return 'bg-gray-500';
     }
   };
 
   const getLevelText = (level: string) => {
     switch (level) {
-      case 'Beginner': return 'Principiante';
-      case 'Intermediate': return 'Intermedio';
-      case 'Advanced': return 'Avanzado';
-      default: return level;
+      case 'Beginner':
+        return 'Principiante';
+      case 'Intermediate':
+        return 'Intermedio';
+      case 'Advanced':
+        return 'Avanzado';
+      default:
+        return level;
     }
   };
 
@@ -92,18 +107,23 @@ export default function VideoLibraryModule() {
           <Download className="w-6 h-6 text-green-600" />
           <span>Rutina Mensual Digital</span>
         </h2>
-        
+
         <div className="bg-gradient-to-r from-green-100 to-blue-100 rounded-lg p-6 border border-green-200">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-xl font-bold text-gray-800 mb-2">Rutina Mensual Digital</h3>
+              <h3 className="text-xl font-bold text-gray-800 mb-2">
+                Rutina Mensual Digital
+              </h3>
               <p className="text-gray-600 mb-4">
-                Plan de entrenamiento personalizado para todo el mes con ejercicios variados y progresivos.
+                Plan de entrenamiento personalizado para todo el mes con
+                ejercicios variados y progresivos.
               </p>
               <div className="flex items-center space-x-4">
                 <div className="flex items-center space-x-1">
                   <Clock className="w-4 h-4 text-gray-600" />
-                  <span className="text-gray-600 text-sm">30 días de contenido</span>
+                  <span className="text-gray-600 text-sm">
+                    30 días de contenido
+                  </span>
                 </div>
                 <div className="flex items-center space-x-1">
                   <Star className="w-4 h-4 text-yellow-500" />
@@ -112,7 +132,9 @@ export default function VideoLibraryModule() {
               </div>
             </div>
             <div className="text-right">
-              <div className="text-3xl font-bold text-gray-800 mb-2">$5.000</div>
+              <div className="text-3xl font-bold text-gray-800 mb-2">
+                $5.000
+              </div>
               <button
                 onClick={handlePurchaseDigitalRoutine}
                 disabled={isPurchasing === 'digital-routine'}
@@ -145,7 +167,9 @@ export default function VideoLibraryModule() {
         {videos.length === 0 ? (
           <div className="text-center py-8">
             <Play className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-800 mb-2">No hay videos disponibles</h3>
+            <h3 className="text-lg font-medium text-gray-800 mb-2">
+              No hay videos disponibles
+            </h3>
             <p className="text-gray-600 text-sm">
               Los videos aparecerán aquí cuando estén disponibles.
             </p>
@@ -154,9 +178,12 @@ export default function VideoLibraryModule() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {videos.map((video) => {
               const isPurchased = isVideoPurchased(video.id);
-              
+
               return (
-                <div key={video.id} className="bg-white rounded-lg overflow-hidden border border-gray-200 hover:border-green-300 transition-colors shadow-sm hover:shadow-md">
+                <div
+                  key={video.id}
+                  className="bg-white rounded-lg overflow-hidden border border-gray-200 hover:border-green-300 transition-colors shadow-sm hover:shadow-md"
+                >
                   <div className="relative">
                     <img
                       src={video.thumbnailUrl}
@@ -164,7 +191,9 @@ export default function VideoLibraryModule() {
                       className="w-full h-48 object-cover"
                     />
                     <div className="absolute top-2 right-2">
-                      <div className={`px-2 py-1 rounded-full text-xs font-medium ${getLevelColor(video.level)} text-white`}>
+                      <div
+                        className={`px-2 py-1 rounded-full text-xs font-medium ${getLevelColor(video.level)} text-white`}
+                      >
                         {getLevelText(video.level)}
                       </div>
                     </div>
@@ -175,16 +204,20 @@ export default function VideoLibraryModule() {
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="p-4">
-                    <h3 className="text-gray-800 font-bold mb-2 line-clamp-2">{video.title}</h3>
-                    <p className="text-gray-600 text-sm mb-4 line-clamp-2">{video.description}</p>
-                    
+                    <h3 className="text-gray-800 font-bold mb-2 line-clamp-2">
+                      {video.title}
+                    </h3>
+                    <p className="text-gray-600 text-sm mb-4 line-clamp-2">
+                      {video.description}
+                    </p>
+
                     <div className="flex items-center justify-between">
                       <div className="text-lg font-bold text-gray-800">
                         ${video.price.toLocaleString()} COP
                       </div>
-                      
+
                       {isPurchased ? (
                         <button
                           onClick={() => setSelectedVideo(video)}
@@ -226,7 +259,9 @@ export default function VideoLibraryModule() {
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold text-gray-800">{selectedVideo.title}</h3>
+              <h3 className="text-xl font-bold text-gray-800">
+                {selectedVideo.title}
+              </h3>
               <button
                 onClick={() => setSelectedVideo(null)}
                 className="text-gray-400 hover:text-gray-600 text-2xl"
@@ -234,7 +269,7 @@ export default function VideoLibraryModule() {
                 ×
               </button>
             </div>
-            
+
             <div className="aspect-video bg-black rounded-lg mb-4">
               <iframe
                 src={selectedVideo.videoUrl}
@@ -243,7 +278,7 @@ export default function VideoLibraryModule() {
                 title={selectedVideo.title}
               />
             </div>
-            
+
             <div className="text-gray-600 text-sm">
               <p className="mb-2">{selectedVideo.description}</p>
               <div className="flex items-center space-x-4">

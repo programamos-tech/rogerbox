@@ -1,18 +1,17 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { 
-  Target, 
-  Calendar, 
-  TrendingUp, 
-  Flame, 
-  ShoppingCart, 
-  ExternalLink,
+import {
   CheckCircle,
   Clock,
-  Zap
+  ExternalLink,
+  Flame,
+  ShoppingCart,
+  Target,
+  TrendingUp,
+  Zap,
 } from 'lucide-react';
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
 
 interface ProgressCardProps {
   userProfile: any;
@@ -21,11 +20,11 @@ interface ProgressCardProps {
   onCustomize?: () => void;
 }
 
-export default function ProgressCard({ 
-  userProfile, 
-  goalSuggestion, 
+export default function ProgressCard({
+  userProfile,
+  goalSuggestion,
   onStartCourse,
-  onCustomize 
+  onCustomize,
 }: ProgressCardProps) {
   const [streakDays, setStreakDays] = useState(0);
   const [progressPercentage, setProgressPercentage] = useState(0);
@@ -34,7 +33,7 @@ export default function ProgressCard({
   useEffect(() => {
     // Usar datos reales del perfil del usuario
     setStreakDays(userProfile?.streak_days || 0);
-    
+
     // Calcular progreso hacia la meta (siempre 0% al inicio)
     if (userProfile?.weight && goalSuggestion?.targetWeight) {
       // Al inicio, el progreso siempre es 0% porque no ha empezado
@@ -66,7 +65,7 @@ export default function ProgressCard({
         {/* Decorative elements */}
         <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -translate-y-16 translate-x-16"></div>
         <div className="absolute bottom-0 left-0 w-24 h-24 bg-indigo-500/5 rounded-full translate-y-12 -translate-x-12"></div>
-        
+
         <div className="relative z-10">
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
@@ -105,19 +104,23 @@ export default function ProgressCard({
               </div>
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600 dark:text-gray-400">Peso actual</span>
+                  <span className="text-gray-600 dark:text-gray-400">
+                    Peso actual
+                  </span>
                   <span className="font-semibold text-gray-900 dark:text-white">
                     {userProfile?.weight} kg
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600 dark:text-gray-400">Peso objetivo</span>
+                  <span className="text-gray-600 dark:text-gray-400">
+                    Peso objetivo
+                  </span>
                   <span className="font-semibold text-gray-900 dark:text-white">
                     {goalSuggestion?.targetWeight} kg
                   </span>
                 </div>
                 <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                  <div 
+                  <div
                     className="bg-gradient-to-r from-blue-500 to-indigo-500 h-2 rounded-full transition-all duration-500"
                     style={{ width: `${progressPercentage}%` }}
                   ></div>
@@ -205,17 +208,18 @@ export default function ProgressCard({
                 {goalSuggestion?.estimatedDuration}
               </div>
             </div>
-            
+
             <div className="flex items-center justify-between">
               <div className="flex-1">
                 <h4 className="font-semibold text-gray-900 dark:text-white mb-1">
                   {goalSuggestion?.recommendedCourse}
                 </h4>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Perfecto para alcanzar tu objetivo de {goalSuggestion?.targetWeight} kg
+                  Perfecto para alcanzar tu objetivo de{' '}
+                  {goalSuggestion?.targetWeight} kg
                 </p>
               </div>
-              
+
               <div className="flex space-x-2 ml-4">
                 <Link
                   href={getCoursePath(goalSuggestion?.recommendedCourse || '')}
@@ -234,7 +238,8 @@ export default function ProgressCard({
             <div className="flex items-center space-x-2">
               <CheckCircle className="w-5 h-5 text-blue-600" />
               <p className="text-sm text-blue-800 dark:text-blue-200 font-medium">
-                ¡Perfecto! Has establecido tu meta. Ahora es momento de dar el primer paso hacia tu transformación. ¡Comienza hoy mismo!
+                ¡Perfecto! Has establecido tu meta. Ahora es momento de dar el
+                primer paso hacia tu transformación. ¡Comienza hoy mismo!
               </p>
             </div>
           </div>

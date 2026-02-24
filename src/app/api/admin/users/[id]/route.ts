@@ -1,12 +1,11 @@
-import { NextResponse } from 'next/server';
-import { NextRequest } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getSession } from '@/lib/supabase-server';
 
 // GET - Obtener un usuario específico
 export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { session } = await getSession();
@@ -27,7 +26,7 @@ export async function GET(
       // Enriquecer con membresías y pagos
       let gymMemberships: any[] = [];
       let clientInfoId: string | null = null;
-      
+
       // Primero buscar si existe un gym_client_info vinculado a este perfil
       try {
         // Buscar por user_id primero
@@ -36,7 +35,7 @@ export async function GET(
           .select('id')
           .eq('user_id', id)
           .maybeSingle();
-        
+
         // Si no encontramos por user_id, buscar por document_id del perfil
         if (!linkedClient && profile.document_id) {
           const { data: clientByDoc } = await supabaseAdmin
@@ -44,7 +43,7 @@ export async function GET(
             .select('id')
             .eq('document_id', profile.document_id)
             .maybeSingle();
-          
+
           if (clientByDoc) {
             linkedClient = clientByDoc;
             // Vincular el gym_client_info con el perfil para futuras consultas
@@ -54,22 +53,23 @@ export async function GET(
               .eq('id', clientByDoc.id);
           }
         }
-        
+
         if (linkedClient) {
           clientInfoId = linkedClient.id;
         }
-      } catch (e) {
+      } catch (_e) {
         // Continuar sin client_info_id
       }
-      
+
       try {
         // Buscar membresías por user_id O por client_info_id (para datos migrados)
         let memberships: any[] = [];
-        
+
         // Primero por user_id
-        const { data: membershipsByUser, error: membershipsError } = await supabaseAdmin
-          .from('gym_memberships')
-          .select(`
+        const { data: membershipsByUser, error: membershipsError } =
+          await supabaseAdmin
+            .from('gym_memberships')
+            .select(`
             id,
             status,
             start_date,
@@ -77,12 +77,12 @@ export async function GET(
             client_info_id,
             plan:gym_plans(name, id)
           `)
-          .eq('user_id', id);
-        
+            .eq('user_id', id);
+
         if (!membershipsError && membershipsByUser) {
           memberships = [...membershipsByUser];
         }
-        
+
         // También buscar por client_info_id si existe
         if (clientInfoId) {
           const { data: membershipsByClient } = await supabaseAdmin
@@ -96,31 +96,32 @@ export async function GET(
               plan:gym_plans(name, id)
             `)
             .eq('client_info_id', clientInfoId);
-          
+
           if (membershipsByClient) {
             // Agregar solo las que no estén ya (evitar duplicados)
-            const existingIds = new Set(memberships.map(m => m.id));
-            membershipsByClient.forEach(m => {
+            const existingIds = new Set(memberships.map((m) => m.id));
+            membershipsByClient.forEach((m) => {
               if (!existingIds.has(m.id)) {
                 memberships.push(m);
               }
             });
           }
         }
-        
+
         if (memberships.length > 0) {
           // Obtener pagos relacionados para cada membresía
           const membershipIds = memberships.map((m: any) => m.id);
-          let paymentsMap: Record<string, any> = {};
-          
+          const paymentsMap: Record<string, any> = {};
+
           if (membershipIds.length > 0) {
             try {
-              const { data: payments, error: paymentsError } = await supabaseAdmin
-                .from('gym_payments')
-                .select('membership_id, invoice_number, payment_date, amount')
-                .in('membership_id', membershipIds)
-                .order('payment_date', { ascending: false });
-              
+              const { data: payments, error: paymentsError } =
+                await supabaseAdmin
+                  .from('gym_payments')
+                  .select('membership_id, invoice_number, payment_date, amount')
+                  .in('membership_id', membershipIds)
+                  .order('payment_date', { ascending: false });
+
               if (!paymentsError && payments) {
                 // Crear mapa de pagos por membresía (tomar el más reciente de cada una)
                 payments.forEach((payment: any) => {
@@ -129,18 +130,18 @@ export async function GET(
                   }
                 });
               }
-            } catch (e: any) {
+            } catch (_e: any) {
               // Continuar sin pagos si hay error
             }
           }
-          
+
           // Agregar información del pago a cada membresía
           gymMemberships = memberships.map((membership: any) => ({
             ...membership,
             payment: paymentsMap[membership.id] || null,
           }));
         }
-      } catch (e: any) {
+      } catch (_e: any) {
         // Continuar sin membresías si hay error
       }
 
@@ -155,28 +156,29 @@ export async function GET(
             course:courses(title)
           `)
           .eq('user_id', id);
-        
+
         if (!purchasesError && purchases) {
           coursePurchases = purchases;
         }
-      } catch (e: any) {
+      } catch (_e: any) {
         // Continuar sin compras
       }
 
-      const activeCoursePurchases = coursePurchases.filter((p: any) => p.is_active) || [];
+      const activeCoursePurchases =
+        coursePurchases.filter((p: any) => p.is_active) || [];
       const activeMembership = gymMemberships.find(
-        (m: any) => m.status === 'active' && new Date(m.end_date) >= new Date()
+        (m: any) => m.status === 'active' && new Date(m.end_date) >= new Date(),
       );
 
       // Obtener is_inactive del cliente físico si existe
       let isInactive = false;
       let medicalRestrictions = null;
-      
+
       // Si no tenemos clientInfoId aún, intentar obtenerlo de las membresías
       if (!clientInfoId && gymMemberships.length > 0) {
         clientInfoId = gymMemberships[0].client_info_id;
       }
-      
+
       if (clientInfoId) {
         try {
           const { data: clientInfo } = await supabaseAdmin
@@ -186,12 +188,12 @@ export async function GET(
             .single();
           isInactive = clientInfo?.is_inactive || false;
           medicalRestrictions = clientInfo?.medical_restrictions || null;
-        } catch (e) {
+        } catch (_e) {
           // Continuar sin is_inactive si hay error
         }
       }
 
-      return NextResponse.json({ 
+      return NextResponse.json({
         user: {
           ...profile,
           gym_memberships: gymMemberships,
@@ -201,9 +203,10 @@ export async function GET(
           hasActiveGymMembership: !!activeMembership,
           is_inactive: isInactive,
           client_info_id: clientInfoId,
-          medical_restrictions: medicalRestrictions || profile.medical_restrictions || null,
-        }, 
-        source: 'profile' 
+          medical_restrictions:
+            medicalRestrictions || profile.medical_restrictions || null,
+        },
+        source: 'profile',
       });
     }
 
@@ -218,9 +221,10 @@ export async function GET(
       // Enriquecer con membresías y pagos usando client_info_id (no user_id)
       let gymMemberships: any[] = [];
       try {
-        const { data: memberships, error: membershipsError } = await supabaseAdmin
-          .from('gym_memberships')
-          .select(`
+        const { data: memberships, error: membershipsError } =
+          await supabaseAdmin
+            .from('gym_memberships')
+            .select(`
             id,
             status,
             start_date,
@@ -228,22 +232,25 @@ export async function GET(
             client_info_id,
             plan:gym_plans(name, id)
           `)
-          .eq('client_info_id', id);
-        
+            .eq('client_info_id', id);
+
         if (!membershipsError && memberships) {
           // Obtener pagos relacionados para cada membresía
           const membershipIds = memberships.map((m: any) => m.id);
-          let paymentsMap: Record<string, any> = {};
-          
+          const paymentsMap: Record<string, any> = {};
+
           if (membershipIds.length > 0) {
             try {
               // Buscar pagos por membership_id (funciona con o sin user_id)
-              const { data: payments, error: paymentsError } = await supabaseAdmin
-                .from('gym_payments')
-                .select('membership_id, invoice_number, payment_date, amount, user_id')
-                .in('membership_id', membershipIds)
-                .order('payment_date', { ascending: false });
-              
+              const { data: payments, error: paymentsError } =
+                await supabaseAdmin
+                  .from('gym_payments')
+                  .select(
+                    'membership_id, invoice_number, payment_date, amount, user_id',
+                  )
+                  .in('membership_id', membershipIds)
+                  .order('payment_date', { ascending: false });
+
               if (!paymentsError && payments) {
                 // Crear mapa de pagos por membresía (tomar el más reciente de cada una)
                 payments.forEach((payment: any) => {
@@ -252,22 +259,22 @@ export async function GET(
                   }
                 });
               }
-            } catch (e: any) {
+            } catch (_e: any) {
               // Continuar sin pagos si hay error
             }
           }
-          
+
           gymMemberships = memberships.map((membership: any) => ({
             ...membership,
             payment: paymentsMap[membership.id] || null,
           }));
         }
-      } catch (e: any) {
+      } catch (_e: any) {
         // Continuar sin membresías si hay error
       }
 
       const activeMembership = gymMemberships.find(
-        (m: any) => m.status === 'active' && new Date(m.end_date) >= new Date()
+        (m: any) => m.status === 'active' && new Date(m.end_date) >= new Date(),
       );
 
       // Si el cliente tiene user_id, obtener datos del perfil también
@@ -276,18 +283,20 @@ export async function GET(
         try {
           const { data: profile } = await supabaseAdmin
             .from('profiles')
-            .select('height, gender, target_weight, goals, current_weight, weight_progress_percentage, streak_days, dietary_habits')
+            .select(
+              'height, gender, target_weight, goals, current_weight, weight_progress_percentage, streak_days, dietary_habits',
+            )
             .eq('id', client.user_id)
             .maybeSingle();
           if (profile) {
             profileData = profile;
           }
-        } catch (e) {
+        } catch (_e) {
           // Continuar sin datos del perfil si hay error
         }
       }
 
-      return NextResponse.json({ 
+      return NextResponse.json({
         user: {
           id: client.id,
           name: client.name,
@@ -296,13 +305,18 @@ export async function GET(
           whatsapp: client.whatsapp,
           document_id: client.document_id,
           document_type: 'CC',
-          weight: client.weight || profileData?.current_weight || profileData?.weight || null,
+          weight:
+            client.weight ||
+            profileData?.current_weight ||
+            profileData?.weight ||
+            null,
           current_weight: profileData?.current_weight || client.weight || null,
           height: profileData?.height || null,
           gender: profileData?.gender || null,
           target_weight: profileData?.target_weight || null,
           goals: profileData?.goals || null,
-          weight_progress_percentage: profileData?.weight_progress_percentage || null,
+          weight_progress_percentage:
+            profileData?.weight_progress_percentage || null,
           streak_days: profileData?.streak_days || null,
           dietary_habits: profileData?.dietary_habits || null,
           birth_date: client.birth_date,
@@ -320,17 +334,19 @@ export async function GET(
           is_inactive: client.is_inactive || false,
           client_info_id: client.id,
           medical_restrictions: client.medical_restrictions || null,
-        }, 
-        source: 'gym_client_info' 
+        },
+        source: 'gym_client_info',
       });
     }
 
-    return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
+    return NextResponse.json(
+      { error: 'Usuario no encontrado' },
+      { status: 404 },
+    );
   } catch (error: any) {
-    console.error('Error in GET user:', error);
     return NextResponse.json(
       { error: 'Error al obtener usuario', details: error.message },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -338,7 +354,7 @@ export async function GET(
 // PUT - Actualizar un usuario
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { session } = await getSession();
@@ -366,24 +382,34 @@ export async function PUT(
         updateData.name = body.name.trim();
         updateData.full_name = body.name.trim(); // Compatibilidad
       }
-      if (body.email !== undefined) updateData.email = body.email?.trim() || null;
-      if (body.phone !== undefined) updateData.phone = body.phone?.trim() || null;
+      if (body.email !== undefined)
+        updateData.email = body.email?.trim() || null;
+      if (body.phone !== undefined)
+        updateData.phone = body.phone?.trim() || null;
       if (body.height !== undefined) updateData.height = body.height || null;
       if (body.weight !== undefined) updateData.weight = body.weight || null;
-      if (body.current_weight !== undefined) updateData.current_weight = body.current_weight || null;
+      if (body.current_weight !== undefined)
+        updateData.current_weight = body.current_weight || null;
       if (body.gender !== undefined) updateData.gender = body.gender || null;
-      if (body.target_weight !== undefined) updateData.target_weight = body.target_weight || null;
+      if (body.target_weight !== undefined)
+        updateData.target_weight = body.target_weight || null;
       if (body.goals !== undefined) {
-        updateData.goals = Array.isArray(body.goals) 
-          ? JSON.stringify(body.goals) 
-          : (body.goals || '[]');
+        updateData.goals = Array.isArray(body.goals)
+          ? JSON.stringify(body.goals)
+          : body.goals || '[]';
       }
-      if (body.document_id !== undefined) updateData.document_id = body.document_id?.trim() || null;
-      if (body.document_type !== undefined) updateData.document_type = body.document_type || null;
-      if (body.address !== undefined) updateData.address = body.address?.trim() || null;
+      if (body.document_id !== undefined)
+        updateData.document_id = body.document_id?.trim() || null;
+      if (body.document_type !== undefined)
+        updateData.document_type = body.document_type || null;
+      if (body.address !== undefined)
+        updateData.address = body.address?.trim() || null;
       if (body.city !== undefined) updateData.city = body.city?.trim() || null;
-      if (body.birth_year !== undefined) updateData.birth_year = body.birth_year || null;
-      if (body.medical_restrictions !== undefined) updateData.medical_restrictions = body.medical_restrictions?.trim() || null;
+      if (body.birth_year !== undefined)
+        updateData.birth_year = body.birth_year || null;
+      if (body.medical_restrictions !== undefined)
+        updateData.medical_restrictions =
+          body.medical_restrictions?.trim() || null;
 
       const { data, error } = await supabaseAdmin
         .from('profiles')
@@ -393,8 +419,10 @@ export async function PUT(
         .single();
 
       if (error) {
-        console.error('Error updating profile:', error);
-        return NextResponse.json({ error: 'Error al actualizar usuario' }, { status: 500 });
+        return NextResponse.json(
+          { error: 'Error al actualizar usuario' },
+          { status: 500 },
+        );
       }
 
       // Si se actualizó document_id, intentar vincular con cliente físico
@@ -410,9 +438,10 @@ export async function PUT(
           // Actualizar también medical_restrictions si se proporcionó
           const clientUpdateData: any = { user_id: id };
           if (body.medical_restrictions !== undefined) {
-            clientUpdateData.medical_restrictions = body.medical_restrictions?.trim() || null;
+            clientUpdateData.medical_restrictions =
+              body.medical_restrictions?.trim() || null;
           }
-          
+
           await supabaseAdmin
             .from('gym_client_info')
             .update(clientUpdateData)
@@ -431,7 +460,7 @@ export async function PUT(
             .is('user_id', null);
         }
       }
-      
+
       // Si el usuario tiene un client_info_id vinculado, también actualizar ahí
       if (body.medical_restrictions !== undefined && data) {
         const { data: linkedClient } = await supabaseAdmin
@@ -439,11 +468,13 @@ export async function PUT(
           .select('id')
           .eq('user_id', id)
           .maybeSingle();
-          
+
         if (linkedClient) {
           await supabaseAdmin
             .from('gym_client_info')
-            .update({ medical_restrictions: body.medical_restrictions?.trim() || null })
+            .update({
+              medical_restrictions: body.medical_restrictions?.trim() || null,
+            })
             .eq('id', linkedClient.id);
         }
       }
@@ -456,11 +487,16 @@ export async function PUT(
       };
 
       if (body.name !== undefined) updateData.name = body.name.trim();
-      if (body.email !== undefined) updateData.email = body.email?.trim() || null;
-      if (body.whatsapp !== undefined) updateData.whatsapp = body.whatsapp.trim();
-      if (body.birth_date !== undefined) updateData.birth_date = body.birth_date || null;
+      if (body.email !== undefined)
+        updateData.email = body.email?.trim() || null;
+      if (body.whatsapp !== undefined)
+        updateData.whatsapp = body.whatsapp.trim();
+      if (body.birth_date !== undefined)
+        updateData.birth_date = body.birth_date || null;
       if (body.weight !== undefined) updateData.weight = body.weight || null;
-      if (body.medical_restrictions !== undefined) updateData.medical_restrictions = body.medical_restrictions?.trim() || null;
+      if (body.medical_restrictions !== undefined)
+        updateData.medical_restrictions =
+          body.medical_restrictions?.trim() || null;
 
       const { data, error } = await supabaseAdmin
         .from('gym_client_info')
@@ -470,25 +506,26 @@ export async function PUT(
         .single();
 
       if (error) {
-        console.error('Error updating gym client:', error);
-        return NextResponse.json({ error: 'Error al actualizar cliente' }, { status: 500 });
+        return NextResponse.json(
+          { error: 'Error al actualizar cliente' },
+          { status: 500 },
+        );
       }
 
       return NextResponse.json(data);
     }
   } catch (error: any) {
-    console.error('Error in PUT user:', error);
     return NextResponse.json(
       { error: 'Error al actualizar usuario', details: error.message },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 // DELETE - Eliminar un usuario
 export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { session } = await getSession();
@@ -498,10 +535,12 @@ export async function DELETE(
 
     // Verificar que es admin
     const adminId = process.env.NEXT_PUBLIC_ADMIN_USER_ID;
-    const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'rogerbox@admin.com';
-    const isAdmin = session.user.id === adminId || 
-                    session.user.email === adminEmail ||
-                    session.user.user_metadata?.role === 'admin';
+    const adminEmail =
+      process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'rogerbox@admin.com';
+    const isAdmin =
+      session.user.id === adminId ||
+      session.user.email === adminEmail ||
+      session.user.user_metadata?.role === 'admin';
 
     if (!isAdmin) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
@@ -529,7 +568,7 @@ export async function DELETE(
       if (activeMemberships && activeMemberships.length > 0) {
         return NextResponse.json(
           { error: 'No se puede eliminar un usuario con membresías activas' },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
@@ -540,8 +579,10 @@ export async function DELETE(
         .eq('id', gymClient.id);
 
       if (deleteClientError) {
-        console.error('Error deleting gym client:', deleteClientError);
-        return NextResponse.json({ error: 'Error al eliminar cliente del gym' }, { status: 500 });
+        return NextResponse.json(
+          { error: 'Error al eliminar cliente del gym' },
+          { status: 500 },
+        );
       }
     }
 
@@ -552,7 +593,6 @@ export async function DELETE(
       .eq('id', id);
 
     if (profileError) {
-      console.error('Error deleting profile:', profileError);
       // No falla si no existe el perfil
     }
 
@@ -561,10 +601,9 @@ export async function DELETE(
 
     return NextResponse.json({ message: 'Usuario eliminado exitosamente' });
   } catch (error: any) {
-    console.error('Error in DELETE user:', error);
     return NextResponse.json(
       { error: 'Error al eliminar usuario', details: error.message },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

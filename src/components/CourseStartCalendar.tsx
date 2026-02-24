@@ -1,7 +1,7 @@
 'use client';
 
+import { Calendar, CheckCircle, ChevronRight, Clock } from 'lucide-react';
 import { useState } from 'react';
-import { Calendar, Clock, CheckCircle, ChevronRight } from 'lucide-react';
 
 interface CourseStartCalendarProps {
   course: {
@@ -13,10 +13,10 @@ interface CourseStartCalendarProps {
   onCancel: () => void;
 }
 
-export default function CourseStartCalendar({ 
-  course, 
-  onStartDateSelected, 
-  onCancel 
+export default function CourseStartCalendar({
+  course,
+  onStartDateSelected,
+  onCancel,
 }: CourseStartCalendarProps) {
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -25,11 +25,11 @@ export default function CourseStartCalendar({
   const getAvailableDates = () => {
     const dates = [];
     const today = new Date();
-    
+
     for (let i = 0; i < 30; i++) {
       const date = new Date(today);
       date.setDate(today.getDate() + i);
-      
+
       // Solo días de lunes a viernes (días hábiles)
       if (date.getDay() >= 1 && date.getDay() <= 5) {
         dates.push({
@@ -38,12 +38,12 @@ export default function CourseStartCalendar({
             weekday: 'long',
             year: 'numeric',
             month: 'long',
-            day: 'numeric'
-          })
+            day: 'numeric',
+          }),
         });
       }
     }
-    
+
     return dates;
   };
 
@@ -51,12 +51,11 @@ export default function CourseStartCalendar({
 
   const handleSubmit = async () => {
     if (!selectedDate) return;
-    
+
     setIsSubmitting(true);
     try {
       await onStartDateSelected(selectedDate);
-    } catch (error) {
-      console.error('Error seleccionando fecha:', error);
+    } catch (_error) {
     } finally {
       setIsSubmitting(false);
     }
@@ -113,7 +112,7 @@ export default function CourseStartCalendar({
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
             Selecciona tu fecha de inicio:
           </h3>
-          
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-60 overflow-y-auto">
             {availableDates.map((dateOption) => (
               <button
@@ -149,8 +148,8 @@ export default function CourseStartCalendar({
                 📅 CÓMO FUNCIONA TU CURSO
               </h4>
               <p className="text-xs text-blue-700 dark:text-blue-400 leading-relaxed">
-                Al elegir tu fecha de inicio, cada día hábil se desbloqueará una nueva clase. 
-                ¡Mantén la constancia para no perderte ninguna!
+                Al elegir tu fecha de inicio, cada día hábil se desbloqueará una
+                nueva clase. ¡Mantén la constancia para no perderte ninguna!
               </p>
             </div>
           </div>

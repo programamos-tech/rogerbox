@@ -17,30 +17,32 @@ export default function OnboardingPage() {
   useEffect(() => {
     const checkAuth = async () => {
       if (loading) return;
-      
+
       // Si no hay usuario en el hook, verificar directamente con Supabase
       if (!user) {
-        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        const {
+          data: { session: currentSession },
+        } = await supabase.auth.getSession();
         if (!currentSession?.user) {
-          console.log('Onboarding: No hay sesión, redirigiendo a login');
           router.push('/login');
           return;
         }
       }
-      
+
       setAuthChecked(true);
     };
-    
+
     checkAuth();
   }, [loading, user, router]);
 
   const handleComplete = async (profileData: any) => {
     // Obtener el usuario actual directamente de Supabase
-    const { data: { session: currentSession } } = await supabase.auth.getSession();
+    const {
+      data: { session: currentSession },
+    } = await supabase.auth.getSession();
     const currentUser = currentSession?.user || user;
-    
+
     if (!currentUser?.id) {
-      console.error('No hay usuario autenticado');
       alert('Error: No hay sesión activa. Por favor, inicia sesión de nuevo.');
       router.push('/login');
       return;
@@ -49,15 +51,9 @@ export default function OnboardingPage() {
     setIsUpdating(true);
 
     try {
-      console.log('=== ONBOARDING: Guardando perfil ===');
-      console.log('User ID:', currentUser.id);
-      console.log('User email:', currentUser.email);
-      console.log('Profile data:', profileData);
-
       const accessToken = currentSession?.access_token;
-      
+
       if (!accessToken) {
-        console.error('No hay token de acceso');
         alert('Error de autenticación. Por favor, recarga la página.');
         setIsUpdating(false);
         return;
@@ -68,7 +64,7 @@ export default function OnboardingPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({ profile: profileData }),
       });
@@ -76,19 +72,14 @@ export default function OnboardingPage() {
       const result = await response.json();
 
       if (!response.ok) {
-        console.error('Error de API:', result);
         alert(`Error al guardar: ${result.error || 'Error desconocido'}`);
         setIsUpdating(false);
         return;
       }
 
-      console.log('✅ Perfil guardado:', result.data);
-      
       // Redirigir al dashboard - usar window.location para forzar recarga completa
       window.location.href = '/dashboard';
-      
-    } catch (error) {
-      console.error('Error inesperado:', error);
+    } catch (_error) {
       alert('Error inesperado. Intenta de nuevo.');
       setIsUpdating(false);
     }
@@ -107,10 +98,15 @@ export default function OnboardingPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
-      <Onboarding 
-        onComplete={handleComplete} 
+      <Onboarding
+        onComplete={handleComplete}
         isUpdating={isUpdating}
-        userName={profile?.name || currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || 'Usuario'}
+        userName={
+          profile?.name ||
+          currentUser.user_metadata?.name ||
+          currentUser.email?.split('@')[0] ||
+          'Usuario'
+        }
       />
     </div>
   );

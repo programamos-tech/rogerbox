@@ -1,7 +1,7 @@
 'use client';
 
-import { useStore } from '@/lib/store';
 import NutritionalPlans from '@/components/NutritionalPlans';
+import { useStore } from '@/lib/store';
 
 export default function NutritionalPlansPage() {
   const { nutritionalPlans, purchaseNutritionalPlan } = useStore();
@@ -13,9 +13,6 @@ export default function NutritionalPlansPage() {
   };
 
   return (
-    <NutritionalPlans 
-      plans={nutritionalPlans} 
-      onPurchase={handlePurchase}
-    />
+    <NutritionalPlans plans={nutritionalPlans} onPurchase={handlePurchase} />
   );
 }

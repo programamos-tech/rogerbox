@@ -1,16 +1,20 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getUser } from '@/lib/supabase-server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import { CollectionItem } from '@/types/gym';
+import { getUser } from '@/lib/supabase-server';
+import type { CollectionItem } from '@/types/gym';
 
 function normalizeEmail(val?: string | null) {
   return (val || '').trim().toLowerCase();
 }
 
-function isAdminUser(user: { id?: string; email?: string; user_metadata?: any } | null) {
+function isAdminUser(
+  user: { id?: string; email?: string; user_metadata?: any } | null,
+) {
   if (!user) return false;
   const envId = (process.env.NEXT_PUBLIC_ADMIN_USER_ID || '').trim();
-  const envEmail = normalizeEmail(process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'rogerbox@admin.com');
+  const envEmail = normalizeEmail(
+    process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'rogerbox@admin.com',
+  );
   const matchId = !!envId && user.id === envId;
   const matchEmail = normalizeEmail(user.email) === envEmail;
   const matchRole = user.user_metadata?.role === 'admin';
@@ -21,14 +25,14 @@ function isAdminUser(user: { id?: string; email?: string; user_metadata?: any } 
 export async function GET(request: NextRequest) {
   try {
     const { user } = await getUser();
-    
+
     if (!isAdminUser(user)) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
     const { searchParams } = new URL(request.url);
     const daysOverdue = searchParams.get('days_overdue'); // Filtrar por días vencidos
-    const status = searchParams.get('status') || 'expired'; // Por defecto solo vencidos
+    const _status = searchParams.get('status') || 'expired'; // Por defecto solo vencidos
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -40,8 +44,10 @@ export async function GET(request: NextRequest) {
       .select('id, name, document_id, whatsapp, email');
 
     if (clientsError) {
-      console.error('Error fetching clients:', clientsError);
-      return NextResponse.json({ error: 'Error al obtener clientes' }, { status: 500 });
+      return NextResponse.json(
+        { error: 'Error al obtener clientes' },
+        { status: 500 },
+      );
     }
 
     if (!allClients || allClients.length === 0) {
@@ -49,8 +55,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Obtener todas las membresías (activas y vencidas) de estos clientes
-    const clientIds = allClients.map(c => c.id);
-    let membershipsQuery = supabaseAdmin
+    const clientIds = allClients.map((c) => c.id);
+    const membershipsQuery = supabaseAdmin
       .from('gym_memberships')
       .select(`
         id,
@@ -69,22 +75,26 @@ export async function GET(request: NextRequest) {
       .in('client_info_id', clientIds)
       .order('end_date', { ascending: false });
 
-    const { data: allMemberships, error: membershipsError } = await membershipsQuery;
+    const { data: allMemberships, error: membershipsError } =
+      await membershipsQuery;
 
     if (membershipsError) {
-      console.error('Error fetching memberships:', membershipsError);
-      return NextResponse.json({ error: 'Error al obtener membresías' }, { status: 500 });
+      return NextResponse.json(
+        { error: 'Error al obtener membresías' },
+        { status: 500 },
+      );
     }
 
     // Obtener todos los pagos para calcular cuáles clientes están al día
     const { data: allPayments, error: paymentsError } = await supabaseAdmin
       .from('gym_payments')
-      .select('membership_id, client_info_id, payment_date, period_start, period_end, amount')
+      .select(
+        'membership_id, client_info_id, payment_date, period_start, period_end, amount',
+      )
       .in('client_info_id', clientIds)
       .order('payment_date', { ascending: false });
 
     if (paymentsError) {
-      console.error('Error fetching payments:', paymentsError);
     }
 
     // Identificar clientes que NO están al día
@@ -93,16 +103,22 @@ export async function GET(request: NextRequest) {
     for (const client of allClients) {
       // Buscar membresías activas del cliente
       const activeMemberships = (allMemberships || []).filter(
-        m => m.client_info_id === client.id && m.status === 'active'
+        (m) => m.client_info_id === client.id && m.status === 'active',
       );
 
       // Buscar la membresía activa más reciente
-      const latestActiveMembership = activeMemberships.length > 0 
-        ? activeMemberships.sort((a, b) => new Date(b.end_date).getTime() - new Date(a.end_date).getTime())[0]
-        : null;
+      const latestActiveMembership =
+        activeMemberships.length > 0
+          ? activeMemberships.sort(
+              (a, b) =>
+                new Date(b.end_date).getTime() - new Date(a.end_date).getTime(),
+            )[0]
+          : null;
 
       // Buscar pagos del cliente
-      const clientPayments = (allPayments || []).filter(p => p.client_info_id === client.id);
+      const clientPayments = (allPayments || []).filter(
+        (p) => p.client_info_id === client.id,
+      );
 
       // Determinar si el cliente está al día
       let isUpToDate = false;
@@ -111,10 +127,10 @@ export async function GET(request: NextRequest) {
         // Si tiene membresía activa, verificar que la fecha de fin sea >= hoy
         const endDate = new Date(latestActiveMembership.end_date);
         endDate.setHours(0, 0, 0, 0);
-        
+
         if (endDate >= today) {
           // Verificar si hay pagos que cubran hasta hoy o más
-          const coveringPayments = clientPayments.filter(p => {
+          const coveringPayments = clientPayments.filter((p) => {
             const periodEnd = new Date(p.period_end);
             periodEnd.setHours(0, 0, 0, 0);
             return periodEnd >= today;
@@ -125,7 +141,7 @@ export async function GET(request: NextRequest) {
       } else {
         // No tiene membresía activa, verificar si tiene membresías vencidas
         const expiredMemberships = (allMemberships || []).filter(
-          m => m.client_info_id === client.id && m.status === 'expired'
+          (m) => m.client_info_id === client.id && m.status === 'expired',
         );
 
         if (expiredMemberships.length > 0) {
@@ -133,7 +149,7 @@ export async function GET(request: NextRequest) {
           isUpToDate = false;
         } else {
           // No tiene membresías, verificar si tiene pagos recientes
-          const recentPayments = clientPayments.filter(p => {
+          const recentPayments = clientPayments.filter((p) => {
             const periodEnd = new Date(p.period_end);
             periodEnd.setHours(0, 0, 0, 0);
             return periodEnd >= today;
@@ -143,18 +159,26 @@ export async function GET(request: NextRequest) {
       }
 
       // Solo agregar a cobranza si tiene al menos una membresía registrada
-      const allClientMemberships = (allMemberships || []).filter(m => m.client_info_id === client.id);
+      const allClientMemberships = (allMemberships || []).filter(
+        (m) => m.client_info_id === client.id,
+      );
       const hasAnyMembership = allClientMemberships.length > 0;
-      
+
       // Si no está al día Y tiene al menos una membresía, agregarlo a la lista de cobranza
       if (!isUpToDate && hasAnyMembership) {
         // Buscar la membresía más reciente (activa o vencida) para mostrar información
-        const latestMembership = allClientMemberships.length > 0
-          ? allClientMemberships.sort((a, b) => new Date(b.end_date).getTime() - new Date(a.end_date).getTime())[0]
-          : null;
+        const latestMembership =
+          allClientMemberships.length > 0
+            ? allClientMemberships.sort(
+                (a, b) =>
+                  new Date(b.end_date).getTime() -
+                  new Date(a.end_date).getTime(),
+              )[0]
+            : null;
 
         // Buscar último pago
-        const lastPayment = clientPayments.length > 0 ? clientPayments[0] : null;
+        const lastPayment =
+          clientPayments.length > 0 ? clientPayments[0] : null;
 
         let daysOverdue = 0;
         let membershipEndDate = todayStr;
@@ -164,17 +188,23 @@ export async function GET(request: NextRequest) {
         if (latestMembership) {
           const endDate = new Date(latestMembership.end_date);
           endDate.setHours(0, 0, 0, 0);
-          daysOverdue = Math.floor((today.getTime() - endDate.getTime()) / (1000 * 60 * 60 * 24));
+          daysOverdue = Math.floor(
+            (today.getTime() - endDate.getTime()) / (1000 * 60 * 60 * 24),
+          );
           membershipEndDate = latestMembership.end_date;
           // plan puede ser un array o un objeto, manejamos ambos casos
-          const plan = Array.isArray(latestMembership.plan) ? latestMembership.plan[0] : latestMembership.plan;
+          const plan = Array.isArray(latestMembership.plan)
+            ? latestMembership.plan[0]
+            : latestMembership.plan;
           planName = plan?.name || 'Plan desconocido';
           planPrice = plan?.price || 0;
         } else if (lastPayment) {
           // Si no tiene membresía pero tiene pagos, calcular días desde el último período
           const periodEnd = new Date(lastPayment.period_end);
           periodEnd.setHours(0, 0, 0, 0);
-          daysOverdue = Math.floor((today.getTime() - periodEnd.getTime()) / (1000 * 60 * 60 * 24));
+          daysOverdue = Math.floor(
+            (today.getTime() - periodEnd.getTime()) / (1000 * 60 * 60 * 24),
+          );
           membershipEndDate = lastPayment.period_end;
         } else {
           // Cliente sin membresías ni pagos
@@ -196,7 +226,12 @@ export async function GET(request: NextRequest) {
           membership_start_date: latestMembership?.start_date || todayStr,
           membership_end_date: membershipEndDate,
           days_overdue: daysOverdue,
-          status: latestMembership?.status as 'active' | 'expired' | 'cancelled' | 'courtesy' || 'expired',
+          status:
+            (latestMembership?.status as
+              | 'active'
+              | 'expired'
+              | 'cancelled'
+              | 'courtesy') || 'expired',
           last_payment_date: lastPayment?.payment_date || null,
           last_payment_amount: lastPayment?.amount || null,
         });
@@ -206,16 +241,20 @@ export async function GET(request: NextRequest) {
     // Aplicar filtro de días vencidos si está especificado
     let filteredResults = clientsNotUpToDate;
     if (daysOverdue && daysOverdue !== 'all') {
-      const filterDaysNum = parseInt(daysOverdue);
-      filteredResults = clientsNotUpToDate.filter(item => item.days_overdue <= filterDaysNum);
+      const filterDaysNum = parseInt(daysOverdue, 10);
+      filteredResults = clientsNotUpToDate.filter(
+        (item) => item.days_overdue <= filterDaysNum,
+      );
     }
 
     // Ordenar por días vencidos (mayor a menor)
     filteredResults.sort((a, b) => b.days_overdue - a.days_overdue);
 
     return NextResponse.json(filteredResults);
-  } catch (error) {
-    console.error('Error in GET /api/admin/gym/collections:', error);
-    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
+  } catch (_error) {
+    return NextResponse.json(
+      { error: 'Error interno del servidor' },
+      { status: 500 },
+    );
   }
 }

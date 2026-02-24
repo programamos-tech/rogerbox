@@ -1,7 +1,15 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { Plus, Trash2, Image as ImageIcon, GripVertical, Eye, EyeOff, Link, X } from 'lucide-react';
+import {
+  Eye,
+  EyeOff,
+  Image as ImageIcon,
+  Link,
+  Plus,
+  Trash2,
+  X,
+} from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
 interface Banner {
   id: string;
@@ -28,15 +36,14 @@ export default function BannerManagement() {
 
   useEffect(() => {
     fetchBanners();
-  }, []);
+  }, [fetchBanners]);
 
   const fetchBanners = async () => {
     try {
       const response = await fetch('/api/admin/banners');
       const data = await response.json();
       setBanners(data.banners || []);
-    } catch (error) {
-      console.error('Error fetching banners:', error);
+    } catch (_error) {
     } finally {
       setLoading(false);
     }
@@ -96,8 +103,7 @@ export default function BannerManagement() {
         const error = await response.json();
         alert(`Error: ${error.error}`);
       }
-    } catch (error) {
-      console.error('Error uploading banner:', error);
+    } catch (_error) {
       alert('Error al subir el banner');
     } finally {
       setUploading(false);
@@ -113,13 +119,13 @@ export default function BannerManagement() {
       });
 
       if (response.ok) {
-        setBanners(prev =>
-          prev.map(b => (b.id === id ? { ...b, is_active: !currentStatus } : b))
+        setBanners((prev) =>
+          prev.map((b) =>
+            b.id === id ? { ...b, is_active: !currentStatus } : b,
+          ),
         );
       }
-    } catch (error) {
-      console.error('Error toggling banner:', error);
-    }
+    } catch (_error) {}
   };
 
   const handleDelete = async (id: string) => {
@@ -131,11 +137,9 @@ export default function BannerManagement() {
       });
 
       if (response.ok) {
-        setBanners(prev => prev.filter(b => b.id !== id));
+        setBanners((prev) => prev.filter((b) => b.id !== id));
       }
-    } catch (error) {
-      console.error('Error deleting banner:', error);
-    }
+    } catch (_error) {}
   };
 
   const resetForm = () => {
@@ -251,7 +255,9 @@ export default function BannerManagement() {
                 <input
                   type="text"
                   value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, title: e.target.value })
+                  }
                   className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#85ea10] focus:border-[#85ea10]"
                   placeholder="Ej: Promoción de verano"
                 />
@@ -263,7 +269,9 @@ export default function BannerManagement() {
                 <input
                   type="url"
                   value={formData.link_url}
-                  onChange={(e) => setFormData({ ...formData, link_url: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, link_url: e.target.value })
+                  }
                   className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#85ea10] focus:border-[#85ea10]"
                   placeholder="https://..."
                 />
@@ -362,7 +370,9 @@ export default function BannerManagement() {
 
                 <div className="flex gap-2">
                   <button
-                    onClick={() => handleToggleActive(banner.id, banner.is_active)}
+                    onClick={() =>
+                      handleToggleActive(banner.id, banner.is_active)
+                    }
                     className={`flex-1 px-3 py-2.5 rounded-lg text-xs font-black transition-colors flex items-center justify-center gap-1.5 uppercase tracking-tight ${
                       banner.is_active
                         ? 'bg-orange-100 dark:bg-orange-500/20 hover:bg-orange-200 dark:hover:bg-orange-500/30 border border-orange-300 dark:border-orange-500/30 text-orange-600 dark:text-orange-400'
@@ -397,4 +407,3 @@ export default function BannerManagement() {
     </div>
   );
 }
-

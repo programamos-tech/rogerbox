@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase-browser';
+import { useEffect } from 'react';
 import SimpleLoading from '@/components/SimpleLoading';
+import { supabase } from '@/lib/supabase-browser';
 
 export default function AuthCallbackPage() {
   const router = useRouter();
@@ -12,7 +12,9 @@ export default function AuthCallbackPage() {
     const handleCallback = async () => {
       try {
         // Obtener el hash de la URL (donde Supabase pone los tokens)
-        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const hashParams = new URLSearchParams(
+          window.location.hash.substring(1),
+        );
         const accessToken = hashParams.get('access_token');
         const refreshToken = hashParams.get('refresh_token');
 
@@ -24,7 +26,6 @@ export default function AuthCallbackPage() {
           });
 
           if (error) {
-            console.error('Error setting session:', error);
             router.push('/login?error=callback_error');
             return;
           }
@@ -48,8 +49,7 @@ export default function AuthCallbackPage() {
           // No hay tokens, redirigir al login
           router.push('/login');
         }
-      } catch (error) {
-        console.error('Error in auth callback:', error);
+      } catch (_error) {
         router.push('/login?error=callback_error');
       }
     };
@@ -63,4 +63,3 @@ export default function AuthCallbackPage() {
     </div>
   );
 }
-

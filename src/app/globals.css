@@ -27,12 +27,13 @@ body {
 
 /* Asegurar que las clases de Tailwind funcionen correctamente */
 .font-bold {
-  font-weight: 700 !important;
+  font-weight: 700;
 }
 
 /* Animación personalizada para la burbuja de bienvenida */
 @keyframes pulse-slow {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
     transform: scale(1);
   }
@@ -47,7 +48,7 @@ body {
 }
 
 .font-semibold {
-  font-weight: 600 !important;
+  font-weight: 600;
 }
 
 /* Ocultar scrollbar pero mantener funcionalidad de scroll */
@@ -56,29 +57,34 @@ body {
 }
 
 .font-black {
-  font-weight: 900 !important;
+  font-weight: 900;
 }
 
 .font-medium {
-  font-weight: 500 !important;
+  font-weight: 500;
 }
 
 /* Estilos específicos para títulos importantes */
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   font-weight: 700;
 }
 
 /* Asegurar que los títulos del dashboard sean bold */
 .dashboard-title {
-  font-weight: 700 !important;
+  font-weight: 700;
 }
 
 .course-title {
-  font-weight: 700 !important;
+  font-weight: 700;
 }
 
 .price-text {
-  font-weight: 700 !important;
+  font-weight: 700;
 }
 
 /* Line clamp utilities */
@@ -98,11 +104,11 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Hide scrollbar for horizontal carousel */
 .scrollbar-hide {
-  -ms-overflow-style: none;  /* Internet Explorer 10+ */
-  scrollbar-width: none;  /* Firefox */
+  -ms-overflow-style: none; /* Internet Explorer 10+ */
+  scrollbar-width: none; /* Firefox */
 }
 .scrollbar-hide::-webkit-scrollbar {
-  display: none;  /* Safari and Chrome */
+  display: none; /* Safari and Chrome */
 }
 
 button,
@@ -152,7 +158,9 @@ select:focus-visible,
 input,
 textarea,
 select {
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .card-hover:hover,
@@ -219,11 +227,11 @@ mux-player {
 
 /* Botón de play central siempre visible al pausar */
 mux-player::part(center play button) {
-  display: flex !important;
+  display: flex;
 }
 
 mux-player::part(play) {
-  display: flex !important;
+  display: flex;
 }
 
 mux-player video {

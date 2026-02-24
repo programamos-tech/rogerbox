@@ -1,16 +1,20 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getUser } from '@/lib/supabase-server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import { GymPlanInsert, GymPlanUpdate } from '@/types/gym';
+import { getUser } from '@/lib/supabase-server';
+import type { GymPlanInsert } from '@/types/gym';
 
 function normalizeEmail(val?: string | null) {
   return (val || '').trim().toLowerCase();
 }
 
-function isAdminUser(user: { id?: string; email?: string; user_metadata?: any } | null) {
+function isAdminUser(
+  user: { id?: string; email?: string; user_metadata?: any } | null,
+) {
   if (!user) return false;
   const envId = (process.env.NEXT_PUBLIC_ADMIN_USER_ID || '').trim();
-  const envEmail = normalizeEmail(process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'rogerbox@admin.com');
+  const envEmail = normalizeEmail(
+    process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'rogerbox@admin.com',
+  );
   const matchId = !!envId && user.id === envId;
   const matchEmail = normalizeEmail(user.email) === envEmail;
   const matchRole = user.user_metadata?.role === 'admin';
@@ -41,8 +45,10 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query;
 
     if (error) {
-      console.error('Error fetching gym plans:', error);
-      return NextResponse.json({ error: 'Error al obtener planes' }, { status: 500 });
+      return NextResponse.json(
+        { error: 'Error al obtener planes' },
+        { status: 500 },
+      );
     }
 
     // Para cada plan, contar usuarios activos
@@ -60,13 +66,15 @@ export async function GET(request: NextRequest) {
           ...plan,
           active_users_count: count || 0,
         };
-      })
+      }),
     );
 
     return NextResponse.json(plansWithCounts);
-  } catch (error) {
-    console.error('Error in GET /api/admin/gym/plans:', error);
-    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
+  } catch (_error) {
+    return NextResponse.json(
+      { error: 'Error interno del servidor' },
+      { status: 500 },
+    );
   }
 }
 
@@ -86,21 +94,21 @@ export async function POST(request: NextRequest) {
     if (!name || !price || !duration_days) {
       return NextResponse.json(
         { error: 'Nombre, precio y duración son requeridos' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (price <= 0) {
       return NextResponse.json(
         { error: 'El precio debe ser mayor a 0' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (duration_days <= 0) {
       return NextResponse.json(
         { error: 'La duración debe ser mayor a 0 días' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -118,13 +126,17 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error('Error creating gym plan:', error);
-      return NextResponse.json({ error: 'Error al crear plan' }, { status: 500 });
+      return NextResponse.json(
+        { error: 'Error al crear plan' },
+        { status: 500 },
+      );
     }
 
     return NextResponse.json(data, { status: 201 });
-  } catch (error) {
-    console.error('Error in POST /api/admin/gym/plans:', error);
-    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
+  } catch (_error) {
+    return NextResponse.json(
+      { error: 'Error interno del servidor' },
+      { status: 500 },
+    );
   }
 }

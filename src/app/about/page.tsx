@@ -1,7 +1,7 @@
 'use client';
 
+import { Calendar, MapPin } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { MapPin, Calendar } from 'lucide-react';
 import Footer from '@/components/Footer';
 
 export default function AboutPage() {
@@ -23,13 +23,30 @@ export default function AboutPage() {
                 </h1>
               </button>
             </div>
-            
+
             {/* Navigation */}
             <nav className="hidden md:flex items-center space-x-8">
-              <a href="/#cursos" className="text-gray-600 dark:text-white/80 hover:text-gray-900 dark:hover:text-white transition-colors">Cursos</a>
-              <a href="/about" className="text-[#85ea10] font-semibold">Qué es RogerBox</a>
-              <a href="/enterprises" className="text-gray-600 dark:text-white/80 hover:text-gray-900 dark:hover:text-white transition-colors">Servicio para Empresas</a>
-              <a href="/contact" className="text-gray-600 dark:text-white/80 hover:text-gray-900 dark:hover:text-white transition-colors">Contacto</a>
+              <a
+                href="/#cursos"
+                className="text-gray-600 dark:text-white/80 hover:text-gray-900 dark:hover:text-white transition-colors"
+              >
+                Cursos
+              </a>
+              <a href="/about" className="text-[#85ea10] font-semibold">
+                Qué es RogerBox
+              </a>
+              <a
+                href="/enterprises"
+                className="text-gray-600 dark:text-white/80 hover:text-gray-900 dark:hover:text-white transition-colors"
+              >
+                Servicio para Empresas
+              </a>
+              <a
+                href="/contact"
+                className="text-gray-600 dark:text-white/80 hover:text-gray-900 dark:hover:text-white transition-colors"
+              >
+                Contacto
+              </a>
             </nav>
 
             {/* Auth Buttons */}
@@ -59,7 +76,8 @@ export default function AboutPage() {
               ¿Quién es <span className="text-[#85ea10]">RogerBox</span>?
             </h1>
             <p className="text-xl text-gray-600 dark:text-white/80 max-w-4xl mx-auto leading-relaxed">
-              Una historia de pasión, dedicación y transformación que comenzó en Sincelejo y ha cambiado miles de vidas
+              Una historia de pasión, dedicación y transformación que comenzó en
+              Sincelejo y ha cambiado miles de vidas
             </p>
           </div>
         </div>
@@ -76,13 +94,21 @@ export default function AboutPage() {
                   Nuestra Historia
                 </h2>
                 <p className="text-lg text-gray-600 dark:text-white/80 leading-relaxed mb-6">
-                  RogerBox nació en <strong className="text-[#85ea10]">Sincelejo en 2019</strong> de la visión y pasión de 
-                  <strong className="text-gray-900 dark:text-white"> Roger Barreto</strong>, un licenciado en Educación Física 
-                  con más de una década de experiencia transformando vidas a través del fitness.
+                  RogerBox nació en{' '}
+                  <strong className="text-[#85ea10]">Sincelejo en 2019</strong>{' '}
+                  de la visión y pasión de
+                  <strong className="text-gray-900 dark:text-white">
+                    {' '}
+                    Roger Barreto
+                  </strong>
+                  , un licenciado en Educación Física con más de una década de
+                  experiencia transformando vidas a través del fitness.
                 </p>
                 <p className="text-lg text-gray-600 dark:text-white/80 leading-relaxed">
-                  Lo que comenzó como un sueño de ayudar a las personas a transformar sus cuerpos, se convirtió en un movimiento 
-                  que ha impactado positivamente a más de 1000 personas en Colombia y más allá.
+                  Lo que comenzó como un sueño de ayudar a las personas a
+                  transformar sus cuerpos, se convirtió en un movimiento que ha
+                  impactado positivamente a más de 1000 personas en Colombia y
+                  más allá.
                 </p>
               </div>
 
@@ -90,14 +116,20 @@ export default function AboutPage() {
                 <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg">
                   <div className="flex items-center space-x-3 mb-4">
                     <MapPin className="w-6 h-6 text-[#85ea10]" />
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Ubicación</h3>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                      Ubicación
+                    </h3>
                   </div>
-                  <p className="text-gray-600 dark:text-white/80">Sincelejo, Sucre</p>
+                  <p className="text-gray-600 dark:text-white/80">
+                    Sincelejo, Sucre
+                  </p>
                 </div>
                 <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg">
                   <div className="flex items-center space-x-3 mb-4">
                     <Calendar className="w-6 h-6 text-[#85ea10]" />
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Fundación</h3>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                      Fundación
+                    </h3>
                   </div>
                   <p className="text-gray-600 dark:text-white/80">2019</p>
                 </div>
@@ -122,7 +154,7 @@ export default function AboutPage() {
                   </p>
                 </div>
               </div>
-              
+
               {/* Floating elements */}
               <div className="absolute -top-4 -right-4 w-20 h-20 bg-[#85ea10] rounded-full opacity-20"></div>
               <div className="absolute -bottom-4 -left-4 w-16 h-16 bg-[#7dd30f] rounded-full opacity-30"></div>
@@ -139,7 +171,8 @@ export default function AboutPage() {
                 La Casa de Alta Intensidad
               </h3>
               <p className="text-gray-600 dark:text-white/80 leading-relaxed">
-                Roger creó un espacio único donde la alta intensidad se convierte en el camino hacia la transformación física y mental.
+                Roger creó un espacio único donde la alta intensidad se
+                convierte en el camino hacia la transformación física y mental.
               </p>
             </div>
 
@@ -151,7 +184,8 @@ export default function AboutPage() {
                 Enfoque en Quema de Grasa
               </h3>
               <p className="text-gray-600 dark:text-white/80 leading-relaxed">
-                Especializados en programas diseñados específicamente para bajar de peso y quemar grasa de manera efectiva y sostenible.
+                Especializados en programas diseñados específicamente para bajar
+                de peso y quemar grasa de manera efectiva y sostenible.
               </p>
             </div>
 
@@ -163,8 +197,13 @@ export default function AboutPage() {
                 Transformación Integral
               </h3>
               <p className="text-gray-600 dark:text-white/80 leading-relaxed">
-                No solo cambiamos cuerpos, transformamos mentes. Nuestra filosofía: 
-                <strong className="text-[#85ea10]"> "Transforma tu cuerpo cambiando tu mente"</strong>.
+                No solo cambiamos cuerpos, transformamos mentes. Nuestra
+                filosofía:
+                <strong className="text-[#85ea10]">
+                  {' '}
+                  "Transforma tu cuerpo cambiando tu mente"
+                </strong>
+                .
               </p>
             </div>
           </div>
@@ -176,26 +215,41 @@ export default function AboutPage() {
                 Nuestro Impacto
               </h2>
               <p className="text-xl text-gray-600 dark:text-white/80 max-w-3xl mx-auto">
-                Los números hablan por sí solos. Cada estadística representa una vida transformada.
+                Los números hablan por sí solos. Cada estadística representa una
+                vida transformada.
               </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
               <div className="text-center">
                 <div className="text-5xl font-bold text-[#85ea10] mb-2">5+</div>
-                <div className="text-lg text-gray-600 dark:text-white/80">Años de experiencia</div>
+                <div className="text-lg text-gray-600 dark:text-white/80">
+                  Años de experiencia
+                </div>
               </div>
               <div className="text-center">
-                <div className="text-5xl font-bold text-[#85ea10] mb-2">1000+</div>
-                <div className="text-lg text-gray-600 dark:text-white/80">Vidas transformadas</div>
+                <div className="text-5xl font-bold text-[#85ea10] mb-2">
+                  1000+
+                </div>
+                <div className="text-lg text-gray-600 dark:text-white/80">
+                  Vidas transformadas
+                </div>
               </div>
               <div className="text-center">
-                <div className="text-5xl font-bold text-[#85ea10] mb-2">50+</div>
-                <div className="text-lg text-gray-600 dark:text-white/80">Cursos disponibles</div>
+                <div className="text-5xl font-bold text-[#85ea10] mb-2">
+                  50+
+                </div>
+                <div className="text-lg text-gray-600 dark:text-white/80">
+                  Cursos disponibles
+                </div>
               </div>
               <div className="text-center">
-                <div className="text-5xl font-bold text-[#85ea10] mb-2">98%</div>
-                <div className="text-lg text-gray-600 dark:text-white/80">Satisfacción</div>
+                <div className="text-5xl font-bold text-[#85ea10] mb-2">
+                  98%
+                </div>
+                <div className="text-lg text-gray-600 dark:text-white/80">
+                  Satisfacción
+                </div>
               </div>
             </div>
           </div>
@@ -210,8 +264,10 @@ export default function AboutPage() {
                 "Transforma tu cuerpo cambiando tu mente"
               </blockquote>
               <p className="text-lg text-gray-600 dark:text-white/80 leading-relaxed">
-                Creemos que la verdadera transformación comienza desde adentro. No se trata solo de hacer ejercicio, 
-                sino de cambiar la mentalidad, desarrollar disciplina y crear hábitos que perduren para toda la vida.
+                Creemos que la verdadera transformación comienza desde adentro.
+                No se trata solo de hacer ejercicio, sino de cambiar la
+                mentalidad, desarrollar disciplina y crear hábitos que perduren
+                para toda la vida.
               </p>
             </div>
           </div>
@@ -222,7 +278,8 @@ export default function AboutPage() {
               ¿Listo para tu Transformación?
             </h2>
             <p className="text-xl text-gray-600 dark:text-white/80 mb-8 max-w-2xl mx-auto">
-              Únete a miles de personas que ya han transformado sus vidas con RogerBox
+              Únete a miles de personas que ya han transformado sus vidas con
+              RogerBox
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <button

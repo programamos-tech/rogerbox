@@ -1,7 +1,14 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { Play, Pause, Maximize, Minimize, Volume2, VolumeX } from 'lucide-react';
+import {
+  Maximize,
+  Minimize,
+  Pause,
+  Play,
+  Volume2,
+  VolumeX,
+} from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
 interface RogerBoxMuxPlayerProps {
   muxPlaybackId: string;
@@ -128,9 +135,7 @@ export default function RogerBoxMuxPlayer({
           (document as any).msExitFullscreen();
         }
       }
-    } catch (error) {
-      console.warn('⚠️ Error al cambiar pantalla completa:', error);
-    }
+    } catch (_error) {}
   };
 
   // Escuchar cambios de pantalla completa
@@ -170,11 +175,17 @@ export default function RogerBoxMuxPlayer({
 
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
-      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
-      document.removeEventListener('msfullscreenchange', handleFullscreenChange);
+      document.removeEventListener(
+        'webkitfullscreenchange',
+        handleFullscreenChange,
+      );
+      document.removeEventListener(
+        'msfullscreenchange',
+        handleFullscreenChange,
+      );
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isFullscreen]);
+  }, [isFullscreen, toggleFullscreen, toggleMute, togglePlayPause]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -193,14 +204,16 @@ export default function RogerBoxMuxPlayer({
   };
 
   return (
-    <div 
+    <div
       ref={containerRef}
       className={`relative bg-gray-900 rounded-2xl overflow-hidden shadow-lg group ${
         isFullscreen ? 'fixed inset-0 z-50 rounded-none' : ''
       }`}
     >
       {/* Contenedor con aspect ratio 16:9 */}
-      <div className={`relative w-full ${isFullscreen ? 'h-screen' : 'aspect-video'}`}>
+      <div
+        className={`relative w-full ${isFullscreen ? 'h-screen' : 'aspect-video'}`}
+      >
         {/* Video de Mux */}
         <video
           ref={videoRef}
@@ -236,7 +249,9 @@ export default function RogerBoxMuxPlayer({
           <button
             onClick={toggleFullscreen}
             className="w-10 h-10 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center text-white transition-all duration-300 hover:scale-110"
-            title={isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
+            title={
+              isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'
+            }
           >
             {isFullscreen ? (
               <Minimize className="w-5 h-5" />
@@ -263,7 +278,7 @@ export default function RogerBoxMuxPlayer({
 
         {/* Barra de progreso de RogerBox */}
         <div className="absolute bottom-0 left-0 right-0 p-4 z-30">
-          <div 
+          <div
             className="bg-white/20 rounded-full h-1 mb-2 cursor-pointer hover:h-2 transition-all duration-200"
             onClick={handleProgressClick}
           >

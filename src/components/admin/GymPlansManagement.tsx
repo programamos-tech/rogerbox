@@ -1,15 +1,15 @@
 'use client';
 
-import { useState, useEffect, useImperativeHandle, forwardRef } from 'react';
-import { Plus, Edit, Trash2, X, Save, DollarSign, Calendar, Dumbbell, Users } from 'lucide-react';
-import { GymPlan } from '@/types/gym';
+import { Calendar, Dumbbell, Edit, Save, Trash2, Users, X } from 'lucide-react';
+import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
+import type { GymPlan } from '@/types/gym';
 import ConfirmDialog from './ConfirmDialog';
 
 export interface GymPlansManagementRef {
   openCreateModal: () => void;
 }
 
-const GymPlansManagement = forwardRef<GymPlansManagementRef>((props, ref) => {
+const GymPlansManagement = forwardRef<GymPlansManagementRef>((_props, ref) => {
   const [plans, setPlans] = useState<GymPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -45,7 +45,7 @@ const GymPlansManagement = forwardRef<GymPlansManagementRef>((props, ref) => {
 
   useEffect(() => {
     loadPlans();
-  }, []);
+  }, [loadPlans]);
 
   const loadPlans = async () => {
     try {
@@ -54,8 +54,7 @@ const GymPlansManagement = forwardRef<GymPlansManagementRef>((props, ref) => {
       if (!response.ok) throw new Error('Error al cargar planes');
       const data = await response.json();
       setPlans(data);
-    } catch (error) {
-      console.error('Error loading plans:', error);
+    } catch (_error) {
     } finally {
       setLoading(false);
     }
@@ -68,14 +67,15 @@ const GymPlansManagement = forwardRef<GymPlansManagementRef>((props, ref) => {
       name: formData.name.trim(),
       description: formData.description.trim() || undefined,
       price: parseFloat(parsePrice(formData.price)),
-      duration_days: parseInt(formData.duration_days),
+      duration_days: parseInt(formData.duration_days, 10),
       is_active: formData.is_active,
     };
 
     // Si estamos editando un plan, verificar si se cambió precio o duración
     if (editingPlan) {
       const priceChanged = payload.price !== editingPlan.price;
-      const durationChanged = payload.duration_days !== editingPlan.duration_days;
+      const durationChanged =
+        payload.duration_days !== editingPlan.duration_days;
 
       if (priceChanged || durationChanged) {
         // Guardar los datos pendientes y mostrar advertencia
@@ -154,7 +154,9 @@ const GymPlansManagement = forwardRef<GymPlansManagementRef>((props, ref) => {
 
     // Verificar primero si hay usuarios activos antes de mostrar el modal
     try {
-      const checkResponse = await fetch(`/api/admin/gym/memberships?plan_id=${plan.id}`);
+      const checkResponse = await fetch(
+        `/api/admin/gym/memberships?plan_id=${plan.id}`,
+      );
 
       if (checkResponse.ok) {
         const data = await checkResponse.json();
@@ -169,11 +171,12 @@ const GymPlansManagement = forwardRef<GymPlansManagementRef>((props, ref) => {
         });
 
         if (activeMemberships.length > 0) {
-          setDeleteError(`No se puede eliminar este plan porque tiene ${activeMemberships.length} ${activeMemberships.length === 1 ? 'usuario activo' : 'usuarios activos'}. Debe esperar a que todas las membresías venzan o desactivar el plan en su lugar.`);
+          setDeleteError(
+            `No se puede eliminar este plan porque tiene ${activeMemberships.length} ${activeMemberships.length === 1 ? 'usuario activo' : 'usuarios activos'}. Debe esperar a que todas las membresías venzan o desactivar el plan en su lugar.`,
+          );
         }
       }
-    } catch (error: any) {
-      console.error('Error verificando membresías:', error);
+    } catch (_error: any) {
       // Si hay error al verificar, permitir intentar eliminar (el backend lo validará)
     } finally {
       setIsDeleting(false);
@@ -257,7 +260,6 @@ const GymPlansManagement = forwardRef<GymPlansManagementRef>((props, ref) => {
 
   return (
     <div className="space-y-6 pb-20">
-
       {/* Form Modal */}
       {showForm && (
         <div className="fixed inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -274,7 +276,10 @@ const GymPlansManagement = forwardRef<GymPlansManagementRef>((props, ref) => {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-4 md:p-6 lg:p-8 space-y-4 md:space-y-6">
+            <form
+              onSubmit={handleSubmit}
+              className="p-4 md:p-6 lg:p-8 space-y-4 md:space-y-6"
+            >
               <div>
                 <label className="block text-sm font-semibold text-[#164151] dark:text-white mb-3">
                   Nombre del Plan *
@@ -283,7 +288,9 @@ const GymPlansManagement = forwardRef<GymPlansManagementRef>((props, ref) => {
                   type="text"
                   required
                   value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
                   className="w-full px-5 py-3.5 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-[#164151] dark:text-white placeholder-gray-400 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 focus:border-[#85ea10]/50 transition-all text-base"
                   placeholder="Ej: Mensual, Trimestral, Anual"
                 />
@@ -295,7 +302,9 @@ const GymPlansManagement = forwardRef<GymPlansManagementRef>((props, ref) => {
                 </label>
                 <textarea
                   value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, description: e.target.value })
+                  }
                   className="w-full px-5 py-3.5 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-[#164151] dark:text-white placeholder-gray-400 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 focus:border-[#85ea10]/50 resize-none transition-all text-base"
                   rows={4}
                   placeholder="Descripción opcional del plan"
@@ -318,7 +327,10 @@ const GymPlansManagement = forwardRef<GymPlansManagementRef>((props, ref) => {
                       onChange={(e) => {
                         const formatted = formatPrice(e.target.value);
                         setDisplayPrice(formatted);
-                        setFormData({ ...formData, price: parsePrice(formatted) });
+                        setFormData({
+                          ...formData,
+                          price: parsePrice(formatted),
+                        });
                       }}
                       className="w-full pl-8 pr-5 py-3.5 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-[#164151] dark:text-white placeholder-gray-400 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 focus:border-[#85ea10]/50 transition-all text-base"
                       placeholder="0"
@@ -337,7 +349,12 @@ const GymPlansManagement = forwardRef<GymPlansManagementRef>((props, ref) => {
                       required
                       min="1"
                       value={formData.duration_days}
-                      onChange={(e) => setFormData({ ...formData, duration_days: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          duration_days: e.target.value,
+                        })
+                      }
                       className="w-full pl-12 pr-5 py-3.5 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-[#164151] dark:text-white placeholder-gray-400 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 focus:border-[#85ea10]/50 transition-all text-base"
                       placeholder="30"
                     />
@@ -350,10 +367,15 @@ const GymPlansManagement = forwardRef<GymPlansManagementRef>((props, ref) => {
                   type="checkbox"
                   id="is_active"
                   checked={formData.is_active}
-                  onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, is_active: e.target.checked })
+                  }
                   className="w-5 h-5 rounded border-gray-300 text-[#85ea10] focus:ring-[#85ea10] cursor-pointer"
                 />
-                <label htmlFor="is_active" className="text-sm font-medium text-[#164151] dark:text-white cursor-pointer">
+                <label
+                  htmlFor="is_active"
+                  className="text-sm font-medium text-[#164151] dark:text-white cursor-pointer"
+                >
                   Plan activo
                 </label>
               </div>
@@ -383,77 +405,98 @@ const GymPlansManagement = forwardRef<GymPlansManagementRef>((props, ref) => {
       {plans.length === 0 ? (
         <div className="bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl border border-gray-200 dark:border-white/10 p-12 text-center">
           <Dumbbell className="w-12 h-12 text-gray-300 dark:text-white/20 mx-auto mb-4" />
-          <p className="text-[#164151] dark:text-white font-medium mb-2">No hay planes creados</p>
-          <p className="text-sm text-[#164151]/60 dark:text-white/60">Crea tu primer plan para comenzar</p>
+          <p className="text-[#164151] dark:text-white font-medium mb-2">
+            No hay planes creados
+          </p>
+          <p className="text-sm text-[#164151]/60 dark:text-white/60">
+            Crea tu primer plan para comenzar
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {plans.filter((plan) => plan.is_active).map((plan) => (
-            <div
-              key={plan.id}
-              className={`bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl border ${plan.is_active
-                ? 'border-gray-200 dark:border-white/10'
-                : 'border-gray-300 dark:border-white/20 opacity-60'
+          {plans
+            .filter((plan) => plan.is_active)
+            .map((plan) => (
+              <div
+                key={plan.id}
+                className={`bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl border ${
+                  plan.is_active
+                    ? 'border-gray-200 dark:border-white/10'
+                    : 'border-gray-300 dark:border-white/20 opacity-60'
                 } p-6 shadow-sm dark:shadow-none`}
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex-1">
-                  <h3 className="text-lg font-bold text-[#164151] dark:text-white mb-1">{plan.name}</h3>
-                  {plan.description && (
-                    <p className="text-sm text-[#164151]/60 dark:text-white/60 line-clamp-2">{plan.description}</p>
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex-1">
+                    <h3 className="text-lg font-bold text-[#164151] dark:text-white mb-1">
+                      {plan.name}
+                    </h3>
+                    {plan.description && (
+                      <p className="text-sm text-[#164151]/60 dark:text-white/60 line-clamp-2">
+                        {plan.description}
+                      </p>
+                    )}
+                  </div>
+                  {!plan.is_active && (
+                    <span className="px-2 py-1 text-xs font-semibold bg-gray-200 dark:bg-white/10 text-gray-600 dark:text-white/60 rounded-full">
+                      Inactivo
+                    </span>
                   )}
                 </div>
-                {!plan.is_active && (
-                  <span className="px-2 py-1 text-xs font-semibold bg-gray-200 dark:bg-white/10 text-gray-600 dark:text-white/60 rounded-full">
-                    Inactivo
-                  </span>
-                )}
-              </div>
 
-              <div className="space-y-2 mb-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-[#164151]/80 dark:text-white/60">Precio:</span>
-                  <span className="text-lg font-bold text-[#164151] dark:text-white">
-                    ${parseFloat(plan.price.toString()).toLocaleString('es-CO')}
-                  </span>
+                <div className="space-y-2 mb-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-[#164151]/80 dark:text-white/60">
+                      Precio:
+                    </span>
+                    <span className="text-lg font-bold text-[#164151] dark:text-white">
+                      $
+                      {parseFloat(plan.price.toString()).toLocaleString(
+                        'es-CO',
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-[#164151]/80 dark:text-white/60">
+                      Duración:
+                    </span>
+                    <span className="text-sm font-semibold text-[#164151] dark:text-white">
+                      {plan.duration_days} días
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-white/5">
+                    <span className="text-sm text-[#164151]/80 dark:text-white/60 flex items-center gap-1.5">
+                      <Users className="w-3.5 h-3.5" />
+                      Clientes activos:
+                    </span>
+                    <span
+                      className={`text-sm font-bold px-2.5 py-1 rounded-full ${
+                        (plan.active_users_count || 0) > 0
+                          ? 'bg-[#85ea10]/10 text-[#85ea10]'
+                          : 'bg-gray-100 dark:bg-white/5 text-gray-500 dark:text-white/40'
+                      }`}
+                    >
+                      {plan.active_users_count || 0}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-[#164151]/80 dark:text-white/60">Duración:</span>
-                  <span className="text-sm font-semibold text-[#164151] dark:text-white">
-                    {plan.duration_days} días
-                  </span>
-                </div>
-                <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-white/5">
-                  <span className="text-sm text-[#164151]/80 dark:text-white/60 flex items-center gap-1.5">
-                    <Users className="w-3.5 h-3.5" />
-                    Clientes activos:
-                  </span>
-                  <span className={`text-sm font-bold px-2.5 py-1 rounded-full ${(plan.active_users_count || 0) > 0
-                    ? 'bg-[#85ea10]/10 text-[#85ea10]'
-                    : 'bg-gray-100 dark:bg-white/5 text-gray-500 dark:text-white/40'
-                    }`}>
-                    {plan.active_users_count || 0}
-                  </span>
-                </div>
-              </div>
 
-              <div className="flex items-center gap-2 pt-4 border-t border-gray-200 dark:border-white/10">
-                <button
-                  onClick={() => handleEdit(plan)}
-                  className="flex-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-white/10 text-[#164151] dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 transition-colors flex items-center justify-center gap-2 text-sm"
-                >
-                  <Edit className="w-3.5 h-3.5" />
-                  Editar
-                </button>
-                <button
-                  onClick={() => handleDeleteClick(plan)}
-                  className="px-3 py-2 rounded-lg bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                <div className="flex items-center gap-2 pt-4 border-t border-gray-200 dark:border-white/10">
+                  <button
+                    onClick={() => handleEdit(plan)}
+                    className="flex-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-white/10 text-[#164151] dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 transition-colors flex items-center justify-center gap-2 text-sm"
+                  >
+                    <Edit className="w-3.5 h-3.5" />
+                    Editar
+                  </button>
+                  <button
+                    onClick={() => handleDeleteClick(plan)}
+                    className="px-3 py-2 rounded-lg bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
         </div>
       )}
 
@@ -462,7 +505,7 @@ const GymPlansManagement = forwardRef<GymPlansManagementRef>((props, ref) => {
         isOpen={showDeleteModal}
         onClose={handleDeleteCancel}
         onConfirm={handleDeleteConfirm}
-        title={deleteError ? "No se puede eliminar" : "Eliminar Plan"}
+        title={deleteError ? 'No se puede eliminar' : 'Eliminar Plan'}
         message={
           deleteError
             ? deleteError
@@ -471,8 +514,8 @@ const GymPlansManagement = forwardRef<GymPlansManagementRef>((props, ref) => {
               : ''
         }
         type={deleteError ? 'danger' : 'warning'}
-        confirmText={deleteError ? "Entendido" : "Eliminar"}
-        cancelText={deleteError ? undefined : "Cancelar"}
+        confirmText={deleteError ? 'Entendido' : 'Eliminar'}
+        cancelText={deleteError ? undefined : 'Cancelar'}
         isLoading={isDeleting}
       />
 

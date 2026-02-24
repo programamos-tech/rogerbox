@@ -1,17 +1,21 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getUser } from '@/lib/supabase-server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { type NextRequest, NextResponse } from 'next/server';
 import { insertLog, STORE_ID_FISICA } from '@/lib/logs-service';
-import { GymPaymentInsert } from '@/types/gym';
+import { supabaseAdmin } from '@/lib/supabase';
+import { getUser } from '@/lib/supabase-server';
+import type { GymPaymentInsert } from '@/types/gym';
 
 function normalizeEmail(val?: string | null) {
   return (val || '').trim().toLowerCase();
 }
 
-function isAdminUser(user: { id?: string; email?: string; user_metadata?: any } | null) {
+function isAdminUser(
+  user: { id?: string; email?: string; user_metadata?: any } | null,
+) {
   if (!user) return false;
   const envId = (process.env.NEXT_PUBLIC_ADMIN_USER_ID || '').trim();
-  const envEmail = normalizeEmail(process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'rogerbox@admin.com');
+  const envEmail = normalizeEmail(
+    process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'rogerbox@admin.com',
+  );
   const matchId = !!envId && user.id === envId;
   const matchEmail = normalizeEmail(user.email) === envEmail;
   const matchRole = user.user_metadata?.role === 'admin';
@@ -51,8 +55,10 @@ export async function GET(request: NextRequest) {
       const { data, error } = await query.single();
 
       if (error) {
-        console.error('Error fetching gym payment:', error);
-        return NextResponse.json({ error: 'Error al obtener pago' }, { status: 500 });
+        return NextResponse.json(
+          { error: 'Error al obtener pago' },
+          { status: 500 },
+        );
       }
 
       return NextResponse.json({ payment: data });
@@ -81,14 +87,18 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query;
 
     if (error) {
-      console.error('Error fetching gym payments:', error);
-      return NextResponse.json({ error: 'Error al obtener pagos' }, { status: 500 });
+      return NextResponse.json(
+        { error: 'Error al obtener pagos' },
+        { status: 500 },
+      );
     }
 
     return NextResponse.json({ payments: data || [] });
-  } catch (error) {
-    console.error('Error in GET /api/admin/gym/payments:', error);
-    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
+  } catch (_error) {
+    return NextResponse.json(
+      { error: 'Error interno del servidor' },
+      { status: 500 },
+    );
   }
 }
 
@@ -118,36 +128,50 @@ export async function POST(request: NextRequest) {
     } = body;
 
     // Validaciones
-    if (!membership_id || !client_info_id || !plan_id || !amount || !payment_method || !payment_date || !period_start || !period_end) {
+    if (
+      !membership_id ||
+      !client_info_id ||
+      !plan_id ||
+      !amount ||
+      !payment_method ||
+      !payment_date ||
+      !period_start ||
+      !period_end
+    ) {
       return NextResponse.json(
         { error: 'Todos los campos requeridos deben estar presentes' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (amount <= 0) {
       return NextResponse.json(
         { error: 'El monto debe ser mayor a 0' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     // Verificar que la membresía existe
     const { data: membership, error: membershipError } = await supabaseAdmin
       .from('gym_memberships')
-      .select('id, client_info_id, user_id, status, end_date, created_at, store_id')
+      .select(
+        'id, client_info_id, user_id, status, end_date, created_at, store_id',
+      )
       .eq('id', membership_id)
       .single();
 
     if (membershipError || !membership) {
-      return NextResponse.json({ error: 'Membresía no encontrada' }, { status: 404 });
+      return NextResponse.json(
+        { error: 'Membresía no encontrada' },
+        { status: 404 },
+      );
     }
 
     // Verificar que el cliente coincide
     if (membership.client_info_id !== client_info_id) {
       return NextResponse.json(
         { error: 'El cliente no coincide con la membresía' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -155,31 +179,38 @@ export async function POST(request: NextRequest) {
     today.setHours(0, 0, 0, 0);
 
     // Verificar si la membresía ya tiene un pago registrado
-    const { data: existingPayment, error: existingPaymentError } = await supabaseAdmin
-      .from('gym_payments')
-      .select('id')
-      .eq('membership_id', membership_id)
-      .limit(1);
+    const { data: existingPayment, error: existingPaymentError } =
+      await supabaseAdmin
+        .from('gym_payments')
+        .select('id')
+        .eq('membership_id', membership_id)
+        .limit(1);
 
-    if (!existingPaymentError && existingPayment && existingPayment.length > 0) {
+    if (
+      !existingPaymentError &&
+      existingPayment &&
+      existingPayment.length > 0
+    ) {
       return NextResponse.json(
         { error: 'Esta membresía ya tiene un pago registrado.' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     // Verificar la fecha de inicio de la membresía para determinar si es pago anticipado
     const membershipStartDate = new Date(membership.end_date);
     membershipStartDate.setHours(0, 0, 0, 0);
-    
-    // Obtener la fecha de inicio real de la membresía
-    const { data: membershipFull, error: membershipFullError } = await supabaseAdmin
-      .from('gym_memberships')
-      .select('start_date')
-      .eq('id', membership_id)
-      .single();
 
-    const isAdvancePayment = membershipFull && new Date(membershipFull.start_date) > today;
+    // Obtener la fecha de inicio real de la membresía
+    const { data: membershipFull, error: membershipFullError } =
+      await supabaseAdmin
+        .from('gym_memberships')
+        .select('start_date')
+        .eq('id', membership_id)
+        .single();
+
+    const _isAdvancePayment =
+      membershipFull && new Date(membershipFull.start_date) > today;
 
     // Obtener user_id: primero del parámetro, luego de la membresía, luego del client_info
     let finalUserId = user_id || membership.user_id || null;
@@ -198,7 +229,10 @@ export async function POST(request: NextRequest) {
         // Actualizar la membresía con el user_id encontrado
         await supabaseAdmin
           .from('gym_memberships')
-          .update({ user_id: finalUserId, updated_at: new Date().toISOString() })
+          .update({
+            user_id: finalUserId,
+            updated_at: new Date().toISOString(),
+          })
           .eq('id', membership_id);
       }
     }
@@ -249,8 +283,10 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error('Error creating gym payment:', error);
-      return NextResponse.json({ error: 'Error al registrar pago' }, { status: 500 });
+      return NextResponse.json(
+        { error: 'Error al registrar pago' },
+        { status: 500 },
+      );
     }
 
     // Actualizar la membresía a 'active' si estaba en otro estado
@@ -266,29 +302,34 @@ export async function POST(request: NextRequest) {
       user_id: user?.id ?? finalUserId,
       action: 'payment_create',
       module: 'gym',
-      details: { amount, payment_method, client_info_id, description: `Pago sede física: $${Number(amount).toLocaleString()}` },
+      details: {
+        amount,
+        payment_method,
+        client_info_id,
+        description: `Pago sede física: $${Number(amount).toLocaleString()}`,
+      },
       store_id: storeIdForPayment,
     });
 
     // Crear orden en la tabla orders para tracking de ventas
-    await supabaseAdmin
-      .from('orders')
-      .insert({
-        user_id: finalUserId,
-        gym_plan_id: plan_id,
-        order_type: 'gym_plan',
-        amount,
-        currency: 'COP',
-        status: 'approved',
-        payment_method,
-        customer_email: data.client_info?.email || null,
-        customer_name: data.client_info?.name || '',
-        created_at: new Date().toISOString(),
-      });
+    await supabaseAdmin.from('orders').insert({
+      user_id: finalUserId,
+      gym_plan_id: plan_id,
+      order_type: 'gym_plan',
+      amount,
+      currency: 'COP',
+      status: 'approved',
+      payment_method,
+      customer_email: data.client_info?.email || null,
+      customer_name: data.client_info?.name || '',
+      created_at: new Date().toISOString(),
+    });
 
     return NextResponse.json(data, { status: 201 });
-  } catch (error) {
-    console.error('Error in POST /api/admin/gym/payments:', error);
-    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
+  } catch (_error) {
+    return NextResponse.json(
+      { error: 'Error interno del servidor' },
+      { status: 500 },
+    );
   }
 }

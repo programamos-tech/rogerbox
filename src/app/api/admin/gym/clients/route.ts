@@ -1,17 +1,21 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getUser } from '@/lib/supabase-server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { type NextRequest, NextResponse } from 'next/server';
 import { insertLog, STORE_ID_FISICA } from '@/lib/logs-service';
-import { GymClientInfoInsert, GymClientInfoUpdate } from '@/types/gym';
+import { supabaseAdmin } from '@/lib/supabase';
+import { getUser } from '@/lib/supabase-server';
+import type { GymClientInfoInsert } from '@/types/gym';
 
 function normalizeEmail(val?: string | null) {
   return (val || '').trim().toLowerCase();
 }
 
-function isAdminUser(user: { id?: string; email?: string; user_metadata?: any } | null) {
+function isAdminUser(
+  user: { id?: string; email?: string; user_metadata?: any } | null,
+) {
   if (!user) return false;
   const envId = (process.env.NEXT_PUBLIC_ADMIN_USER_ID || '').trim();
-  const envEmail = normalizeEmail(process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'rogerbox@admin.com');
+  const envEmail = normalizeEmail(
+    process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'rogerbox@admin.com',
+  );
   const matchId = !!envId && user.id === envId;
   const matchEmail = normalizeEmail(user.email) === envEmail;
   const matchRole = user.user_metadata?.role === 'admin';
@@ -22,7 +26,7 @@ function isAdminUser(user: { id?: string; email?: string; user_metadata?: any } 
 export async function GET(request: NextRequest) {
   try {
     const { user } = await getUser();
-    
+
     if (!isAdminUser(user)) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
@@ -46,20 +50,26 @@ export async function GET(request: NextRequest) {
     }
 
     if (search) {
-      query = query.or(`name.ilike.%${search}%,document_id.ilike.%${search}%,whatsapp.ilike.%${search}%`);
+      query = query.or(
+        `name.ilike.%${search}%,document_id.ilike.%${search}%,whatsapp.ilike.%${search}%`,
+      );
     }
 
     const { data, error } = await query;
 
     if (error) {
-      console.error('Error fetching gym clients:', error);
-      return NextResponse.json({ error: 'Error al obtener clientes' }, { status: 500 });
+      return NextResponse.json(
+        { error: 'Error al obtener clientes' },
+        { status: 500 },
+      );
     }
 
     return NextResponse.json(data || []);
-  } catch (error) {
-    console.error('Error in GET /api/admin/gym/clients:', error);
-    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
+  } catch (_error) {
+    return NextResponse.json(
+      { error: 'Error interno del servidor' },
+      { status: 500 },
+    );
   }
 }
 
@@ -67,19 +77,27 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const { user } = await getUser();
-    
+
     if (!isAdminUser(user)) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
     const body: GymClientInfoInsert = await request.json();
-    const { document_id, name, email, whatsapp, birth_date, weight, medical_restrictions } = body;
+    const {
+      document_id,
+      name,
+      email,
+      whatsapp,
+      birth_date,
+      weight,
+      medical_restrictions,
+    } = body;
 
     // Validaciones
     if (!document_id || !name || !whatsapp) {
       return NextResponse.json(
         { error: 'Cédula, nombre y WhatsApp son requeridos' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -88,7 +106,7 @@ export async function POST(request: NextRequest) {
     if (digitsOnly.length < 10) {
       return NextResponse.json(
         { error: 'El WhatsApp debe tener al menos 10 dígitos' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -102,7 +120,7 @@ export async function POST(request: NextRequest) {
     if (existing) {
       return NextResponse.json(
         { error: 'Ya existe un cliente con esta cédula' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -122,14 +140,16 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error('Error creating gym client:', error);
       if (error.code === '23505') {
         return NextResponse.json(
           { error: 'Ya existe un cliente con esta cédula' },
-          { status: 400 }
+          { status: 400 },
         );
       }
-      return NextResponse.json({ error: 'Error al crear cliente' }, { status: 500 });
+      return NextResponse.json(
+        { error: 'Error al crear cliente' },
+        { status: 500 },
+      );
     }
 
     // Log de actividad (andres.st · Sede Física)
@@ -137,13 +157,19 @@ export async function POST(request: NextRequest) {
       user_id: user?.id ?? null,
       action: 'client_create',
       module: 'gym',
-      details: { client_info_id: data.id, name: data.name, description: `Nuevo cliente: ${data.name}` },
+      details: {
+        client_info_id: data.id,
+        name: data.name,
+        description: `Nuevo cliente: ${data.name}`,
+      },
       store_id: STORE_ID_FISICA,
     });
 
     return NextResponse.json(data, { status: 201 });
-  } catch (error) {
-    console.error('Error in POST /api/admin/gym/clients:', error);
-    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
+  } catch (_error) {
+    return NextResponse.json(
+      { error: 'Error interno del servidor' },
+      { status: 500 },
+    );
   }
 }

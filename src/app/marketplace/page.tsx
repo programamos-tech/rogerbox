@@ -1,10 +1,19 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import {
+  BookOpen,
+  Filter,
+  Play,
+  Search,
+  ShoppingCart,
+  Star,
+  User,
+  Users,
+} from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { Play, Clock, Users, Star, Filter, Search, ShoppingCart, Heart, Zap, Target, Utensils, BookOpen, ChefHat, User, LogOut, ChevronDown, Settings, Bookmark, Calendar, Award, TrendingUp } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import SimpleLoading from '@/components/SimpleLoading';
+import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 
 interface Course {
   id: string;
@@ -41,7 +50,8 @@ const sampleCourses: Course[] = [
     price: 89,
     originalPrice: 149,
     thumbnail: '/images/curso-peso.jpg',
-    description: 'Transforma tu cuerpo en 90 días con nuestro programa completo de pérdida de peso. Rutinas diarias, alimentación balanceada y seguimiento personalizado.',
+    description:
+      'Transforma tu cuerpo en 90 días con nuestro programa completo de pérdida de peso. Rutinas diarias, alimentación balanceada y seguimiento personalizado.',
     lessons: 90,
     isNew: true,
     isPopular: true,
@@ -51,14 +61,14 @@ const sampleCourses: Course[] = [
       'Rutinas de cardio efectivas',
       'Plan de alimentación saludable',
       'Técnicas de motivación',
-      'Seguimiento de progreso'
+      'Seguimiento de progreso',
     ],
     requirements: [
       'Ropa cómoda para ejercicio',
       'Espacio para moverse',
       'Dispositivo para ver las clases',
-      'Compromiso de 30 min diarios'
-    ]
+      'Compromiso de 30 min diarios',
+    ],
   },
   {
     id: '2',
@@ -72,7 +82,8 @@ const sampleCourses: Course[] = [
     price: 79,
     originalPrice: 129,
     thumbnail: '/images/curso-fuerza.jpg',
-    description: 'Desarrolla fuerza muscular y resistencia con nuestro programa de 60 días. Ejercicios progresivos y técnicas avanzadas.',
+    description:
+      'Desarrolla fuerza muscular y resistencia con nuestro programa de 60 días. Ejercicios progresivos y técnicas avanzadas.',
     lessons: 60,
     isPopular: true,
     discount: 39,
@@ -81,14 +92,14 @@ const sampleCourses: Course[] = [
       'Técnicas de levantamiento',
       'Progresión de ejercicios',
       'Prevención de lesiones',
-      'Planificación de entrenamientos'
+      'Planificación de entrenamientos',
     ],
     requirements: [
       'Pesas o bandas de resistencia',
       'Colchoneta',
       'Espacio para entrenar',
-      'Experiencia básica en ejercicio'
-    ]
+      'Experiencia básica en ejercicio',
+    ],
   },
   {
     id: '3',
@@ -101,7 +112,8 @@ const sampleCourses: Course[] = [
     students: 15678,
     price: 49,
     thumbnail: '/images/curso-yoga.jpg',
-    description: 'Inicia tu viaje en el yoga con nuestro programa de 30 días. Posturas básicas, respiración y relajación.',
+    description:
+      'Inicia tu viaje en el yoga con nuestro programa de 30 días. Posturas básicas, respiración y relajación.',
     lessons: 30,
     isNew: true,
     tags: ['Yoga', 'Flexibilidad', 'Relajación', 'Mindfulness'],
@@ -109,14 +121,14 @@ const sampleCourses: Course[] = [
       'Posturas básicas de yoga',
       'Técnicas de respiración',
       'Meditación y relajación',
-      'Mejora de flexibilidad'
+      'Mejora de flexibilidad',
     ],
     requirements: [
       'Colchoneta de yoga',
       'Ropa cómoda',
       'Espacio tranquilo',
-      'Dispositivo para ver las clases'
-    ]
+      'Dispositivo para ver las clases',
+    ],
   },
   {
     id: '4',
@@ -130,7 +142,8 @@ const sampleCourses: Course[] = [
     price: 69,
     originalPrice: 99,
     thumbnail: '/images/curso-hiit.jpg',
-    description: 'Quema grasa y mejora tu condición física con entrenamientos HIIT de alta intensidad.',
+    description:
+      'Quema grasa y mejora tu condición física con entrenamientos HIIT de alta intensidad.',
     lessons: 45,
     isPopular: true,
     discount: 30,
@@ -139,14 +152,14 @@ const sampleCourses: Course[] = [
       'Rutinas HIIT efectivas',
       'Técnicas de alta intensidad',
       'Quema de grasa optimizada',
-      'Mejora de condición física'
+      'Mejora de condición física',
     ],
     requirements: [
       'Ropa deportiva',
       'Espacio para moverse',
       'Buen estado físico',
-      'Dispositivo para ver las clases'
-    ]
+      'Dispositivo para ver las clases',
+    ],
   },
   {
     id: '5',
@@ -159,21 +172,22 @@ const sampleCourses: Course[] = [
     students: 4321,
     price: 39,
     thumbnail: '/images/curso-nutricion.jpg',
-    description: 'Aprende los fundamentos de la nutrición deportiva y optimiza tu rendimiento.',
+    description:
+      'Aprende los fundamentos de la nutrición deportiva y optimiza tu rendimiento.',
     lessons: 21,
     tags: ['Nutrición', 'Alimentación', 'Rendimiento', 'Salud'],
     whatYouWillLearn: [
       'Fundamentos de nutrición',
       'Alimentación pre y post entrenamiento',
       'Hidratación adecuada',
-      'Suplementación básica'
+      'Suplementación básica',
     ],
     requirements: [
       'Dispositivo para ver las clases',
       'Cuaderno para apuntes',
       'Acceso a ingredientes frescos',
-      'Compromiso de aprendizaje'
-    ]
+      'Compromiso de aprendizaje',
+    ],
   },
   {
     id: '6',
@@ -186,32 +200,43 @@ const sampleCourses: Course[] = [
     students: 5432,
     price: 35,
     thumbnail: '/images/curso-flexibilidad.jpg',
-    description: 'Mejora tu flexibilidad y movilidad con ejercicios específicos para todo el cuerpo.',
+    description:
+      'Mejora tu flexibilidad y movilidad con ejercicios específicos para todo el cuerpo.',
     lessons: 28,
     tags: ['Flexibilidad', 'Movilidad', 'Estiramiento', 'Relajación'],
     whatYouWillLearn: [
       'Ejercicios de flexibilidad',
       'Técnicas de estiramiento',
       'Mejora de movilidad articular',
-      'Relajación muscular'
+      'Relajación muscular',
     ],
     requirements: [
       'Colchoneta',
       'Ropa cómoda',
       'Espacio para estirar',
-      'Dispositivo para ver las clases'
-    ]
-  }
+      'Dispositivo para ver las clases',
+    ],
+  },
 ];
 
 const categories = [
   { id: 'all', name: 'Todos', icon: '🌟', color: 'bg-white/20' },
-  { id: 'Pérdida de Peso', name: 'Pérdida de Peso', icon: '⚖️', color: 'bg-blue-500/20' },
+  {
+    id: 'Pérdida de Peso',
+    name: 'Pérdida de Peso',
+    icon: '⚖️',
+    color: 'bg-blue-500/20',
+  },
   { id: 'Fuerza', name: 'Fuerza', icon: '💪', color: 'bg-red-500/20' },
   { id: 'Yoga', name: 'Yoga', icon: '🧘‍♀️', color: 'bg-purple-500/20' },
   { id: 'Cardio', name: 'Cardio', icon: '❤️', color: 'bg-pink-500/20' },
   { id: 'Nutrición', name: 'Nutrición', icon: '🥗', color: 'bg-green-500/20' },
-  { id: 'Flexibilidad', name: 'Flexibilidad', icon: '🤸', color: 'bg-cyan-500/20' }
+  {
+    id: 'Flexibilidad',
+    name: 'Flexibilidad',
+    icon: '🤸',
+    color: 'bg-cyan-500/20',
+  },
 ];
 
 export default function HomePage() {
@@ -220,22 +245,24 @@ export default function HomePage() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('popular');
-  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [_showUserMenu, _setShowUserMenu] = useState(false);
 
   // Redirigir si ya está autenticado
   useEffect(() => {
-    if (!!user) {
+    if (user) {
       router.push('/dashboard');
     }
   }, [user, router]);
 
-  const filteredCourses = sampleCourses.filter(course => {
-    const matchesSearch = course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         course.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         course.instructor.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesCategory = selectedCategory === 'all' || course.category === selectedCategory;
-    
+  const filteredCourses = sampleCourses.filter((course) => {
+    const matchesSearch =
+      course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      course.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      course.instructor.toLowerCase().includes(searchQuery.toLowerCase());
+
+    const matchesCategory =
+      selectedCategory === 'all' || course.category === selectedCategory;
+
     return matchesSearch && matchesCategory;
   });
 
@@ -260,7 +287,7 @@ export default function HomePage() {
     return <SimpleLoading />;
   }
 
-  if (!!user) {
+  if (user) {
     return <SimpleLoading />;
   }
 
@@ -276,13 +303,33 @@ export default function HomePage() {
                 ROGER<span className="text-[#85ea10]">BOX</span>
               </h1>
             </div>
-            
+
             {/* Navigation */}
             <nav className="hidden md:flex items-center space-x-8">
-              <a href="#cursos" className="text-gray-600 dark:text-white/80 hover:text-gray-900 dark:hover:text-white transition-colors">Cursos</a>
-              <a href="/#about" className="text-gray-600 dark:text-white/80 hover:text-gray-900 dark:hover:text-white transition-colors">Qué es RogerBox</a>
-              <a href="/#empresas" className="text-gray-600 dark:text-white/80 hover:text-gray-900 dark:hover:text-white transition-colors">Servicio para Empresas</a>
-              <a href="/#contacto" className="text-gray-600 dark:text-white/80 hover:text-gray-900 dark:hover:text-white transition-colors">Contacto</a>
+              <a
+                href="#cursos"
+                className="text-gray-600 dark:text-white/80 hover:text-gray-900 dark:hover:text-white transition-colors"
+              >
+                Cursos
+              </a>
+              <a
+                href="/#about"
+                className="text-gray-600 dark:text-white/80 hover:text-gray-900 dark:hover:text-white transition-colors"
+              >
+                Qué es RogerBox
+              </a>
+              <a
+                href="/#empresas"
+                className="text-gray-600 dark:text-white/80 hover:text-gray-900 dark:hover:text-white transition-colors"
+              >
+                Servicio para Empresas
+              </a>
+              <a
+                href="/#contacto"
+                className="text-gray-600 dark:text-white/80 hover:text-gray-900 dark:hover:text-white transition-colors"
+              >
+                Contacto
+              </a>
             </nav>
 
             {/* Auth Buttons */}
@@ -312,12 +359,17 @@ export default function HomePage() {
             <span className="text-[#85ea10] block">90 días</span>
           </h1>
           <p className="text-xl text-gray-600 dark:text-white/80 mb-8 max-w-2xl mx-auto">
-            Accede a cursos especializados de fitness con acceso temporal. 
-            Compra el curso que necesites y completa tu transformación paso a paso.
+            Accede a cursos especializados de fitness con acceso temporal.
+            Compra el curso que necesites y completa tu transformación paso a
+            paso.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <button
-              onClick={() => document.getElementById('cursos')?.scrollIntoView({ behavior: 'smooth' })}
+              onClick={() =>
+                document
+                  .getElementById('cursos')
+                  ?.scrollIntoView({ behavior: 'smooth' })
+              }
               className="bg-[#85ea10] hover:bg-[#7dd30f] text-black font-bold px-8 py-4 rounded-xl text-lg transition-all duration-300 flex items-center justify-center space-x-2"
             >
               <Play className="w-6 h-6" />
@@ -339,7 +391,9 @@ export default function HomePage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
             <div>
               <div className="text-3xl font-bold text-[#85ea10] mb-2">50K+</div>
-              <div className="text-gray-700 dark:text-white/80">Estudiantes</div>
+              <div className="text-gray-700 dark:text-white/80">
+                Estudiantes
+              </div>
             </div>
             <div>
               <div className="text-3xl font-bold text-[#85ea10] mb-2">100+</div>
@@ -347,11 +401,15 @@ export default function HomePage() {
             </div>
             <div>
               <div className="text-3xl font-bold text-[#85ea10] mb-2">4.9</div>
-              <div className="text-gray-700 dark:text-white/80">Rating Promedio</div>
+              <div className="text-gray-700 dark:text-white/80">
+                Rating Promedio
+              </div>
             </div>
             <div>
               <div className="text-3xl font-bold text-[#85ea10] mb-2">90</div>
-              <div className="text-gray-700 dark:text-white/80">Días de Acceso</div>
+              <div className="text-gray-700 dark:text-white/80">
+                Días de Acceso
+              </div>
             </div>
           </div>
         </div>
@@ -368,9 +426,15 @@ export default function HomePage() {
                   ¿Quién es <span className="text-[#85ea10]">RogerBox</span>?
                 </h2>
                 <p className="text-lg text-gray-600 dark:text-white/80 leading-relaxed">
-                  RogerBox nació en <strong className="text-[#85ea10]">Sincelejo en 2019</strong> de la visión y pasión de 
-                  <strong className="text-gray-900 dark:text-white"> Roger Barreto</strong>, un licenciado en Educación Física 
-                  con más de una década de experiencia transformando vidas a través del fitness.
+                  RogerBox nació en{' '}
+                  <strong className="text-[#85ea10]">Sincelejo en 2019</strong>{' '}
+                  de la visión y pasión de
+                  <strong className="text-gray-900 dark:text-white">
+                    {' '}
+                    Roger Barreto
+                  </strong>
+                  , un licenciado en Educación Física con más de una década de
+                  experiencia transformando vidas a través del fitness.
                 </p>
               </div>
 
@@ -384,7 +448,9 @@ export default function HomePage() {
                       La Casa de Alta Intensidad
                     </h3>
                     <p className="text-gray-600 dark:text-white/80">
-                      Roger creó un espacio único donde la alta intensidad se convierte en el camino hacia la transformación física y mental.
+                      Roger creó un espacio único donde la alta intensidad se
+                      convierte en el camino hacia la transformación física y
+                      mental.
                     </p>
                   </div>
                 </div>
@@ -398,7 +464,9 @@ export default function HomePage() {
                       Enfoque en Quema de Grasa
                     </h3>
                     <p className="text-gray-600 dark:text-white/80">
-                      Especializados en programas diseñados específicamente para bajar de peso y quemar grasa de manera efectiva y sostenible.
+                      Especializados en programas diseñados específicamente para
+                      bajar de peso y quemar grasa de manera efectiva y
+                      sostenible.
                     </p>
                   </div>
                 </div>
@@ -412,8 +480,13 @@ export default function HomePage() {
                       Transformación Integral
                     </h3>
                     <p className="text-gray-600 dark:text-white/80">
-                      No solo cambiamos cuerpos, transformamos mentes. Nuestra filosofía: 
-                      <strong className="text-[#85ea10]"> "Transforma tu cuerpo cambiando tu mente"</strong>.
+                      No solo cambiamos cuerpos, transformamos mentes. Nuestra
+                      filosofía:
+                      <strong className="text-[#85ea10]">
+                        {' '}
+                        "Transforma tu cuerpo cambiando tu mente"
+                      </strong>
+                      .
                     </p>
                   </div>
                 </div>
@@ -426,11 +499,17 @@ export default function HomePage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="text-center">
                     <div className="text-2xl font-bold text-[#85ea10]">5+</div>
-                    <div className="text-sm text-gray-600 dark:text-white/80">Años de experiencia</div>
+                    <div className="text-sm text-gray-600 dark:text-white/80">
+                      Años de experiencia
+                    </div>
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-[#85ea10]">1000+</div>
-                    <div className="text-sm text-gray-600 dark:text-white/80">Vidas transformadas</div>
+                    <div className="text-2xl font-bold text-[#85ea10]">
+                      1000+
+                    </div>
+                    <div className="text-sm text-gray-600 dark:text-white/80">
+                      Vidas transformadas
+                    </div>
                   </div>
                 </div>
               </div>
@@ -454,7 +533,7 @@ export default function HomePage() {
                   </p>
                 </div>
               </div>
-              
+
               {/* Floating elements */}
               <div className="absolute -top-4 -right-4 w-20 h-20 bg-[#85ea10] rounded-full opacity-20"></div>
               <div className="absolute -bottom-4 -left-4 w-16 h-16 bg-[#7dd30f] rounded-full opacity-30"></div>
@@ -472,7 +551,8 @@ export default function HomePage() {
               Cursos Disponibles
             </h2>
             <p className="text-xl text-gray-600 dark:text-white/80 max-w-2xl mx-auto">
-              Elige el curso que mejor se adapte a tus objetivos y comienza tu transformación hoy mismo.
+              Elige el curso que mejor se adapte a tus objetivos y comienza tu
+              transformación hoy mismo.
             </p>
           </div>
 
@@ -494,10 +574,12 @@ export default function HomePage() {
             <div className="mb-6">
               <div className="flex items-center space-x-2 mb-4">
                 <Filter className="w-4 h-4 text-gray-500 dark:text-white/60" />
-                <span className="text-gray-700 dark:text-white/80 font-medium">Categorías:</span>
+                <span className="text-gray-700 dark:text-white/80 font-medium">
+                  Categorías:
+                </span>
               </div>
               <div className="flex flex-wrap gap-3">
-                {categories.map(category => (
+                {categories.map((category) => (
                   <button
                     key={category.id}
                     onClick={() => setSelectedCategory(category.id)}
@@ -571,7 +653,9 @@ export default function HomePage() {
           {/* Results Count */}
           <div className="mb-8">
             <p className="text-white/80">
-              {sortedCourses.length} curso{sortedCourses.length !== 1 ? 's' : ''} encontrado{sortedCourses.length !== 1 ? 's' : ''}
+              {sortedCourses.length} curso
+              {sortedCourses.length !== 1 ? 's' : ''} encontrado
+              {sortedCourses.length !== 1 ? 's' : ''}
             </p>
           </div>
 
@@ -581,14 +665,16 @@ export default function HomePage() {
               <div
                 key={course.id}
                 className="bg-white/80 dark:bg-white/10 backdrop-blur-lg rounded-2xl overflow-hidden border border-gray-200 dark:border-white/20 hover:bg-gray-50 dark:hover:bg-white/15 hover:border-[#85ea10]/30 hover:scale-[1.02] transition-all duration-300 ease-out cursor-pointer group shadow-lg dark:shadow-none"
-                onClick={() => router.push(`/course/${(course as any).slug || course.id}`)}
+                onClick={() =>
+                  router.push(`/course/${(course as any).slug || course.id}`)
+                }
               >
                 {/* Course Thumbnail */}
                 <div className="relative aspect-video bg-gradient-to-br from-[#85ea10]/20 to-[#7dd30f]/20">
                   <div className="w-full h-full bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
                     <Play className="w-16 h-16 text-white/40" />
                   </div>
-                  
+
                   {/* Badges */}
                   <div className="absolute top-3 left-3 flex flex-col space-y-2">
                     {course.isNew && (
@@ -624,17 +710,21 @@ export default function HomePage() {
                 {/* Course Content */}
                 <div className="p-6">
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-[#85ea10] text-sm font-medium">{course.category}</span>
+                    <span className="text-[#85ea10] text-sm font-medium">
+                      {course.category}
+                    </span>
                     <div className="flex items-center space-x-1 text-yellow-400">
                       <Star className="w-4 h-4 fill-current" />
-                      <span className="text-sm font-medium">{course.rating}</span>
+                      <span className="text-sm font-medium">
+                        {course.rating}
+                      </span>
                     </div>
                   </div>
 
                   <h3 className="text-gray-900 dark:text-white font-bold text-xl mb-2 line-clamp-2">
                     {course.title}
                   </h3>
-                  
+
                   <p className="text-gray-600 dark:text-white/60 text-sm line-clamp-2 mb-4">
                     {course.description}
                   </p>
@@ -642,7 +732,9 @@ export default function HomePage() {
                   {/* Instructor */}
                   <div className="flex items-center space-x-2 mb-4">
                     <User className="w-4 h-4 text-gray-500 dark:text-white/60" />
-                    <span className="text-gray-700 dark:text-white/80 text-sm">{course.instructor}</span>
+                    <span className="text-gray-700 dark:text-white/80 text-sm">
+                      {course.instructor}
+                    </span>
                   </div>
 
                   {/* Course Stats */}
@@ -677,7 +769,9 @@ export default function HomePage() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        router.push(`/course/${(course as any).slug || course.id}`);
+                        router.push(
+                          `/course/${(course as any).slug || course.id}`,
+                        );
                       }}
                       className="bg-[#85ea10] hover:bg-[#7dd30f] text-black font-bold px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
                     >
@@ -696,8 +790,12 @@ export default function HomePage() {
               <div className="w-20 h-20 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Search className="w-10 h-10 text-white/40" />
               </div>
-              <h3 className="text-xl font-bold text-white mb-2">No se encontraron cursos</h3>
-              <p className="text-white/60 mb-6">Intenta ajustar tus filtros de búsqueda</p>
+              <h3 className="text-xl font-bold text-white mb-2">
+                No se encontraron cursos
+              </h3>
+              <p className="text-white/60 mb-6">
+                Intenta ajustar tus filtros de búsqueda
+              </p>
               <button
                 onClick={() => {
                   setSearchQuery('');
@@ -723,9 +821,24 @@ export default function HomePage() {
               Transforma tu cuerpo, transforma tu vida
             </p>
             <div className="flex justify-center space-x-6">
-              <a href="#" className="text-gray-600 dark:text-white/60 hover:text-gray-900 dark:hover:text-white transition-colors">Términos</a>
-              <a href="#" className="text-gray-600 dark:text-white/60 hover:text-gray-900 dark:hover:text-white transition-colors">Privacidad</a>
-              <a href="#" className="text-gray-600 dark:text-white/60 hover:text-gray-900 dark:hover:text-white transition-colors">Contacto</a>
+              <a
+                href="#"
+                className="text-gray-600 dark:text-white/60 hover:text-gray-900 dark:hover:text-white transition-colors"
+              >
+                Términos
+              </a>
+              <a
+                href="#"
+                className="text-gray-600 dark:text-white/60 hover:text-gray-900 dark:hover:text-white transition-colors"
+              >
+                Privacidad
+              </a>
+              <a
+                href="#"
+                className="text-gray-600 dark:text-white/60 hover:text-gray-900 dark:hover:text-white transition-colors"
+              >
+                Contacto
+              </a>
             </div>
           </div>
         </div>

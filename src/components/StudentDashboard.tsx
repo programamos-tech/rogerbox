@@ -1,22 +1,35 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { endOfWeek, startOfWeek } from 'date-fns';
+import {
+  Calendar,
+  Calendar as CalendarIcon,
+  ChevronRight,
+  Clock,
+  Dumbbell,
+  Flame,
+  Star,
+  Target,
+  Trophy,
+  Video,
+} from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { Calendar, Clock, Users, Zap, CheckCircle, Star, ChevronRight, Play, Trophy, Target, Flame, Calendar as CalendarIcon, Video, Dumbbell, MapPin } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { appStore } from '@/lib/store';
-import { User, Class } from '@/types';
-import { format, addDays, startOfWeek, endOfWeek, isSameDay, isToday, isTomorrow } from 'date-fns';
-import { es } from 'date-fns/locale';
+import type { Class, User } from '@/types';
 
 interface StudentDashboardProps {
   user: User;
   onBack: () => void;
 }
 
-export default function StudentDashboard({ user, onBack }: StudentDashboardProps) {
+export default function StudentDashboard({
+  user,
+  onBack,
+}: StudentDashboardProps) {
   const router = useRouter();
   const [classes, setClasses] = useState<Class[]>([]);
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedDate, _setSelectedDate] = useState(new Date());
   const [showPayment, setShowPayment] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
@@ -39,12 +52,14 @@ export default function StudentDashboard({ user, onBack }: StudentDashboardProps
   const getWeekClasses = () => {
     const weekStart = startOfWeek(selectedDate, { weekStartsOn: 1 });
     const weekEnd = endOfWeek(selectedDate, { weekStartsOn: 1 });
-    
-    return classes?.filter(cls => {
-      const classDate = new Date();
-      classDate.setDate(weekStart.getDate() + (cls.dayOfWeek - 1));
-      return classDate >= weekStart && classDate <= weekEnd;
-    }) || [];
+
+    return (
+      classes?.filter((cls) => {
+        const classDate = new Date();
+        classDate.setDate(weekStart.getDate() + (cls.dayOfWeek - 1));
+        return classDate >= weekStart && classDate <= weekEnd;
+      }) || []
+    );
   };
 
   const getUserReservations = () => {
@@ -66,7 +81,7 @@ export default function StudentDashboard({ user, onBack }: StudentDashboardProps
   };
 
   const handleReserveClass = (classId: string) => {
-    const classToReserve = classes?.find(c => c.id === classId);
+    const classToReserve = classes?.find((c) => c.id === classId);
     if (!classToReserve) return;
 
     alert('¡Clase reservada exitosamente!');
@@ -76,14 +91,16 @@ export default function StudentDashboard({ user, onBack }: StudentDashboardProps
     setIsProcessingPayment(true);
     // Simular redirección a Wompy
     window.open('https://wompi.co', '_blank');
-    
+
     // Simular activación de membresía después de 2 segundos
     setTimeout(() => {
       // Activar membresía del usuario
       appStore.activateMembership(user.id);
       setShowPayment(false);
       setIsProcessingPayment(false);
-      alert('¡Membresía activada exitosamente! Ya puedes acceder a todas las funciones de RogerBox.');
+      alert(
+        '¡Membresía activada exitosamente! Ya puedes acceder a todas las funciones de RogerBox.',
+      );
     }, 2000);
   };
 
@@ -91,19 +108,19 @@ export default function StudentDashboard({ user, onBack }: StudentDashboardProps
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black p-4">
         <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <button
-            onClick={() => router.push('/')}
-            className="flex items-center space-x-2 text-white hover:text-[#85ea10] transition-colors"
-          >
-            <ChevronRight className="w-5 h-5 rotate-180" />
-            <span className="font-semibold">Volver</span>
-          </button>
-          <h1 className="text-3xl font-black text-white">
-            ROGER<span className="text-[#85ea10]">BOX</span>
-          </h1>
-        </div>
+          {/* Header */}
+          <div className="flex items-center justify-between mb-8">
+            <button
+              onClick={() => router.push('/')}
+              className="flex items-center space-x-2 text-white hover:text-[#85ea10] transition-colors"
+            >
+              <ChevronRight className="w-5 h-5 rotate-180" />
+              <span className="font-semibold">Volver</span>
+            </button>
+            <h1 className="text-3xl font-black text-white">
+              ROGER<span className="text-[#85ea10]">BOX</span>
+            </h1>
+          </div>
 
           {/* Membership Banner */}
           <div className="bg-gradient-to-r from-[#85ea10]/90 to-[#7dd30f]/90 rounded-2xl p-8 mb-8 text-center">
@@ -113,12 +130,16 @@ export default function StudentDashboard({ user, onBack }: StudentDashboardProps
             <p className="text-black text-lg mb-6">
               Accede a todas las funciones de RogerBox
             </p>
-            
+
             <div className="bg-black/20 rounded-xl p-6 mb-6 max-w-lg mx-auto">
               <div className="flex items-center justify-center space-x-6">
                 <div className="text-center">
-                  <p className="text-black text-sm font-medium">Precio Normal</p>
-                  <p className="text-black text-xl font-bold line-through">$200,000</p>
+                  <p className="text-black text-sm font-medium">
+                    Precio Normal
+                  </p>
+                  <p className="text-black text-xl font-bold line-through">
+                    $200,000
+                  </p>
                 </div>
                 <div className="text-center">
                   <p className="text-black text-sm font-medium">Tu Precio</p>
@@ -126,7 +147,7 @@ export default function StudentDashboard({ user, onBack }: StudentDashboardProps
                 </div>
               </div>
             </div>
-            
+
             <button
               onClick={() => setShowPayment(true)}
               className="bg-black text-[#85ea10] px-8 py-3 rounded-xl font-bold text-lg hover:bg-gray-800 transition-colors"
@@ -194,7 +215,7 @@ export default function StudentDashboard({ user, onBack }: StudentDashboardProps
                   "Perdí 12kg en 2 meses. ¡Roger es increíble!"
                 </p>
               </div>
-              
+
               <div className="bg-[#85ea10]/20 border border-[#85ea10] rounded-xl p-4">
                 <div className="flex items-center mb-3">
                   <div className="w-10 h-10 bg-[#85ea10] rounded-full flex items-center justify-center mr-3">
@@ -215,7 +236,7 @@ export default function StudentDashboard({ user, onBack }: StudentDashboardProps
                   "Ahora es mi rutina favorita. Excelente calidad."
                 </p>
               </div>
-              
+
               <div className="bg-[#85ea10]/20 border border-[#85ea10] rounded-xl p-4">
                 <div className="flex items-center mb-3">
                   <div className="w-10 h-10 bg-[#85ea10] rounded-full flex items-center justify-center mr-3">
@@ -247,7 +268,9 @@ export default function StudentDashboard({ user, onBack }: StudentDashboardProps
                 <div className="w-16 h-16 bg-[#85ea10] rounded-full mx-auto mb-4 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
                   <Calendar className="w-8 h-8 text-black" />
                 </div>
-                <h3 className="text-xl font-bold text-white mb-3">Clases Diarias</h3>
+                <h3 className="text-xl font-bold text-white mb-3">
+                  Clases Diarias
+                </h3>
                 <p className="text-white text-sm mb-4">
                   Clases HIIT todos los días, una hora de entrenamiento intenso.
                 </p>
@@ -263,7 +286,9 @@ export default function StudentDashboard({ user, onBack }: StudentDashboardProps
                 <div className="w-16 h-16 bg-[#85ea10] rounded-full mx-auto mb-4 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
                   <Video className="w-8 h-8 text-black" />
                 </div>
-                <h3 className="text-xl font-bold text-white mb-3">Clases Virtuales</h3>
+                <h3 className="text-xl font-bold text-white mb-3">
+                  Clases Virtuales
+                </h3>
                 <p className="text-white text-sm mb-4">
                   Video llamadas en vivo desde casa cuando no puedas asistir.
                 </p>
@@ -279,7 +304,9 @@ export default function StudentDashboard({ user, onBack }: StudentDashboardProps
                 <div className="w-16 h-16 bg-[#85ea10] rounded-full mx-auto mb-4 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
                   <Dumbbell className="w-8 h-8 text-black" />
                 </div>
-                <h3 className="text-xl font-bold text-white mb-3">Materiales</h3>
+                <h3 className="text-xl font-bold text-white mb-3">
+                  Materiales
+                </h3>
                 <p className="text-white text-sm mb-4">
                   Pesas, colchonetas y todo el equipo necesario para entrenar.
                 </p>
@@ -290,7 +317,6 @@ export default function StudentDashboard({ user, onBack }: StudentDashboardProps
             </div>
           </div>
 
-
           {/* Payment Modal */}
           {showPayment && (
             <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
@@ -300,8 +326,12 @@ export default function StudentDashboard({ user, onBack }: StudentDashboardProps
                 </h3>
                 <div className="space-y-4 mb-8">
                   <div className="bg-white/10 rounded-xl p-4">
-                    <p className="text-white font-bold text-lg">Membresía RogerBox</p>
-                    <p className="text-[#85ea10] font-black text-2xl">$135,000 COP</p>
+                    <p className="text-white font-bold text-lg">
+                      Membresía RogerBox
+                    </p>
+                    <p className="text-[#85ea10] font-black text-2xl">
+                      $135,000 COP
+                    </p>
                   </div>
                   <div className="text-white text-sm space-y-2">
                     <p>✓ Clases diarias de HIIT</p>
@@ -372,7 +402,9 @@ export default function StudentDashboard({ user, onBack }: StudentDashboardProps
               </div>
               <div>
                 <p className="text-white text-sm font-medium">RACHA ACTUAL</p>
-                <p className="text-2xl font-black text-white">{getAttendanceStreak()} días</p>
+                <p className="text-2xl font-black text-white">
+                  {getAttendanceStreak()} días
+                </p>
               </div>
             </div>
           </div>
@@ -383,8 +415,12 @@ export default function StudentDashboard({ user, onBack }: StudentDashboardProps
                 <Flame className="w-6 h-6 text-black" />
               </div>
               <div>
-                <p className="text-white text-sm font-medium">CALORÍAS ESTA SEMANA</p>
-                <p className="text-2xl font-black text-white">{getCaloriesBurned()}</p>
+                <p className="text-white text-sm font-medium">
+                  CALORÍAS ESTA SEMANA
+                </p>
+                <p className="text-2xl font-black text-white">
+                  {getCaloriesBurned()}
+                </p>
               </div>
             </div>
           </div>
@@ -395,8 +431,12 @@ export default function StudentDashboard({ user, onBack }: StudentDashboardProps
                 <Calendar className="w-6 h-6 text-black" />
               </div>
               <div>
-                <p className="text-white text-sm font-medium">CLASES RESERVADAS</p>
-                <p className="text-2xl font-black text-white">{getUserReservations().length}</p>
+                <p className="text-white text-sm font-medium">
+                  CLASES RESERVADAS
+                </p>
+                <p className="text-2xl font-black text-white">
+                  {getUserReservations().length}
+                </p>
               </div>
             </div>
           </div>
@@ -407,7 +447,9 @@ export default function StudentDashboard({ user, onBack }: StudentDashboardProps
                 <Target className="w-6 h-6 text-black" />
               </div>
               <div>
-                <p className="text-white text-sm font-medium">OBJETIVO SEMANAL</p>
+                <p className="text-white text-sm font-medium">
+                  OBJETIVO SEMANAL
+                </p>
                 <p className="text-2xl font-black text-white">5 clases</p>
               </div>
             </div>
@@ -422,15 +464,23 @@ export default function StudentDashboard({ user, onBack }: StudentDashboardProps
                 <CalendarIcon className="w-6 h-6 text-[#85ea10] mr-3" />
                 CALENDARIO DE CLASES
               </h2>
-              
+
               <div className="grid grid-cols-7 gap-2 mb-6">
-                {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map((day, index) => (
-                  <div key={day} className="text-center text-white font-bold py-2">
-                    {day}
-                  </div>
-                ))}
-                {getWeekClasses().map((cls, index) => (
-                  <div key={cls.id} className="bg-[#85ea10]/20 border border-[#85ea10] rounded-lg p-3 text-center">
+                {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map(
+                  (day, _index) => (
+                    <div
+                      key={day}
+                      className="text-center text-white font-bold py-2"
+                    >
+                      {day}
+                    </div>
+                  ),
+                )}
+                {getWeekClasses().map((cls, _index) => (
+                  <div
+                    key={cls.id}
+                    className="bg-[#85ea10]/20 border border-[#85ea10] rounded-lg p-3 text-center"
+                  >
                     <p className="text-white font-bold text-sm">{cls.time}</p>
                     <p className="text-[#85ea10] text-xs">{cls.name}</p>
                     <p className="text-white text-xs">{cls.duration}min</p>
@@ -453,10 +503,12 @@ export default function StudentDashboard({ user, onBack }: StudentDashboardProps
                 <Clock className="w-6 h-6 text-[#85ea10] mr-3" />
                 PRÓXIMOS EVENTOS
               </h2>
-              
+
               <div className="space-y-4">
                 {getUpcomingEvents().length === 0 ? (
-                  <p className="text-white text-center py-8">No tienes clases reservadas</p>
+                  <p className="text-white text-center py-8">
+                    No tienes clases reservadas
+                  </p>
                 ) : (
                   <div className="text-center text-white/60 py-8">
                     <Calendar className="w-12 h-12 mx-auto mb-4 text-[#85ea10]" />

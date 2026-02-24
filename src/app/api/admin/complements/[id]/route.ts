@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getSession } from '@/lib/supabase-server';
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { session } = await getSession();
@@ -31,15 +31,17 @@ export async function PUT(
     if (error) throw error;
 
     return NextResponse.json({ complement: data });
-  } catch (error) {
-    console.error('Error updating complement:', error);
-    return NextResponse.json({ error: 'Error al actualizar complemento' }, { status: 500 });
+  } catch (_error) {
+    return NextResponse.json(
+      { error: 'Error al actualizar complemento' },
+      { status: 500 },
+    );
   }
 }
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { session } = await getSession();
@@ -60,15 +62,17 @@ export async function PATCH(
     if (error) throw error;
 
     return NextResponse.json({ complement: data });
-  } catch (error) {
-    console.error('Error updating complement:', error);
-    return NextResponse.json({ error: 'Error al actualizar complemento' }, { status: 500 });
+  } catch (_error) {
+    return NextResponse.json(
+      { error: 'Error al actualizar complemento' },
+      { status: 500 },
+    );
   }
 }
 
 export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { session } = await getSession();
@@ -86,12 +90,10 @@ export async function DELETE(
     if (error) throw error;
 
     return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('Error deleting complement:', error);
-    return NextResponse.json({ error: 'Error al eliminar complemento' }, { status: 500 });
+  } catch (_error) {
+    return NextResponse.json(
+      { error: 'Error al eliminar complemento' },
+      { status: 500 },
+    );
   }
 }
-
-
-
-

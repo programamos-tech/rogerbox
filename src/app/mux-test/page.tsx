@@ -5,7 +5,7 @@ import MuxUploader from '@/components/MuxUploader';
 import MuxVideoPlayer from '@/components/MuxVideoPlayer';
 
 export default function MuxTestPage() {
-  const [playbackId, setPlaybackId] = useState('');
+  const [_playbackId, _setPlaybackId] = useState('');
   const [testVideoId, setTestVideoId] = useState('');
 
   return (
@@ -31,7 +31,7 @@ export default function MuxTestPage() {
             <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
               🎥 Reproductor de Prueba
             </h3>
-            
+
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -58,7 +58,9 @@ export default function MuxTestPage() {
               )}
 
               <div className="text-sm text-gray-500 dark:text-gray-400">
-                <p><strong>Instrucciones:</strong></p>
+                <p>
+                  <strong>Instrucciones:</strong>
+                </p>
                 <ol className="list-decimal list-inside space-y-1 mt-2">
                   <li>Sube un video usando el uploader</li>
                   <li>Copia el Playback ID que aparece</li>
@@ -77,7 +79,9 @@ export default function MuxTestPage() {
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-blue-800 dark:text-blue-200">
             <div>
-              <p><strong>✅ Ventajas:</strong></p>
+              <p>
+                <strong>✅ Ventajas:</strong>
+              </p>
               <ul className="list-disc list-inside space-y-1 mt-1">
                 <li>Calidad HD garantizada</li>
                 <li>Streaming adaptativo</li>
@@ -86,7 +90,9 @@ export default function MuxTestPage() {
               </ul>
             </div>
             <div>
-              <p><strong>💰 Precios:</strong></p>
+              <p>
+                <strong>💰 Precios:</strong>
+              </p>
               <ul className="list-disc list-inside space-y-1 mt-1">
                 <li>Plan gratuito: 100GB</li>
                 <li>$0.20/GB almacenamiento</li>

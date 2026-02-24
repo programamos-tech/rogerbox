@@ -1,21 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import { wompiService, WompiWebhookData } from '@/lib/wompi';
+import type { WompiWebhookData } from '@/lib/wompi';
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('🔔 Webhook received at:', new Date().toISOString());
-
     const body = await request.text();
-    const signature = request.headers.get('x-wompi-signature') || '';
-
-    console.log('🔔 Webhook received:', {
-      body: body.substring(0, 200) + '...',
-      signature: signature.substring(0, 20) + '...',
-      contentType: request.headers.get('content-type'),
-      userAgent: request.headers.get('user-agent'),
-      allHeaders: Object.fromEntries(request.headers.entries())
-    });
+    const _signature = request.headers.get('x-wompi-signature') || '';
 
     // En sandbox, no verificamos la firma por ahora
     // if (!wompiService.verifyWebhookSignature(body, signature)) {
@@ -30,24 +20,16 @@ export async function POST(request: NextRequest) {
 
     // Validar estructura del webhook
     if (!webhookData.data || !webhookData.data.transaction) {
-      console.error('❌ Invalid webhook structure:', webhookData);
       return NextResponse.json(
         {
           success: false,
-          error: 'Invalid webhook structure'
+          error: 'Invalid webhook structure',
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     const { transaction } = webhookData.data;
-
-    console.log('🔔 Wompi webhook received:', {
-      event: webhookData.event,
-      transaction_id: transaction.id,
-      status: transaction.status,
-      reference: transaction.reference
-    });
 
     // Buscar la orden por referencia (usando admin para bypass RLS)
     const { data: order, error: orderError } = await supabaseAdmin
@@ -57,39 +39,38 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (orderError || !order) {
-      console.error('❌ Order not found for reference:', transaction.reference);
-      return NextResponse.json(
-        { error: 'Order not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }
 
     // Crear o actualizar transacción en wompi_transactions (UPSERT usando admin)
     const { error: transactionError } = await supabaseAdmin
       .from('wompi_transactions')
-      .upsert({
-        wompi_transaction_id: transaction.id,
-        order_id: order.id,
-        wompi_reference: transaction.reference,
-        status: transaction.status,
-        status_message: transaction.status_message,
-        amount_in_cents: transaction.amount_in_cents,
-        currency: transaction.currency || 'COP',
-        payment_method_type: transaction.payment_method_type,
-        payment_source_id: transaction.payment_source_id,
-        customer_email: transaction.customer_email || order.customer_email,
-        customer_name: order.customer_name,
-        raw_webhook_data: webhookData,
-        finalized_at: transaction.finalized_at ? new Date(transaction.finalized_at) : null,
-        webhook_received_at: new Date()
-      }, {
-        onConflict: 'wompi_transaction_id' // Si ya existe, actualizar
-      });
+      .upsert(
+        {
+          wompi_transaction_id: transaction.id,
+          order_id: order.id,
+          wompi_reference: transaction.reference,
+          status: transaction.status,
+          status_message: transaction.status_message,
+          amount_in_cents: transaction.amount_in_cents,
+          currency: transaction.currency || 'COP',
+          payment_method_type: transaction.payment_method_type,
+          payment_source_id: transaction.payment_source_id,
+          customer_email: transaction.customer_email || order.customer_email,
+          customer_name: order.customer_name,
+          raw_webhook_data: webhookData,
+          finalized_at: transaction.finalized_at
+            ? new Date(transaction.finalized_at)
+            : null,
+          webhook_received_at: new Date(),
+        },
+        {
+          onConflict: 'wompi_transaction_id', // Si ya existe, actualizar
+        },
+      );
 
     if (transactionError) {
-      console.error('❌ Error upserting transaction:', transactionError);
     } else {
-      console.log('✅ Transaction saved to wompi_transactions');
     }
 
     // Procesar según el estado de la transacción
@@ -108,56 +89,50 @@ export async function POST(request: NextRequest) {
         break;
 
       default:
-        console.log('ℹ️ Transaction status not processed:', transaction.status);
     }
-
-    console.log('✅ Webhook processed successfully');
-    return NextResponse.json({
-      success: true,
-      message: 'Webhook processed successfully'
-    }, {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-
+    return NextResponse.json(
+      {
+        success: true,
+        message: 'Webhook processed successfully',
+      },
+      {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      },
+    );
   } catch (error) {
-    console.error('❌ Error processing webhook:', error);
-
     // Responder con 200 para evitar reintentos de Wompi
     return NextResponse.json(
       {
         success: false,
         error: 'Internal server error',
-        message: error instanceof Error ? error.message : 'Unknown error'
+        message: error instanceof Error ? error.message : 'Unknown error',
       },
       {
         status: 200, // Cambiar a 200 para evitar reintentos
         headers: {
-          'Content-Type': 'application/json'
-        }
-      }
+          'Content-Type': 'application/json',
+        },
+      },
     );
   }
 }
 
 async function handleApprovedPayment(order: any, transaction: any) {
   try {
-    console.log('✅ Processing approved payment for order:', order.id);
-
     // Actualizar estado de la orden (usando admin para bypass RLS)
     const { error: orderUpdateError } = await supabaseAdmin
       .from('orders')
       .update({
         status: 'approved',
         payment_method: transaction.payment_method_type,
-        updated_at: new Date()
+        updated_at: new Date(),
       })
       .eq('id', order.id);
 
     if (orderUpdateError) {
-      console.error('❌ Error updating order status:', orderUpdateError);
       return;
     }
 
@@ -171,7 +146,6 @@ async function handleApprovedPayment(order: any, transaction: any) {
       .maybeSingle();
 
     if (existingPurchase) {
-      console.log('ℹ️ Purchase already exists for this user and course');
       return;
     }
 
@@ -184,68 +158,52 @@ async function handleApprovedPayment(order: any, transaction: any) {
         order_id: order.id,
         purchase_price: order.amount,
         is_active: true,
-        access_granted_at: new Date()
+        access_granted_at: new Date(),
       });
 
     if (purchaseError) {
-      console.error('❌ Error creating course purchase:', purchaseError);
       return;
     }
 
     // Actualizar contador de estudiantes del curso (usando admin)
-    const { error: courseUpdateError } = await supabaseAdmin.rpc('increment_course_students', {
-      course_id: order.course_id
-    });
+    const { error: courseUpdateError } = await supabaseAdmin.rpc(
+      'increment_course_students',
+      {
+        course_id: order.course_id,
+      },
+    );
 
     if (courseUpdateError) {
-      console.error('❌ Error updating course students count:', courseUpdateError);
     }
-
-    console.log('✅ Course purchase created successfully for user:', order.user_id);
-
-  } catch (error) {
-    console.error('❌ Error in handleApprovedPayment:', error);
-  }
+  } catch (_error) {}
 }
 
-async function handleDeclinedPayment(order: any, transaction: any) {
+async function handleDeclinedPayment(order: any, _transaction: any) {
   try {
-    console.log('❌ Processing declined payment for order:', order.id);
-
     const { error } = await supabaseAdmin
       .from('orders')
       .update({
         status: 'declined',
-        updated_at: new Date()
+        updated_at: new Date(),
       })
       .eq('id', order.id);
 
     if (error) {
-      console.error('❌ Error updating declined order:', error);
     }
-
-  } catch (error) {
-    console.error('❌ Error in handleDeclinedPayment:', error);
-  }
+  } catch (_error) {}
 }
 
-async function handleErrorPayment(order: any, transaction: any) {
+async function handleErrorPayment(order: any, _transaction: any) {
   try {
-    console.log('⚠️ Processing error payment for order:', order.id);
-
     const { error } = await supabaseAdmin
       .from('orders')
       .update({
         status: 'error',
-        updated_at: new Date()
+        updated_at: new Date(),
       })
       .eq('id', order.id);
 
     if (error) {
-      console.error('❌ Error updating error order:', error);
     }
-
-  } catch (error) {
-    console.error('❌ Error in handleErrorPayment:', error);
-  }
+  } catch (_error) {}
 }

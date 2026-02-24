@@ -1,11 +1,13 @@
 'use client';
 
+import { AlertCircle, CheckCircle, Upload } from 'lucide-react';
 import { useState } from 'react';
-import { Upload, CheckCircle, AlertCircle } from 'lucide-react';
 
 export default function MuxUploader() {
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadStatus, setUploadStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [uploadStatus, setUploadStatus] = useState<
+    'idle' | 'success' | 'error'
+  >('idle');
   const [playbackId, setPlaybackId] = useState('');
 
   const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -33,8 +35,7 @@ export default function MuxUploader() {
       } else {
         setUploadStatus('error');
       }
-    } catch (error) {
-      console.error('Error uploading to Mux:', error);
+    } catch (_error) {
       setUploadStatus('error');
     } finally {
       setIsUploading(false);
@@ -46,7 +47,7 @@ export default function MuxUploader() {
       <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
         🎬 Subir Video a Mux
       </h3>
-      
+
       <div className="space-y-4">
         <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center">
           <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
@@ -74,7 +75,12 @@ export default function MuxUploader() {
             <CheckCircle className="w-5 h-5" />
             <div>
               <p className="font-semibold">¡Video subido exitosamente!</p>
-              <p className="text-sm">Playback ID: <code className="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">{playbackId}</code></p>
+              <p className="text-sm">
+                Playback ID:{' '}
+                <code className="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
+                  {playbackId}
+                </code>
+              </p>
             </div>
           </div>
         )}
@@ -87,9 +93,15 @@ export default function MuxUploader() {
         )}
 
         <div className="text-sm text-gray-500 dark:text-gray-400">
-          <p><strong>Formatos soportados:</strong> MP4, MOV, AVI, WebM</p>
-          <p><strong>Tamaño máximo:</strong> 5GB (plan gratuito)</p>
-          <p><strong>Calidad:</strong> Se procesará automáticamente en HD</p>
+          <p>
+            <strong>Formatos soportados:</strong> MP4, MOV, AVI, WebM
+          </p>
+          <p>
+            <strong>Tamaño máximo:</strong> 5GB (plan gratuito)
+          </p>
+          <p>
+            <strong>Calidad:</strong> Se procesará automáticamente en HD
+          </p>
         </div>
       </div>
     </div>
