@@ -43,8 +43,7 @@ next-env.d.ts
 # GitHub Copilot instructions
 .github/copilot-instructions.md
 
-# Supabase local development
-supabase/
+# Supabase: se versiona carpeta y migraciones (no ignorar supabase/)
 
 # Archivos temporales y de respaldo
 *.bak
@@ -63,14 +62,13 @@ update-*.sh
 *SETUP*.md
 *INTEGRATION*.md
 
-# Archivos de migración y documentación
+# Archivos de documentación y archive
 docs/migrations/
 archive/
 *.xls
 *.xlsx
 build.log
-migration-*.sql
-migration-*.json
+# Migraciones se versionan (supabase/migrations/*.sql no se ignoran)
 
 # Archivos duplicados
 package-lock*.json
