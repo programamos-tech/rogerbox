@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase } from '@/lib/supabase-browser';
 
 /**
  * Registra una visita a un curso

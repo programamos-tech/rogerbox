@@ -483,7 +483,7 @@ function StudentPageContent() {
         });
 
         // Agregar TODOS los listeners ANTES de cargar el source
-        hls.on(Hls.Events.MANIFEST_LOADED, (_event, _data) => { });
+        hls.on(Hls.Events.MANIFEST_LOADED, (_event, _data) => {});
 
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
           setVideoLoading(false);
@@ -495,7 +495,7 @@ function StudentPageContent() {
           });
         });
 
-        hls.on(Hls.Events.LEVEL_LOADED, (_event, _data) => { });
+        hls.on(Hls.Events.LEVEL_LOADED, (_event, _data) => {});
 
         hls.on(Hls.Events.ERROR, (_event, data) => {
           // Ignorar errores menores que son normales durante la reproducción
@@ -779,7 +779,7 @@ function StudentPageContent() {
     (!courseWithLessons && effectivePurchase && !purchasesLoading);
 
   // Debug: Log del estado de carga
-  useEffect(() => { }, []);
+  useEffect(() => {}, []);
 
   if (isLoading) {
     return (
@@ -808,7 +808,7 @@ function StudentPageContent() {
         alert(
           `Compras con RLS: ${data.purchases?.withRLS?.count || 0}\nCompras con Admin: ${data.purchases?.withAdmin?.count || 0}\nÓrdenes: ${data.orders?.count || 0}\n\nRevisa la consola para más detalles.`,
         );
-      } catch (_error) { }
+      } catch (_error) {}
     };
 
     const handleRefresh = async () => {
@@ -946,9 +946,9 @@ function StudentPageContent() {
                     // Si el video no se puede cargar, saltar directamente a mostrar la imagen del curso
                     handleIntroEnd();
                   }}
-                  onLoadStart={() => { }}
-                  onLoadedData={() => { }}
-                  onPlay={() => { }}
+                  onLoadStart={() => {}}
+                  onLoadedData={() => {}}
+                  onPlay={() => {}}
                 >
                   <source src="/roger-hero.mp4" type="video/mp4" />
                   Tu navegador no soporta el elemento de video.
@@ -1069,9 +1069,9 @@ function StudentPageContent() {
 
                     {/* Indicador de carga */}
                     {videoLoading &&
-                      (currentLesson.video_url ||
-                        currentLesson.playback_id ||
-                        currentLesson.mux_playback_id) ? (
+                    (currentLesson.video_url ||
+                      currentLesson.playback_id ||
+                      currentLesson.mux_playback_id) ? (
                       <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-40 pointer-events-none">
                         <div className="text-center text-white">
                           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#85ea10] mx-auto mb-4"></div>
@@ -1200,14 +1200,15 @@ function StudentPageContent() {
                                 }
                               }
                             }}
-                            className={`p-2.5 sm:p-3 rounded-xl transition-all relative ${lessonStatus.status === 'completed'
+                            className={`p-2.5 sm:p-3 rounded-xl transition-all relative ${
+                              lessonStatus.status === 'completed'
                                 ? 'bg-white dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700/50 cursor-not-allowed hover:border-gray-200 dark:hover:border-gray-600'
                                 : isCurrent
                                   ? 'bg-[#85ea10]/5 border border-[#85ea10]/30 cursor-pointer hover:bg-[#85ea10]/10'
                                   : lessonStatus.status === 'available'
                                     ? 'bg-white dark:bg-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800 border border-gray-200 dark:border-gray-700 cursor-pointer'
                                     : 'bg-white/50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-700/30 opacity-50 cursor-not-allowed'
-                              }`}
+                            }`}
                           >
                             {/* Check visible para clases completadas - ultra sutil */}
                             {lessonStatus.status === 'completed' && (
@@ -1292,12 +1293,13 @@ function StudentPageContent() {
                                     />
                                   ) : (
                                     <StatusIcon
-                                      className={`w-3.5 h-3.5 ${lessonStatus.status === 'lost'
+                                      className={`w-3.5 h-3.5 ${
+                                        lessonStatus.status === 'lost'
                                           ? 'text-gray-400'
                                           : lessonStatus.status === 'available'
                                             ? 'text-[#85ea10]'
                                             : 'text-gray-300 dark:text-gray-500'
-                                        }`}
+                                      }`}
                                     />
                                   )}
                                   <span className="text-xs font-normal text-gray-400 dark:text-gray-500">

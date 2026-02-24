@@ -14,11 +14,11 @@ export async function proxy(req: NextRequest) {
         },
         setAll(cookies) {
           cookies.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options)
+            response.cookies.set(name, value, options),
           );
         },
       },
-    }
+    },
   );
 
   // timeout para evitar bloqueo
@@ -30,7 +30,7 @@ export async function proxy(req: NextRequest) {
     const result = await Promise.race([
       supabase.auth.getSession(),
       new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('timeout')), SESSION_TIMEOUT_MS)
+        setTimeout(() => reject(new Error('timeout')), SESSION_TIMEOUT_MS),
       ),
     ]);
 

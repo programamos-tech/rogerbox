@@ -24,6 +24,7 @@ import WeeklyWeightReminder from '@/components/WeeklyWeightReminder';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { getBMIColor } from '@/lib/goalSuggestion';
 import { supabase } from '@/lib/supabase-browser';
+import { useMemo } from 'react';
 
 interface UserProfile {
   weight: number;
@@ -98,12 +99,10 @@ export default function InsightsSection({
   completedLessons = [],
   lessonVideoEnded = false,
   courseWithLessons,
-  effectivePurchase,
 }: InsightsSectionProps) {
   const router = useRouter();
   const { user } = useSupabaseAuth();
   const [classStreak, setClassStreak] = useState(0);
-  const [consecutiveDaysStreak, setConsecutiveDaysStreak] = useState(0);
   const [totalMinutesExercised, setTotalMinutesExercised] = useState(0);
   const [completedComplementsCount, setCompletedComplementsCount] = useState(0);
   const [nextLesson, setNextLesson] = useState<any>(null);
@@ -236,11 +235,9 @@ export default function InsightsSection({
   };
 
   // Calcular racha de días consecutivos (clases + complementos)
-  useEffect(() => {
-    // Racha = clases completadas + complementos completados
+  const consecutiveDaysStreak = useMemo(() => {
     const lessonsCompleted = completedLessons?.length || 0;
-    const totalStreak = lessonsCompleted + completedComplementsCount;
-    setConsecutiveDaysStreak(totalStreak);
+    return lessonsCompleted + completedComplementsCount;
   }, [completedLessons, completedComplementsCount]);
 
   // Calcular minutos totales ejercitados (clases + complementos)

@@ -426,6 +426,23 @@ function AdminDashboardContent() {
     }
   }, [searchParams, router]);
 
+  const loadAdminData = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/admin/dashboard-stats');
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al cargar estadísticas');
+      }
+
+      setStats(data);
+    } catch (_error) {
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Verificar si es admin
   useEffect(() => {
     if (!authLoading && !user) {
@@ -446,386 +463,41 @@ function AdminDashboardContent() {
     }
   }, [authLoading, user, isAdmin, router, loadAdminData]);
 
-  // Cargar datos cuando se cambie de pestaña
-  useEffect(() => {
-    if (activeTab === 'courses') {
-      loadCourses();
-    } else if (activeTab === 'users') {
-      loadUsers('', 'all', 1);
-    } else if (activeTab === 'sales') {
-      loadSales();
-    } else if (activeTab === 'overview') {
-      // Cargar ingresos del día actual por defecto
-      const today = new Date();
-      // Usar fecha local en lugar de ISO para evitar problemas de zona horaria
-      const year = today.getFullYear();
-      const month = String(today.getMonth() + 1).padStart(2, '0');
-      const day = String(today.getDate()).padStart(2, '0');
-      const todayStr = `${year}-${month}-${day}`;
-      loadRevenueStats(todayStr, todayStr, sedeFilter);
-      loadWeeklyData();
-      loadBirthdayClients(todayStr, todayStr);
-    }
-  }, [
-    activeTab,
-    loadBirthdayClients,
-    loadCourses,
-    loadRevenueStats,
-    loadSales,
-    loadUsers,
-    loadWeeklyData,
-    sedeFilter,
-  ]);
-
-  // Recargar usuarios cuando cambien filtros o página
-  useEffect(() => {
-    if (activeTab === 'users') {
-      const timeoutId = setTimeout(
-        () => {
-          loadUsers(userSearchTerm, paymentStatusFilter, currentPage);
-        },
-        userSearchTerm ? 300 : 0,
-      ); // Debounce solo para búsqueda
-      return () => clearTimeout(timeoutId);
-    }
-  }, [userSearchTerm, paymentStatusFilter, currentPage, activeTab, loadUsers]);
-
-  // Cargar ingresos cuando cambien los filtros
-  useEffect(() => {
-    if (activeTab === 'overview') {
-      let startDate = '';
-      let endDate = '';
-
-      if (dateFilter === 'today') {
-        const today = new Date();
-        // Usar fecha local en lugar de ISO para evitar problemas de zona horaria
-        const year = today.getFullYear();
-        const month = String(today.getMonth() + 1).padStart(2, '0');
-        const day = String(today.getDate()).padStart(2, '0');
-        startDate = `${year}-${month}-${day}`;
-        endDate = startDate;
-      } else if (dateFilter === 'custom') {
-        if (customStartDate && customEndDate) {
-          startDate = customStartDate;
-          endDate = customEndDate;
-        } else {
-          return; // No cargar si no hay fechas personalizadas
-        }
-      }
-
-      if (startDate && endDate) {
-        loadRevenueStats(startDate, endDate, sedeFilter);
-        // Cargar datos de la gráfica: usar fechas personalizadas si están disponibles, si no usar últimos 7 días
-        if (dateFilter === 'custom' && customStartDate && customEndDate) {
-          loadWeeklyData(customStartDate, customEndDate);
-          loadDailyPayments(customStartDate, customEndDate);
-          loadBirthdayClients(customStartDate, customEndDate);
-        } else if (dateFilter === 'today') {
-          loadWeeklyData(); // Sin parámetros = últimos 7 días por defecto
-          loadDailyPayments(startDate, endDate);
-          loadBirthdayClients(startDate, endDate);
-        }
-      }
-    }
-  }, [
-    dateFilter,
-    customStartDate,
-    customEndDate,
-    sedeFilter,
-    activeTab,
-    loadBirthdayClients,
-    loadDailyPayments,
-    loadRevenueStats,
-    loadWeeklyData,
-  ]);
-
-  const loadAdminData = async () => {
+  const loadUsers = async (search?: string, status?: string, page?: number) => {
     try {
-      setLoading(true);
-      const response = await fetch('/api/admin/dashboard-stats');
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Error al cargar estadísticas');
-      }
-
-      setStats(data);
-    } catch (_error) {
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadRevenueStats = async (
-    startDate: string,
-    endDate: string,
-    sede: string,
-  ) => {
-    try {
-      setLoadingRevenue(true);
-      const response = await fetch(
-        `/api/admin/revenue-stats?start_date=${startDate}&end_date=${endDate}&sede=${sede}`,
-      );
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Error al cargar ingresos');
-      }
-
-      // Convertir array de resultados a objeto por sede
-      const statsBySede: {
-        fisica?: {
-          total: number;
-          cash: number;
-          transfer: number;
-          mixed: number;
-          count: number;
-        };
-        online?: {
-          total: number;
-          cash: number;
-          transfer: number;
-          mixed: number;
-          count: number;
-        };
-        ambas?: {
-          total: number;
-          cash: number;
-          transfer: number;
-          mixed: number;
-          count: number;
-        };
-      } = {};
-      if (data.results) {
-        data.results.forEach(
-          (result: {
-            sede: 'fisica' | 'online' | 'ambas';
-            total: number;
-            cash: number;
-            transfer: number;
-            mixed: number;
-            count: number;
-          }) => {
-            const sede = result.sede;
-            if (sede === 'fisica' || sede === 'online' || sede === 'ambas') {
-              statsBySede[sede] = {
-                total: result.total,
-                cash: result.cash,
-                transfer: result.transfer,
-                mixed: result.mixed,
-                count: result.count,
-              };
-            }
-          },
-        );
-      }
-
-      setRevenueStats(statsBySede);
-    } catch (_error) {
-    } finally {
-      setLoadingRevenue(false);
-    }
-  };
-
-  const loadWeeklyData = async (
-    customStartDate?: string,
-    customEndDate?: string,
-  ) => {
-    try {
-      setLoadingWeeklyData(true);
-      let startDate: Date;
-      let endDate: Date;
-
-      if (customStartDate && customEndDate) {
-        const [sy, sm, sd] = customStartDate.split('-').map(Number);
-        const [ey, em, ed] = customEndDate.split('-').map(Number);
-        startDate = new Date(sy, sm - 1, sd, 0, 0, 0, 0);
-        endDate = new Date(ey, em - 1, ed, 23, 59, 59, 999);
-      } else {
-        const today = new Date();
-        endDate = new Date(
-          today.getFullYear(),
-          today.getMonth(),
-          today.getDate(),
-          23,
-          59,
-          59,
-          999,
-        );
-        startDate = new Date(
-          today.getFullYear(),
-          today.getMonth(),
-          today.getDate(),
-          0,
-          0,
-          0,
-          0,
-        );
-        startDate.setDate(startDate.getDate() - 6);
-      }
-
-      const startStr = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${String(startDate.getDate()).padStart(2, '0')}`;
-      const endStr = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`;
-
-      // Una sola petición con desglose por día (evita 7–11 peticiones)
-      const response = await fetch(
-        `/api/admin/revenue-stats?start_date=${startStr}&end_date=${endStr}&sede=${sedeFilter}&group_by=day`,
-      );
-      const data = await response.json();
-
-      const weeklyDataArray: {
-        date: string;
-        amount: number;
-        dayName: string;
-      }[] = [];
-      const byDay = data.byDay || [];
-
-      for (const day of byDay) {
-        let totalAmount = 0;
-        if (day.results) {
-          const ambasData = day.results.find((r: any) => r.sede === 'ambas');
-          const fisicaData = day.results.find((r: any) => r.sede === 'fisica');
-          const onlineData = day.results.find((r: any) => r.sede === 'online');
-          if (sedeFilter === 'ambas' && ambasData)
-            totalAmount = ambasData.total;
-          else if (sedeFilter === 'fisica' && fisicaData)
-            totalAmount = fisicaData.total;
-          else if (sedeFilter === 'online' && onlineData)
-            totalAmount = onlineData.total;
-        }
-        const dateObj = new Date(`${day.date}T12:00:00`);
-        const dayName = dateObj.toLocaleDateString('es-ES', {
-          weekday: 'short',
-        });
-        weeklyDataArray.push({
-          date: day.date,
-          amount: totalAmount,
-          dayName: dayName.charAt(0).toUpperCase() + dayName.slice(1),
-        });
-      }
-
-      setWeeklyData(weeklyDataArray);
-    } catch (_error) {
-    } finally {
-      setLoadingWeeklyData(false);
-    }
-  };
-
-  const loadDailyPayments = async (startDate: string, endDate: string) => {
-    try {
-      setLoadingDailyPayments(true);
-      const allPayments: any[] = [];
-
-      // Parsear fechas correctamente para evitar problemas de zona horaria
-      // Las fechas vienen en formato YYYY-MM-DD
-      const [startYear, startMonth, startDay] = startDate
-        .split('-')
-        .map(Number);
-      const [endYear, endMonth, endDay] = endDate.split('-').map(Number);
-
-      // Crear fechas locales sin problemas de zona horaria
-      const start = new Date(startYear, startMonth - 1, startDay, 0, 0, 0, 0);
-      const end = new Date(endYear, endMonth - 1, endDay, 23, 59, 59, 999);
-
-      // Convertir a formato ISO para la consulta
-      const startISO = start.toISOString();
-      const endISO = end.toISOString();
-
-      // Cargar pagos de sede física si el filtro lo permite
-      if (sedeFilter === 'fisica' || sedeFilter === 'ambas') {
-        const { data: gymPayments, error: gymError } = await supabaseAdmin
-          .from('gym_payments')
-          .select(`
-            *,
-            client_info:gym_client_info(
-              id,
-              name,
-              document_id,
-              email,
-              whatsapp
-            ),
-            plan:gym_plans(
-              id,
-              name,
-              price,
-              duration_days
-            )
-          `)
-          .gte('created_at', startISO)
-          .lte('created_at', endISO)
-          .order('created_at', { ascending: false });
-
-        if (gymError) {
-        } else if (gymPayments) {
-          // Agregar tipo de sede a cada pago
-          gymPayments.forEach((payment: any) => {
-            allPayments.push({ ...payment, sede: 'fisica' });
-          });
-        }
-      }
-
-      // Cargar orders de sede online si el filtro lo permite
-      if (sedeFilter === 'online' || sedeFilter === 'ambas') {
-        const { data: orders, error: ordersError } = await supabaseAdmin
-          .from('orders')
-          .select(`
-            *,
-            user:profiles(
-              id,
-              name,
-              email
-            ),
-            course:courses(
-              id,
-              title
-            )
-          `)
-          .eq('status', 'approved')
-          .gte('created_at', startISO)
-          .lte('created_at', endISO)
-          .order('created_at', { ascending: false });
-
-        if (ordersError) {
-        } else if (orders) {
-          // Transformar orders a formato similar a payments
-          orders.forEach((order: any) => {
-            allPayments.push({
-              id: order.id,
-              amount: order.amount,
-              payment_method: 'transfer', // Orders siempre son transferencia
-              payment_date: order.created_at.split('T')[0],
-              created_at: order.created_at,
-              invoice_number: null,
-              client_info: {
-                name: order.user?.name || 'Cliente online',
-                document_id: null,
-                email: order.user?.email || null,
-              },
-              plan: {
-                name: order.course?.title || 'Curso online',
-                price: order.amount,
-                duration_days: null,
-              },
-              sede: 'online',
-            });
-          });
-        }
-      }
-
-      // Ordenar todos los pagos por fecha de registro facturado (más recientes primero)
-      allPayments.sort((a, b) => {
-        const dateA = new Date(a.created_at || a.payment_date).getTime();
-        const dateB = new Date(b.created_at || b.payment_date).getTime();
-        return dateB - dateA;
+      setLoadingUsers(true);
+      const params = new URLSearchParams({
+        page: String(page || currentPage),
+        limit: String(usersPerPage),
+        search: search ?? userSearchTerm,
+        status: status ?? paymentStatusFilter,
       });
 
-      setDailyPayments(allPayments);
+      const response = await fetch(`/api/admin/users?${params}`);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al cargar clientes');
+      }
+
+      setUsers(data.users || []);
+      setTotalPages(data.pagination?.totalPages || 1);
+      setUserCounts(
+        data.counts || {
+          total: 0,
+          active: 0,
+          renewal: 0,
+          noProducts: 0,
+          inactive: 0,
+        },
+      );
     } catch (_error) {
-      setDailyPayments([]);
     } finally {
-      setLoadingDailyPayments(false);
+      setLoadingUsers(false);
     }
   };
+
+  // Cargar datos cuando se cambie de pestaña
 
   const loadBirthdayClients = async (startDate?: string, endDate?: string) => {
     try {
@@ -1082,37 +754,158 @@ function AdminDashboardContent() {
     }
   };
 
-  const loadUsers = async (search?: string, status?: string, page?: number) => {
+  const loadRevenueStats = async (
+    startDate: string,
+    endDate: string,
+    sede: string,
+  ) => {
     try {
-      setLoadingUsers(true);
-      const params = new URLSearchParams({
-        page: String(page || currentPage),
-        limit: String(usersPerPage),
-        search: search ?? userSearchTerm,
-        status: status ?? paymentStatusFilter,
-      });
-
-      const response = await fetch(`/api/admin/users?${params}`);
+      setLoadingRevenue(true);
+      const response = await fetch(
+        `/api/admin/revenue-stats?start_date=${startDate}&end_date=${endDate}&sede=${sede}`,
+      );
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Error al cargar clientes');
+        throw new Error(data.error || 'Error al cargar ingresos');
       }
 
-      setUsers(data.users || []);
-      setTotalPages(data.pagination?.totalPages || 1);
-      setUserCounts(
-        data.counts || {
-          total: 0,
-          active: 0,
-          renewal: 0,
-          noProducts: 0,
-          inactive: 0,
-        },
-      );
+      // Convertir array de resultados a objeto por sede
+      const statsBySede: {
+        fisica?: {
+          total: number;
+          cash: number;
+          transfer: number;
+          mixed: number;
+          count: number;
+        };
+        online?: {
+          total: number;
+          cash: number;
+          transfer: number;
+          mixed: number;
+          count: number;
+        };
+        ambas?: {
+          total: number;
+          cash: number;
+          transfer: number;
+          mixed: number;
+          count: number;
+        };
+      } = {};
+      if (data.results) {
+        data.results.forEach(
+          (result: {
+            sede: 'fisica' | 'online' | 'ambas';
+            total: number;
+            cash: number;
+            transfer: number;
+            mixed: number;
+            count: number;
+          }) => {
+            const sede = result.sede;
+            if (sede === 'fisica' || sede === 'online' || sede === 'ambas') {
+              statsBySede[sede] = {
+                total: result.total,
+                cash: result.cash,
+                transfer: result.transfer,
+                mixed: result.mixed,
+                count: result.count,
+              };
+            }
+          },
+        );
+      }
+
+      setRevenueStats(statsBySede);
     } catch (_error) {
     } finally {
-      setLoadingUsers(false);
+      setLoadingRevenue(false);
+    }
+  };
+
+  const loadWeeklyData = async (
+    customStartDate?: string,
+    customEndDate?: string,
+  ) => {
+    try {
+      setLoadingWeeklyData(true);
+      let startDate: Date;
+      let endDate: Date;
+
+      if (customStartDate && customEndDate) {
+        const [sy, sm, sd] = customStartDate.split('-').map(Number);
+        const [ey, em, ed] = customEndDate.split('-').map(Number);
+        startDate = new Date(sy, sm - 1, sd, 0, 0, 0, 0);
+        endDate = new Date(ey, em - 1, ed, 23, 59, 59, 999);
+      } else {
+        const today = new Date();
+        endDate = new Date(
+          today.getFullYear(),
+          today.getMonth(),
+          today.getDate(),
+          23,
+          59,
+          59,
+          999,
+        );
+        startDate = new Date(
+          today.getFullYear(),
+          today.getMonth(),
+          today.getDate(),
+          0,
+          0,
+          0,
+          0,
+        );
+        startDate.setDate(startDate.getDate() - 6);
+      }
+
+      const startStr = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${String(startDate.getDate()).padStart(2, '0')}`;
+      const endStr = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`;
+
+      // Una sola petición con desglose por día (evita 7–11 peticiones)
+      const response = await fetch(
+        `/api/admin/revenue-stats?start_date=${startStr}&end_date=${endStr}&sede=${sedeFilter}&group_by=day`,
+      );
+      const data = await response.json();
+
+      const weeklyDataArray: {
+        date: string;
+        amount: number;
+        dayName: string;
+      }[] = [];
+      const byDay = data.byDay || [];
+
+      for (const day of byDay) {
+        let totalAmount = 0;
+        if (day.results) {
+          const ambasData = day.results.find((r: any) => r.sede === 'ambas');
+          const fisicaData = day.results.find((r: any) => r.sede === 'fisica');
+          const onlineData = day.results.find((r: any) => r.sede === 'online');
+          if (sedeFilter === 'ambas' && ambasData)
+            totalAmount = ambasData.total;
+          else if (sedeFilter === 'fisica' && fisicaData)
+            totalAmount = fisicaData.total;
+          else if (sedeFilter === 'online' && onlineData)
+            totalAmount = onlineData.total;
+        }
+        const dateObj = new Date(`${day.date}T12:00:00`);
+        const dayName = dateObj.toLocaleDateString('es-ES', {
+          weekday: 'short',
+        });
+        weeklyDataArray.push({
+          date: day.date,
+          amount: totalAmount,
+          dayName: dayName.charAt(0).toUpperCase() + dayName.slice(1),
+        });
+      }
+
+      setWeeklyData(weeklyDataArray);
+    } catch (_error) {
+    } finally {
+      setLoadingWeeklyData(false);
     }
   };
 
@@ -1180,6 +973,215 @@ function AdminDashboardContent() {
       setLoadingSales(false);
     }
   };
+
+  useEffect(() => {
+    if (activeTab === 'courses') {
+      loadCourses();
+    } else if (activeTab === 'users') {
+      loadUsers('', 'all', 1);
+    } else if (activeTab === 'sales') {
+      loadSales();
+    } else if (activeTab === 'overview') {
+      // Cargar ingresos del día actual por defecto
+      const today = new Date();
+      // Usar fecha local en lugar de ISO para evitar problemas de zona horaria
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      const todayStr = `${year}-${month}-${day}`;
+      loadRevenueStats(todayStr, todayStr, sedeFilter);
+      loadWeeklyData();
+      loadBirthdayClients(todayStr, todayStr);
+    }
+  }, [
+    activeTab,
+    loadBirthdayClients,
+    loadCourses,
+    loadRevenueStats,
+    loadSales,
+    loadUsers,
+    loadWeeklyData,
+    sedeFilter,
+  ]);
+
+  // Recargar usuarios cuando cambien filtros o página
+  useEffect(() => {
+    if (activeTab === 'users') {
+      const timeoutId = setTimeout(
+        () => {
+          loadUsers(userSearchTerm, paymentStatusFilter, currentPage);
+        },
+        userSearchTerm ? 300 : 0,
+      ); // Debounce solo para búsqueda
+      return () => clearTimeout(timeoutId);
+    }
+  }, [userSearchTerm, paymentStatusFilter, currentPage, activeTab, loadUsers]);
+
+  const loadDailyPayments = async (startDate: string, endDate: string) => {
+    try {
+      setLoadingDailyPayments(true);
+      const allPayments: any[] = [];
+
+      // Parsear fechas correctamente para evitar problemas de zona horaria
+      // Las fechas vienen en formato YYYY-MM-DD
+      const [startYear, startMonth, startDay] = startDate
+        .split('-')
+        .map(Number);
+      const [endYear, endMonth, endDay] = endDate.split('-').map(Number);
+
+      // Crear fechas locales sin problemas de zona horaria
+      const start = new Date(startYear, startMonth - 1, startDay, 0, 0, 0, 0);
+      const end = new Date(endYear, endMonth - 1, endDay, 23, 59, 59, 999);
+
+      // Convertir a formato ISO para la consulta
+      const startISO = start.toISOString();
+      const endISO = end.toISOString();
+
+      // Cargar pagos de sede física si el filtro lo permite
+      if (sedeFilter === 'fisica' || sedeFilter === 'ambas') {
+        const { data: gymPayments, error: gymError } = await supabaseAdmin
+          .from('gym_payments')
+          .select(`
+            *,
+            client_info:gym_client_info(
+              id,
+              name,
+              document_id,
+              email,
+              whatsapp
+            ),
+            plan:gym_plans(
+              id,
+              name,
+              price,
+              duration_days
+            )
+          `)
+          .gte('created_at', startISO)
+          .lte('created_at', endISO)
+          .order('created_at', { ascending: false });
+
+        if (gymError) {
+        } else if (gymPayments) {
+          // Agregar tipo de sede a cada pago
+          gymPayments.forEach((payment: any) => {
+            allPayments.push({ ...payment, sede: 'fisica' });
+          });
+        }
+      }
+
+      // Cargar orders de sede online si el filtro lo permite
+      if (sedeFilter === 'online' || sedeFilter === 'ambas') {
+        const { data: orders, error: ordersError } = await supabaseAdmin
+          .from('orders')
+          .select(`
+            *,
+            user:profiles(
+              id,
+              name,
+              email
+            ),
+            course:courses(
+              id,
+              title
+            )
+          `)
+          .eq('status', 'approved')
+          .gte('created_at', startISO)
+          .lte('created_at', endISO)
+          .order('created_at', { ascending: false });
+
+        if (ordersError) {
+        } else if (orders) {
+          // Transformar orders a formato similar a payments
+          orders.forEach((order: any) => {
+            allPayments.push({
+              id: order.id,
+              amount: order.amount,
+              payment_method: 'transfer', // Orders siempre son transferencia
+              payment_date: order.created_at.split('T')[0],
+              created_at: order.created_at,
+              invoice_number: null,
+              client_info: {
+                name: order.user?.name || 'Cliente online',
+                document_id: null,
+                email: order.user?.email || null,
+              },
+              plan: {
+                name: order.course?.title || 'Curso online',
+                price: order.amount,
+                duration_days: null,
+              },
+              sede: 'online',
+            });
+          });
+        }
+      }
+
+      // Ordenar todos los pagos por fecha de registro facturado (más recientes primero)
+      allPayments.sort((a, b) => {
+        const dateA = new Date(a.created_at || a.payment_date).getTime();
+        const dateB = new Date(b.created_at || b.payment_date).getTime();
+        return dateB - dateA;
+      });
+
+      setDailyPayments(allPayments);
+    } catch (_error) {
+      setDailyPayments([]);
+    } finally {
+      setLoadingDailyPayments(false);
+    }
+  };
+
+  // Cargar ingresos cuando cambien los filtros
+
+  useEffect(() => {
+    if (activeTab === 'overview') {
+      let startDate = '';
+      let endDate = '';
+
+      if (dateFilter === 'today') {
+        const today = new Date();
+        // Usar fecha local en lugar de ISO para evitar problemas de zona horaria
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        startDate = `${year}-${month}-${day}`;
+        endDate = startDate;
+      } else if (dateFilter === 'custom') {
+        if (customStartDate && customEndDate) {
+          startDate = customStartDate;
+          endDate = customEndDate;
+        } else {
+          return; // No cargar si no hay fechas personalizadas
+        }
+      }
+
+      if (startDate && endDate) {
+        loadRevenueStats(startDate, endDate, sedeFilter);
+        // Cargar datos de la gráfica: usar fechas personalizadas si están disponibles, si no usar últimos 7 días
+        if (dateFilter === 'custom' && customStartDate && customEndDate) {
+          loadWeeklyData(customStartDate, customEndDate);
+          loadDailyPayments(customStartDate, customEndDate);
+          loadBirthdayClients(customStartDate, customEndDate);
+        } else if (dateFilter === 'today') {
+          loadWeeklyData(); // Sin parámetros = últimos 7 días por defecto
+          loadDailyPayments(startDate, endDate);
+          loadBirthdayClients(startDate, endDate);
+        }
+      }
+    }
+  }, [
+    dateFilter,
+    customStartDate,
+    customEndDate,
+    sedeFilter,
+    activeTab,
+    loadBirthdayClients,
+    loadDailyPayments,
+    loadRevenueStats,
+    loadWeeklyData,
+  ]);
 
   const toggleCoursePublish = async (
     courseId: string,

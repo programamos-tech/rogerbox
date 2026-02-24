@@ -56,7 +56,7 @@ export function useSupabaseAuth() {
       setLoading(false);
     }
   };
-  
+
   useEffect(() => {
     let cancelled = false;
 
@@ -109,7 +109,6 @@ export function useSupabaseAuth() {
       subscription.unsubscribe();
     };
   }, [loadProfile]);
-
 
   const signInWithGoogle = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
