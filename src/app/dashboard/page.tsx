@@ -35,6 +35,7 @@ import {
   generateGoalSuggestion,
 } from '@/lib/goalSuggestion';
 import { supabase } from '@/lib/supabase-browser';
+import { useCallback } from 'react';
 
 interface UserProfile {
   id: string;
@@ -481,7 +482,7 @@ export default function DashboardPage() {
   }, [authLoading, userProfile]);
 
   // Función para cargar blogs nutricionales
-  const fetchNutritionalBlogs = async () => {
+  const fetchNutritionalBlogs = useCallback(async () => {
     try {
       const response = await fetch('/api/blogs');
       const data = await response.json();
@@ -491,9 +492,8 @@ export default function DashboardPage() {
     } finally {
       setLoadingBlogs(false);
     }
-  };
+  }, []); // La función ya no cambia nunca
 
-  // Cargar blogs nutricionales
   useEffect(() => {
     fetchNutritionalBlogs();
   }, [fetchNutritionalBlogs]);

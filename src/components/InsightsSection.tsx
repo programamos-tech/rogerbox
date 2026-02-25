@@ -103,7 +103,6 @@ export default function InsightsSection({
   const router = useRouter();
   const { user } = useSupabaseAuth();
   const [classStreak, setClassStreak] = useState(0);
-  const [totalMinutesExercised, setTotalMinutesExercised] = useState(0);
   const [completedComplementsCount, setCompletedComplementsCount] = useState(0);
   const [nextLesson, setNextLesson] = useState<any>(null);
   const [weightHistory, setWeightHistory] = useState<WeightRecord[]>([]);
@@ -244,26 +243,22 @@ export default function InsightsSection({
   // Cada complemento = 10 minutos
   const COMPLEMENT_DURATION_MINUTES = 10;
 
-  useEffect(() => {
-    const calculateTotalMinutes = async () => {
-      let totalMinutes = 0;
+  const totalMinutesExercised = useMemo(() => {
+    let totalMinutes = 0;
 
-      // Sumar duration_minutes de todas las clases completadas
-      if (completedLessons?.length && courseWithLessons?.lessons) {
-        courseWithLessons.lessons.forEach((lesson: any) => {
-          if (completedLessons.includes(lesson.id) && lesson.duration_minutes) {
-            totalMinutes += Number(lesson.duration_minutes);
-          }
-        });
-      }
+    // Sumar duration_minutes de todas las clases completadas
+    if (completedLessons?.length && courseWithLessons?.lessons) {
+      courseWithLessons.lessons.forEach((lesson: any) => {
+        if (completedLessons.includes(lesson.id) && lesson.duration_minutes) {
+          totalMinutes += Number(lesson.duration_minutes);
+        }
+      });
+    }
 
-      // Sumar minutos de complementos completados (10 min c/u)
-      totalMinutes += completedComplementsCount * COMPLEMENT_DURATION_MINUTES;
+    // Sumar minutos de complementos completados (10 min c/u)
+    totalMinutes += completedComplementsCount * COMPLEMENT_DURATION_MINUTES;
 
-      setTotalMinutesExercised(totalMinutes);
-    };
-
-    calculateTotalMinutes();
+    return totalMinutes;
   }, [completedLessons, courseWithLessons, completedComplementsCount]);
 
   // Calcular número total de clases + complementos completados

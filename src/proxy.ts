@@ -60,7 +60,10 @@ export async function proxy(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (session && (pathname === '/login' || pathname === '/register')) {
+  if (
+    session &&
+    (pathname === '/login' || pathname === '/register' || pathname === '/')
+  ) {
     const url = req.nextUrl.clone();
     url.pathname = '/dashboard';
     return NextResponse.redirect(url);

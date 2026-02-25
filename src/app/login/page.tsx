@@ -323,7 +323,7 @@ function LoginForm() {
                 <div className="text-right">
                   <button
                     type="button"
-                    onClick={() => router.push('/reset-password')}
+                    onClick={() => router.push('/forgot-password')}
                     className="text-[#85ea10] hover:text-[#7dd30f] text-sm font-medium transition-colors"
                   >
                     ¿Olvidaste tu contraseña?
