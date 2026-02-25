@@ -274,16 +274,16 @@ export default function HomePage() {
           muted
           loop
           playsInline
-          preload="auto"
-          className={`w-full h-full object-cover transition-opacity duration-500 ${videoLoaded ? 'opacity-100' : 'opacity-0'}`}
+          preload="none"
+          poster="/videos/roger-hero-preview.webp"
+          className={`w-full h-full object-cover transition-opacity duration-500 ${
+            videoLoaded ? 'opacity-100' : 'opacity-0'
+          }`}
           onLoadedData={() => setVideoLoaded(true)}
-          onCanPlay={() => setVideoLoaded(true)}
-          onError={() => {
-            // Mantener el fondo negro si el video no se puede cargar
-            setVideoLoaded(false);
-          }}
+          onError={() => setVideoLoaded(false)}
         >
-          <source src="/roger-hero.mp4" type="video/mp4" />
+          <source src="/videos/roger-hero.webm" type="video/webm" />
+          <source src="/videos/roger-hero-optimized.mp4" type="video/mp4" />
         </video>
         {/* Overlay for better text readability */}
         <div className="absolute inset-0 bg-black/30 dark:bg-black/50"></div>
