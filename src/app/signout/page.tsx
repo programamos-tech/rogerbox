@@ -1,12 +1,12 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import SimpleLoading from '@/components/SimpleLoading';
+import { useRouter } from 'next/navigation';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import SimpleLoading from '@/components/SimpleLoading';
 
 export default function SignOutPage() {
-  const _router = useRouter();
+  const router = useRouter();
   const { signOut } = useSupabaseAuth();
 
   useEffect(() => {

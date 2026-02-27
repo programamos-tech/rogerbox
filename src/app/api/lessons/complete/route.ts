@@ -12,40 +12,33 @@ export async function POST(request: Request) {
     const { lesson_id, course_id, duration_watched } = await request.json();
 
     if (!lesson_id || !course_id) {
-      return NextResponse.json(
-        { error: 'lesson_id y course_id son requeridos' },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: 'lesson_id y course_id son requeridos' }, { status: 400 });
     }
 
     // Insertar o actualizar la completación
     const { data, error } = await supabaseAdmin
       .from('user_lesson_completions')
-      .upsert(
-        {
-          user_id: session.user.id,
-          course_id,
-          lesson_id,
-          duration_watched: duration_watched || 0,
-          completed_at: new Date().toISOString(),
-        },
-        {
-          onConflict: 'user_id,lesson_id',
-        },
-      )
+      .upsert({
+        user_id: session.user.id,
+        course_id,
+        lesson_id,
+        duration_watched: duration_watched || 0,
+        completed_at: new Date().toISOString()
+      }, {
+        onConflict: 'user_id,lesson_id'
+      })
       .select()
       .single();
 
     if (error) {
+      console.error('Error marking lesson complete:', error);
       throw error;
     }
 
     return NextResponse.json({ success: true, data });
-  } catch (_error) {
-    return NextResponse.json(
-      { error: 'Error al marcar lección como completada' },
-      { status: 500 },
-    );
+  } catch (error) {
+    console.error('Error in lesson complete API:', error);
+    return NextResponse.json({ error: 'Error al marcar lección como completada' }, { status: 500 });
   }
 }
 
@@ -68,19 +61,20 @@ export async function GET(request: Request) {
       query = query.eq('course_id', course_id);
     }
 
-    const { data, error } = await query.order('completed_at', {
-      ascending: true,
-    });
+    const { data, error } = await query.order('completed_at', { ascending: true });
 
     if (error) {
+      console.error('Error fetching completions:', error);
       throw error;
     }
 
     return NextResponse.json({ completions: data || [] });
-  } catch (_error) {
-    return NextResponse.json(
-      { error: 'Error al obtener completaciones' },
-      { status: 500 },
-    );
+  } catch (error) {
+    console.error('Error in lesson completions API:', error);
+    return NextResponse.json({ error: 'Error al obtener completaciones' }, { status: 500 });
   }
 }
+
+
+
+

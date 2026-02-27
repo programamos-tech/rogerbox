@@ -1,34 +1,34 @@
 'use client';
 
-import { Eye, EyeOff, Lock, LogIn, Mail } from 'lucide-react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useEffect, useState } from 'react';
-import QuickLoading from '@/components/QuickLoading';
+import { Mail, Lock, Eye, EyeOff, LogIn } from 'lucide-react';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import QuickLoading from '@/components/QuickLoading';
+import Image from 'next/image';
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
   const errorParam = searchParams.get('error');
-
+  
   const [formData, setFormData] = useState({
     email: '',
-    password: '',
+    password: ''
   });
   const [showPassword, setShowPassword] = useState(false);
-  const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [errors, setErrors] = useState<{[key: string]: string}>({});
   const [isLoading, setIsLoading] = useState(false);
   const [currentQuoteIndex, setCurrentQuoteIndex] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
 
-  const { signInWithGoogle, signInWithEmail, isAuthenticated } =
-    useSupabaseAuth();
+  const { signInWithGoogle, signInWithEmail, isAuthenticated } = useSupabaseAuth();
 
   const motivationalQuotes = [
-    'Tu única competencia eres tú mismo',
-    'El dolor de hoy es la fuerza de mañana',
-    'No cuentes los días, haz que los días cuenten',
+    "Tu única competencia eres tú mismo",
+    "El dolor de hoy es la fuerza de mañana",
+    "No cuentes los días, haz que los días cuenten"
   ];
 
   // Animación de frases
@@ -36,15 +36,15 @@ function LoginForm() {
     const interval = setInterval(() => {
       setIsAnimating(true);
       setTimeout(() => {
-        setCurrentQuoteIndex(
-          (prevIndex) => (prevIndex + 1) % motivationalQuotes.length,
+        setCurrentQuoteIndex((prevIndex) => 
+          (prevIndex + 1) % motivationalQuotes.length
         );
         setIsAnimating(false);
       }, 1500);
     }, 2000);
 
     return () => clearInterval(interval);
-  }, [motivationalQuotes.length]);
+  }, []);
 
   // Redirigir si ya está autenticado
   useEffect(() => {
@@ -56,14 +56,12 @@ function LoginForm() {
   // Mostrar error del callback si existe
   useEffect(() => {
     if (errorParam === 'callback_error') {
-      setErrors({
-        general: 'Error al completar la autenticación. Intenta de nuevo.',
-      });
+      setErrors({ general: 'Error al completar la autenticación. Intenta de nuevo.' });
     }
   }, [errorParam]);
 
   const validateForm = () => {
-    const newErrors: { [key: string]: string } = {};
+    const newErrors: {[key: string]: string} = {};
 
     if (!formData.email.trim()) {
       newErrors.email = 'El email es requerido';
@@ -79,14 +77,12 @@ function LoginForm() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const _handleGoogleSignIn = async () => {
+  const handleGoogleSignIn = async () => {
     setIsLoading(true);
     const { error } = await signInWithGoogle();
-
+    
     if (error) {
-      setErrors({
-        general: 'Error al iniciar sesión con Google. Intenta de nuevo.',
-      });
+      setErrors({ general: 'Error al iniciar sesión con Google. Intenta de nuevo.' });
       setIsLoading(false);
     }
     // No quitamos isLoading aquí porque vamos a ser redirigidos
@@ -94,34 +90,31 @@ function LoginForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
+    
     if (!validateForm()) {
       return;
     }
 
     setIsLoading(true);
-
+    
     const { error } = await signInWithEmail(formData.email, formData.password);
-
+    
     if (error) {
-      if (
-        error.message.includes('Invalid login credentials') ||
-        error.message.includes('Invalid credentials')
-      ) {
-        setErrors({
-          general: 'Credenciales incorrectas. Verifica tu email y contraseña.',
-        });
+      console.error('Error en login:', error);
+      console.error('Error details:', {
+        message: error.message,
+        status: 'status' in error ? error.status : undefined,
+        name: error.name
+      });
+      
+      if (error.message.includes('Invalid login credentials') || error.message.includes('Invalid credentials')) {
+        setErrors({ general: 'Credenciales incorrectas. Verifica tu email y contraseña.' });
       } else if (error.message.includes('Email not confirmed')) {
-        setErrors({
-          general: 'Por favor confirma tu email antes de iniciar sesión.',
-        });
+        setErrors({ general: 'Por favor confirma tu email antes de iniciar sesión.' });
       } else {
-        setErrors({
-          general:
-            error.message || 'Error al iniciar sesión. Inténtalo de nuevo.',
-        });
+        setErrors({ general: error.message || 'Error al iniciar sesión. Inténtalo de nuevo.' });
       }
-
+      
       setIsLoading(false);
       return;
     }
@@ -130,12 +123,12 @@ function LoginForm() {
   };
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field]) {
-      setErrors((prev) => ({ ...prev, [field]: '' }));
+      setErrors(prev => ({ ...prev, [field]: '' }));
     }
     if (errors.general) {
-      setErrors((prev) => ({ ...prev, general: '' }));
+      setErrors(prev => ({ ...prev, general: '' }));
     }
   };
 
@@ -182,11 +175,10 @@ function LoginForm() {
         <div className="hidden lg:flex lg:w-1/2 bg-[#85ea10] items-center justify-center">
           <div className="text-center text-white">
             <h1 className="text-6xl font-black mb-8 tracking-tight uppercase">
-              <span className="text-gray-900 font-black">ROGER</span>
-              <span className="text-white font-black">BOX</span>
+              <span className="text-gray-900 font-black">ROGER</span><span className="text-white font-black">BOX</span>
             </h1>
             <div className="relative h-16 mb-8 overflow-hidden">
-              <div
+              <div 
                 key={currentQuoteIndex}
                 className={`absolute inset-0 flex items-center justify-center text-xl font-medium opacity-90 ${
                   isAnimating ? 'animate-fade-out' : 'animate-fade-in'
@@ -211,11 +203,7 @@ function LoginForm() {
               {/* Header */}
               <div className="text-center mb-8">
                 <h1 className="text-3xl font-black text-gray-900 dark:text-white mb-2 uppercase tracking-tight">
-                  BIENVENIDO A{' '}
-                  <span className="text-gray-900 dark:text-white font-black">
-                    ROGER
-                  </span>
-                  <span className="text-[#85ea10] font-black">BOX</span>
+                  BIENVENIDO A <span className="text-gray-900 dark:text-white font-black">ROGER</span><span className="text-[#85ea10] font-black">BOX</span>
                 </h1>
                 <p className="text-gray-600 dark:text-white text-lg">
                   Inicia sesión para continuar
@@ -260,12 +248,10 @@ function LoginForm() {
                     <input
                       type="email"
                       value={formData.email}
-                      onChange={(e) =>
-                        handleInputChange('email', e.target.value)
-                      }
+                      onChange={(e) => handleInputChange('email', e.target.value)}
                       className={`w-full pl-12 pr-4 py-4 bg-gray-50 dark:bg-black/60 border rounded-xl text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 transition-all ${
-                        errors.email
-                          ? 'border-red-500 focus:ring-red-500'
+                        errors.email 
+                          ? 'border-red-500 focus:ring-red-500' 
                           : 'border-gray-200 dark:border-white/30 focus:ring-[#85ea10] focus:border-[#85ea10]'
                       }`}
                       placeholder="tu@email.com"
@@ -289,12 +275,10 @@ function LoginForm() {
                     <input
                       type={showPassword ? 'text' : 'password'}
                       value={formData.password}
-                      onChange={(e) =>
-                        handleInputChange('password', e.target.value)
-                      }
+                      onChange={(e) => handleInputChange('password', e.target.value)}
                       className={`w-full pl-12 pr-12 py-4 bg-gray-50 dark:bg-black/60 border rounded-xl text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 transition-all ${
-                        errors.password
-                          ? 'border-red-500 focus:ring-red-500'
+                        errors.password 
+                          ? 'border-red-500 focus:ring-red-500' 
                           : 'border-gray-200 dark:border-white/30 focus:ring-[#85ea10] focus:border-[#85ea10]'
                       }`}
                       placeholder="Tu contraseña"
@@ -304,11 +288,7 @@ function LoginForm() {
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
                     >
-                      {showPassword ? (
-                        <EyeOff className="w-5 h-5" />
-                      ) : (
-                        <Eye className="w-5 h-5" />
-                      )}
+                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                     </button>
                   </div>
                   {errors.password && (
@@ -355,11 +335,7 @@ function LoginForm() {
                 <p className="text-gray-600 dark:text-white">
                   ¿No tienes cuenta?{' '}
                   <button
-                    onClick={() =>
-                      router.push(
-                        `/register?callbackUrl=${encodeURIComponent(callbackUrl)}`,
-                      )
-                    }
+                    onClick={() => router.push(`/register?callbackUrl=${encodeURIComponent(callbackUrl)}`)}
                     className="text-[#85ea10] hover:text-[#7dd30f] font-bold transition-colors"
                   >
                     Regístrate aquí

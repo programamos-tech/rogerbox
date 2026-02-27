@@ -1,21 +1,9 @@
 'use client';
 
-import {
-  Building2,
-  Calendar,
-  CheckCircle,
-  Heart,
-  Mail,
-  MapPin,
-  MessageCircle,
-  Phone,
-  Star,
-  Target,
-  User,
-  Zap,
-} from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Phone, Mail, MapPin, User, Building2, Heart, Zap, Target, MessageCircle, Calendar, Star, CheckCircle } from 'lucide-react';
+import Footer from '@/components/Footer';
 
 export default function ContactPage() {
   const router = useRouter();
@@ -27,15 +15,14 @@ export default function ContactPage() {
     service: '',
     message: '',
     budget: '',
-    timeline: '',
+    timeline: ''
   });
 
   const services = [
     {
       id: 'mentoria',
       title: 'Mentoría Personalizada',
-      description:
-        'Sesiones 1:1 con Roger Barreto para transformación personal',
+      description: 'Sesiones 1:1 con Roger Barreto para transformación personal',
       icon: <User className="w-8 h-8" />,
       price: 'Desde $150.000/sesión',
       duration: '1-2 horas por sesión',
@@ -44,8 +31,8 @@ export default function ContactPage() {
         'Plan de entrenamiento único',
         'Seguimiento nutricional',
         'Sesiones de motivación',
-        'Acceso a contenido exclusivo',
-      ],
+        'Acceso a contenido exclusivo'
+      ]
     },
     {
       id: 'nutricion',
@@ -59,8 +46,8 @@ export default function ContactPage() {
         'Plan nutricional personalizado',
         'Recetas y menús semanales',
         'Seguimiento semanal',
-        'Ajustes según progreso',
-      ],
+        'Ajustes según progreso'
+      ]
     },
     {
       id: 'empresa',
@@ -74,8 +61,8 @@ export default function ContactPage() {
         'Programa de pausas activas',
         'Talleres de nutrición laboral',
         'Métricas de bienestar',
-        'Cumplimiento legal garantizado',
-      ],
+        'Cumplimiento legal garantizado'
+      ]
     },
     {
       id: 'grupo',
@@ -89,9 +76,9 @@ export default function ContactPage() {
         'Entrenamientos en tu ubicación',
         'Equipamiento incluido',
         'Instructor certificado',
-        'Seguimiento grupal',
-      ],
-    },
+        'Seguimiento grupal'
+      ]
+    }
   ];
 
   const contactMethods = [
@@ -100,61 +87,60 @@ export default function ContactPage() {
       title: 'WhatsApp',
       info: '+57 300 123 4567',
       description: 'Respuesta inmediata',
-      action: 'Escribir por WhatsApp',
+      action: 'Escribir por WhatsApp'
     },
     {
       icon: <Mail className="w-6 h-6" />,
       title: 'Email',
       info: 'contacto@rogerbox.com',
       description: 'Respuesta en 24 horas',
-      action: 'Enviar email',
+      action: 'Enviar email'
     },
     {
       icon: <MapPin className="w-6 h-6" />,
       title: 'Ubicación',
       info: 'Sincelejo, Sucre',
       description: 'Visitas con cita previa',
-      action: 'Agendar visita',
+      action: 'Agendar visita'
     },
     {
       icon: <Calendar className="w-6 h-6" />,
       title: 'Cita Virtual',
       info: 'Google Meet / Zoom',
       description: 'Consulta desde cualquier lugar',
-      action: 'Agendar cita virtual',
-    },
+      action: 'Agendar cita virtual'
+    }
   ];
 
   const testimonials = [
     {
       name: 'María González',
       service: 'Mentoría Personalizada',
-      quote:
-        'Roger me ayudó a perder 15kg en 3 meses. Su enfoque personalizado y motivación constante fueron clave para mi transformación.',
-      rating: 5,
+      quote: 'Roger me ayudó a perder 15kg en 3 meses. Su enfoque personalizado y motivación constante fueron clave para mi transformación.',
+      rating: 5
     },
     {
       name: 'Carlos Mendoza',
       service: 'Consultoría Nutricional',
-      quote:
-        'El plan nutricional que me diseñó Roger cambió completamente mi relación con la comida. Ahora tengo energía todo el día.',
-      rating: 5,
+      quote: 'El plan nutricional que me diseñó Roger cambió completamente mi relación con la comida. Ahora tengo energía todo el día.',
+      rating: 5
     },
     {
       name: 'Ana Rodríguez',
       service: 'Programa Corporativo',
-      quote:
-        'Implementamos el programa en nuestra empresa y los resultados han sido increíbles. Empleados más saludables y productivos.',
-      rating: 5,
-    },
+      quote: 'Implementamos el programa en nuestra empresa y los resultados han sido increíbles. Empleados más saludables y productivos.',
+      rating: 5
+    }
   ];
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // Aquí iría la lógica para enviar el formulario
+    console.log('Formulario enviado:', formData);
     alert('¡Gracias por tu mensaje! Te contactaremos pronto.');
   };
 
@@ -174,30 +160,13 @@ export default function ContactPage() {
                 </h1>
               </button>
             </div>
-
+            
             {/* Navigation */}
             <nav className="hidden md:flex items-center space-x-8">
-              <a
-                href="/#cursos"
-                className="text-gray-600 dark:text-white/80 hover:text-gray-900 dark:hover:text-white transition-colors"
-              >
-                Cursos
-              </a>
-              <a
-                href="/about"
-                className="text-gray-600 dark:text-white/80 hover:text-gray-900 dark:hover:text-white transition-colors"
-              >
-                Qué es RogerBox
-              </a>
-              <a
-                href="/enterprises"
-                className="text-gray-600 dark:text-white/80 hover:text-gray-900 dark:hover:text-white transition-colors"
-              >
-                Servicio para Empresas
-              </a>
-              <a href="/contact" className="text-[#85ea10] font-semibold">
-                Contacto
-              </a>
+              <a href="/#cursos" className="text-gray-600 dark:text-white/80 hover:text-gray-900 dark:hover:text-white transition-colors">Cursos</a>
+              <a href="/about" className="text-gray-600 dark:text-white/80 hover:text-gray-900 dark:hover:text-white transition-colors">Qué es RogerBox</a>
+              <a href="/enterprises" className="text-gray-600 dark:text-white/80 hover:text-gray-900 dark:hover:text-white transition-colors">Servicio para Empresas</a>
+              <a href="/contact" className="text-[#85ea10] font-semibold">Contacto</a>
             </nav>
 
             {/* Auth Buttons */}
@@ -227,8 +196,7 @@ export default function ContactPage() {
               <span className="text-[#85ea10]">Contacta</span> con RogerBox
             </h1>
             <p className="text-xl text-gray-600 dark:text-white/80 max-w-4xl mx-auto leading-relaxed mb-8">
-              Servicios personalizados de fitness, nutrición y mentoría.
-              Transforma tu vida con la guía directa de Roger Barreto.
+              Servicios personalizados de fitness, nutrición y mentoría. Transforma tu vida con la guía directa de Roger Barreto.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <button className="bg-[#85ea10] hover:bg-[#7dd30f] text-black font-bold px-8 py-4 rounded-xl text-lg transition-all duration-300 hover:scale-105 flex items-center justify-center space-x-2">
@@ -251,17 +219,13 @@ export default function ContactPage() {
               Servicios <span className="text-[#85ea10]">Personalizados</span>
             </h2>
             <p className="text-xl text-gray-600 dark:text-white/80 max-w-3xl mx-auto">
-              Elige el servicio que mejor se adapte a tus necesidades y
-              objetivos
+              Elige el servicio que mejor se adapte a tus necesidades y objetivos
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {services.map((service) => (
-              <div
-                key={service.id}
-                className="bg-white dark:bg-gray-800 rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-300"
-              >
+              <div key={service.id} className="bg-white dark:bg-gray-800 rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-300">
                 <div className="flex items-start space-x-6">
                   <div className="w-16 h-16 bg-[#85ea10] rounded-2xl flex items-center justify-center flex-shrink-0">
                     {service.icon}
@@ -274,25 +238,20 @@ export default function ContactPage() {
                       {service.description}
                     </p>
                     <div className="flex items-center space-x-4 mb-4">
-                      <span className="text-lg font-semibold text-[#85ea10]">
-                        {service.price}
-                      </span>
-                      <span className="text-gray-500 dark:text-white/60">
-                        {service.duration}
-                      </span>
+                      <span className="text-lg font-semibold text-[#85ea10]">{service.price}</span>
+                      <span className="text-gray-500 dark:text-white/60">{service.duration}</span>
                     </div>
                     <ul className="space-y-2 mb-6">
                       {service.features.map((feature, index) => (
-                        <li
-                          key={index}
-                          className="flex items-center space-x-2 text-sm text-gray-600 dark:text-white/80"
-                        >
+                        <li key={index} className="flex items-center space-x-2 text-sm text-gray-600 dark:text-white/80">
                           <CheckCircle className="w-4 h-4 text-[#85ea10] flex-shrink-0" />
                           <span>{feature}</span>
                         </li>
                       ))}
                     </ul>
-                    <button className="w-full bg-[#85ea10] hover:bg-[#7dd30f] text-black font-bold py-3 rounded-xl transition-all duration-300 hover:scale-105">
+                    <button 
+                      className="w-full bg-[#85ea10] hover:bg-[#7dd30f] text-black font-bold py-3 rounded-xl transition-all duration-300 hover:scale-105"
+                    >
                       Solicitar Información
                     </button>
                   </div>
@@ -317,10 +276,7 @@ export default function ContactPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {contactMethods.map((method, index) => (
-              <div
-                key={index}
-                className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg text-center hover:shadow-xl transition-all duration-300"
-              >
+              <div key={index} className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg text-center hover:shadow-xl transition-all duration-300">
                 <div className="w-12 h-12 bg-[#85ea10] rounded-full flex items-center justify-center mx-auto mb-4">
                   {method.icon}
                 </div>
@@ -351,10 +307,9 @@ export default function ContactPage() {
                 Solicita tu <span className="text-[#85ea10]">Consulta</span>
               </h2>
               <p className="text-lg text-gray-600 dark:text-white/80 mb-8 leading-relaxed">
-                Completa el formulario y nos pondremos en contacto contigo en
-                menos de 24 horas para personalizar tu experiencia con RogerBox.
+                Completa el formulario y nos pondremos en contacto contigo en menos de 24 horas para personalizar tu experiencia con RogerBox.
               </p>
-
+              
               <div className="space-y-6">
                 <div className="flex items-start space-x-4">
                   <div className="w-8 h-8 bg-[#85ea10] rounded-full flex items-center justify-center flex-shrink-0 mt-1">
@@ -365,12 +320,11 @@ export default function ContactPage() {
                       Consulta Gratuita
                     </h3>
                     <p className="text-gray-600 dark:text-white/80">
-                      Primera consulta de 30 minutos sin costo para evaluar tus
-                      necesidades
+                      Primera consulta de 30 minutos sin costo para evaluar tus necesidades
                     </p>
                   </div>
                 </div>
-
+                
                 <div className="flex items-start space-x-4">
                   <div className="w-8 h-8 bg-[#85ea10] rounded-full flex items-center justify-center flex-shrink-0 mt-1">
                     <Target className="w-4 h-4 text-black" />
@@ -380,12 +334,11 @@ export default function ContactPage() {
                       Plan Personalizado
                     </h3>
                     <p className="text-gray-600 dark:text-white/80">
-                      Diseñamos un plan específico para tus objetivos y estilo
-                      de vida
+                      Diseñamos un plan específico para tus objetivos y estilo de vida
                     </p>
                   </div>
                 </div>
-
+                
                 <div className="flex items-start space-x-4">
                   <div className="w-8 h-8 bg-[#85ea10] rounded-full flex items-center justify-center flex-shrink-0 mt-1">
                     <Heart className="w-4 h-4 text-black" />
@@ -412,9 +365,7 @@ export default function ContactPage() {
                     <input
                       type="text"
                       value={formData.name}
-                      onChange={(e) =>
-                        handleInputChange('name', e.target.value)
-                      }
+                      onChange={(e) => handleInputChange('name', e.target.value)}
                       className="w-full px-4 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10] focus:border-transparent"
                       placeholder="Tu nombre completo"
                       required
@@ -427,15 +378,13 @@ export default function ContactPage() {
                     <input
                       type="tel"
                       value={formData.phone}
-                      onChange={(e) =>
-                        handleInputChange('phone', e.target.value)
-                      }
+                      onChange={(e) => handleInputChange('phone', e.target.value)}
                       className="w-full px-4 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10] focus:border-transparent"
                       placeholder="+57 300 123 4567"
                     />
                   </div>
                 </div>
-
+                
                 <div>
                   <label className="block text-gray-700 dark:text-white font-semibold mb-2">
                     Email *
@@ -449,7 +398,7 @@ export default function ContactPage() {
                     required
                   />
                 </div>
-
+                
                 <div>
                   <label className="block text-gray-700 dark:text-white font-semibold mb-2">
                     Empresa (opcional)
@@ -457,23 +406,19 @@ export default function ContactPage() {
                   <input
                     type="text"
                     value={formData.company}
-                    onChange={(e) =>
-                      handleInputChange('company', e.target.value)
-                    }
+                    onChange={(e) => handleInputChange('company', e.target.value)}
                     className="w-full px-4 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10] focus:border-transparent"
                     placeholder="Nombre de tu empresa"
                   />
                 </div>
-
+                
                 <div>
                   <label className="block text-gray-700 dark:text-white font-semibold mb-2">
                     Servicio de Interés *
                   </label>
                   <select
                     value={formData.service}
-                    onChange={(e) =>
-                      handleInputChange('service', e.target.value)
-                    }
+                    onChange={(e) => handleInputChange('service', e.target.value)}
                     className="w-full px-4 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10] focus:border-transparent"
                     required
                   >
@@ -485,7 +430,7 @@ export default function ContactPage() {
                     <option value="otro">Otro</option>
                   </select>
                 </div>
-
+                
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-gray-700 dark:text-white font-semibold mb-2">
@@ -493,9 +438,7 @@ export default function ContactPage() {
                     </label>
                     <select
                       value={formData.budget}
-                      onChange={(e) =>
-                        handleInputChange('budget', e.target.value)
-                      }
+                      onChange={(e) => handleInputChange('budget', e.target.value)}
                       className="w-full px-4 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10] focus:border-transparent"
                     >
                       <option value="">Selecciona rango</option>
@@ -511,9 +454,7 @@ export default function ContactPage() {
                     </label>
                     <select
                       value={formData.timeline}
-                      onChange={(e) =>
-                        handleInputChange('timeline', e.target.value)
-                      }
+                      onChange={(e) => handleInputChange('timeline', e.target.value)}
                       className="w-full px-4 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10] focus:border-transparent"
                     >
                       <option value="">Selecciona tiempo</option>
@@ -524,7 +465,7 @@ export default function ContactPage() {
                     </select>
                   </div>
                 </div>
-
+                
                 <div>
                   <label className="block text-gray-700 dark:text-white font-semibold mb-2">
                     Cuéntanos sobre tus objetivos *
@@ -532,15 +473,13 @@ export default function ContactPage() {
                   <textarea
                     rows={4}
                     value={formData.message}
-                    onChange={(e) =>
-                      handleInputChange('message', e.target.value)
-                    }
+                    onChange={(e) => handleInputChange('message', e.target.value)}
                     className="w-full px-4 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10] focus:border-transparent"
                     placeholder="Describe tus objetivos, experiencia previa, limitaciones, etc..."
                     required
                   ></textarea>
                 </div>
-
+                
                 <button
                   type="submit"
                   className="w-full bg-[#85ea10] hover:bg-[#7dd30f] text-black font-bold py-4 rounded-xl transition-all duration-300 hover:scale-105 flex items-center justify-center space-x-2"
@@ -559,39 +498,27 @@ export default function ContactPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-6">
-              Lo que dicen nuestros{' '}
-              <span className="text-[#85ea10]">Clientes</span>
+              Lo que dicen nuestros <span className="text-[#85ea10]">Clientes</span>
             </h2>
             <p className="text-xl text-gray-600 dark:text-white/80 max-w-3xl mx-auto">
-              Historias reales de transformación con nuestros servicios
-              personalizados
+              Historias reales de transformación con nuestros servicios personalizados
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {testimonials.map((testimonial, index) => (
-              <div
-                key={index}
-                className="bg-white dark:bg-gray-800 rounded-2xl p-8 shadow-lg"
-              >
+              <div key={index} className="bg-white dark:bg-gray-800 rounded-2xl p-8 shadow-lg">
                 <div className="flex items-center space-x-1 mb-4">
                   {[...Array(testimonial.rating)].map((_, i) => (
-                    <Star
-                      key={i}
-                      className="w-5 h-5 text-yellow-400 fill-current"
-                    />
+                    <Star key={i} className="w-5 h-5 text-yellow-400 fill-current" />
                   ))}
                 </div>
                 <blockquote className="text-gray-600 dark:text-white/80 mb-6 leading-relaxed">
                   "{testimonial.quote}"
                 </blockquote>
                 <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
-                  <p className="font-semibold text-gray-900 dark:text-white">
-                    {testimonial.name}
-                  </p>
-                  <p className="text-sm text-[#85ea10]">
-                    {testimonial.service}
-                  </p>
+                  <p className="font-semibold text-gray-900 dark:text-white">{testimonial.name}</p>
+                  <p className="text-sm text-[#85ea10]">{testimonial.service}</p>
                 </div>
               </div>
             ))}
@@ -607,8 +534,7 @@ export default function ContactPage() {
               ¿Listo para tu Transformación?
             </h2>
             <p className="text-xl text-gray-600 dark:text-white/80 mb-8 max-w-3xl mx-auto">
-              No esperes más. Tu mejor versión te está esperando. Contacta con
-              RogerBox hoy mismo.
+              No esperes más. Tu mejor versión te está esperando. Contacta con RogerBox hoy mismo.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <button className="bg-[#85ea10] hover:bg-[#7dd30f] text-black font-bold px-8 py-4 rounded-xl text-lg transition-all duration-300 hover:scale-105 flex items-center justify-center space-x-2">

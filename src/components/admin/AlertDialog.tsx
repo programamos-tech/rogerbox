@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertTriangle, CheckCircle, Info, X, XCircle } from 'lucide-react';
+import { X, CheckCircle, AlertTriangle, Info, XCircle } from 'lucide-react';
 
 interface AlertDialogProps {
   isOpen: boolean;
@@ -17,7 +17,7 @@ export default function AlertDialog({
   title,
   message,
   type = 'info',
-  confirmText = 'OK',
+  confirmText = 'OK'
 }: AlertDialogProps) {
   if (!isOpen) return null;
 

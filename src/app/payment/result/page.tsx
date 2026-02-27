@@ -1,20 +1,12 @@
 'use client';
 
-import {
-  CheckCircle,
-  CheckCircle2,
-  ChevronRight,
-  Clock,
-  Download,
-  Sparkles,
-  XCircle,
-} from 'lucide-react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useEffect, useState } from 'react';
-import CourseStartDateModal from '@/components/CourseStartDateModal';
+import { useEffect, useState, Suspense } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
-import { useUserPurchases } from '@/hooks/useUserPurchases';
 import { supabase } from '@/lib/supabase-browser';
+import { useUserPurchases } from '@/hooks/useUserPurchases';
+import { CheckCircle, XCircle, Clock, ChevronRight, CheckCircle2, Sparkles, Download } from 'lucide-react';
+import CourseStartDateModal from '@/components/CourseStartDateModal';
 
 interface OrderResult {
   id: string;
@@ -53,7 +45,7 @@ function PaymentResultContent() {
     }
 
     loadOrderResult();
-  }, [orderId, transactionId, reference, loadOrderResult]);
+  }, [orderId, transactionId, reference]);
 
   // Obtener información del comprador cuando la sesión esté disponible (solo si no se obtuvo de la orden)
   useEffect(() => {
@@ -75,7 +67,9 @@ function PaymentResultContent() {
               setBuyerDocument(profile.document_id || '');
             }
           }
-        } catch (_error) {}
+        } catch (error) {
+          console.error('Error fetching buyer info:', error);
+        }
       }
     };
 
@@ -84,7 +78,11 @@ function PaymentResultContent() {
 
   const loadOrderResult = async () => {
     try {
-      let query = supabase.from('orders').select(`
+      console.log('🔍 Buscando orden con:', { orderId, reference, transactionId });
+
+      let query = supabase
+        .from('orders')
+        .select(`
           id,
           status,
           amount,
@@ -112,9 +110,12 @@ function PaymentResultContent() {
       const { data, error } = await query.single();
 
       if (error) {
+        console.error('❌ Error loading order:', error);
         setError('Error al cargar la información de la orden');
         return;
       }
+
+      console.log('✅ Orden encontrada:', data);
 
       // Transformar los datos para que coincidan con la interfaz
       const courses = data.courses as any;
@@ -125,22 +126,30 @@ function PaymentResultContent() {
         currency: data.currency,
         course_title: courses?.title || 'Curso no encontrado',
         course_image: courses?.preview_image || '',
-        created_at: data.created_at,
+        created_at: data.created_at
       };
 
       setOrder(transformedData);
       setCourseId(data.course_id);
+
+      console.log('👤 Datos de la orden:', {
+        customer_name: data.customer_name,
+        user_id: data.user_id,
+        current_user_id: user?.id
+      });
 
       let foundName = data.customer_name || '';
       let foundDocument = '';
 
       // Obtener nombre del cliente desde la orden primero
       if (data.customer_name) {
+        console.log('✅ Nombre obtenido de la orden:', data.customer_name);
         foundName = data.customer_name;
       }
-
+      
       // Obtener información completa del perfil del usuario (nombre y cédula)
       if (data.user_id) {
+        console.log('🔍 Buscando perfil para user_id:', data.user_id);
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('name, document_id')
@@ -149,15 +158,17 @@ function PaymentResultContent() {
 
         if (profileError) {
           // Solo loguear si hay información útil
-          if (
-            profileError?.message ||
-            profileError?.code ||
-            profileError?.details
-          ) {
+          if (profileError?.message || profileError?.code || profileError?.details) {
+            console.error('❌ Error obteniendo perfil:', {
+              message: profileError.message,
+              code: profileError.code,
+              details: profileError.details
+            });
           }
         }
 
         if (profile) {
+          console.log('✅ Perfil encontrado:', { name: profile.name, document_id: profile.document_id });
           // Si no hay nombre en la orden, usar el del perfil
           if (!foundName && profile.name) {
             foundName = profile.name;
@@ -167,11 +178,13 @@ function PaymentResultContent() {
             foundDocument = profile.document_id;
           }
         } else {
+          console.log('⚠️ No se encontró perfil para user_id:', data.user_id);
         }
       }
-
+      
       // Si aún no tenemos nombre, intentar obtenerlo del usuario actual
       if (!foundName && user?.id) {
+        console.log('🔍 Buscando perfil del usuario actual:', user.id);
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('name, document_id')
@@ -179,9 +192,11 @@ function PaymentResultContent() {
           .maybeSingle();
 
         if (profileError) {
+          console.error('❌ Error obteniendo perfil de sesión:', profileError);
         }
 
         if (profile) {
+          console.log('✅ Perfil de sesión encontrado:', { name: profile.name, document_id: profile.document_id });
           if (!foundName && profile.name) {
             foundName = profile.name;
           }
@@ -199,62 +214,102 @@ function PaymentResultContent() {
         setBuyerDocument(foundDocument);
       }
 
+      console.log('📋 Datos finales del comprador:', {
+        buyerName: foundName,
+        buyerDocument: foundDocument
+      });
+
       // Si el pago está aprobado, verificar si tiene fecha de inicio
       if (data.status === 'approved' && data.course_id) {
+        console.log('🔍 PaymentResult: Buscando compra del curso...', {
+          orderId: data.id,
+          courseId: data.course_id,
+          userId: data.user_id,
+          currentUserId: user?.id
+        });
+
         // Esperar un momento para asegurar que la compra se haya creado (en modo mock)
-        await new Promise((resolve) => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, 500));
 
         // Buscar la compra del curso - primero por order_id, luego por user_id si no se encuentra
         let purchase = null;
         let purchaseError = null;
-
+        
         // Intentar buscar por order_id y course_id
         const { data: purchaseByOrder, error: errorByOrder } = await supabase
           .from('course_purchases')
-          .select(
-            'id, start_date, created_at, order_id, course_id, user_id, is_active',
-          )
+          .select('id, start_date, created_at, order_id, course_id, user_id, is_active')
           .eq('order_id', data.id)
           .eq('course_id', data.course_id)
           .maybeSingle();
-
+        
         if (purchaseByOrder) {
           purchase = purchaseByOrder;
+          console.log('✅ PaymentResult: Compra encontrada por order_id');
         } else if (errorByOrder && errorByOrder.code !== 'PGRST116') {
           purchaseError = errorByOrder;
         } else {
           // Si no se encuentra por order_id, intentar buscar por user_id y course_id
           const purchaseUserId = data.user_id || user?.id;
           if (purchaseUserId) {
+            console.log('🔍 PaymentResult: Buscando compra por user_id y course_id...', {
+              userId: purchaseUserId,
+              courseId: data.course_id
+            });
+            
             const { data: purchaseByUser, error: errorByUser } = await supabase
               .from('course_purchases')
-              .select(
-                'id, start_date, created_at, order_id, course_id, user_id, is_active',
-              )
+              .select('id, start_date, created_at, order_id, course_id, user_id, is_active')
               .eq('user_id', purchaseUserId)
               .eq('course_id', data.course_id)
               .eq('is_active', true)
               .maybeSingle();
-
+            
             if (purchaseByUser) {
               purchase = purchaseByUser;
+              console.log('✅ PaymentResult: Compra encontrada por user_id y course_id');
             } else if (errorByUser && errorByUser.code !== 'PGRST116') {
               purchaseError = errorByUser;
             }
           }
         }
 
+        console.log('🔍 PaymentResult: Resultado de búsqueda de compra:', {
+          hasPurchase: !!purchase,
+          purchaseError: purchaseError ? {
+            message: purchaseError.message,
+            code: purchaseError.code,
+            details: purchaseError.details,
+            hint: purchaseError.hint
+          } : null,
+          purchase: purchase ? {
+            id: purchase.id,
+            hasStartDate: !!purchase.start_date,
+            orderId: purchase.order_id,
+            courseId: purchase.course_id,
+            userId: purchase.user_id,
+            isActive: purchase.is_active
+          } : null,
+          orderId: data.id,
+          courseId: data.course_id,
+          userId: data.user_id,
+          currentUserId: user?.id
+        });
+
         // Si no hay compra, crearla inmediatamente (no esperar al webhook)
         if (!purchase) {
           if (purchaseError && purchaseError.code !== 'PGRST116') {
+            // Error real, no solo "no encontrado"
+            console.error('❌ PaymentResult: Error buscando compra:', purchaseError);
           } else {
+            console.log('⚠️ PaymentResult: No se encontró compra, creándola ahora...');
+            
             // Intentar crear la compra con el usuario actual si no hay user_id en la orden
             const purchaseUserId = data.user_id || user?.id;
-
+            
             if (!purchaseUserId) {
-              setError(
-                'No se pudo identificar al usuario para crear la compra',
-              );
+              console.error('❌ PaymentResult: No hay user_id disponible para crear la compra');
+              setError('No se pudo identificar al usuario para crear la compra');
               return;
             }
 
@@ -266,37 +321,55 @@ function PaymentResultContent() {
                 order_id: data.id,
                 purchase_price: data.amount,
                 is_active: true,
-                access_granted_at: new Date().toISOString(),
+                access_granted_at: new Date().toISOString()
               })
               .select('id, user_id, start_date, created_at')
               .single();
 
             if (createError) {
-              setError(
-                'No se pudo crear la compra del curso. Por favor, contacta al soporte.',
-              );
+              console.error('❌ PaymentResult: Error creando compra:', {
+                message: createError.message,
+                code: createError.code,
+                details: createError.details,
+                hint: createError.hint
+              });
+              setError('No se pudo crear la compra del curso. Por favor, contacta al soporte.');
             } else {
+              console.log('✅ PaymentResult: Compra creada exitosamente:', newPurchase);
+              console.log('🔍 PaymentResult: Verificando que la compra sea visible...', {
+                purchaseId: newPurchase.id,
+                userId: newPurchase.user_id || purchaseUserId,
+                currentUserId: user?.id
+              });
+              
               // Verificar inmediatamente que la compra sea visible
-              const { data: verifyPurchase, error: verifyError } =
-                await supabase
-                  .from('course_purchases')
-                  .select('id, user_id, course_id, is_active')
-                  .eq('id', newPurchase.id)
-                  .single();
-
+              const { data: verifyPurchase, error: verifyError } = await supabase
+                .from('course_purchases')
+                .select('id, user_id, course_id, is_active')
+                .eq('id', newPurchase.id)
+                .single();
+              
               if (verifyError) {
+                console.error('❌ PaymentResult: La compra no es visible después de crearla:', verifyError);
               } else {
+                console.log('✅ PaymentResult: La compra es visible:', {
+                  purchaseId: verifyPurchase?.id,
+                  userId: verifyPurchase?.user_id,
+                  matchesCurrentUser: verifyPurchase?.user_id === user?.id
+                });
               }
-
+              
               // Guardar el purchaseId para pasarlo al modal
               setPurchaseId(newPurchase.id);
               // Refrescar las compras múltiples veces para asegurar que se actualicen
               refreshPurchases();
               setTimeout(() => {
                 refreshPurchases();
+                console.log('🔄 PaymentResult: Compras refrescadas (intento 1)');
               }, 500);
               setTimeout(() => {
                 refreshPurchases();
+                console.log('🔄 PaymentResult: Compras refrescadas (intento 2)');
               }, 1500);
               // Verificar si necesita fecha de inicio
               if (!newPurchase.start_date) {
@@ -308,12 +381,25 @@ function PaymentResultContent() {
             }
           }
         } else {
+          // Ya existe la compra
+          console.log('✅ PaymentResult: Compra encontrada:', purchase.id);
+          console.log('🔍 PaymentResult: Detalles de la compra encontrada:', {
+            purchaseId: purchase.id,
+            userId: purchase.user_id,
+            courseId: purchase.course_id,
+            isActive: purchase.is_active,
+            hasStartDate: !!purchase.start_date,
+            currentUserId: user?.id,
+            matchesCurrentUser: purchase.user_id === user?.id
+          });
+          
           // Guardar el purchaseId para pasarlo al modal
           setPurchaseId(purchase.id);
           // Refrescar las compras para asegurar que estén actualizadas
           refreshPurchases();
           setTimeout(() => {
             refreshPurchases();
+            console.log('🔄 PaymentResult: Compras refrescadas');
           }, 500);
           if (!purchase.start_date) {
             // No tiene fecha de inicio, mostrar modal
@@ -328,6 +414,7 @@ function PaymentResultContent() {
       // Si el pago está pendiente, verificar estado cada 3 segundos
       if (data.status === 'pending') {
         const intervalId = setInterval(async () => {
+          console.log('🔄 Verificando estado de la orden...');
           const { data: updatedOrder } = await supabase
             .from('orders')
             .select('status')
@@ -335,9 +422,8 @@ function PaymentResultContent() {
             .single();
 
           if (updatedOrder && updatedOrder.status !== 'pending') {
-            setOrder((prev) =>
-              prev ? { ...prev, status: updatedOrder.status } : null,
-            );
+            console.log('✅ Estado actualizado:', updatedOrder.status);
+            setOrder(prev => prev ? { ...prev, status: updatedOrder.status } : null);
             clearInterval(intervalId);
           }
         }, 3000);
@@ -347,14 +433,15 @@ function PaymentResultContent() {
 
         return () => clearInterval(intervalId);
       }
-    } catch (_err) {
+    } catch (err) {
+      console.error('❌ Error:', err);
       setError('Error interno del servidor');
     } finally {
       setLoading(false);
     }
   };
 
-  const _getStatusIcon = (status: string) => {
+  const getStatusIcon = (status: string) => {
     switch (status) {
       case 'approved':
         return <CheckCircle className="w-16 h-16 text-green-500" />;
@@ -372,29 +459,26 @@ function PaymentResultContent() {
       case 'approved':
         return {
           title: '¡Pago Exitoso!',
-          message:
-            'Tu pago ha sido procesado correctamente y ya tienes acceso al curso.',
-          color: 'text-green-600',
+          message: 'Tu pago ha sido procesado correctamente y ya tienes acceso al curso.',
+          color: 'text-green-600'
         };
       case 'declined':
         return {
           title: 'Pago Declinado',
-          message:
-            'Tu pago no pudo ser procesado. Por favor, intenta nuevamente.',
-          color: 'text-red-600',
+          message: 'Tu pago no pudo ser procesado. Por favor, intenta nuevamente.',
+          color: 'text-red-600'
         };
       case 'pending':
         return {
           title: 'Pago Pendiente',
-          message:
-            'Tu pago está siendo procesado. Te notificaremos cuando esté listo.',
-          color: 'text-yellow-600',
+          message: 'Tu pago está siendo procesado. Te notificaremos cuando esté listo.',
+          color: 'text-yellow-600'
         };
       default:
         return {
           title: 'Estado Desconocido',
           message: 'No pudimos determinar el estado de tu pago.',
-          color: 'text-gray-600',
+          color: 'text-gray-600'
         };
     }
   };
@@ -550,14 +634,12 @@ function PaymentResultContent() {
             </div>
             <div class="detail-row">
               <span class="detail-label">Fecha de Pago:</span>
-              <span class="detail-value">${new Date(
-                order.created_at,
-              ).toLocaleDateString('es-CO', {
-                year: 'numeric',
-                month: 'long',
+              <span class="detail-value">${new Date(order.created_at).toLocaleDateString('es-CO', { 
+                year: 'numeric', 
+                month: 'long', 
                 day: 'numeric',
                 hour: '2-digit',
-                minute: '2-digit',
+                minute: '2-digit'
               })}</span>
             </div>
             <div class="detail-row">
@@ -598,7 +680,7 @@ function PaymentResultContent() {
     // Crear un blob con el contenido HTML
     const blob = new Blob([receiptContent], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
-
+    
     // Crear un enlace temporal y hacer click para descargar
     const link = document.createElement('a');
     link.href = url;
@@ -606,7 +688,7 @@ function PaymentResultContent() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-
+    
     // Limpiar el URL
     URL.revokeObjectURL(url);
   };
@@ -616,9 +698,7 @@ function PaymentResultContent() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="bg-white rounded-2xl p-8 shadow-2xl">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#85ea10] mx-auto"></div>
-          <p className="text-gray-600 mt-4 text-center">
-            Cargando resultado del pago...
-          </p>
+          <p className="text-gray-600 mt-4 text-center">Cargando resultado del pago...</p>
         </div>
       </div>
     );
@@ -660,12 +740,12 @@ function PaymentResultContent() {
 
         {/* Título y mensaje */}
         <div className="text-center mb-6">
-          <h1
-            className={`text-3xl font-bold mb-3 ${order.status === 'approved' ? 'text-[#85ea10]' : statusInfo.color}`}
-          >
+          <h1 className={`text-3xl font-bold mb-3 ${order.status === 'approved' ? 'text-[#85ea10]' : statusInfo.color}`}>
             {statusInfo.title}
           </h1>
-          <p className="text-gray-600 text-lg">{statusInfo.message}</p>
+          <p className="text-gray-600 text-lg">
+            {statusInfo.message}
+          </p>
           {order.status === 'approved' && (
             <div className="mt-4 p-3 bg-[#85ea10]/10 border-2 border-[#85ea10] rounded-lg flex items-center justify-center gap-2">
               <CheckCircle2 className="w-5 h-5 text-[#85ea10] flex-shrink-0" />
@@ -678,9 +758,7 @@ function PaymentResultContent() {
 
         {/* Información de la orden */}
         <div className="bg-gray-50 rounded-xl p-4 mb-6 border border-gray-200">
-          <h3 className="font-semibold text-gray-900 mb-3">
-            Detalles de la Orden
-          </h3>
+          <h3 className="font-semibold text-gray-900 mb-3">Detalles de la Orden</h3>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-gray-600">Curso:</span>
@@ -697,9 +775,7 @@ function PaymentResultContent() {
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Estado:</span>
-              <span
-                className={`font-medium capitalize flex items-center gap-1 ${order.status === 'approved' ? 'text-[#85ea10]' : statusInfo.color}`}
-              >
+              <span className={`font-medium capitalize flex items-center gap-1 ${order.status === 'approved' ? 'text-[#85ea10]' : statusInfo.color}`}>
                 {order.status === 'approved' ? (
                   <>
                     <CheckCircle2 className="w-4 h-4" />
@@ -750,21 +826,20 @@ function PaymentResultContent() {
             <ChevronRight className="w-5 h-5" />
           </button>
         ) : (
-          <button
-            onClick={handleContinue}
+        <button
+          onClick={handleContinue}
             className="w-full bg-[#85ea10] text-black font-bold py-3 px-6 rounded-xl hover:bg-[#6bc20a] transition-colors flex items-center justify-center gap-2"
-          >
-            {order.status === 'approved' ? 'Ir al Dashboard' : 'Ver Cursos'}
-            <ChevronRight className="w-5 h-5" />
-          </button>
+        >
+          {order.status === 'approved' ? 'Ir al Dashboard' : 'Ver Cursos'}
+          <ChevronRight className="w-5 h-5" />
+        </button>
         )}
 
         {/* Información adicional para pagos pendientes */}
         {order.status === 'pending' && (
           <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
             <p className="text-yellow-800 text-sm text-center">
-              <strong>Nota:</strong> Los pagos pendientes pueden tardar hasta 24
-              horas en procesarse.
+              <strong>Nota:</strong> Los pagos pendientes pueden tardar hasta 24 horas en procesarse.
             </p>
           </div>
         )}
@@ -797,9 +872,7 @@ function PaymentResultLoading() {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
       <div className="bg-white rounded-2xl p-8 shadow-2xl">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#85ea10] mx-auto"></div>
-        <p className="text-gray-600 mt-4 text-center">
-          Cargando resultado del pago...
-        </p>
+        <p className="text-gray-600 mt-4 text-center">Cargando resultado del pago...</p>
       </div>
     </div>
   );

@@ -1,7 +1,7 @@
 'use client';
 
-import { Maximize, Minimize, Pause, Play } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { Play, Pause, Maximize, Minimize } from 'lucide-react';
 import { getMuxVideoUrl } from '@/lib/mux-config';
 
 interface MuxVideoPlayerProps {
@@ -116,7 +116,9 @@ export default function MuxVideoPlayer({
           (document as any).msExitFullscreen();
         }
       }
-    } catch (_error) {}
+    } catch (error) {
+      console.warn('⚠️ Error al cambiar pantalla completa:', error);
+    }
   };
 
   // Escuchar cambios de pantalla completa
@@ -148,17 +150,11 @@ export default function MuxVideoPlayer({
 
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
-      document.removeEventListener(
-        'webkitfullscreenchange',
-        handleFullscreenChange,
-      );
-      document.removeEventListener(
-        'msfullscreenchange',
-        handleFullscreenChange,
-      );
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('msfullscreenchange', handleFullscreenChange);
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isFullscreen, toggleFullscreen]);
+  }, [isFullscreen]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -167,16 +163,14 @@ export default function MuxVideoPlayer({
   };
 
   return (
-    <div
+    <div 
       ref={containerRef}
       className={`relative bg-gray-900 rounded-2xl overflow-hidden shadow-lg group ${
         isFullscreen ? 'fixed inset-0 z-50 rounded-none' : ''
       }`}
     >
       {/* Contenedor con aspect ratio 16:9 */}
-      <div
-        className={`relative w-full ${isFullscreen ? 'h-screen' : 'aspect-video'}`}
-      >
+      <div className={`relative w-full ${isFullscreen ? 'h-screen' : 'aspect-video'}`}>
         {/* Video de Mux */}
         <video
           ref={videoRef}
@@ -217,9 +211,7 @@ export default function MuxVideoPlayer({
           <button
             onClick={toggleFullscreen}
             className="w-10 h-10 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center text-white transition-all duration-300 hover:scale-110"
-            title={
-              isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'
-            }
+            title={isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
           >
             {isFullscreen ? (
               <Minimize className="w-5 h-5" />

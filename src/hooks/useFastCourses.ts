@@ -1,10 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import {
-  type FastCourse,
-  fastCoursesService,
-} from '@/services/fastCoursesService';
+import { useState, useEffect, useCallback } from 'react';
+import { fastCoursesService, FastCourse } from '@/services/fastCoursesService';
 
 interface UseFastCoursesReturn {
   courses: FastCourse[];
@@ -28,14 +25,20 @@ export const useFastCourses = (): UseFastCoursesReturn => {
     try {
       setLoading(true);
       setError(null);
-      const _startTime = performance.now();
-
+      
+      console.log('⚡ useFastCourses: Cargando...');
+      const startTime = performance.now();
+      
       const coursesData = await fastCoursesService.getCourses(forceRefresh);
-
-      const _endTime = performance.now();
-
+      
+      const endTime = performance.now();
+      console.log(`⚡ useFastCourses: Completado en ${(endTime - startTime).toFixed(2)}ms`);
+      console.log(`📊 useFastCourses: ${coursesData.length} cursos`);
+      
       setCourses(coursesData);
+      
     } catch (err) {
+      console.error('❌ useFastCourses: Error:', err);
       setError(err instanceof Error ? err.message : 'Error desconocido');
     } finally {
       setLoading(false);
@@ -46,6 +49,7 @@ export const useFastCourses = (): UseFastCoursesReturn => {
    * Refresca los cursos
    */
   const refresh = useCallback(async () => {
+    console.log('🔄 useFastCourses: Refrescando...');
     await loadCourses(true);
   }, [loadCourses]);
 
@@ -58,7 +62,7 @@ export const useFastCourses = (): UseFastCoursesReturn => {
     courses,
     loading,
     error,
-    refresh,
+    refresh
   };
 };
 

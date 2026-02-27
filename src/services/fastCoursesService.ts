@@ -38,7 +38,9 @@ class FastCoursesService {
       if (videoId) {
         return `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
       }
-    } catch (_error) {}
+    } catch (error) {
+      console.warn('Error al extraer video ID de YouTube:', error);
+    }
     return '/images/course-placeholder.jpg';
   }
 
@@ -48,15 +50,19 @@ class FastCoursesService {
   async getCourses(forceRefresh = false): Promise<FastCourse[]> {
     // Si hay caché válido y no se fuerza refresh, devolver inmediatamente
     if (!forceRefresh && this.cache && this.isCacheValid()) {
+      console.log('⚡ FastCourses: Usando caché instantáneo');
       return this.cache;
     }
 
     // Si ya está cargando, esperar
     if (this.loading) {
+      console.log('⏳ FastCourses: Ya está cargando, esperando...');
       return this.waitForCache();
     }
+
+    console.log('🚀 FastCourses: Cargando desde DB...');
     this.loading = true;
-    const _startTime = performance.now();
+    const startTime = performance.now();
 
     try {
       // CONSULTA ULTRA SIMPLE - Solo campos esenciales
@@ -81,6 +87,7 @@ class FastCoursesService {
         .limit(20); // Limitar para velocidad
 
       if (error) {
+        console.error('❌ FastCourses: Error:', error);
         throw error;
       }
 
@@ -93,30 +100,25 @@ class FastCoursesService {
       // Crear mapa de categorías
       const categoryMap: { [key: string]: string } = {};
       if (categoriesData) {
-        categoriesData.forEach((cat) => {
+        categoriesData.forEach(cat => {
           categoryMap[cat.id] = cat.name;
         });
       }
 
       // Transformación ULTRA RÁPIDA
       const twoWeeksAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
-      const courses = (data || []).map((course) => {
+      const courses = (data || []).map(course => {
         const isNew = new Date(course.created_at) > twoWeeksAgo;
-
+        
         return {
           id: course.id,
           title: course.title,
           description: course.description || '',
           short_description: course.short_description || '',
-          thumbnail: course.intro_video_url
-            ? this.getYouTubeThumbnail(course.intro_video_url)
-            : '/images/course-placeholder.jpg',
-          preview_image: course.intro_video_url
-            ? this.getYouTubeThumbnail(course.intro_video_url)
-            : '/images/course-placeholder.jpg',
+          thumbnail: course.intro_video_url ? this.getYouTubeThumbnail(course.intro_video_url) : '/images/course-placeholder.jpg',
+          preview_image: course.intro_video_url ? this.getYouTubeThumbnail(course.intro_video_url) : '/images/course-placeholder.jpg',
           price: course.price || 0,
-          original_price:
-            course.discount_percentage > 0 ? course.price : undefined,
+          original_price: course.discount_percentage > 0 ? course.price : undefined,
           discount_percentage: course.discount_percentage || 0,
           category_name: categoryMap[course.category] || 'Sin categoría',
           rating: course.rating || 4.8,
@@ -126,7 +128,7 @@ class FastCoursesService {
           level: 'Intermedio', // Valor por defecto
           isNew,
           isPopular: false, // Simplificado por velocidad
-          created_at: course.created_at,
+          created_at: course.created_at
         };
       });
 
@@ -135,17 +137,21 @@ class FastCoursesService {
       this.cacheTimestamp = Date.now();
       this.loading = false;
 
-      const _endTime = performance.now();
+      const endTime = performance.now();
+      console.log(`⚡ FastCourses: Cargados en ${(endTime - startTime).toFixed(2)}ms`);
 
       return courses;
-    } catch (error) {
-      this.loading = false;
 
+    } catch (error) {
+      console.error('❌ FastCourses: Error:', error);
+      this.loading = false;
+      
       // Devolver caché anterior si existe
       if (this.cache) {
+        console.log('🔄 FastCourses: Usando caché anterior por error');
         return this.cache;
       }
-
+      
       throw error;
     }
   }
@@ -179,6 +185,7 @@ class FastCoursesService {
   clearCache(): void {
     this.cache = null;
     this.cacheTimestamp = 0;
+    console.log('🗑️ FastCourses: Caché limpiado');
   }
 
   /**
@@ -186,7 +193,7 @@ class FastCoursesService {
    */
   async getCourseById(id: string): Promise<FastCourse | null> {
     const courses = await this.getCourses();
-    return courses.find((course) => course.id === id) || null;
+    return courses.find(course => course.id === id) || null;
   }
 }
 

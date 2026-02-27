@@ -1,13 +1,13 @@
-import { type NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 
 export async function POST(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
-
+    
     // Obtener el valor actual de visualizaciones
     const { data: currentStats, error: fetchError } = await supabase
       .from('complement_stats')
@@ -16,10 +16,8 @@ export async function POST(
       .single();
 
     if (fetchError) {
-      return NextResponse.json(
-        { error: 'Failed to fetch current stats' },
-        { status: 500 },
-      );
+      console.error('Error fetching current stats:', fetchError);
+      return NextResponse.json({ error: 'Failed to fetch current stats' }, { status: 500 });
     }
 
     // Incrementar el contador de visualizaciones
@@ -27,27 +25,23 @@ export async function POST(
       .from('complement_stats')
       .update({
         total_views: (currentStats.total_views || 0) + 1,
-        updated_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       })
       .eq('complement_id', id)
       .select()
       .single();
 
     if (error) {
-      return NextResponse.json(
-        { error: 'Failed to increment views' },
-        { status: 500 },
-      );
+      console.error('Error incrementing views:', error);
+      return NextResponse.json({ error: 'Failed to increment views' }, { status: 500 });
     }
 
-    return NextResponse.json({
-      success: true,
-      total_views: data.total_views,
+    return NextResponse.json({ 
+      success: true, 
+      total_views: data.total_views 
     });
-  } catch (_error) {
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 },
-    );
+  } catch (error) {
+    console.error('Error in POST /api/complements/[id]/view:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

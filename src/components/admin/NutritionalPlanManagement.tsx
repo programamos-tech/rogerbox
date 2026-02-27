@@ -1,24 +1,17 @@
 'use client';
 
-import { Clock, Edit, Plus, Trash2, Users, Utensils } from 'lucide-react';
 import { useState } from 'react';
-import type { NutritionalPlan } from '@/types';
+import { Plus, Edit, Trash2, Eye, Utensils, Clock, Users, DollarSign } from 'lucide-react';
+import { NutritionalPlan } from '@/types';
 
 interface NutritionalPlanManagementProps {
   plans: NutritionalPlan[];
-  onAddPlan: (
-    plan: Omit<NutritionalPlan, 'id' | 'purchaseCount' | 'createdAt'>,
-  ) => void;
+  onAddPlan: (plan: Omit<NutritionalPlan, 'id' | 'purchaseCount' | 'createdAt'>) => void;
   onEditPlan: (id: string, plan: Partial<NutritionalPlan>) => void;
   onDeletePlan: (id: string) => void;
 }
 
-export default function NutritionalPlanManagement({
-  plans,
-  onAddPlan,
-  onEditPlan,
-  onDeletePlan,
-}: NutritionalPlanManagementProps) {
+export default function NutritionalPlanManagement({ plans, onAddPlan, onEditPlan, onDeletePlan }: NutritionalPlanManagementProps) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingPlan, setEditingPlan] = useState<NutritionalPlan | null>(null);
   const [newPlan, setNewPlan] = useState({
@@ -27,11 +20,7 @@ export default function NutritionalPlanManagement({
     duration: 30,
     price: 0,
     level: 'Beginner' as 'Beginner' | 'Intermediate' | 'Advanced',
-    category: 'weight_loss' as
-      | 'weight_loss'
-      | 'muscle_gain'
-      | 'maintenance'
-      | 'detox',
+    category: 'weight_loss' as 'weight_loss' | 'muscle_gain' | 'maintenance' | 'detox',
     videoUrl: '',
     thumbnailUrl: '',
     menu: [] as any[],
@@ -50,14 +39,14 @@ export default function NutritionalPlanManagement({
     { id: 'weight_loss', name: 'Bajar de Peso', icon: '⚖️' },
     { id: 'muscle_gain', name: 'Ganar Músculo', icon: '💪' },
     { id: 'maintenance', name: 'Mantenimiento', icon: '🔄' },
-    { id: 'detox', name: 'Detox', icon: '🌿' },
+    { id: 'detox', name: 'Detox', icon: '🌿' }
   ];
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('es-CO', {
       style: 'currency',
       currency: 'COP',
-      minimumFractionDigits: 0,
+      minimumFractionDigits: 0
     }).format(price);
   };
 
@@ -114,12 +103,8 @@ export default function NutritionalPlanManagement({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-white">
-            Gestión de Planes Nutricionales
-          </h2>
-          <p className="text-white/60">
-            Crea y administra los planes nutricionales
-          </p>
+          <h2 className="text-2xl font-bold text-white">Gestión de Planes Nutricionales</h2>
+          <p className="text-white/60">Crea y administra los planes nutricionales</p>
         </div>
         <button
           onClick={() => setShowAddModal(true)}
@@ -133,16 +118,13 @@ export default function NutritionalPlanManagement({
       {/* Plans Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {plans.map((plan) => (
-          <div
-            key={plan.id}
-            className="bg-white/5 backdrop-blur-sm rounded-2xl overflow-hidden border border-white/10 hover:border-[#85ea10]/50 transition-all duration-300 group"
-          >
+          <div key={plan.id} className="bg-white/5 backdrop-blur-sm rounded-2xl overflow-hidden border border-white/10 hover:border-[#85ea10]/50 transition-all duration-300 group">
             {/* Thumbnail */}
             <div className="relative h-48 bg-gradient-to-br from-green-600 to-green-800 flex items-center justify-center">
               <Utensils className="w-16 h-16 text-white/80" />
               <div className="absolute top-4 left-4">
                 <span className="px-3 py-1 bg-[#85ea10]/20 text-[#85ea10] rounded-full text-sm font-medium">
-                  {categories.find((c) => c.id === plan.category)?.name}
+                  {categories.find(c => c.id === plan.category)?.name}
                 </span>
               </div>
               <div className="absolute top-4 right-4">
@@ -157,7 +139,7 @@ export default function NutritionalPlanManagement({
               <h3 className="text-xl font-bold text-white mb-2 group-hover:text-[#85ea10] transition-colors">
                 {plan.title}
               </h3>
-
+              
               <p className="text-white/70 mb-4 line-clamp-2">
                 {plan.description}
               </p>
@@ -179,21 +161,15 @@ export default function NutritionalPlanManagement({
 
               {/* Nutritional Info */}
               <div className="mb-4 p-3 bg-white/5 rounded-lg">
-                <div className="text-xs text-white/60 mb-2">
-                  Información Nutricional Diaria
-                </div>
+                <div className="text-xs text-white/60 mb-2">Información Nutricional Diaria</div>
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-white/80">Calorías:</span>
-                    <span className="text-white font-bold">
-                      {plan.nutritionalInfo.totalCalories}
-                    </span>
+                    <span className="text-white font-bold">{plan.nutritionalInfo.totalCalories}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-white/80">Proteínas:</span>
-                    <span className="text-white font-bold">
-                      {plan.nutritionalInfo.protein}g
-                    </span>
+                    <span className="text-white font-bold">{plan.nutritionalInfo.protein}g</span>
                   </div>
                 </div>
               </div>
@@ -228,50 +204,33 @@ export default function NutritionalPlanManagement({
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 w-full max-w-4xl border border-white/20 max-h-[90vh] overflow-y-auto">
             <h3 className="text-xl font-bold text-white mb-6">
-              {editingPlan
-                ? 'Editar Plan Nutricional'
-                : 'Nuevo Plan Nutricional'}
+              {editingPlan ? 'Editar Plan Nutricional' : 'Nuevo Plan Nutricional'}
             </h3>
-
+            
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Basic Info */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-white/80 text-sm font-medium mb-2">
-                    Título
-                  </label>
+                  <label className="block text-white/80 text-sm font-medium mb-2">Título</label>
                   <input
                     type="text"
                     value={newPlan.title}
-                    onChange={(e) =>
-                      setNewPlan({ ...newPlan, title: e.target.value })
-                    }
+                    onChange={(e) => setNewPlan({...newPlan, title: e.target.value})}
                     className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#85ea10]"
                     placeholder="Nombre del plan"
                     required
                   />
                 </div>
-
+                
                 <div>
-                  <label className="block text-white/80 text-sm font-medium mb-2">
-                    Categoría
-                  </label>
+                  <label className="block text-white/80 text-sm font-medium mb-2">Categoría</label>
                   <select
                     value={newPlan.category}
-                    onChange={(e) =>
-                      setNewPlan({
-                        ...newPlan,
-                        category: e.target.value as any,
-                      })
-                    }
+                    onChange={(e) => setNewPlan({...newPlan, category: e.target.value as any})}
                     className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]"
                   >
                     {categories.map((cat) => (
-                      <option
-                        key={cat.id}
-                        value={cat.id}
-                        className="bg-gray-800"
-                      >
+                      <option key={cat.id} value={cat.id} className="bg-gray-800">
                         {cat.name}
                       </option>
                     ))}
@@ -280,14 +239,10 @@ export default function NutritionalPlanManagement({
               </div>
 
               <div>
-                <label className="block text-white/80 text-sm font-medium mb-2">
-                  Descripción
-                </label>
+                <label className="block text-white/80 text-sm font-medium mb-2">Descripción</label>
                 <textarea
                   value={newPlan.description}
-                  onChange={(e) =>
-                    setNewPlan({ ...newPlan, description: e.target.value })
-                  }
+                  onChange={(e) => setNewPlan({...newPlan, description: e.target.value})}
                   rows={3}
                   className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#85ea10]"
                   placeholder="Descripción del plan"
@@ -297,82 +252,51 @@ export default function NutritionalPlanManagement({
 
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
-                  <label className="block text-white/80 text-sm font-medium mb-2">
-                    Duración (días)
-                  </label>
+                  <label className="block text-white/80 text-sm font-medium mb-2">Duración (días)</label>
                   <input
                     type="number"
                     value={newPlan.duration}
-                    onChange={(e) =>
-                      setNewPlan({
-                        ...newPlan,
-                        duration: parseInt(e.target.value, 10),
-                      })
-                    }
+                    onChange={(e) => setNewPlan({...newPlan, duration: parseInt(e.target.value)})}
                     className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#85ea10]"
                     placeholder="30"
                     required
                   />
                 </div>
-
+                
                 <div>
-                  <label className="block text-white/80 text-sm font-medium mb-2">
-                    Precio (COP)
-                  </label>
+                  <label className="block text-white/80 text-sm font-medium mb-2">Precio (COP)</label>
                   <input
                     type="number"
                     value={newPlan.price}
-                    onChange={(e) =>
-                      setNewPlan({
-                        ...newPlan,
-                        price: parseInt(e.target.value, 10),
-                      })
-                    }
+                    onChange={(e) => setNewPlan({...newPlan, price: parseInt(e.target.value)})}
                     className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#85ea10]"
                     placeholder="0"
                     required
                   />
                 </div>
-
+                
                 <div>
-                  <label className="block text-white/80 text-sm font-medium mb-2">
-                    Nivel
-                  </label>
+                  <label className="block text-white/80 text-sm font-medium mb-2">Nivel</label>
                   <select
                     value={newPlan.level}
-                    onChange={(e) =>
-                      setNewPlan({ ...newPlan, level: e.target.value as any })
-                    }
+                    onChange={(e) => setNewPlan({...newPlan, level: e.target.value as any})}
                     className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]"
                   >
-                    <option value="Beginner" className="bg-gray-800">
-                      Principiante
-                    </option>
-                    <option value="Intermediate" className="bg-gray-800">
-                      Intermedio
-                    </option>
-                    <option value="Advanced" className="bg-gray-800">
-                      Avanzado
-                    </option>
+                    <option value="Beginner" className="bg-gray-800">Principiante</option>
+                    <option value="Intermediate" className="bg-gray-800">Intermedio</option>
+                    <option value="Advanced" className="bg-gray-800">Avanzado</option>
                   </select>
                 </div>
-
+                
                 <div>
-                  <label className="block text-white/80 text-sm font-medium mb-2">
-                    Calorías Diarias
-                  </label>
+                  <label className="block text-white/80 text-sm font-medium mb-2">Calorías Diarias</label>
                   <input
                     type="number"
                     value={newPlan.nutritionalInfo.totalCalories}
-                    onChange={(e) =>
-                      setNewPlan({
-                        ...newPlan,
-                        nutritionalInfo: {
-                          ...newPlan.nutritionalInfo,
-                          totalCalories: parseInt(e.target.value, 10),
-                        },
-                      })
-                    }
+                    onChange={(e) => setNewPlan({
+                      ...newPlan, 
+                      nutritionalInfo: {...newPlan.nutritionalInfo, totalCalories: parseInt(e.target.value)}
+                    })}
                     className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#85ea10]"
                     placeholder="1200"
                     required
@@ -382,31 +306,23 @@ export default function NutritionalPlanManagement({
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-white/80 text-sm font-medium mb-2">
-                    URL del Video
-                  </label>
+                  <label className="block text-white/80 text-sm font-medium mb-2">URL del Video</label>
                   <input
                     type="url"
                     value={newPlan.videoUrl}
-                    onChange={(e) =>
-                      setNewPlan({ ...newPlan, videoUrl: e.target.value })
-                    }
+                    onChange={(e) => setNewPlan({...newPlan, videoUrl: e.target.value})}
                     className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#85ea10]"
                     placeholder="https://youtube.com/embed/..."
                     required
                   />
                 </div>
-
+                
                 <div>
-                  <label className="block text-white/80 text-sm font-medium mb-2">
-                    URL de Thumbnail
-                  </label>
+                  <label className="block text-white/80 text-sm font-medium mb-2">URL de Thumbnail</label>
                   <input
                     type="url"
                     value={newPlan.thumbnailUrl}
-                    onChange={(e) =>
-                      setNewPlan({ ...newPlan, thumbnailUrl: e.target.value })
-                    }
+                    onChange={(e) => setNewPlan({...newPlan, thumbnailUrl: e.target.value})}
                     className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#85ea10]"
                     placeholder="https://ejemplo.com/imagen.jpg"
                     required
@@ -416,131 +332,87 @@ export default function NutritionalPlanManagement({
 
               {/* Nutritional Info */}
               <div className="bg-white/5 rounded-xl p-4">
-                <h4 className="text-lg font-bold text-white mb-4">
-                  Información Nutricional Diaria
-                </h4>
+                <h4 className="text-lg font-bold text-white mb-4">Información Nutricional Diaria</h4>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-white/80 text-sm font-medium mb-2">
-                      Proteínas (g)
-                    </label>
+                    <label className="block text-white/80 text-sm font-medium mb-2">Proteínas (g)</label>
                     <input
                       type="number"
                       value={newPlan.nutritionalInfo.protein}
-                      onChange={(e) =>
-                        setNewPlan({
-                          ...newPlan,
-                          nutritionalInfo: {
-                            ...newPlan.nutritionalInfo,
-                            protein: parseInt(e.target.value, 10),
-                          },
-                        })
-                      }
+                      onChange={(e) => setNewPlan({
+                        ...newPlan, 
+                        nutritionalInfo: {...newPlan.nutritionalInfo, protein: parseInt(e.target.value)}
+                      })}
                       className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#85ea10]"
                       placeholder="100"
                     />
                   </div>
-
+                  
                   <div>
-                    <label className="block text-white/80 text-sm font-medium mb-2">
-                      Carbohidratos (g)
-                    </label>
+                    <label className="block text-white/80 text-sm font-medium mb-2">Carbohidratos (g)</label>
                     <input
                       type="number"
                       value={newPlan.nutritionalInfo.carbs}
-                      onChange={(e) =>
-                        setNewPlan({
-                          ...newPlan,
-                          nutritionalInfo: {
-                            ...newPlan.nutritionalInfo,
-                            carbs: parseInt(e.target.value, 10),
-                          },
-                        })
-                      }
+                      onChange={(e) => setNewPlan({
+                        ...newPlan, 
+                        nutritionalInfo: {...newPlan.nutritionalInfo, carbs: parseInt(e.target.value)}
+                      })}
                       className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#85ea10]"
                       placeholder="80"
                     />
                   </div>
-
+                  
                   <div>
-                    <label className="block text-white/80 text-sm font-medium mb-2">
-                      Grasas (g)
-                    </label>
+                    <label className="block text-white/80 text-sm font-medium mb-2">Grasas (g)</label>
                     <input
                       type="number"
                       value={newPlan.nutritionalInfo.fat}
-                      onChange={(e) =>
-                        setNewPlan({
-                          ...newPlan,
-                          nutritionalInfo: {
-                            ...newPlan.nutritionalInfo,
-                            fat: parseInt(e.target.value, 10),
-                          },
-                        })
-                      }
+                      onChange={(e) => setNewPlan({
+                        ...newPlan, 
+                        nutritionalInfo: {...newPlan.nutritionalInfo, fat: parseInt(e.target.value)}
+                      })}
                       className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#85ea10]"
                       placeholder="35"
                     />
                   </div>
-
+                  
                   <div>
-                    <label className="block text-white/80 text-sm font-medium mb-2">
-                      Fibra (g)
-                    </label>
+                    <label className="block text-white/80 text-sm font-medium mb-2">Fibra (g)</label>
                     <input
                       type="number"
                       value={newPlan.nutritionalInfo.fiber}
-                      onChange={(e) =>
-                        setNewPlan({
-                          ...newPlan,
-                          nutritionalInfo: {
-                            ...newPlan.nutritionalInfo,
-                            fiber: parseInt(e.target.value, 10),
-                          },
-                        })
-                      }
+                      onChange={(e) => setNewPlan({
+                        ...newPlan, 
+                        nutritionalInfo: {...newPlan.nutritionalInfo, fiber: parseInt(e.target.value)}
+                      })}
                       className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#85ea10]"
                       placeholder="25"
                     />
                   </div>
-
+                  
                   <div>
-                    <label className="block text-white/80 text-sm font-medium mb-2">
-                      Azúcar (g)
-                    </label>
+                    <label className="block text-white/80 text-sm font-medium mb-2">Azúcar (g)</label>
                     <input
                       type="number"
                       value={newPlan.nutritionalInfo.sugar}
-                      onChange={(e) =>
-                        setNewPlan({
-                          ...newPlan,
-                          nutritionalInfo: {
-                            ...newPlan.nutritionalInfo,
-                            sugar: parseInt(e.target.value, 10),
-                          },
-                        })
-                      }
+                      onChange={(e) => setNewPlan({
+                        ...newPlan, 
+                        nutritionalInfo: {...newPlan.nutritionalInfo, sugar: parseInt(e.target.value)}
+                      })}
                       className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#85ea10]"
                       placeholder="30"
                     />
                   </div>
-
+                  
                   <div>
-                    <label className="block text-white/80 text-sm font-medium mb-2">
-                      Sodio (mg)
-                    </label>
+                    <label className="block text-white/80 text-sm font-medium mb-2">Sodio (mg)</label>
                     <input
                       type="number"
                       value={newPlan.nutritionalInfo.sodium}
-                      onChange={(e) =>
-                        setNewPlan({
-                          ...newPlan,
-                          nutritionalInfo: {
-                            ...newPlan.nutritionalInfo,
-                            sodium: parseInt(e.target.value, 10),
-                          },
-                        })
-                      }
+                      onChange={(e) => setNewPlan({
+                        ...newPlan, 
+                        nutritionalInfo: {...newPlan.nutritionalInfo, sodium: parseInt(e.target.value)}
+                      })}
                       className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#85ea10]"
                       placeholder="1500"
                     />

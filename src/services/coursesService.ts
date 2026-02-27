@@ -87,89 +87,93 @@ class CoursesService {
   async getCourses(forceRefresh = false): Promise<Course[]> {
     // Verificar caché
     if (!forceRefresh && this.isCacheValid()) {
-      return this.cache.get(this.CACHE_KEY)?.data;
-    }
-    const _startTime = performance.now();
-    // CONSULTA SIMPLIFICADA - Primero obtener cursos
-    const { data: coursesData, error: coursesError } = await supabase
-      .from('courses')
-      .select('*')
-      .eq('is_published', true)
-      .order('created_at', { ascending: false });
-
-    if (coursesError) {
-      throw new Error(
-        `Error fetching courses: ${coursesError.message || 'Unknown error'}`,
-      );
+      console.log('📦 Usando caché de cursos');
+      return this.cache.get(this.CACHE_KEY)!.data;
     }
 
-    // Obtener categorías por separado
-    const { data: categoriesData, error: categoriesError } = await supabase
-      .from('course_categories')
-      .select('id, name')
-      .eq('is_active', true);
+    console.log('🔄 Cargando cursos desde base de datos...');
+    const startTime = performance.now();
 
-    if (categoriesError) {
-    }
+    try {
+      // CONSULTA SIMPLIFICADA - Primero obtener cursos
+      const { data: coursesData, error: coursesError } = await supabase
+        .from('courses')
+        .select('*')
+        .eq('is_published', true)
+        .order('created_at', { ascending: false });
 
-    // Crear mapa de categorías
-    const categoryMap: { [key: string]: string } = {};
-    if (categoriesData) {
-      categoriesData.forEach((cat) => {
-        categoryMap[cat.id] = cat.name;
+      if (coursesError) {
+        console.error('❌ Error fetching courses:', coursesError);
+        console.error('❌ Error details:', JSON.stringify(coursesError, null, 2));
+        throw new Error(`Error fetching courses: ${coursesError.message || 'Unknown error'}`);
+      }
+
+      // Obtener categorías por separado
+      const { data: categoriesData, error: categoriesError } = await supabase
+        .from('course_categories')
+        .select('id, name')
+        .eq('is_active', true);
+
+      if (categoriesError) {
+        console.warn('⚠️ Error fetching categories:', categoriesError);
+      }
+
+      // Crear mapa de categorías
+      const categoryMap: { [key: string]: string } = {};
+      if (categoriesData) {
+        categoriesData.forEach(cat => {
+          categoryMap[cat.id] = cat.name;
+        });
+      }
+
+      // Obtener conteo de visitas para popularidad (consulta separada pero más eficiente)
+      const viewCounts = await this.getViewCounts(coursesData?.map(c => c.id) || []);
+
+      // Transformar datos
+      const transformedCourses = this.transformCourses(coursesData || [], viewCounts, categoryMap);
+
+      // Ordenar: Popular primero, luego por fecha
+      const sortedCourses = this.sortCourses(transformedCourses);
+
+      // Guardar en caché
+      this.cache.set(this.CACHE_KEY, {
+        data: sortedCourses,
+        timestamp: Date.now()
       });
+
+      const endTime = performance.now();
+      console.log(`✅ Cursos cargados en ${(endTime - startTime).toFixed(2)}ms`);
+
+      return sortedCourses;
+
+    } catch (error) {
+      console.error('❌ Error en getCourses:', error);
+      console.error('❌ Error type:', typeof error);
+      console.error('❌ Error message:', error instanceof Error ? error.message : 'Unknown error');
+      throw error;
     }
-
-    // Obtener conteo de visitas para popularidad (consulta separada pero más eficiente)
-    const viewCounts = await this.getViewCounts(
-      coursesData?.map((c) => c.id) || [],
-    );
-
-    // Transformar datos
-    const transformedCourses = this.transformCourses(
-      coursesData || [],
-      viewCounts,
-      categoryMap,
-    );
-
-    // Ordenar: Popular primero, luego por fecha
-    const sortedCourses = this.sortCourses(transformedCourses);
-
-    // Guardar en caché
-    this.cache.set(this.CACHE_KEY, {
-      data: sortedCourses,
-      timestamp: Date.now(),
-    });
-
-    const _endTime = performance.now();
-
-    return sortedCourses;
   }
 
   /**
    * Obtiene conteos de visitas para determinar popularidad
    */
-  private async getViewCounts(
-    courseIds: string[],
-  ): Promise<Record<string, number>> {
+  private async getViewCounts(courseIds: string[]): Promise<Record<string, number>> {
     if (courseIds.length === 0) return {};
 
     const { data, error } = await supabase
       .from('course_views')
       .select('course_id')
       .in('course_id', courseIds)
-      .gte(
-        'viewed_at',
-        new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-      );
+      .gte('viewed_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString());
 
     if (error) {
+      console.warn('⚠️ Error fetching view counts:', error);
       return {};
     }
 
     // Contar visitas por curso
     const viewCounts: Record<string, number> = {};
-    data?.forEach((view) => {
+    data?.forEach(view => {
       viewCounts[view.course_id] = (viewCounts[view.course_id] || 0) + 1;
     });
 
@@ -179,17 +183,13 @@ class CoursesService {
   /**
    * Transforma los datos de la base de datos al formato esperado
    */
-  private transformCourses(
-    courses: DatabaseCourse[],
-    viewCounts: Record<string, number>,
-    categoryMap: { [key: string]: string },
-  ): Course[] {
+  private transformCourses(courses: DatabaseCourse[], viewCounts: Record<string, number>, categoryMap: { [key: string]: string }): Course[] {
     const twoWeeksAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
 
-    return courses.map((course) => {
+    return courses.map(course => {
       const viewCount = viewCounts[course.id] || 0;
       const isNew = new Date(course.created_at) > twoWeeksAgo;
-
+      
       // El curso más popular es el que tiene más visitas
       const maxViews = Math.max(...Object.values(viewCounts));
       const isPopular = viewCount === maxViews && viewCount > 0;
@@ -199,17 +199,10 @@ class CoursesService {
         title: course.title,
         description: course.description,
         short_description: course.short_description,
-        thumbnail:
-          course.thumbnail ||
-          course.preview_image ||
-          '/images/course-placeholder.jpg',
-        preview_image:
-          course.preview_image ||
-          course.thumbnail ||
-          '/images/course-placeholder.jpg',
+        thumbnail: course.thumbnail || course.preview_image || '/images/course-placeholder.jpg',
+        preview_image: course.preview_image || course.thumbnail || '/images/course-placeholder.jpg',
         price: course.price || 0,
-        original_price:
-          (course.discount_percentage ?? 0) > 0 ? course.price : undefined,
+        original_price: ((course.discount_percentage ?? 0) > 0) ? course.price : undefined,
         discount_percentage: course.discount_percentage || 0,
         category_id: course.category_id,
         category_name: categoryMap[course.category_id] || 'Sin categoría',
@@ -217,17 +210,14 @@ class CoursesService {
         rating: course.rating || 4.8,
         students_count: course.students_count || 0,
         lessons_count: course.lessons_count || 1,
-        duration:
-          typeof course.duration === 'number'
-            ? `${course.duration} min`
-            : course.duration || '30 min',
+        duration: typeof course.duration === 'number' ? `${course.duration} min` : (course.duration || '30 min'),
         level: course.level || 'Intermedio',
         is_published: course.is_published,
         created_at: course.created_at,
         updated_at: course.updated_at,
         isNew,
         isPopular,
-        view_count: viewCount,
+        view_count: viewCount
       };
     });
   }
@@ -240,11 +230,9 @@ class CoursesService {
       // Si uno es popular y el otro no, el popular va primero
       if (a.isPopular && !b.isPopular) return -1;
       if (!a.isPopular && b.isPopular) return 1;
-
+      
       // Si ambos son populares o ninguno, ordenar por fecha de creación (más reciente primero)
-      return (
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      );
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
   }
 
@@ -254,7 +242,7 @@ class CoursesService {
   private isCacheValid(): boolean {
     const cached = this.cache.get(this.CACHE_KEY);
     if (!cached) return false;
-
+    
     return Date.now() - cached.timestamp < this.CACHE_DURATION;
   }
 
@@ -263,6 +251,7 @@ class CoursesService {
    */
   clearCache(): void {
     this.cache.clear();
+    console.log('🗑️ Caché de cursos limpiado');
   }
 
   /**
@@ -270,7 +259,7 @@ class CoursesService {
    */
   async getCourseById(id: string): Promise<Course | null> {
     const courses = await this.getCourses();
-    return courses.find((course) => course.id === id) || null;
+    return courses.find(course => course.id === id) || null;
   }
 
   /**
@@ -278,7 +267,7 @@ class CoursesService {
    */
   async getCoursesByCategory(categoryId: string): Promise<Course[]> {
     const courses = await this.getCourses();
-    return courses.filter((course) => course.category_id === categoryId);
+    return courses.filter(course => course.category_id === categoryId);
   }
 
   /**
@@ -287,12 +276,11 @@ class CoursesService {
   async searchCourses(query: string): Promise<Course[]> {
     const courses = await this.getCourses();
     const lowercaseQuery = query.toLowerCase();
-
-    return courses.filter(
-      (course) =>
-        course.title.toLowerCase().includes(lowercaseQuery) ||
-        course.short_description.toLowerCase().includes(lowercaseQuery) ||
-        course.description.toLowerCase().includes(lowercaseQuery),
+    
+    return courses.filter(course => 
+      course.title.toLowerCase().includes(lowercaseQuery) ||
+      course.short_description.toLowerCase().includes(lowercaseQuery) ||
+      course.description.toLowerCase().includes(lowercaseQuery)
     );
   }
 }

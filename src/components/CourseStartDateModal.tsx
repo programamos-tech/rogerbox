@@ -1,10 +1,10 @@
 'use client';
 
-import { AlertCircle, Calendar, CheckCircle, Clock, X } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { useUserPurchases } from '@/hooks/useUserPurchases';
+import { Calendar, X, AlertCircle, CheckCircle, Clock } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { useUserPurchases } from '@/hooks/useUserPurchases';
 
 interface CourseStartDateModalProps {
   courseId: string;
@@ -13,12 +13,7 @@ interface CourseStartDateModalProps {
   onClose?: () => void;
 }
 
-export default function CourseStartDateModal({
-  courseId,
-  orderId,
-  purchaseId,
-  onClose,
-}: CourseStartDateModalProps) {
+export default function CourseStartDateModal({ courseId, orderId, purchaseId, onClose }: CourseStartDateModalProps) {
   const router = useRouter();
   const { refresh: refreshPurchases } = useUserPurchases();
   const [selectedDate, setSelectedDate] = useState<string>('');
@@ -54,7 +49,9 @@ export default function CourseStartDateModal({
           setIsSubmitting(false);
           return;
         }
-
+        
+        console.log('🔍 CourseStartDateModal: Buscando compra...', { orderId, courseId });
+        
         // Buscar la compra del curso
         const { data: purchase, error: purchaseError } = await supabase
           .from('course_purchases')
@@ -63,20 +60,34 @@ export default function CourseStartDateModal({
           .eq('course_id', courseId)
           .maybeSingle();
 
+        console.log('🔍 CourseStartDateModal: Resultado de búsqueda:', {
+          hasPurchase: !!purchase,
+          purchaseError: purchaseError ? {
+            message: purchaseError.message,
+            code: purchaseError.code,
+            details: purchaseError.details
+          } : null,
+          purchase: purchase ? {
+            id: purchase.id,
+            orderId: purchase.order_id,
+            courseId: purchase.course_id
+          } : null
+        });
+
         if (purchaseError && purchaseError.code !== 'PGRST116') {
-          throw new Error(
-            `Error al buscar la compra: ${purchaseError.message}`,
-          );
+          // Error real, no solo "no encontrado"
+          console.error('❌ CourseStartDateModal: Error buscando compra:', purchaseError);
+          throw new Error(`Error al buscar la compra: ${purchaseError.message}`);
         }
 
         if (!purchase) {
-          throw new Error(
-            'No se encontró la compra del curso. Por favor, recarga la página o contacta al soporte.',
-          );
+          console.error('❌ CourseStartDateModal: No se encontró la compra');
+          throw new Error('No se encontró la compra del curso. Por favor, recarga la página o contacta al soporte.');
         }
 
         purchaseIdToUse = purchase.id;
       } else {
+        console.log('✅ CourseStartDateModal: Usando purchaseId proporcionado:', purchaseIdToUse);
       }
 
       // Actualizar la fecha de inicio del curso
@@ -84,7 +95,7 @@ export default function CourseStartDateModal({
         .from('course_purchases')
         .update({
           start_date: selectedDate,
-          updated_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         })
         .eq('id', purchaseIdToUse);
 
@@ -92,12 +103,16 @@ export default function CourseStartDateModal({
         throw updateError;
       }
 
+      console.log('✅ Fecha de inicio guardada exitosamente:', selectedDate);
+
       // Refrescar las compras antes de redirigir
       await refreshPurchases();
+      console.log('🔄 CourseStartDateModal: Compras refrescadas');
 
       // Redirigir al dashboard del estudiante
       router.push('/student');
     } catch (err: any) {
+      console.error('Error setting start date:', err);
       setError(err.message || 'Error al guardar la fecha de inicio');
       setIsSubmitting(false);
     }
@@ -110,7 +125,7 @@ export default function CourseStartDateModal({
       weekday: 'long',
       year: 'numeric',
       month: 'long',
-      day: 'numeric',
+      day: 'numeric'
     });
   };
 
@@ -152,31 +167,19 @@ export default function CourseStartDateModal({
               <ul className="space-y-2 text-sm text-blue-800 dark:text-blue-300">
                 <li className="flex items-start gap-2">
                   <CheckCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                  <span>
-                    <strong>Desde la fecha que elijas</strong>, comenzarán a
-                    desbloquearse las clases.
-                  </span>
+                  <span><strong>Desde la fecha que elijas</strong>, comenzarán a desbloquearse las clases.</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <Clock className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                  <span>
-                    <strong>Cada día se habilitará una nueva clase</strong> para
-                    que puedas tomarla.
-                  </span>
+                  <span><strong>Cada día se habilitará una nueva clase</strong> para que puedas tomarla.</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                  <span>
-                    <strong>Si no tomas la clase del día, se pierde</strong> y
-                    deberás tomar la siguiente clase disponible.
-                  </span>
+                  <span><strong>Si no tomas la clase del día, se pierde</strong> y deberás tomar la siguiente clase disponible.</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                  <span>
-                    Mantén la <strong>constancia</strong> para no perderte
-                    ninguna clase.
-                  </span>
+                  <span>Mantén la <strong>constancia</strong> para no perderte ninguna clase.</span>
                 </li>
               </ul>
             </div>
@@ -194,19 +197,12 @@ export default function CourseStartDateModal({
             min={minDate}
             onChange={(e) => setSelectedDate(e.target.value)}
             className="w-full px-6 py-4 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#85ea10] dark:bg-gray-700 dark:text-white text-xl font-medium cursor-pointer"
-            style={{
-              fontSize: '1.25rem',
-              padding: '1.25rem 1.5rem',
-              minHeight: '60px',
-            }}
+            style={{ fontSize: '1.25rem', padding: '1.25rem 1.5rem', minHeight: '60px' }}
             required
           />
           {selectedDate && (
             <p className="mt-3 text-sm text-gray-600 dark:text-gray-400">
-              Iniciarás el curso el:{' '}
-              <strong className="text-[#85ea10]">
-                {formatDate(selectedDate)}
-              </strong>
+              Iniciarás el curso el: <strong className="text-[#85ea10]">{formatDate(selectedDate)}</strong>
             </p>
           )}
         </div>
@@ -239,10 +235,10 @@ export default function CourseStartDateModal({
 
         {/* Nota adicional */}
         <p className="mt-4 text-xs text-center text-gray-500 dark:text-gray-400">
-          Puedes cambiar la fecha de inicio antes de comenzar, pero una vez que
-          empieces, no podrás modificarla.
+          Puedes cambiar la fecha de inicio antes de comenzar, pero una vez que empieces, no podrás modificarla.
         </p>
       </div>
     </div>
   );
 }
+

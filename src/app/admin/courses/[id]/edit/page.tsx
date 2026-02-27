@@ -1,13 +1,13 @@
 'use client';
 
-import { ArrowLeft } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
+import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useEffect, useState } from 'react';
+import { ArrowLeft } from 'lucide-react';
+import { supabase } from '@/lib/supabase-browser';
 import AdminLayout from '@/components/admin/AdminLayout';
 import CourseCreator from '@/components/admin/CourseCreator';
 import QuickLoading from '@/components/QuickLoading';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
-import { supabase } from '@/lib/supabase-browser';
 
 export default function EditCoursePage() {
   const params = useParams();
@@ -21,8 +21,7 @@ export default function EditCoursePage() {
   const isAdmin = () => {
     if (!user) return false;
     const envId = process.env.NEXT_PUBLIC_ADMIN_USER_ID;
-    const envEmail =
-      process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'rogerbox@admin.com';
+    const envEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'rogerbox@admin.com';
     const matchId = envId && user.id === envId;
     const matchEmail = envEmail && user.email === envEmail;
     const matchRole = user.user_metadata?.role === 'admin';
@@ -39,7 +38,7 @@ export default function EditCoursePage() {
       router.replace('/admin');
       return;
     }
-  }, [user, authLoading, router, isAdmin]);
+  }, [user, authLoading, router]);
 
   useEffect(() => {
     if (!id || !user) return;
@@ -63,7 +62,7 @@ export default function EditCoursePage() {
             duration_minutes,
             is_preview
           )
-        `,
+        `
         )
         .eq('id', id)
         .single();
@@ -73,9 +72,7 @@ export default function EditCoursePage() {
         setCourseToEdit(null);
         return;
       }
-      const course = data
-        ? { ...data, lessons: data.course_lessons || [] }
-        : null;
+      const course = data ? { ...data, lessons: data.course_lessons || [] } : null;
       setCourseToEdit(course);
       setLoadingCourse(false);
     };
@@ -115,9 +112,7 @@ export default function EditCoursePage() {
             className="flex items-center gap-2 p-2 sm:px-4 sm:py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-[#164151]/80 dark:text-white/60"
           >
             <ArrowLeft className="w-5 h-5 sm:w-4 sm:h-4" />
-            <span className="hidden sm:inline text-sm font-medium">
-              Volver a Cursos
-            </span>
+            <span className="hidden sm:inline text-sm font-medium">Volver a Cursos</span>
           </button>
         }
       >
@@ -148,9 +143,7 @@ export default function EditCoursePage() {
           title="Volver a Cursos"
         >
           <ArrowLeft className="w-5 h-5 sm:w-4 sm:h-4" />
-          <span className="hidden sm:inline text-sm font-medium">
-            Volver a Cursos
-          </span>
+          <span className="hidden sm:inline text-sm font-medium">Volver a Cursos</span>
         </button>
       }
     >

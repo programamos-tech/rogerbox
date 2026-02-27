@@ -8,13 +8,7 @@ export default function DemoLoadingPage() {
   const [showProgress, setShowProgress] = useState(false);
 
   if (showLoading) {
-    return (
-      <SimpleLoading
-        message="¡Demostrando el loading!"
-        showProgress={showProgress}
-        size="lg"
-      />
-    );
+    return <SimpleLoading message="¡Demostrando el loading!" showProgress={showProgress} size="lg" />;
   }
 
   return (
@@ -23,7 +17,7 @@ export default function DemoLoadingPage() {
         <h1 className="text-4xl font-bold text-white mb-8">
           ROGER<span className="text-[#85ea10]">BOX</span>
         </h1>
-
+        
         <div className="space-y-4">
           <button
             onClick={() => {
@@ -34,7 +28,7 @@ export default function DemoLoadingPage() {
           >
             🎬 Ver Loading con Progreso
           </button>
-
+          
           <button
             onClick={() => {
               setShowProgress(false);
@@ -45,7 +39,7 @@ export default function DemoLoadingPage() {
             ⚡ Ver Loading Simple
           </button>
         </div>
-
+        
         <p className="text-white/60 mt-8 text-sm">
           Haz clic en cualquier botón para ver el loading screen
         </p>

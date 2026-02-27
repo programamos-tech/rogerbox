@@ -1,4 +1,4 @@
-import { type NextRequest, NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getSession } from '@/lib/supabase-server';
 
@@ -12,15 +12,16 @@ export async function GET(request: NextRequest) {
 
     // Obtener parámetros de query
     const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page') || '1', 10);
-    const limit = parseInt(searchParams.get('limit') || '50', 10);
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '50');
     const search = searchParams.get('search') || '';
     const status = searchParams.get('status') || 'all'; // all, active, renewal, no-products, inactive
     const offset = (page - 1) * limit;
 
     // Query principal: obtener clientes físicos con sus membresías más recientes
-    let query = supabaseAdmin.from('gym_client_info').select(
-      `
+    let query = supabaseAdmin
+      .from('gym_client_info')
+      .select(`
         id,
         name,
         email,
@@ -39,15 +40,11 @@ export async function GET(request: NextRequest) {
           end_date,
           plan:gym_plans (name)
         )
-      `,
-      { count: 'exact' },
-    );
+      `, { count: 'exact' });
 
     // Aplicar búsqueda
     if (search) {
-      query = query.or(
-        `name.ilike.%${search}%,email.ilike.%${search}%,document_id.ilike.%${search}%`,
-      );
+      query = query.or(`name.ilike.%${search}%,email.ilike.%${search}%,document_id.ilike.%${search}%`);
     }
 
     // Aplicar filtro de inactivos
@@ -65,6 +62,7 @@ export async function GET(request: NextRequest) {
     const { data: clients, error: clientsError, count } = await query;
 
     if (clientsError) {
+      console.error('Error fetching clients:', clientsError);
       throw clientsError;
     }
 
@@ -74,7 +72,7 @@ export async function GET(request: NextRequest) {
 
     let processedClients = (clients || []).map((client: any) => {
       const memberships = client.gym_memberships || [];
-
+      
       // Encontrar membresía activa
       const activeMembership = memberships.find((m: any) => {
         const endDate = new Date(m.end_date);
@@ -83,9 +81,7 @@ export async function GET(request: NextRequest) {
       });
 
       // Verificar si todas las membresías están vencidas
-      const hasExpiredOnly =
-        memberships.length > 0 &&
-        !activeMembership &&
+      const hasExpiredOnly = memberships.length > 0 && !activeMembership && 
         memberships.every((m: any) => {
           const endDate = new Date(m.end_date);
           endDate.setHours(0, 0, 0, 0);
@@ -96,19 +92,16 @@ export async function GET(request: NextRequest) {
       // Prioridad: membresías activas primero, luego por fecha de vencimiento más reciente
       let latestMembershipDate: Date | null = null;
       let sortPriority = 3; // 0=activo, 1=por renovar, 2=sin productos recientes, 3=sin productos
-
+      
       if (memberships.length > 0) {
         // Ordenar membresías por end_date descendente
         const sortedMemberships = [...memberships]
           .filter((m: any) => m.status !== 'cancelled')
-          .sort(
-            (a: any, b: any) =>
-              new Date(b.end_date).getTime() - new Date(a.end_date).getTime(),
-          );
-
+          .sort((a: any, b: any) => new Date(b.end_date).getTime() - new Date(a.end_date).getTime());
+        
         if (sortedMemberships.length > 0) {
           latestMembershipDate = new Date(sortedMemberships[0].end_date);
-
+          
           if (activeMembership) {
             sortPriority = 0; // Activos primero
           } else {
@@ -157,35 +150,27 @@ export async function GET(request: NextRequest) {
       if (a.sortPriority !== b.sortPriority) {
         return a.sortPriority - b.sortPriority;
       }
-
+      
       // Dentro de la misma prioridad, ordenar por fecha de membresía más reciente
       if (a.latestMembershipDate && b.latestMembershipDate) {
-        return (
-          b.latestMembershipDate.getTime() - a.latestMembershipDate.getTime()
-        );
+        return b.latestMembershipDate.getTime() - a.latestMembershipDate.getTime();
       }
-
+      
       // Si uno tiene membresía y otro no, el que tiene va primero
       if (a.latestMembershipDate && !b.latestMembershipDate) return -1;
       if (!a.latestMembershipDate && b.latestMembershipDate) return 1;
-
+      
       // Sin membresías, ordenar por fecha de creación
-      return (
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      );
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
 
     // Aplicar filtro de estado después de procesar
     if (status === 'active') {
-      processedClients = processedClients.filter(
-        (c) => c.hasActiveGymMembership,
-      );
+      processedClients = processedClients.filter(c => c.hasActiveGymMembership);
     } else if (status === 'renewal') {
-      processedClients = processedClients.filter(
-        (c) => c.hasExpiredOnly && !c.is_inactive,
-      );
+      processedClients = processedClients.filter(c => c.hasExpiredOnly && !c.is_inactive);
     } else if (status === 'no-products') {
-      processedClients = processedClients.filter((c) => !c.hasGymMembership);
+      processedClients = processedClients.filter(c => !c.hasGymMembership);
     }
 
     // Calcular totales para los contadores
@@ -196,9 +181,7 @@ export async function GET(request: NextRequest) {
         endDate.setHours(0, 0, 0, 0);
         return m.status !== 'cancelled' && endDate >= today;
       });
-      const hasExpiredOnly =
-        memberships.length > 0 &&
-        !activeMembership &&
+      const hasExpiredOnly = memberships.length > 0 && !activeMembership && 
         memberships.every((m: any) => {
           const endDate = new Date(m.end_date);
           endDate.setHours(0, 0, 0, 0);
@@ -214,16 +197,14 @@ export async function GET(request: NextRequest) {
 
     const counts = {
       total: count || 0,
-      active: allClientsForCount.filter((c) => c.hasActiveGymMembership).length,
-      renewal: allClientsForCount.filter(
-        (c) => c.hasExpiredOnly && !c.is_inactive,
-      ).length,
-      noProducts: allClientsForCount.filter((c) => !c.hasGymMembership).length,
-      inactive: allClientsForCount.filter((c) => c.is_inactive).length,
+      active: allClientsForCount.filter(c => c.hasActiveGymMembership).length,
+      renewal: allClientsForCount.filter(c => c.hasExpiredOnly && !c.is_inactive).length,
+      noProducts: allClientsForCount.filter(c => !c.hasGymMembership).length,
+      inactive: allClientsForCount.filter(c => c.is_inactive).length,
     };
 
     // Obtener estadísticas globales de pagos
-    const stats = {
+    let stats = {
       totalMemberships: 0,
       totalRevenue: 0,
       lastPaymentDate: null as string | null,
@@ -241,36 +222,28 @@ export async function GET(request: NextRequest) {
 
       if (payments && payments.length > 0) {
         stats.totalMemberships = payments.length;
-        stats.totalRevenue = payments.reduce(
-          (sum, p) => sum + (p.amount || 0),
-          0,
-        );
+        stats.totalRevenue = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
         stats.lastPaymentDate = payments[0].payment_date;
-        stats.averageTicket = Math.round(
-          stats.totalRevenue / stats.totalMemberships,
-        );
+        stats.averageTicket = Math.round(stats.totalRevenue / stats.totalMemberships);
 
         // Pagos de este mes
         const thisMonth = new Date();
         thisMonth.setDate(1);
         thisMonth.setHours(0, 0, 0, 0);
-
-        const thisMonthPayments = payments.filter(
-          (p) => new Date(p.payment_date) >= thisMonth,
-        );
+        
+        const thisMonthPayments = payments.filter(p => new Date(p.payment_date) >= thisMonth);
         stats.thisMonthPayments = thisMonthPayments.length;
-        stats.thisMonthRevenue = thisMonthPayments.reduce(
-          (sum, p) => sum + (p.amount || 0),
-          0,
-        );
+        stats.thisMonthRevenue = thisMonthPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
       }
-    } catch (_e) {}
+    } catch (e) {
+      console.warn('Error fetching payment stats:', e);
+    }
 
     // Aplicar paginación después de filtrar
     const paginatedClients = processedClients.slice(offset, offset + limit);
     const totalFiltered = processedClients.length;
 
-    return NextResponse.json({
+    return NextResponse.json({ 
       users: paginatedClients,
       pagination: {
         page,
@@ -282,9 +255,10 @@ export async function GET(request: NextRequest) {
       stats,
     });
   } catch (error: any) {
+    console.error('Error in users API:', error);
     return NextResponse.json(
       { error: 'Error al obtener usuarios', details: error.message },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }

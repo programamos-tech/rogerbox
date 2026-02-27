@@ -1,12 +1,16 @@
-import { type NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getSession } from '@/lib/supabase-server';
 
 export async function GET(request: NextRequest) {
   try {
+    console.log('🔍 Debug API: Iniciando user-interactions');
     const { session } = await getSession();
+    console.log('🔍 Debug API: Session:', session ? 'existe' : 'no existe');
+    console.log('🔍 Debug API: User ID:', session?.user?.id);
 
     if (!session?.user?.id) {
+      console.log('❌ Debug API: No hay sesión, devolviendo 401');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -27,22 +31,18 @@ export async function GET(request: NextRequest) {
       query = query.not('user_rating', 'is', null);
     }
 
-    const { data, error } = await query.order('created_at', {
-      ascending: false,
-    });
+    const { data, error } = await query.order('created_at', { ascending: false });
 
     if (error) {
-      return NextResponse.json(
-        { error: 'Failed to fetch interactions' },
-        { status: 500 },
-      );
+      console.error('❌ Debug API: Error fetching user interactions:', error);
+      return NextResponse.json({ error: 'Failed to fetch interactions' }, { status: 500 });
     }
 
+    console.log('✅ Debug API: Interacciones encontradas:', data?.length || 0);
+
     return NextResponse.json({ interactions: data || [] });
-  } catch (_error) {
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 },
-    );
+  } catch (error) {
+    console.error('Error in GET /api/user-interactions:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

@@ -1,18 +1,7 @@
 'use client';
 
-import {
-  Calendar,
-  Check,
-  ChevronLeft,
-  ChevronRight,
-  Edit,
-  Play,
-  Plus,
-  Trash2,
-  Video,
-  X,
-} from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
+import { Plus, Trash2, Play, ChevronLeft, ChevronRight, Check, Video, Calendar, X, Edit } from 'lucide-react';
 
 interface WeeklyComplement {
   id: string;
@@ -39,20 +28,18 @@ const DAYS_OF_WEEK = [
 
 // Función para obtener el número de semana del año
 function getWeekNumber(date: Date): number {
-  const d = new Date(
-    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()),
-  );
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
   const dayNum = d.getUTCDay() || 7;
   d.setUTCDate(d.getUTCDate() + 4 - dayNum);
   const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+  return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
 }
 
 // Función para obtener la fecha de inicio de una semana
 function getWeekStartDate(week: number, year: number): Date {
   const jan1 = new Date(year, 0, 1);
   const daysToMonday = (jan1.getDay() + 6) % 7;
-  const firstMonday = new Date(year, 0, 1 + ((7 - daysToMonday) % 7));
+  const firstMonday = new Date(year, 0, 1 + (7 - daysToMonday) % 7);
   const weekStart = new Date(firstMonday);
   weekStart.setDate(firstMonday.getDate() + (week - 1) * 7);
   return weekStart;
@@ -62,12 +49,12 @@ export default function ComplementManagement() {
   const [complements, setComplements] = useState<WeeklyComplement[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-
+  
   // Estado para la semana seleccionada
   const today = new Date();
   const [selectedWeek, setSelectedWeek] = useState(getWeekNumber(today));
   const [selectedYear, setSelectedYear] = useState(today.getFullYear());
-
+  
   // Estado para el formulario de edición
   const [editingDay, setEditingDay] = useState<number | null>(null);
   const [formData, setFormData] = useState({
@@ -78,17 +65,16 @@ export default function ComplementManagement() {
 
   useEffect(() => {
     fetchComplements();
-  }, [fetchComplements]);
+  }, [selectedWeek, selectedYear]);
 
   const fetchComplements = async () => {
     setLoading(true);
     try {
-      const response = await fetch(
-        `/api/admin/complements?week=${selectedWeek}&year=${selectedYear}`,
-      );
+      const response = await fetch(`/api/admin/complements?week=${selectedWeek}&year=${selectedYear}`);
       const data = await response.json();
       setComplements(data.complements || []);
-    } catch (_error) {
+    } catch (error) {
+      console.error('Error fetching complements:', error);
     } finally {
       setLoading(false);
     }
@@ -112,19 +98,15 @@ export default function ComplementManagement() {
     }
   };
 
-  const getComplementForDay = (
-    dayOfWeek: number,
-  ): WeeklyComplement | undefined => {
-    return complements.find((c) => c.day_of_week === dayOfWeek);
+  const getComplementForDay = (dayOfWeek: number): WeeklyComplement | undefined => {
+    return complements.find(c => c.day_of_week === dayOfWeek);
   };
 
   const handleEditDay = (dayOfWeek: number) => {
     const existing = getComplementForDay(dayOfWeek);
     setEditingDay(dayOfWeek);
     setFormData({
-      title:
-        existing?.title ||
-        `Complemento ${DAYS_OF_WEEK.find((d) => d.id === dayOfWeek)?.name}`,
+      title: existing?.title || `Complemento ${DAYS_OF_WEEK.find(d => d.id === dayOfWeek)?.name}`,
       description: existing?.description || '',
       mux_playback_id: existing?.mux_playback_id || '',
     });
@@ -141,9 +123,7 @@ export default function ComplementManagement() {
     try {
       const existing = getComplementForDay(editingDay);
       const method = existing ? 'PUT' : 'POST';
-      const url = existing
-        ? `/api/admin/complements/${existing.id}`
-        : '/api/admin/complements';
+      const url = existing ? `/api/admin/complements/${existing.id}` : '/api/admin/complements';
 
       const response = await fetch(url, {
         method,
@@ -166,7 +146,8 @@ export default function ComplementManagement() {
         const error = await response.json();
         alert(`Error: ${error.error}`);
       }
-    } catch (_error) {
+    } catch (error) {
+      console.error('Error saving complement:', error);
       alert('Error al guardar el complemento');
     } finally {
       setSaving(false);
@@ -184,7 +165,9 @@ export default function ComplementManagement() {
       if (response.ok) {
         await fetchComplements();
       }
-    } catch (_error) {}
+    } catch (error) {
+      console.error('Error deleting complement:', error);
+    }
   };
 
   const handleTogglePublish = async (id: string, currentStatus: boolean) => {
@@ -196,13 +179,13 @@ export default function ComplementManagement() {
       });
 
       if (response.ok) {
-        setComplements((prev) =>
-          prev.map((c) =>
-            c.id === id ? { ...c, is_published: !currentStatus } : c,
-          ),
+        setComplements(prev =>
+          prev.map(c => (c.id === id ? { ...c, is_published: !currentStatus } : c))
         );
       }
-    } catch (_error) {}
+    } catch (error) {
+      console.error('Error toggling publish:', error);
+    }
   };
 
   const weekStartDate = getWeekStartDate(selectedWeek, selectedYear);
@@ -239,10 +222,7 @@ export default function ComplementManagement() {
               </span>
             </div>
             <p className="text-xs text-gray-600 dark:text-white/60 mt-1">
-              {weekStartDate.toLocaleDateString('es-ES', {
-                month: 'long',
-                year: 'numeric',
-              })}
+              {weekStartDate.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}
             </p>
           </div>
 
@@ -276,9 +256,7 @@ export default function ComplementManagement() {
                 }`}
               >
                 {/* Header del día */}
-                <div
-                  className={`p-4 ${complement ? 'bg-[#85ea10]/10' : 'bg-gray-50 dark:bg-gray-800/50'}`}
-                >
+                <div className={`p-4 ${complement ? 'bg-[#85ea10]/10' : 'bg-gray-50 dark:bg-gray-800/50'}`}>
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight">
                       {day.name}
@@ -309,9 +287,7 @@ export default function ComplementManagement() {
                         <input
                           type="text"
                           value={formData.title}
-                          onChange={(e) =>
-                            setFormData({ ...formData, title: e.target.value })
-                          }
+                          onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                           className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#85ea10] focus:border-[#85ea10]"
                           placeholder="Título del video"
                         />
@@ -322,12 +298,7 @@ export default function ComplementManagement() {
                         </label>
                         <textarea
                           value={formData.description}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              description: e.target.value,
-                            })
-                          }
+                          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                           rows={2}
                           className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#85ea10] focus:border-[#85ea10]"
                           placeholder="Descripción opcional..."
@@ -340,12 +311,7 @@ export default function ComplementManagement() {
                         <input
                           type="text"
                           value={formData.mux_playback_id}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              mux_playback_id: e.target.value,
-                            })
-                          }
+                          onChange={(e) => setFormData({ ...formData, mux_playback_id: e.target.value })}
                           className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#85ea10] focus:border-[#85ea10]"
                           placeholder="abc123..."
                         />
@@ -407,12 +373,7 @@ export default function ComplementManagement() {
                           Editar
                         </button>
                         <button
-                          onClick={() =>
-                            handleTogglePublish(
-                              complement.id,
-                              complement.is_published,
-                            )
-                          }
+                          onClick={() => handleTogglePublish(complement.id, complement.is_published)}
                           className={`flex-1 py-2 rounded-lg text-[10px] font-bold transition-colors flex items-center justify-center gap-1 ${
                             complement.is_published
                               ? 'bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400'
@@ -456,3 +417,7 @@ export default function ComplementManagement() {
     </div>
   );
 }
+
+
+
+

@@ -1,6 +1,6 @@
 'use client';
 
-import { Award, Flame, Heart, TrendingUp } from 'lucide-react';
+import { Award, Flame, TrendingUp, Heart } from 'lucide-react';
 
 interface LessonCompletionModalProps {
   isOpen: boolean;
@@ -15,7 +15,7 @@ export default function LessonCompletionModal({
   onClose,
   onNext,
   caloriesBurned,
-  weightLoss,
+  weightLoss
 }: LessonCompletionModalProps) {
   if (!isOpen) return null;
 
@@ -38,9 +38,7 @@ export default function LessonCompletionModal({
             <div className="bg-black/40 rounded-xl p-4">
               <div className="flex items-center justify-center space-x-2 mb-2">
                 <Flame className="w-6 h-6 text-orange-400" />
-                <span className="text-2xl font-bold text-white">
-                  {caloriesBurned}
-                </span>
+                <span className="text-2xl font-bold text-white">{caloriesBurned}</span>
                 <span className="text-white/80">calorías quemadas</span>
               </div>
             </div>
@@ -48,23 +46,18 @@ export default function LessonCompletionModal({
             <div className="bg-black/40 rounded-xl p-4">
               <div className="flex items-center justify-center space-x-2 mb-2">
                 <TrendingUp className="w-6 h-6 text-[#85ea10]" />
-                <span className="text-2xl font-bold text-white">
-                  {weightLoss}g
-                </span>
+                <span className="text-2xl font-bold text-white">{weightLoss}g</span>
                 <span className="text-white/80">de peso perdido</span>
               </div>
               <p className="text-white/60 text-sm">
-                Equivale a aproximadamente{' '}
-                {Math.round(weightLoss * 0.001 * 100) / 100} kg
+                Equivale a aproximadamente {Math.round(weightLoss * 0.001 * 100) / 100} kg
               </p>
             </div>
 
             <div className="bg-black/40 rounded-xl p-4">
               <div className="flex items-center justify-center space-x-2">
                 <Heart className="w-6 h-6 text-red-400" />
-                <span className="text-white/80">
-                  ¡Sigue así! Cada clase te acerca más a tu meta
-                </span>
+                <span className="text-white/80">¡Sigue así! Cada clase te acerca más a tu meta</span>
               </div>
             </div>
           </div>

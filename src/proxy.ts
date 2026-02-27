@@ -21,7 +21,6 @@ export async function proxy(req: NextRequest) {
     },
   );
 
-  // timeout para evitar bloqueo
   const SESSION_TIMEOUT_MS = 2500;
 
   let session = null;

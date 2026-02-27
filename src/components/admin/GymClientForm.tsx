@@ -1,18 +1,8 @@
 'use client';
 
-import {
-  Calendar,
-  CreditCard,
-  FileText,
-  Mail,
-  Phone,
-  Save,
-  Scale,
-  User,
-  X,
-} from 'lucide-react';
 import { useState } from 'react';
-import type { GymClientInfoInsert } from '@/types/gym';
+import { X, Save, User, CreditCard, Phone, Mail, Calendar, Scale, FileText } from 'lucide-react';
+import { GymClientInfoInsert } from '@/types/gym';
 
 interface GymClientFormProps {
   isOpen: boolean;
@@ -21,12 +11,7 @@ interface GymClientFormProps {
   clientToEdit?: any;
 }
 
-export default function GymClientForm({
-  isOpen,
-  onClose,
-  onSuccess,
-  clientToEdit,
-}: GymClientFormProps) {
+export default function GymClientForm({ isOpen, onClose, onSuccess, clientToEdit }: GymClientFormProps) {
   const [formData, setFormData] = useState<GymClientInfoInsert>({
     document_id: clientToEdit?.document_id || '',
     name: clientToEdit?.name || '',
@@ -81,6 +66,7 @@ export default function GymClientForm({
 
       if (!response.ok) {
         const errorMessage = data.error || 'Error al guardar cliente';
+        console.error('Error guardando cliente:', errorMessage, data);
         throw new Error(errorMessage);
       }
 
@@ -129,9 +115,7 @@ export default function GymClientForm({
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {error && (
             <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-              <p className="text-red-600 dark:text-red-400 text-sm font-medium">
-                {error}
-              </p>
+              <p className="text-red-600 dark:text-red-400 text-sm font-medium">{error}</p>
             </div>
           )}
 
@@ -152,21 +136,14 @@ export default function GymClientForm({
                   type="text"
                   required
                   value={formData.document_id}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      document_id: e.target.value.replace(/[^0-9-]/g, ''),
-                    })
-                  }
+                  onChange={(e) => setFormData({ ...formData, document_id: e.target.value.replace(/[^0-9-]/g, '') })}
                   className="w-full pl-12 pr-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50"
                   placeholder="1234567890"
                   disabled={!!clientToEdit}
                 />
               </div>
               <p className="text-xs text-gray-500 dark:text-white/40 mt-1">
-                {clientToEdit
-                  ? 'La cédula no se puede modificar'
-                  : 'Se usará para vincular cuando se registre en RogerBox'}
+                {clientToEdit ? 'La cédula no se puede modificar' : 'Se usará para vincular cuando se registre en RogerBox'}
               </p>
             </div>
 
@@ -181,9 +158,7 @@ export default function GymClientForm({
                   type="text"
                   required
                   value={formData.name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   className="w-full pl-12 pr-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50"
                   placeholder="Juan Pérez"
                 />
@@ -201,9 +176,7 @@ export default function GymClientForm({
                   type="text"
                   required
                   value={formData.whatsapp}
-                  onChange={(e) =>
-                    setFormData({ ...formData, whatsapp: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, whatsapp: e.target.value })}
                   className="w-full pl-12 pr-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50"
                   placeholder="3001234567 (mínimo 10 dígitos)"
                 />
@@ -227,9 +200,7 @@ export default function GymClientForm({
                 <input
                   type="email"
                   value={formData.email || ''}
-                  onChange={(e) =>
-                    setFormData({ ...formData, email: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   className="w-full pl-12 pr-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50"
                   placeholder="correo@ejemplo.com"
                 />
@@ -250,9 +221,7 @@ export default function GymClientForm({
                   <input
                     type="date"
                     value={formData.birth_date || ''}
-                    onChange={(e) =>
-                      setFormData({ ...formData, birth_date: e.target.value })
-                    }
+                    onChange={(e) => setFormData({ ...formData, birth_date: e.target.value })}
                     className="w-full pl-12 pr-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50"
                   />
                 </div>
@@ -270,14 +239,7 @@ export default function GymClientForm({
                     step="0.1"
                     min="0"
                     value={formData.weight || ''}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        weight: e.target.value
-                          ? parseFloat(e.target.value)
-                          : undefined,
-                      })
-                    }
+                    onChange={(e) => setFormData({ ...formData, weight: e.target.value ? parseFloat(e.target.value) : undefined })}
                     className="w-full pl-12 pr-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50"
                     placeholder="70.5"
                   />
@@ -294,12 +256,7 @@ export default function GymClientForm({
                 <FileText className="absolute left-4 top-3 w-4 h-4 text-gray-400" />
                 <textarea
                   value={formData.medical_restrictions || ''}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      medical_restrictions: e.target.value,
-                    })
-                  }
+                  onChange={(e) => setFormData({ ...formData, medical_restrictions: e.target.value })}
                   className="w-full pl-12 pr-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 resize-none"
                   rows={3}
                   placeholder="Lesiones, condiciones médicas, restricciones de ejercicio..."
@@ -324,11 +281,7 @@ export default function GymClientForm({
               className="px-5 py-2.5 rounded-lg bg-[#85ea10] text-black font-semibold hover:bg-[#85ea10]/90 transition-colors flex items-center gap-2 disabled:opacity-50"
             >
               <Save className="w-4 h-4" />
-              {isLoading
-                ? 'Guardando...'
-                : clientToEdit
-                  ? 'Actualizar'
-                  : 'Crear Cliente'}
+              {isLoading ? 'Guardando...' : clientToEdit ? 'Actualizar' : 'Crear Cliente'}
             </button>
           </div>
         </form>

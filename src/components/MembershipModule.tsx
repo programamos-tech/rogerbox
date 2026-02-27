@@ -1,9 +1,9 @@
 'use client';
 
-import { CheckCircle, CreditCard, Lock, XCircle } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { appStore } from '@/lib/store';
-import type { User } from '@/types';
+import { User } from '@/types';
+import { CreditCard, CheckCircle, XCircle, Lock } from 'lucide-react';
 
 export default function MembershipModule() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -36,19 +36,19 @@ export default function MembershipModule() {
 
   const isActive = currentUser.membership?.isActive || false;
   const membershipStartDate = currentUser.membership?.startDate;
-
+  
   // Helper function to safely format date
   const formatDate = (date: any) => {
     if (!date) return 'fecha no disponible';
     try {
       const dateObj = new Date(date);
-      if (Number.isNaN(dateObj.getTime())) return 'fecha no disponible';
+      if (isNaN(dateObj.getTime())) return 'fecha no disponible';
       return dateObj.toLocaleDateString('es-CO', {
         year: 'numeric',
         month: 'long',
-        day: 'numeric',
+        day: 'numeric'
       });
-    } catch (_error) {
+    } catch (error) {
       return 'fecha no disponible';
     }
   };
@@ -66,9 +66,7 @@ export default function MembershipModule() {
           ) : (
             <XCircle className="w-6 h-6 text-red-500" />
           )}
-          <span
-            className={`font-bold text-lg ${isActive ? 'text-green-600' : 'text-red-500'}`}
-          >
+          <span className={`font-bold text-lg ${isActive ? 'text-green-600' : 'text-red-500'}`}>
             {isActive ? 'Activa' : 'Inactiva'}
           </span>
         </div>
@@ -79,13 +77,10 @@ export default function MembershipModule() {
           <div className="bg-green-100 border border-green-300 rounded-lg p-4">
             <div className="flex items-center space-x-2 mb-2">
               <CheckCircle className="w-5 h-5 text-green-600" />
-              <span className="font-bold text-green-800 text-lg">
-                Membresía Activa
-              </span>
+              <span className="font-bold text-green-800 text-lg">Membresía Activa</span>
             </div>
             <p className="text-green-700 text-sm font-semibold">
-              Tu membresía está activa desde el{' '}
-              {formatDate(membershipStartDate)}
+              Tu membresía está activa desde el {formatDate(membershipStartDate)}
             </p>
             <p className="text-green-700 text-sm mt-2 font-semibold">
               Puedes reservar clases y acceder a todos los beneficios.
@@ -97,9 +92,7 @@ export default function MembershipModule() {
           <div className="bg-red-100 border border-red-300 rounded-lg p-4">
             <div className="flex items-center space-x-2 mb-2">
               <Lock className="w-5 h-5 text-red-500" />
-              <span className="font-bold text-red-700 text-lg">
-                Sin Membresía
-              </span>
+              <span className="font-bold text-red-700 text-lg">Sin Membresía</span>
             </div>
             <p className="text-red-700 text-sm font-semibold">
               Necesitas una membresía activa para reservar clases.
@@ -107,20 +100,14 @@ export default function MembershipModule() {
           </div>
 
           <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-            <h4 className="font-bold text-gray-800 mb-2 text-lg">
-              Activar Membresía
-            </h4>
+            <h4 className="font-bold text-gray-800 mb-2 text-lg">Activar Membresía</h4>
             <div className="flex items-center justify-between mb-4">
               <div>
-                <p className="text-gray-600 text-sm font-semibold">
-                  Precio mensual
-                </p>
+                <p className="text-gray-600 text-sm font-semibold">Precio mensual</p>
                 <p className="text-3xl font-bold text-gray-800">$135.000 COP</p>
               </div>
               <div className="text-right">
-                <p className="text-gray-600 text-sm font-semibold">
-                  Beneficios incluidos:
-                </p>
+                <p className="text-gray-600 text-sm font-semibold">Beneficios incluidos:</p>
                 <ul className="text-sm text-gray-700 space-y-1 font-semibold">
                   <li>• Reserva de clases ilimitadas</li>
                   <li>• Acceso a videos on-demand</li>
@@ -128,7 +115,8 @@ export default function MembershipModule() {
                 </ul>
               </div>
             </div>
-
+            
+            
             <button
               onClick={handleActivateMembership}
               disabled={isActivating}

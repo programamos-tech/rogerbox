@@ -1,27 +1,11 @@
 'use client';
 
-import {
-  ArrowLeft,
-  Bookmark,
-  Edit,
-  Eye,
-  EyeOff,
-  FileText,
-  Mail,
-  Play,
-  Ruler,
-  Target,
-  Trophy,
-  User,
-  Utensils,
-  Weight,
-  X,
-} from 'lucide-react';
+import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import QuickLoading from '@/components/QuickLoading';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { User, Mail, Weight, Ruler, Target, Trophy, Calendar, Edit, ArrowLeft, X, Eye, EyeOff, Bookmark, Play, FileText, Heart, LogOut, ChevronDown, Utensils } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import QuickLoading from '@/components/QuickLoading';
 
 interface UserProfile {
   id: string;
@@ -53,38 +37,38 @@ export default function ProfilePage() {
     email: '',
     currentPassword: '',
     newPassword: '',
-    confirmPassword: '',
+    confirmPassword: ''
   });
   const [physicalForm, setPhysicalForm] = useState({
     weight: '',
-    height: '',
+    height: ''
   });
   const [showGoalModal, setShowGoalModal] = useState(false);
   const [goalData, setGoalData] = useState({
     targetWeight: '',
     goalType: 'lose',
-    deadline: '',
+    deadline: ''
   });
   const [goalError, setGoalError] = useState('');
   const [goalLoading, setGoalLoading] = useState(false);
   const [showPasswords, setShowPasswords] = useState({
     current: false,
     new: false,
-    confirm: false,
+    confirm: false
   });
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState('');
   const [favorites, setFavorites] = useState<any>({
     complements: [],
     courses: [],
-    blog: [],
+    blog: []
   });
   const [favoritesLoading, setFavoritesLoading] = useState(false);
 
   // Cargar favoritos del usuario
   const fetchFavorites = async () => {
     if (!user?.id) return;
-
+    
     setFavoritesLoading(true);
     try {
       // Por ahora, simular cursos favoritos hasta que implementemos la funcionalidad
@@ -94,22 +78,23 @@ export default function ProfilePage() {
           title: 'Transformación Total 90 Días',
           description: 'Programa completo de transformación física en 90 días',
           category: 'Bajar de Peso',
-          price: 89,
+          price: 89
         },
         {
           id: '2',
           title: 'HIIT Quema Grasa',
           description: 'Entrenamiento de alta intensidad para quemar grasa',
           category: 'HIIT',
-          price: 69,
-        },
+          price: 69
+        }
       ];
-
+      
       setFavorites((prev: any) => ({
         ...prev,
-        courses: mockCourses,
+        courses: mockCourses
       }));
-    } catch (_error) {
+    } catch (error) {
+      console.error('Error cargando favoritos:', error);
     } finally {
       setFavoritesLoading(false);
     }
@@ -127,6 +112,7 @@ export default function ProfilePage() {
             .single();
 
           if (error) {
+            console.error('Error fetching profile:', error);
             return;
           }
 
@@ -136,22 +122,23 @@ export default function ProfilePage() {
             email: data.email || '',
             currentPassword: '',
             newPassword: '',
-            confirmPassword: '',
+            confirmPassword: ''
           });
-        } catch (_error) {
+        } catch (error) {
+          console.error('Error:', error);
         } finally {
           setLoading(false);
         }
       }
     };
 
-    if (user) {
+    if (!!user) {
       fetchUserProfile();
       fetchFavorites();
     } else if (!loading && !user) {
       router.push('/');
     }
-  }, [user, router, fetchFavorites, loading]);
+  }, [user, authLoading, router]);
 
   const handleEditProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -179,7 +166,7 @@ export default function ProfilePage() {
         .update({
           name: editForm.name,
           email: editForm.email,
-          updated_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         })
         .eq('id', user?.id);
 
@@ -192,7 +179,7 @@ export default function ProfilePage() {
       // Actualizar contraseña si se proporcionó
       if (editForm.newPassword) {
         const { error: passwordError } = await supabase.auth.updateUser({
-          password: editForm.newPassword,
+          password: editForm.newPassword
         });
 
         if (passwordError) {
@@ -203,15 +190,11 @@ export default function ProfilePage() {
       }
 
       // Actualizar estado local
-      setUserProfile((prev) =>
-        prev
-          ? {
-              ...prev,
-              name: editForm.name,
-              email: editForm.email,
-            }
-          : null,
-      );
+      setUserProfile(prev => prev ? {
+        ...prev,
+        name: editForm.name,
+        email: editForm.email
+      } : null);
 
       setShowEditModal(false);
       setEditForm({
@@ -219,12 +202,13 @@ export default function ProfilePage() {
         email: editForm.email,
         currentPassword: '',
         newPassword: '',
-        confirmPassword: '',
+        confirmPassword: ''
       });
 
       // Recargar la página para reflejar cambios
       window.location.reload();
-    } catch (_error) {
+    } catch (error) {
+      console.error('Error updating profile:', error);
       setEditError('Error inesperado al actualizar el perfil');
     } finally {
       setEditLoading(false);
@@ -244,19 +228,13 @@ export default function ProfilePage() {
         return;
       }
 
-      if (
-        parseInt(physicalForm.weight, 10) < 30 ||
-        parseInt(physicalForm.weight, 10) > 300
-      ) {
+      if (parseInt(physicalForm.weight) < 30 || parseInt(physicalForm.weight) > 300) {
         setEditError('El peso debe estar entre 30 y 300 kg');
         setEditLoading(false);
         return;
       }
 
-      if (
-        parseInt(physicalForm.height, 10) < 100 ||
-        parseInt(physicalForm.height, 10) > 250
-      ) {
+      if (parseInt(physicalForm.height) < 100 || parseInt(physicalForm.height) > 250) {
         setEditError('La altura debe estar entre 100 y 250 cm');
         setEditLoading(false);
         return;
@@ -266,34 +244,31 @@ export default function ProfilePage() {
       const { error: profileError } = await supabase
         .from('profiles')
         .update({
-          weight: parseInt(physicalForm.weight, 10),
-          height: parseInt(physicalForm.height, 10),
-          updated_at: new Date().toISOString(),
+          weight: parseInt(physicalForm.weight),
+          height: parseInt(physicalForm.height),
+          updated_at: new Date().toISOString()
         })
         .eq('id', userProfile?.id);
 
       if (profileError) throw profileError;
 
       // Actualizar perfil local
-      setUserProfile((prev) =>
-        prev
-          ? {
-              ...prev,
-              weight: parseInt(physicalForm.weight, 10),
-              height: parseInt(physicalForm.height, 10),
-            }
-          : null,
-      );
+      setUserProfile(prev => prev ? {
+        ...prev,
+        weight: parseInt(physicalForm.weight),
+        height: parseInt(physicalForm.height)
+      } : null);
 
       setShowPhysicalModal(false);
       setPhysicalForm({
         weight: '',
-        height: '',
+        height: ''
       });
 
       // Recargar la página para reflejar los cambios
       window.location.reload();
-    } catch (_error) {
+    } catch (error) {
+      console.error('Error actualizando datos físicos:', error);
       setEditError('Error al actualizar los datos. Inténtalo de nuevo.');
     } finally {
       setEditLoading(false);
@@ -317,49 +292,43 @@ export default function ProfilePage() {
       const { data, error } = await supabase
         .from('profiles')
         .update({
-          target_weight: parseInt(goalData.targetWeight, 10),
+          target_weight: parseInt(goalData.targetWeight),
           goal_deadline: goalData.deadline,
-          updated_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         })
         .eq('id', userProfile.id)
         .select();
 
       if (error) {
-        throw new Error(
-          `Error al actualizar la meta: ${error.message || 'Error desconocido'}`,
-        );
+        console.error('Error de Supabase al actualizar:', error);
+        throw new Error(`Error al actualizar la meta: ${error.message || 'Error desconocido'}`);
       }
 
-      setUserProfile((prev) =>
-        prev
-          ? {
-              ...prev,
-              target_weight: parseInt(goalData.targetWeight, 10),
-              goal_deadline: goalData.deadline,
-            }
-          : null,
-      );
+      setUserProfile(prev => prev ? {
+        ...prev,
+        target_weight: parseInt(goalData.targetWeight),
+        goal_deadline: goalData.deadline
+      } : null);
 
       setShowGoalModal(false);
       setGoalData({ targetWeight: '', goalType: 'lose', deadline: '' });
-
+      
       window.location.reload();
     } catch (error: any) {
-      setGoalError(
-        error.message || 'Error al actualizar la meta. Inténtalo de nuevo.',
-      );
+      console.error('Error actualizando meta:', error);
+      setGoalError(error.message || 'Error al actualizar la meta. Inténtalo de nuevo.');
     } finally {
       setGoalLoading(false);
     }
   };
 
-  const _goalLabels: { [key: string]: string } = {
-    lose_weight: 'Bajar de Peso',
-    tone: 'Tonificar',
-    gain_muscle: 'Ganar Músculo',
-    endurance: 'Resistencia',
-    hiit: 'HIIT',
-    strength: 'Fuerza',
+  const goalLabels: { [key: string]: string } = {
+    'lose_weight': 'Bajar de Peso',
+    'tone': 'Tonificar',
+    'gain_muscle': 'Ganar Músculo',
+    'endurance': 'Resistencia',
+    'hiit': 'HIIT',
+    'strength': 'Fuerza'
   };
 
   if (loading || loading) {
@@ -411,12 +380,8 @@ export default function ProfilePage() {
               <User className="w-8 h-8 text-black" />
             </div>
             <div className="flex-1">
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
-                {userProfile.name}
-              </h1>
-              <p className="text-gray-600 dark:text-white/60 text-sm">
-                {userProfile.email}
-              </p>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">{userProfile.name}</h1>
+              <p className="text-gray-600 dark:text-white/60 text-sm">{userProfile.email}</p>
             </div>
             <button
               onClick={() => setShowEditModal(true)}
@@ -434,35 +399,27 @@ export default function ProfilePage() {
           <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20">
             <div className="flex items-center space-x-3 mb-4">
               <User className="w-5 h-5 text-[#85ea10]" />
-              <h2 className="text-lg font-bold text-gray-900 dark:text-white">
-                Información Personal
-              </h2>
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white">Información Personal</h2>
             </div>
             <div className="space-y-3">
               <div className="flex items-center space-x-3">
                 <Mail className="w-4 h-4 text-gray-600 dark:text-white/60" />
-                <span className="text-gray-700 dark:text-white/80 text-sm break-all">
-                  {userProfile.email}
-                </span>
+                <span className="text-gray-700 dark:text-white/80 text-sm break-all">{userProfile.email}</span>
               </div>
               <div className="flex items-center space-x-3">
                 <Weight className="w-4 h-4 text-gray-600 dark:text-white/60" />
-                <span className="text-gray-700 dark:text-white/80 text-sm">
-                  {userProfile.weight} kg
-                </span>
+                <span className="text-gray-700 dark:text-white/80 text-sm">{userProfile.weight} kg</span>
               </div>
               <div className="flex items-center space-x-3">
                 <Ruler className="w-4 h-4 text-gray-600 dark:text-white/60" />
-                <span className="text-gray-700 dark:text-white/80 text-sm">
-                  {userProfile.height} cm
-                </span>
+                <span className="text-gray-700 dark:text-white/80 text-sm">{userProfile.height} cm</span>
               </div>
               <div className="pt-2">
                 <button
                   onClick={() => {
                     setPhysicalForm({
                       weight: userProfile.weight.toString(),
-                      height: userProfile.height.toString(),
+                      height: userProfile.height.toString()
                     });
                     setShowPhysicalModal(true);
                   }}
@@ -477,197 +434,149 @@ export default function ProfilePage() {
 
           {/* Goals */}
           <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20">
-            <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-3">
+              <Trophy className="w-5 h-5 text-[#85ea10]" />
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white">Mis Metas</h2>
+            </div>
+            <button 
+              onClick={() => setShowGoalModal(true)}
+              className="text-xs bg-[#85ea10] text-black px-3 py-1 rounded-full font-medium hover:bg-[#7dd30f] transition-colors"
+            >
+              + Agregar Meta
+            </button>
+          </div>
+
+          {/* Racha Destacada */}
+          <div className="mb-6 p-4 bg-gradient-to-r from-[#85ea10]/10 to-[#85ea10]/5 rounded-xl border border-[#85ea10]/20">
+            <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
-                <Trophy className="w-5 h-5 text-[#85ea10]" />
-                <h2 className="text-lg font-bold text-gray-900 dark:text-white">
-                  Mis Metas
-                </h2>
-              </div>
-              <button
-                onClick={() => setShowGoalModal(true)}
-                className="text-xs bg-[#85ea10] text-black px-3 py-1 rounded-full font-medium hover:bg-[#7dd30f] transition-colors"
-              >
-                + Agregar Meta
-              </button>
-            </div>
-
-            {/* Racha Destacada */}
-            <div className="mb-6 p-4 bg-gradient-to-r from-[#85ea10]/10 to-[#85ea10]/5 rounded-xl border border-[#85ea10]/20">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-[#85ea10]/20 rounded-full flex items-center justify-center">
-                    <Trophy className="w-5 h-5 text-[#85ea10]" />
-                  </div>
-                  <div>
-                    <div className="text-sm font-medium text-gray-900 dark:text-white">
-                      Mi Racha de Clases
-                    </div>
-                    <div className="text-xs text-gray-600 dark:text-white/60">
-                      {userProfile.last_class_date
-                        ? `Última clase: ${new Date(userProfile.last_class_date).toLocaleDateString('es-ES')}`
-                        : 'Aún no has tomado clases'}
-                    </div>
-                  </div>
+                <div className="w-10 h-10 bg-[#85ea10]/20 rounded-full flex items-center justify-center">
+                  <Trophy className="w-5 h-5 text-[#85ea10]" />
                 </div>
-                <div className="text-right">
-                  <div className="text-3xl font-bold text-[#85ea10]">
-                    {userProfile.streak_days || 0}
-                  </div>
+                <div>
+                  <div className="text-sm font-medium text-gray-900 dark:text-white">Mi Racha de Clases</div>
                   <div className="text-xs text-gray-600 dark:text-white/60">
-                    {userProfile.streak_days && userProfile.streak_days > 0
-                      ? 'días consecutivos'
-                      : 'días'}
+                    {userProfile.last_class_date ? 
+                      `Última clase: ${new Date(userProfile.last_class_date).toLocaleDateString('es-ES')}` : 
+                      'Aún no has tomado clases'
+                    }
                   </div>
                 </div>
               </div>
-
-              {userProfile.streak_days && userProfile.streak_days > 0 && (
-                <div className="mt-3 flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-[#85ea10] rounded-full animate-pulse"></div>
-                  <span className="text-xs text-[#85ea10] font-medium">
-                    ¡Sigue así! Mantén tu racha activa
-                  </span>
+              <div className="text-right">
+                <div className="text-3xl font-bold text-[#85ea10]">
+                  {userProfile.streak_days || 0}
                 </div>
-              )}
-
-              {(!userProfile.streak_days || userProfile.streak_days === 0) && (
-                <div className="mt-3">
-                  <button className="text-[#85ea10] hover:text-[#7dd30f] text-sm font-medium transition-colors">
-                    Comenzar mi primera clase →
-                  </button>
+                <div className="text-xs text-gray-600 dark:text-white/60">
+                  {userProfile.streak_days && userProfile.streak_days > 0 ? 'días consecutivos' : 'días'}
                 </div>
-              )}
+              </div>
             </div>
-
+            
+            {userProfile.streak_days && userProfile.streak_days > 0 && (
+              <div className="mt-3 flex items-center space-x-2">
+                <div className="w-2 h-2 bg-[#85ea10] rounded-full animate-pulse"></div>
+                <span className="text-xs text-[#85ea10] font-medium">
+                  ¡Sigue así! Mantén tu racha activa
+                </span>
+              </div>
+            )}
+            
+            {(!userProfile.streak_days || userProfile.streak_days === 0) && (
+              <div className="mt-3">
+                <button className="text-[#85ea10] hover:text-[#7dd30f] text-sm font-medium transition-colors">
+                  Comenzar mi primera clase →
+                </button>
+              </div>
+            )}
+          </div>
+            
             {/* Meta de Peso */}
             <div className="space-y-3">
               <div className="bg-white/5 rounded-lg p-4 border border-white/10">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center space-x-2">
                     <Weight className="w-4 h-4 text-[#85ea10]" />
-                    <span className="text-sm font-medium text-gray-900 dark:text-white">
-                      Bajar de Peso
-                    </span>
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">Bajar de Peso</span>
                   </div>
-                  <span className="text-xs text-gray-500 dark:text-white/60">
-                    Activa
-                  </span>
+                  <span className="text-xs text-gray-500 dark:text-white/60">Activa</span>
                 </div>
                 <div className="grid grid-cols-2 gap-3 text-xs">
                   <div>
-                    <span className="text-gray-600 dark:text-white/60">
-                      Peso actual:
-                    </span>
+                    <span className="text-gray-600 dark:text-white/60">Peso actual:</span>
                     <span className="text-gray-900 dark:text-white font-medium ml-1">
                       {userProfile.current_weight || userProfile.weight} kg
                     </span>
                   </div>
                   <div>
-                    <span className="text-gray-600 dark:text-white/60">
-                      Meta:
-                    </span>
+                    <span className="text-gray-600 dark:text-white/60">Meta:</span>
                     <span className="text-gray-900 dark:text-white font-medium ml-1">
                       {userProfile.target_weight || 'No definida'} kg
                     </span>
                   </div>
                   <div>
-                    <span className="text-gray-600 dark:text-white/60">
-                      Progreso:
-                    </span>
+                    <span className="text-gray-600 dark:text-white/60">Progreso:</span>
                     <span className="text-[#85ea10] font-medium ml-1">
                       {userProfile.weight_progress_percentage || 0}%
                     </span>
                   </div>
                   <div>
-                    <span className="text-gray-600 dark:text-white/60">
-                      Fecha límite:
-                    </span>
+                    <span className="text-gray-600 dark:text-white/60">Fecha límite:</span>
                     <span className="text-gray-900 dark:text-white font-medium ml-1">
-                      {userProfile.goal_deadline
-                        ? new Date(
-                            userProfile.goal_deadline,
-                          ).toLocaleDateString('es-ES', {
-                            month: 'short',
-                            year: 'numeric',
-                          })
-                        : 'No definida'}
+                      {userProfile.goal_deadline ? 
+                        new Date(userProfile.goal_deadline).toLocaleDateString('es-ES', { month: 'short', year: 'numeric' }) : 
+                        'No definida'
+                      }
                     </span>
                   </div>
                 </div>
                 <div className="mt-2">
                   <div className="w-full bg-gray-200 dark:bg-white/20 rounded-full h-2">
-                    <div
-                      className="bg-[#85ea10] h-2 rounded-full transition-all duration-300"
-                      style={{
-                        width: `${userProfile.weight_progress_percentage || 0}%`,
-                      }}
+                    <div 
+                      className="bg-[#85ea10] h-2 rounded-full transition-all duration-300" 
+                      style={{width: `${userProfile.weight_progress_percentage || 0}%`}}
                     ></div>
                   </div>
                 </div>
               </div>
 
               {/* Meta de Tonificación - Solo mostrar si existe */}
-              {userProfile.goals?.includes('tone') && (
+              {userProfile.goals && userProfile.goals.includes('tone') && (
                 <div className="bg-white/5 rounded-lg p-4 border border-white/10">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center space-x-2">
                       <Target className="w-4 h-4 text-[#85ea10]" />
-                      <span className="text-sm font-medium text-gray-900 dark:text-white">
-                        Tonificar Músculos
-                      </span>
+                      <span className="text-sm font-medium text-gray-900 dark:text-white">Tonificar Músculos</span>
                     </div>
-                    <span className="text-xs text-gray-500 dark:text-white/60">
-                      Activa
-                    </span>
+                    <span className="text-xs text-gray-500 dark:text-white/60">Activa</span>
                   </div>
                   <div className="grid grid-cols-2 gap-3 text-xs">
                     <div>
-                      <span className="text-gray-600 dark:text-white/60">
-                        Objetivo:
-                      </span>
+                      <span className="text-gray-600 dark:text-white/60">Objetivo:</span>
+                      <span className="text-gray-900 dark:text-white font-medium ml-1">Definir músculos</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600 dark:text-white/60">Progreso:</span>
+                      <span className="text-[#85ea10] font-medium ml-1">0%</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600 dark:text-white/60">Fecha límite:</span>
                       <span className="text-gray-900 dark:text-white font-medium ml-1">
-                        Definir músculos
+                        {userProfile.goal_deadline ? 
+                          new Date(userProfile.goal_deadline).toLocaleDateString('es-ES', { month: 'short', year: 'numeric' }) : 
+                          'No definida'
+                        }
                       </span>
                     </div>
                     <div>
-                      <span className="text-gray-600 dark:text-white/60">
-                        Progreso:
-                      </span>
-                      <span className="text-[#85ea10] font-medium ml-1">
-                        0%
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-gray-600 dark:text-white/60">
-                        Fecha límite:
-                      </span>
-                      <span className="text-gray-900 dark:text-white font-medium ml-1">
-                        {userProfile.goal_deadline
-                          ? new Date(
-                              userProfile.goal_deadline,
-                            ).toLocaleDateString('es-ES', {
-                              month: 'short',
-                              year: 'numeric',
-                            })
-                          : 'No definida'}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-gray-600 dark:text-white/60">
-                        Racha:
-                      </span>
-                      <span className="text-[#85ea10] font-medium ml-1">
-                        {userProfile.streak_days || 0} días
-                      </span>
+                      <span className="text-gray-600 dark:text-white/60">Racha:</span>
+                      <span className="text-[#85ea10] font-medium ml-1">{userProfile.streak_days || 0} días</span>
                     </div>
                   </div>
                   <div className="mt-2">
                     <div className="w-full bg-gray-200 dark:bg-white/20 rounded-full h-2">
-                      <div
-                        className="bg-[#85ea10] h-2 rounded-full transition-all duration-300"
-                        style={{ width: '0%' }}
-                      ></div>
+                      <div className="bg-[#85ea10] h-2 rounded-full transition-all duration-300" style={{width: '0%'}}></div>
                     </div>
                   </div>
                 </div>
@@ -675,38 +584,27 @@ export default function ProfilePage() {
             </div>
           </div>
 
+
           {/* Payment Management */}
           <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20">
             <div className="flex items-center space-x-3 mb-4">
               <Target className="w-5 h-5 text-[#85ea10]" />
-              <h2 className="text-lg font-bold text-gray-900 dark:text-white">
-                Gestión de Pagos
-              </h2>
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white">Gestión de Pagos</h2>
             </div>
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-gray-700 dark:text-white/80 text-sm">
-                  Tarjeta Guardada
-                </span>
+                <span className="text-gray-700 dark:text-white/80 text-sm">Tarjeta Guardada</span>
                 <span className="px-3 py-1 rounded-full text-sm font-medium bg-green-500/20 text-green-600">
                   **** 1234
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-700 dark:text-white/80 text-sm">
-                  Cursos Comprados
-                </span>
-                <span className="text-gray-900 dark:text-white text-sm font-medium">
-                  2 cursos
-                </span>
+                <span className="text-gray-700 dark:text-white/80 text-sm">Cursos Comprados</span>
+                <span className="text-gray-900 dark:text-white text-sm font-medium">2 cursos</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-700 dark:text-white/80 text-sm">
-                  Gasto Total
-                </span>
-                <span className="text-gray-900 dark:text-white text-sm font-medium">
-                  $158
-                </span>
+                <span className="text-gray-700 dark:text-white/80 text-sm">Gasto Total</span>
+                <span className="text-gray-900 dark:text-white text-sm font-medium">$158</span>
               </div>
               <button className="w-full mt-3 bg-[#85ea10] hover:bg-[#7dd30f] text-black font-bold px-4 py-2 rounded-lg transition-colors text-sm">
                 Gestionar Pagos
@@ -719,46 +617,38 @@ export default function ProfilePage() {
         <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20">
           <div className="flex items-center space-x-3 mb-6">
             <Bookmark className="w-5 h-5 text-[#85ea10]" />
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white">
-              Mi Contenido
-            </h2>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white">Mi Contenido</h2>
           </div>
-
+          
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Cursos Comprados */}
             <div className="bg-white/5 rounded-xl p-4">
               <div className="flex items-center space-x-2 mb-3">
                 <Play className="w-4 h-4 text-[#85ea10]" />
-                <h3 className="font-semibold text-gray-900 dark:text-white">
-                  Cursos Comprados
-                </h3>
+                <h3 className="font-semibold text-gray-900 dark:text-white">Cursos Comprados</h3>
               </div>
               {favoritesLoading ? (
-                <div className="text-gray-600 dark:text-white/60 text-sm">
-                  Cargando...
-                </div>
+                <div className="text-gray-600 dark:text-white/60 text-sm">Cargando...</div>
               ) : favorites.courses.length > 0 ? (
                 <div className="space-y-2">
-                  {favorites.courses
-                    .slice(0, 3)
-                    .map((course: any, index: number) => (
-                      <div key={index} className="bg-white/10 rounded-lg p-3">
-                        <div className="text-sm font-medium text-gray-900 dark:text-white mb-1">
-                          {course.title || 'Curso sin nombre'}
+                  {favorites.courses.slice(0, 3).map((course: any, index: number) => (
+                    <div key={index} className="bg-white/10 rounded-lg p-3">
+                      <div className="text-sm font-medium text-gray-900 dark:text-white mb-1">
+                        {course.title || 'Curso sin nombre'}
+                      </div>
+                      <div className="text-xs text-gray-600 dark:text-white/60 mb-1">
+                        {course.description || 'Sin descripción'}
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="text-xs text-[#85ea10]">
+                          {course.category || 'Sin categoría'}
                         </div>
-                        <div className="text-xs text-gray-600 dark:text-white/60 mb-1">
-                          {course.description || 'Sin descripción'}
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <div className="text-xs text-[#85ea10]">
-                            {course.category || 'Sin categoría'}
-                          </div>
-                          <div className="text-xs text-gray-600 dark:text-white/60">
-                            ${course.price}
-                          </div>
+                        <div className="text-xs text-gray-600 dark:text-white/60">
+                          ${course.price}
                         </div>
                       </div>
-                    ))}
+                    </div>
+                  ))}
                   {favorites.courses.length > 3 && (
                     <div className="text-xs text-gray-600 dark:text-white/60">
                       +{favorites.courses.length - 3} más
@@ -766,9 +656,7 @@ export default function ProfilePage() {
                   )}
                 </div>
               ) : (
-                <div className="text-gray-600 dark:text-white/60 text-sm">
-                  No has comprado cursos aún
-                </div>
+                <div className="text-gray-600 dark:text-white/60 text-sm">No has comprado cursos aún</div>
               )}
             </div>
 
@@ -776,9 +664,7 @@ export default function ProfilePage() {
             <div className="bg-white/5 rounded-xl p-4">
               <div className="flex items-center space-x-2 mb-3">
                 <FileText className="w-4 h-4 text-[#85ea10]" />
-                <h3 className="font-semibold text-gray-900 dark:text-white">
-                  Blog Favoritos
-                </h3>
+                <h3 className="font-semibold text-gray-900 dark:text-white">Blog Favoritos</h3>
               </div>
               <div className="space-y-2">
                 <div className="bg-white/10 rounded-lg p-3 opacity-60">
@@ -788,7 +674,9 @@ export default function ProfilePage() {
                   <div className="text-xs text-gray-600 dark:text-white/60 mb-1">
                     Consejos prácticos para acelerar tu metabolismo
                   </div>
-                  <div className="text-xs text-[#85ea10]">Nutrición</div>
+                  <div className="text-xs text-[#85ea10]">
+                    Nutrición
+                  </div>
                 </div>
                 <div className="text-xs text-gray-500 dark:text-white/40 text-center">
                   🔒 Funcionalidad Premium
@@ -800,9 +688,7 @@ export default function ProfilePage() {
             <div className="bg-white/5 rounded-xl p-4">
               <div className="flex items-center space-x-2 mb-3">
                 <Utensils className="w-4 h-4 text-[#85ea10]" />
-                <h3 className="font-semibold text-gray-900 dark:text-white">
-                  Plan Nutricional
-                </h3>
+                <h3 className="font-semibold text-gray-900 dark:text-white">Plan Nutricional</h3>
               </div>
               <div className="space-y-3">
                 <div className="bg-gradient-to-r from-[#85ea10]/20 to-[#85ea10]/10 rounded-lg p-3 border border-[#85ea10]/30">
@@ -813,9 +699,7 @@ export default function ProfilePage() {
                     Diseñado específicamente para tus objetivos
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-[#85ea10] font-medium">
-                      $49/mes
-                    </span>
+                    <span className="text-xs text-[#85ea10] font-medium">$49/mes</span>
                     <button className="text-xs bg-[#85ea10] text-black px-3 py-1 rounded-full font-medium hover:bg-[#7dd30f] transition-colors">
                       Solicitar
                     </button>
@@ -836,18 +720,12 @@ export default function ProfilePage() {
                   <User className="w-5 h-5 text-black" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-gray-900 dark:text-white">
-                    Sesión 1:1 con RogerBox
-                  </h3>
-                  <p className="text-xs text-gray-600 dark:text-white/60">
-                    Mentoría personalizada con Roger Barreto
-                  </p>
+                  <h3 className="font-semibold text-gray-900 dark:text-white">Sesión 1:1 con RogerBox</h3>
+                  <p className="text-xs text-gray-600 dark:text-white/60">Mentoría personalizada con Roger Barreto</p>
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-sm font-bold text-gray-900 dark:text-white">
-                  $150/sesión
-                </div>
+                <div className="text-sm font-bold text-gray-900 dark:text-white">$150/sesión</div>
                 <button className="mt-1 text-xs bg-[#85ea10] text-black px-4 py-2 rounded-full font-medium hover:bg-[#7dd30f] transition-colors">
                   Solicitar Sesión
                 </button>
@@ -862,9 +740,7 @@ export default function ProfilePage() {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-md">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                Editar Perfil
-              </h2>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">Editar Perfil</h2>
               <button
                 onClick={() => setShowEditModal(false)}
                 className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
@@ -876,9 +752,7 @@ export default function ProfilePage() {
             <form onSubmit={handleEditProfile} className="space-y-4">
               {editError && (
                 <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
-                  <p className="text-red-600 dark:text-red-400 text-sm">
-                    {editError}
-                  </p>
+                  <p className="text-red-600 dark:text-red-400 text-sm">{editError}</p>
                 </div>
               )}
 
@@ -889,9 +763,7 @@ export default function ProfilePage() {
                 <input
                   type="text"
                   value={editForm.name}
-                  onChange={(e) =>
-                    setEditForm((prev) => ({ ...prev, name: e.target.value }))
-                  }
+                  onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-white/20 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]"
                   placeholder="Tu nombre"
                 />
@@ -904,9 +776,7 @@ export default function ProfilePage() {
                 <input
                   type="email"
                   value={editForm.email}
-                  onChange={(e) =>
-                    setEditForm((prev) => ({ ...prev, email: e.target.value }))
-                  }
+                  onChange={(e) => setEditForm(prev => ({ ...prev, email: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-white/20 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]"
                   placeholder="tu@email.com"
                 />
@@ -920,27 +790,16 @@ export default function ProfilePage() {
                   <input
                     type={showPasswords.new ? 'text' : 'password'}
                     value={editForm.newPassword}
-                    onChange={(e) =>
-                      setEditForm((prev) => ({
-                        ...prev,
-                        newPassword: e.target.value,
-                      }))
-                    }
+                    onChange={(e) => setEditForm(prev => ({ ...prev, newPassword: e.target.value }))}
                     className="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-white/20 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]"
                     placeholder="Nueva contraseña"
                   />
                   <button
                     type="button"
-                    onClick={() =>
-                      setShowPasswords((prev) => ({ ...prev, new: !prev.new }))
-                    }
+                    onClick={() => setShowPasswords(prev => ({ ...prev, new: !prev.new }))}
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                   >
-                    {showPasswords.new ? (
-                      <EyeOff className="w-4 h-4" />
-                    ) : (
-                      <Eye className="w-4 h-4" />
-                    )}
+                    {showPasswords.new ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
@@ -953,30 +812,16 @@ export default function ProfilePage() {
                   <input
                     type={showPasswords.confirm ? 'text' : 'password'}
                     value={editForm.confirmPassword}
-                    onChange={(e) =>
-                      setEditForm((prev) => ({
-                        ...prev,
-                        confirmPassword: e.target.value,
-                      }))
-                    }
+                    onChange={(e) => setEditForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
                     className="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-white/20 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]"
                     placeholder="Confirmar nueva contraseña"
                   />
                   <button
                     type="button"
-                    onClick={() =>
-                      setShowPasswords((prev) => ({
-                        ...prev,
-                        confirm: !prev.confirm,
-                      }))
-                    }
+                    onClick={() => setShowPasswords(prev => ({ ...prev, confirm: !prev.confirm }))}
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                   >
-                    {showPasswords.confirm ? (
-                      <EyeOff className="w-4 h-4" />
-                    ) : (
-                      <Eye className="w-4 h-4" />
-                    )}
+                    {showPasswords.confirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
@@ -1026,12 +871,7 @@ export default function ProfilePage() {
                 <input
                   type="number"
                   value={physicalForm.weight}
-                  onChange={(e) =>
-                    setPhysicalForm((prev) => ({
-                      ...prev,
-                      weight: e.target.value,
-                    }))
-                  }
+                  onChange={(e) => setPhysicalForm(prev => ({ ...prev, weight: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#85ea10] focus:border-[#85ea10] bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                   placeholder="Ej: 70"
                   min="30"
@@ -1046,12 +886,7 @@ export default function ProfilePage() {
                 <input
                   type="number"
                   value={physicalForm.height}
-                  onChange={(e) =>
-                    setPhysicalForm((prev) => ({
-                      ...prev,
-                      height: e.target.value,
-                    }))
-                  }
+                  onChange={(e) => setPhysicalForm(prev => ({ ...prev, height: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#85ea10] focus:border-[#85ea10] bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                   placeholder="Ej: 175"
                   min="100"
@@ -1061,9 +896,7 @@ export default function ProfilePage() {
 
               {editError && (
                 <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
-                  <p className="text-red-600 dark:text-red-400 text-sm">
-                    {editError}
-                  </p>
+                  <p className="text-red-600 dark:text-red-400 text-sm">{editError}</p>
                 </div>
               )}
 
@@ -1077,9 +910,7 @@ export default function ProfilePage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={
-                    editLoading || !physicalForm.weight || !physicalForm.height
-                  }
+                  disabled={editLoading || !physicalForm.weight || !physicalForm.height}
                   className="flex-1 px-4 py-2 bg-[#85ea10] hover:bg-[#7dd30f] text-black font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {editLoading ? 'Actualizando...' : 'Actualizar'}
@@ -1106,13 +937,7 @@ export default function ProfilePage() {
               </button>
             </div>
 
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleGoalSubmit();
-              }}
-              className="space-y-4"
-            >
+            <form onSubmit={(e) => { e.preventDefault(); handleGoalSubmit(); }} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Peso Objetivo (kg)
@@ -1120,12 +945,7 @@ export default function ProfilePage() {
                 <input
                   type="number"
                   value={goalData.targetWeight}
-                  onChange={(e) =>
-                    setGoalData((prev) => ({
-                      ...prev,
-                      targetWeight: e.target.value,
-                    }))
-                  }
+                  onChange={(e) => setGoalData(prev => ({ ...prev, targetWeight: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#85ea10] focus:border-[#85ea10] bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                   placeholder="Ej: 65"
                   min="30"
@@ -1140,12 +960,7 @@ export default function ProfilePage() {
                 <input
                   type="date"
                   value={goalData.deadline}
-                  onChange={(e) =>
-                    setGoalData((prev) => ({
-                      ...prev,
-                      deadline: e.target.value,
-                    }))
-                  }
+                  onChange={(e) => setGoalData(prev => ({ ...prev, deadline: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#85ea10] focus:border-[#85ea10] bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                   min={new Date().toISOString().split('T')[0]}
                 />
@@ -1153,9 +968,7 @@ export default function ProfilePage() {
 
               {goalError && (
                 <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
-                  <p className="text-red-600 dark:text-red-400 text-sm">
-                    {goalError}
-                  </p>
+                  <p className="text-red-600 dark:text-red-400 text-sm">{goalError}</p>
                 </div>
               )}
 
@@ -1170,9 +983,7 @@ export default function ProfilePage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={
-                    goalLoading || !goalData.targetWeight || !goalData.deadline
-                  }
+                  disabled={goalLoading || !goalData.targetWeight || !goalData.deadline}
                   className="flex-1 px-4 py-2 bg-[#85ea10] hover:bg-[#7dd30f] text-black font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                 >
                   {goalLoading ? (
@@ -1189,6 +1000,7 @@ export default function ProfilePage() {
           </div>
         </div>
       )}
+
     </div>
   );
 }

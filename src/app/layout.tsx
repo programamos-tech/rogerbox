@@ -1,29 +1,28 @@
-import type { Metadata } from 'next';
-import { Geist, Geist_Mono, Inter } from 'next/font/google';
-import Script from 'next/script';
-import VersionFooter from '@/components/VersionFooter';
-import './globals.css';
+import type { Metadata } from "next";
+import { Geist, Geist_Mono, Inter } from "next/font/google";
+import Script from "next/script";
+import VersionFooter from "@/components/VersionFooter";
+import "./globals.css";
 
 const geistSans = Geist({
-  variable: '--font-geist-sans',
-  subsets: ['latin'],
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
 });
 
 const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
-  subsets: ['latin'],
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
 });
 
 const inter = Inter({
-  variable: '--font-inter',
-  subsets: ['latin'],
-  weight: ['100', '200', '300', '400', '500', '600', '700', '800', '900'],
+  variable: "--font-inter",
+  subsets: ["latin"],
+  weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"],
 });
 
 export const metadata: Metadata = {
-  title: 'RogerBox - Transforma tu cuerpo cambiando tu mente',
-  description:
-    'Plataforma de fitness y bienestar con entrenamientos HIIT, planes nutricionales y mentoría personalizada. ¡Comienza tu transformación hoy!',
+  title: "RogerBox - Transforma tu cuerpo cambiando tu mente",
+  description: "Plataforma de fitness y bienestar con entrenamientos HIIT, planes nutricionales y mentoría personalizada. ¡Comienza tu transformación hoy!",
   icons: {
     icon: '/favicon.svg',
     shortcut: '/favicon.svg',
@@ -31,8 +30,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: 'RogerBox - Transforma tu cuerpo cambiando tu mente',
-    description:
-      'Entrenamientos HIIT, planes nutricionales y mentoría personalizada. Únete a RogerBox.',
+    description: 'Entrenamientos HIIT, planes nutricionales y mentoría personalizada. Únete a RogerBox.',
     url: 'https://rogerbox.vercel.app',
     siteName: 'RogerBox',
     images: [
@@ -49,8 +47,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'RogerBox - Transforma tu cuerpo cambiando tu mente',
-    description:
-      'Entrenamientos HIIT, planes nutricionales y mentoría personalizada. Únete a RogerBox.',
+    description: 'Entrenamientos HIIT, planes nutricionales y mentoría personalizada. Únete a RogerBox.',
     images: ['/logo.png'],
   },
 };
@@ -74,6 +71,8 @@ export default function RootLayout({
               (function() {
                 var checkWompi = setInterval(function() {
                   if (typeof window.WidgetCheckout !== 'undefined') {
+                    console.log('✅ Script de Wompi cargado correctamente');
+                    console.log('🔍 window.WidgetCheckout disponible:', typeof window.WidgetCheckout);
                     clearInterval(checkWompi);
                   }
                 }, 100);

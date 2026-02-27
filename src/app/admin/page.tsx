@@ -1,13 +1,22 @@
 'use client';
 
+// Admin dashboard component
+import QuickLoading from '@/components/QuickLoading';
+import BannerManagement from '@/components/admin/BannerManagement';
+import BlogManagement from '@/components/admin/BlogManagement';
+import UnderConstruction from '@/components/UnderConstruction';
+import ComplementManagement from '@/components/admin/ComplementManagement';
+import ConfirmDialog from '@/components/admin/ConfirmDialog';
+import GymPlansManagement, { GymPlansManagementRef } from '@/components/admin/GymPlansManagement';
+import GymPaymentsManagement, { GymPaymentsManagementRef } from '@/components/admin/GymPaymentsManagement';
+
+import GymClientForm from '@/components/admin/GymClientForm';
+import { supabaseAdmin } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase-browser';
 import {
-  AlertCircle,
-  AlertTriangle,
-  Ban,
   BarChart3,
   Bell,
   BookOpen,
-  Cake,
   Calendar,
   Check,
   CheckCircle,
@@ -16,49 +25,48 @@ import {
   ChevronsLeft,
   ChevronsRight,
   CreditCard,
-  Dumbbell,
+  DollarSign,
   Edit,
   Eye,
   EyeOff,
   FileText,
-  Filter,
   Globe,
   Home,
   Image,
+  Mail,
+  MapPin,
   Menu,
   MessageSquare,
   Phone,
   Play,
   Plus,
   RefreshCw,
+  Ruler,
+  Scale,
   Search,
   Settings,
   ShoppingCart,
+  Target,
   Trash2,
-  TrendingUp,
   User,
   Users,
-  Wallet,
   X,
+  Dumbbell,
+  ClipboardList,
+  AlertCircle,
+  AlertTriangle,
+  Filter,
+  UserX,
+  Ban,
+  Wallet,
+  TrendingUp,
+  Cake,
+  Code,
   Zap,
 } from 'lucide-react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
-import ComplementManagement from '@/components/admin/ComplementManagement';
-import ConfirmDialog from '@/components/admin/ConfirmDialog';
-import GymClientForm from '@/components/admin/GymClientForm';
-import GymPaymentsManagement, {
-  type GymPaymentsManagementRef,
-} from '@/components/admin/GymPaymentsManagement';
-import GymPlansManagement, {
-  type GymPlansManagementRef,
-} from '@/components/admin/GymPlansManagement';
-// Admin dashboard component
-import QuickLoading from '@/components/QuickLoading';
-import UnderConstruction from '@/components/UnderConstruction';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
-import { supabaseAdmin } from '@/lib/supabase';
-import { supabase } from '@/lib/supabase-browser';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useMemo, useState, useRef, Suspense } from 'react';
 
 interface AdminStats {
   kpis: {
@@ -83,21 +91,10 @@ interface AdminStats {
     complements: { total: number; published: number };
     banners: { total: number; active: number };
   };
-  recentUsers: {
-    id: string;
-    name: string;
-    email: string;
-    created_at: string;
-  }[];
-  recentSales: {
-    id: string;
-    customer_name: string;
-    amount: number;
-    status: string;
-    created_at: string;
-    course_title: string;
-  }[];
+  recentUsers: { id: string; name: string; email: string; created_at: string }[];
+  recentSales: { id: string; customer_name: string; amount: number; status: string; created_at: string; course_title: string }[];
 }
+
 
 interface Course {
   id: string;
@@ -164,82 +161,30 @@ interface Sale {
 const menuSections = [
   {
     title: 'Principal',
-    items: [
-      {
-        id: 'overview',
-        label: 'Dashboard',
-        icon: BarChart3,
-        description: 'Resumen general',
-      },
-    ],
+    items: [{ id: 'overview', label: 'Dashboard', icon: BarChart3, description: 'Resumen general' }],
   },
   {
     title: 'Sede Física',
     items: [
-      {
-        id: 'gym-plans',
-        label: 'Planes',
-        icon: Dumbbell,
-        description: 'Gestionar planes del gimnasio',
-      },
-      {
-        id: 'users',
-        label: 'Clientes',
-        icon: Users,
-        description: 'Gestiona clientes de la sede física',
-      },
-      {
-        id: 'gym-payments',
-        label: 'Pagos',
-        icon: CreditCard,
-        description: 'Facturar planes a clientes físicos',
-      },
+      { id: 'gym-plans', label: 'Planes', icon: Dumbbell, description: 'Gestionar planes del gimnasio' },
+      { id: 'users', label: 'Clientes', icon: Users, description: 'Gestiona clientes de la sede física' },
+      { id: 'gym-payments', label: 'Pagos', icon: CreditCard, description: 'Facturar planes a clientes físicos' },
     ],
   },
   {
     title: 'Sede en Línea',
     items: [
-      {
-        id: 'sales',
-        label: 'Ventas',
-        icon: ShoppingCart,
-        description: 'Historial de compras',
-      },
-      {
-        id: 'courses',
-        label: 'Cursos',
-        icon: BookOpen,
-        description: 'Gestionar cursos',
-      },
-      {
-        id: 'complements',
-        label: 'Complementos',
-        icon: Play,
-        description: 'Videos semanales',
-      },
-      {
-        id: 'banners',
-        label: 'Banners',
-        icon: Image,
-        description: 'Banners del dashboard',
-      },
-      {
-        id: 'blogs',
-        label: 'Blogs',
-        icon: FileText,
-        description: 'Artículos nutricionales',
-      },
+      { id: 'sales', label: 'Ventas', icon: ShoppingCart, description: 'Historial de compras' },
+      { id: 'courses', label: 'Cursos', icon: BookOpen, description: 'Gestionar cursos' },
+      { id: 'complements', label: 'Complementos', icon: Play, description: 'Videos semanales' },
+      { id: 'banners', label: 'Banners', icon: Image, description: 'Banners del dashboard' },
+      { id: 'blogs', label: 'Blogs', icon: FileText, description: 'Artículos nutricionales' },
     ],
   },
   {
     title: 'Sistema',
     items: [
-      {
-        id: 'settings',
-        label: 'Configuración',
-        icon: Settings,
-        description: 'Ajustes de la plataforma',
-      },
+      { id: 'settings', label: 'Configuración', icon: Settings, description: 'Ajustes de la plataforma' },
     ],
   },
 ];
@@ -260,7 +205,7 @@ const translateGoal = (goal: string): string => {
 };
 
 // Función para formatear múltiples goals
-const _formatGoals = (goals: string | string[] | null | undefined): string => {
+const formatGoals = (goals: string | string[] | null | undefined): string => {
   if (!goals) return 'No especificada';
 
   if (typeof goals === 'string') {
@@ -290,7 +235,7 @@ function AdminDashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState('overview');
-  const [_stats, setStats] = useState<AdminStats | null>(null);
+  const [stats, setStats] = useState<AdminStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [courses, setCourses] = useState<Course[]>([]);
   const [loadingCourses, setLoadingCourses] = useState(false);
@@ -301,24 +246,18 @@ function AdminDashboardContent() {
   const [paymentStatusFilter, setPaymentStatusFilter] = useState<string>('all'); // 'all', 'active', 'renewal', 'no-products', 'inactive'
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [userCounts, setUserCounts] = useState({
-    total: 0,
-    active: 0,
-    renewal: 0,
-    noProducts: 0,
-    inactive: 0,
-  });
+  const [userCounts, setUserCounts] = useState({ total: 0, active: 0, renewal: 0, noProducts: 0, inactive: 0 });
   const usersPerPage = 20;
   const [showClientForm, setShowClientForm] = useState(false);
   const [editingClient, setEditingClient] = useState<any | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [_sales, setSales] = useState<Sale[]>([]);
-  const [_loadingSales, setLoadingSales] = useState(false);
-  const [_salesSearchTerm, _setSalesSearchTerm] = useState('');
-  const [_salesTypeFilter, _setSalesTypeFilter] = useState<string>('all'); // 'all', 'online', 'physical'
-  const [_salesCurrentPage, _setSalesCurrentPage] = useState(1);
-  const _salesPerPage = 10;
+  const [sales, setSales] = useState<Sale[]>([]);
+  const [loadingSales, setLoadingSales] = useState(false);
+  const [salesSearchTerm, setSalesSearchTerm] = useState('');
+  const [salesTypeFilter, setSalesTypeFilter] = useState<string>('all'); // 'all', 'online', 'physical'
+  const [salesCurrentPage, setSalesCurrentPage] = useState(1);
+  const salesPerPage = 10;
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
     title: string;
@@ -331,16 +270,12 @@ function AdminDashboardContent() {
     title: '',
     message: '',
     type: 'danger',
-    onConfirm: () => {},
+    onConfirm: () => { },
     isLoading: false,
   });
   const gymPlansRef = useRef<GymPlansManagementRef>(null);
   const gymPaymentsRef = useRef<GymPaymentsManagementRef>(null);
-  const [productsModal, setProductsModal] = useState<{
-    isOpen: boolean;
-    user: any | null;
-    position: { x: number; y: number } | null;
-  }>({
+  const [productsModal, setProductsModal] = useState<{ isOpen: boolean; user: any | null; position: { x: number; y: number } | null }>({
     isOpen: false,
     user: null,
     position: null,
@@ -348,39 +283,17 @@ function AdminDashboardContent() {
 
   // Estados para el nuevo dashboard de ingresos
   const [revenueStats, setRevenueStats] = useState<{
-    fisica?: {
-      total: number;
-      cash: number;
-      transfer: number;
-      mixed: number;
-      count: number;
-    };
-    online?: {
-      total: number;
-      cash: number;
-      transfer: number;
-      mixed: number;
-      count: number;
-    };
-    ambas?: {
-      total: number;
-      cash: number;
-      transfer: number;
-      mixed: number;
-      count: number;
-    };
+    fisica?: { total: number; cash: number; transfer: number; mixed: number; count: number };
+    online?: { total: number; cash: number; transfer: number; mixed: number; count: number };
+    ambas?: { total: number; cash: number; transfer: number; mixed: number; count: number };
   } | null>(null);
   const [loadingRevenue, setLoadingRevenue] = useState(false);
   const [dateFilter, setDateFilter] = useState<'today' | 'custom'>('today');
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
-  const [sedeFilter, setSedeFilter] = useState<'fisica' | 'online' | 'ambas'>(
-    'fisica',
-  );
+  const [sedeFilter, setSedeFilter] = useState<'fisica' | 'online' | 'ambas'>('fisica');
   const [showRevenueNumbers, setShowRevenueNumbers] = useState(true);
-  const [weeklyData, setWeeklyData] = useState<
-    { date: string; amount: number; dayName: string }[]
-  >([]);
+  const [weeklyData, setWeeklyData] = useState<{ date: string; amount: number; dayName: string }[]>([]);
   const [loadingWeeklyData, setLoadingWeeklyData] = useState(false);
   const [dailyPayments, setDailyPayments] = useState<any[]>([]);
   const [loadingDailyPayments, setLoadingDailyPayments] = useState(false);
@@ -397,8 +310,7 @@ function AdminDashboardContent() {
   const isAdmin = useMemo(() => {
     if (!user) return false;
     const envId = process.env.NEXT_PUBLIC_ADMIN_USER_ID;
-    const envEmail =
-      process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'rogerbox@admin.com'; // fallback seguro
+    const envEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'rogerbox@admin.com'; // fallback seguro
     const matchId = envId && user.id === envId;
     const matchEmail = envEmail && user.email === envEmail;
     const matchRole = user.user_metadata?.role === 'admin';
@@ -408,9 +320,7 @@ function AdminDashboardContent() {
   // Leer query param 'tab' y establecer activeTab al cargar
   useEffect(() => {
     const tabParam = searchParams.get('tab');
-    const validTabs = menuSections.flatMap((section) =>
-      section.items.map((item) => item.id),
-    );
+    const validTabs = menuSections.flatMap((section) => section.items.map((item) => item.id));
 
     if (tabParam && validTabs.includes(tabParam)) {
       // Si hay un tab válido en la URL, usarlo
@@ -425,23 +335,6 @@ function AdminDashboardContent() {
       }
     }
   }, [searchParams, router]);
-
-  const loadAdminData = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch('/api/admin/dashboard-stats');
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Error al cargar estadísticas');
-      }
-
-      setStats(data);
-    } catch (_error) {
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Verificar si es admin
   useEffect(() => {
@@ -461,519 +354,9 @@ function AdminDashboardContent() {
         loadAdminData();
       }
     }
-  }, [authLoading, user, isAdmin, router, loadAdminData]);
-
-  const loadUsers = async (search?: string, status?: string, page?: number) => {
-    try {
-      setLoadingUsers(true);
-      const params = new URLSearchParams({
-        page: String(page || currentPage),
-        limit: String(usersPerPage),
-        search: search ?? userSearchTerm,
-        status: status ?? paymentStatusFilter,
-      });
-
-      const response = await fetch(`/api/admin/users?${params}`);
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Error al cargar clientes');
-      }
-
-      setUsers(data.users || []);
-      setTotalPages(data.pagination?.totalPages || 1);
-      setUserCounts(
-        data.counts || {
-          total: 0,
-          active: 0,
-          renewal: 0,
-          noProducts: 0,
-          inactive: 0,
-        },
-      );
-    } catch (_error) {
-    } finally {
-      setLoadingUsers(false);
-    }
-  };
+  }, [authLoading, user, isAdmin, router]);
 
   // Cargar datos cuando se cambie de pestaña
-
-  const loadBirthdayClients = async (startDate?: string, endDate?: string) => {
-    try {
-      setLoadingBirthdays(true);
-
-      // Determinar el rango de fechas a buscar
-      let searchStartDate: Date;
-      let searchEndDate: Date;
-
-      if (startDate && endDate) {
-        // Parsear fechas correctamente para evitar problemas de zona horaria
-        // Las fechas vienen en formato YYYY-MM-DD, parsearlas como fecha local
-        const [startYear, startMonth, startDay] = startDate
-          .split('-')
-          .map(Number);
-        const [endYear, endMonth, endDay] = endDate.split('-').map(Number);
-
-        searchStartDate = new Date(startYear, startMonth - 1, startDay);
-        searchEndDate = new Date(endYear, endMonth - 1, endDay);
-
-        // Si startDate y endDate son iguales, asegurarse de que searchEndDate sea el mismo día
-        if (startDate === endDate) {
-          searchEndDate = new Date(startYear, startMonth - 1, startDay);
-        }
-      } else {
-        // Por defecto: hoy
-        const today = new Date();
-        searchStartDate = new Date(
-          today.getFullYear(),
-          today.getMonth(),
-          today.getDate(),
-        );
-        searchEndDate = new Date(
-          today.getFullYear(),
-          today.getMonth(),
-          today.getDate(),
-        );
-      }
-
-      searchStartDate.setHours(0, 0, 0, 0);
-      searchEndDate.setHours(0, 0, 0, 0); // Cambiar a inicio del día para comparación correcta
-
-      // Obtener todos los clientes con fecha de nacimiento
-      const { data: clients, error } = await supabaseAdmin
-        .from('gym_client_info')
-        .select(`
-          *,
-          gym_memberships(
-            id,
-            status,
-            plan:gym_plans(
-              id,
-              name
-            )
-          )
-        `)
-        .not('birth_date', 'is', null);
-
-      if (error) {
-        setBirthdayClients([]);
-        return;
-      }
-
-      // Filtrar clientes que cumplen años en el rango de fechas seleccionado
-      // Los cumpleaños se comparan por mes y día, no por año completo
-      const birthdaysInRange = (clients || []).filter((client: any) => {
-        if (!client.birth_date) return false;
-
-        // Parsear fecha de nacimiento correctamente
-        // La fecha puede venir como string ISO (YYYY-MM-DD o YYYY-MM-DDTHH:mm:ss) o como Date object
-        let birthDateStr: string;
-        if (typeof client.birth_date === 'string') {
-          // Si viene como string, extraer solo la parte de la fecha YYYY-MM-DD
-          // Manejar tanto formato '1982-02-16' como '1982-02-16T00:00:00.000Z'
-          birthDateStr = client.birth_date.split('T')[0].split(' ')[0];
-
-          // Validar que tenga el formato correcto YYYY-MM-DD
-          if (!/^\d{4}-\d{2}-\d{2}$/.test(birthDateStr)) {
-            return false;
-          }
-        } else {
-          // Si es un objeto Date o timestamp, parsear como fecha local
-          // IMPORTANTE: Usar métodos locales para evitar problemas de zona horaria
-          const tempDate = new Date(client.birth_date);
-          // Verificar que la fecha sea válida
-          if (Number.isNaN(tempDate.getTime())) {
-            return false;
-          }
-          const year = tempDate.getFullYear();
-          const month = String(tempDate.getMonth() + 1).padStart(2, '0');
-          const day = String(tempDate.getDate()).padStart(2, '0');
-          birthDateStr = `${year}-${month}-${day}`;
-        }
-
-        // Extraer mes y día directamente del string (evitar problemas de zona horaria)
-        const parts = birthDateStr.split('-');
-        if (parts.length !== 3) {
-          return false;
-        }
-
-        // Parsear directamente del string sin crear objetos Date
-        const birthYear = parseInt(parts[0], 10);
-        const birthMonthNum = parseInt(parts[1], 10); // Mes (1-12)
-        const birthDayNum = parseInt(parts[2], 10); // Día (1-31)
-
-        // Validar que los valores sean válidos
-        if (
-          Number.isNaN(birthYear) ||
-          Number.isNaN(birthMonthNum) ||
-          Number.isNaN(birthDayNum)
-        ) {
-          return false;
-        }
-
-        if (
-          birthMonthNum < 1 ||
-          birthMonthNum > 12 ||
-          birthDayNum < 1 ||
-          birthDayNum > 31
-        ) {
-          return false;
-        }
-
-        // Crear un array de todas las fechas en el rango
-        // Usar las fechas parseadas directamente sin crear objetos Date para evitar problemas de zona horaria
-        const datesInRange: { month: number; day: number }[] = [];
-
-        // Parsear fechas del rango desde los strings
-        const [startYear, startMonth, startDay] = startDate
-          ? startDate.split('-').map(Number)
-          : [
-              searchStartDate.getFullYear(),
-              searchStartDate.getMonth() + 1,
-              searchStartDate.getDate(),
-            ];
-        const [endYear, endMonth, endDay] = endDate
-          ? endDate.split('-').map(Number)
-          : [
-              searchEndDate.getFullYear(),
-              searchEndDate.getMonth() + 1,
-              searchEndDate.getDate(),
-            ];
-
-        // Crear fechas locales sin problemas de zona horaria usando el constructor local
-        // Usar directamente los valores parseados para evitar problemas de zona horaria
-        let currentYear = startYear;
-        let currentMonth = startMonth;
-        let currentDayNum = startDay;
-
-        // Comparar fechas usando números en lugar de objetos Date para evitar problemas de zona horaria
-        const endDateNum = endYear * 10000 + endMonth * 100 + endDay;
-
-        // Iterar día por día hasta llegar al día final (inclusive)
-        while (true) {
-          // Calcular el número de fecha actual
-          const currentDateNum =
-            currentYear * 10000 + currentMonth * 100 + currentDayNum;
-
-          // Si ya pasamos la fecha final, salir del bucle
-          if (currentDateNum > endDateNum) {
-            break;
-          }
-
-          // Agregar la fecha actual al rango
-          datesInRange.push({
-            month: currentMonth,
-            day: currentDayNum,
-          });
-
-          // Avanzar al siguiente día
-          currentDayNum++;
-
-          // Manejar cambio de mes
-          const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
-          if (currentDayNum > daysInMonth) {
-            currentDayNum = 1;
-            currentMonth++;
-            // Manejar cambio de año
-            if (currentMonth > 12) {
-              currentMonth = 1;
-              currentYear++;
-            }
-          }
-        }
-
-        // Verificar si el cumpleaños coincide con alguna fecha en el rango
-        const matches = datesInRange.some(
-          (date) => date.month === birthMonthNum && date.day === birthDayNum,
-        );
-
-        // Debug temporal para Ana Julia
-        if (client.name?.toLowerCase().includes('ana julia')) {
-        }
-
-        return matches;
-      });
-
-      // Calcular la edad de cada cliente usando la fecha de referencia (última fecha del rango o hoy)
-      const referenceDate = endDate ? new Date(endDate) : new Date();
-      const clientsWithAge = birthdaysInRange.map((client: any) => {
-        const birthDate = new Date(client.birth_date);
-        const age = referenceDate.getFullYear() - birthDate.getFullYear();
-        const monthDiff = referenceDate.getMonth() - birthDate.getMonth();
-        const dayDiff = referenceDate.getDate() - birthDate.getDate();
-
-        // Ajustar edad si aún no ha cumplido años en la fecha de referencia
-        const finalAge =
-          monthDiff < 0 || (monthDiff === 0 && dayDiff < 0) ? age - 1 : age;
-
-        return {
-          ...client,
-          age: finalAge,
-          activeMembership: client.gym_memberships?.find(
-            (m: any) => m.status === 'active',
-          ),
-        };
-      });
-
-      setBirthdayClients(clientsWithAge);
-    } catch (_error) {
-      setBirthdayClients([]);
-    } finally {
-      setLoadingBirthdays(false);
-    }
-  };
-
-  const loadCourses = async () => {
-    try {
-      setLoadingCourses(true);
-      const { data, error } = await supabase
-        .from('courses')
-        .select(
-          `
-          *,
-          course_lessons (
-            id,
-            title,
-            description,
-            video_url,
-            preview_image,
-            lesson_number,
-            lesson_order,
-            duration_minutes
-          )
-        `,
-        )
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setCourses(data || []);
-    } catch (_error) {
-    } finally {
-      setLoadingCourses(false);
-    }
-  };
-
-  const loadRevenueStats = async (
-    startDate: string,
-    endDate: string,
-    sede: string,
-  ) => {
-    try {
-      setLoadingRevenue(true);
-      const response = await fetch(
-        `/api/admin/revenue-stats?start_date=${startDate}&end_date=${endDate}&sede=${sede}`,
-      );
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Error al cargar ingresos');
-      }
-
-      // Convertir array de resultados a objeto por sede
-      const statsBySede: {
-        fisica?: {
-          total: number;
-          cash: number;
-          transfer: number;
-          mixed: number;
-          count: number;
-        };
-        online?: {
-          total: number;
-          cash: number;
-          transfer: number;
-          mixed: number;
-          count: number;
-        };
-        ambas?: {
-          total: number;
-          cash: number;
-          transfer: number;
-          mixed: number;
-          count: number;
-        };
-      } = {};
-      if (data.results) {
-        data.results.forEach(
-          (result: {
-            sede: 'fisica' | 'online' | 'ambas';
-            total: number;
-            cash: number;
-            transfer: number;
-            mixed: number;
-            count: number;
-          }) => {
-            const sede = result.sede;
-            if (sede === 'fisica' || sede === 'online' || sede === 'ambas') {
-              statsBySede[sede] = {
-                total: result.total,
-                cash: result.cash,
-                transfer: result.transfer,
-                mixed: result.mixed,
-                count: result.count,
-              };
-            }
-          },
-        );
-      }
-
-      setRevenueStats(statsBySede);
-    } catch (_error) {
-    } finally {
-      setLoadingRevenue(false);
-    }
-  };
-
-  const loadWeeklyData = async (
-    customStartDate?: string,
-    customEndDate?: string,
-  ) => {
-    try {
-      setLoadingWeeklyData(true);
-      let startDate: Date;
-      let endDate: Date;
-
-      if (customStartDate && customEndDate) {
-        const [sy, sm, sd] = customStartDate.split('-').map(Number);
-        const [ey, em, ed] = customEndDate.split('-').map(Number);
-        startDate = new Date(sy, sm - 1, sd, 0, 0, 0, 0);
-        endDate = new Date(ey, em - 1, ed, 23, 59, 59, 999);
-      } else {
-        const today = new Date();
-        endDate = new Date(
-          today.getFullYear(),
-          today.getMonth(),
-          today.getDate(),
-          23,
-          59,
-          59,
-          999,
-        );
-        startDate = new Date(
-          today.getFullYear(),
-          today.getMonth(),
-          today.getDate(),
-          0,
-          0,
-          0,
-          0,
-        );
-        startDate.setDate(startDate.getDate() - 6);
-      }
-
-      const startStr = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${String(startDate.getDate()).padStart(2, '0')}`;
-      const endStr = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`;
-
-      // Una sola petición con desglose por día (evita 7–11 peticiones)
-      const response = await fetch(
-        `/api/admin/revenue-stats?start_date=${startStr}&end_date=${endStr}&sede=${sedeFilter}&group_by=day`,
-      );
-      const data = await response.json();
-
-      const weeklyDataArray: {
-        date: string;
-        amount: number;
-        dayName: string;
-      }[] = [];
-      const byDay = data.byDay || [];
-
-      for (const day of byDay) {
-        let totalAmount = 0;
-        if (day.results) {
-          const ambasData = day.results.find((r: any) => r.sede === 'ambas');
-          const fisicaData = day.results.find((r: any) => r.sede === 'fisica');
-          const onlineData = day.results.find((r: any) => r.sede === 'online');
-          if (sedeFilter === 'ambas' && ambasData)
-            totalAmount = ambasData.total;
-          else if (sedeFilter === 'fisica' && fisicaData)
-            totalAmount = fisicaData.total;
-          else if (sedeFilter === 'online' && onlineData)
-            totalAmount = onlineData.total;
-        }
-        const dateObj = new Date(`${day.date}T12:00:00`);
-        const dayName = dateObj.toLocaleDateString('es-ES', {
-          weekday: 'short',
-        });
-        weeklyDataArray.push({
-          date: day.date,
-          amount: totalAmount,
-          dayName: dayName.charAt(0).toUpperCase() + dayName.slice(1),
-        });
-      }
-
-      setWeeklyData(weeklyDataArray);
-    } catch (_error) {
-    } finally {
-      setLoadingWeeklyData(false);
-    }
-  };
-
-  const loadSales = async () => {
-    try {
-      setLoadingSales(true);
-
-      // Obtener órdenes con cursos y planes físicos
-      const { data: ordersData, error: ordersError } = await supabase
-        .from('orders')
-        .select(
-          `
-          *,
-          course:courses (
-            id,
-            title,
-            preview_image,
-            price
-          ),
-          gym_plan:gym_plans (
-            id,
-            name,
-            price
-          )
-        `,
-        )
-        .order('created_at', { ascending: false });
-
-      if (ordersError) throw ordersError;
-
-      // Luego obtenemos los perfiles de los usuarios
-      const userIds = [
-        ...new Set(ordersData?.map((order) => order.user_id).filter(Boolean)),
-      ];
-
-      let profilesMap: Record<string, any> = {};
-
-      if (userIds.length > 0) {
-        const { data: profilesData } = await supabase
-          .from('profiles')
-          .select('id, name, email, phone')
-          .in('id', userIds);
-
-        if (profilesData) {
-          profilesMap = profilesData.reduce(
-            (acc, profile) => {
-              acc[profile.id] = profile;
-              return acc;
-            },
-            {} as Record<string, any>,
-          );
-        }
-      }
-
-      // Combinamos los datos
-      const salesWithProfiles =
-        ordersData?.map((order) => ({
-          ...order,
-          profile: order.user_id ? profilesMap[order.user_id] : null,
-        })) || [];
-
-      setSales(salesWithProfiles);
-    } catch (_error) {
-    } finally {
-      setLoadingSales(false);
-    }
-  };
-
   useEffect(() => {
     if (activeTab === 'courses') {
       loadCourses();
@@ -993,148 +376,19 @@ function AdminDashboardContent() {
       loadWeeklyData();
       loadBirthdayClients(todayStr, todayStr);
     }
-  }, [
-    activeTab,
-    loadBirthdayClients,
-    loadCourses,
-    loadRevenueStats,
-    loadSales,
-    loadUsers,
-    loadWeeklyData,
-    sedeFilter,
-  ]);
+  }, [activeTab]);
 
   // Recargar usuarios cuando cambien filtros o página
   useEffect(() => {
     if (activeTab === 'users') {
-      const timeoutId = setTimeout(
-        () => {
-          loadUsers(userSearchTerm, paymentStatusFilter, currentPage);
-        },
-        userSearchTerm ? 300 : 0,
-      ); // Debounce solo para búsqueda
+      const timeoutId = setTimeout(() => {
+        loadUsers(userSearchTerm, paymentStatusFilter, currentPage);
+      }, userSearchTerm ? 300 : 0); // Debounce solo para búsqueda
       return () => clearTimeout(timeoutId);
     }
-  }, [userSearchTerm, paymentStatusFilter, currentPage, activeTab, loadUsers]);
-
-  const loadDailyPayments = async (startDate: string, endDate: string) => {
-    try {
-      setLoadingDailyPayments(true);
-      const allPayments: any[] = [];
-
-      // Parsear fechas correctamente para evitar problemas de zona horaria
-      // Las fechas vienen en formato YYYY-MM-DD
-      const [startYear, startMonth, startDay] = startDate
-        .split('-')
-        .map(Number);
-      const [endYear, endMonth, endDay] = endDate.split('-').map(Number);
-
-      // Crear fechas locales sin problemas de zona horaria
-      const start = new Date(startYear, startMonth - 1, startDay, 0, 0, 0, 0);
-      const end = new Date(endYear, endMonth - 1, endDay, 23, 59, 59, 999);
-
-      // Convertir a formato ISO para la consulta
-      const startISO = start.toISOString();
-      const endISO = end.toISOString();
-
-      // Cargar pagos de sede física si el filtro lo permite
-      if (sedeFilter === 'fisica' || sedeFilter === 'ambas') {
-        const { data: gymPayments, error: gymError } = await supabaseAdmin
-          .from('gym_payments')
-          .select(`
-            *,
-            client_info:gym_client_info(
-              id,
-              name,
-              document_id,
-              email,
-              whatsapp
-            ),
-            plan:gym_plans(
-              id,
-              name,
-              price,
-              duration_days
-            )
-          `)
-          .gte('created_at', startISO)
-          .lte('created_at', endISO)
-          .order('created_at', { ascending: false });
-
-        if (gymError) {
-        } else if (gymPayments) {
-          // Agregar tipo de sede a cada pago
-          gymPayments.forEach((payment: any) => {
-            allPayments.push({ ...payment, sede: 'fisica' });
-          });
-        }
-      }
-
-      // Cargar orders de sede online si el filtro lo permite
-      if (sedeFilter === 'online' || sedeFilter === 'ambas') {
-        const { data: orders, error: ordersError } = await supabaseAdmin
-          .from('orders')
-          .select(`
-            *,
-            user:profiles(
-              id,
-              name,
-              email
-            ),
-            course:courses(
-              id,
-              title
-            )
-          `)
-          .eq('status', 'approved')
-          .gte('created_at', startISO)
-          .lte('created_at', endISO)
-          .order('created_at', { ascending: false });
-
-        if (ordersError) {
-        } else if (orders) {
-          // Transformar orders a formato similar a payments
-          orders.forEach((order: any) => {
-            allPayments.push({
-              id: order.id,
-              amount: order.amount,
-              payment_method: 'transfer', // Orders siempre son transferencia
-              payment_date: order.created_at.split('T')[0],
-              created_at: order.created_at,
-              invoice_number: null,
-              client_info: {
-                name: order.user?.name || 'Cliente online',
-                document_id: null,
-                email: order.user?.email || null,
-              },
-              plan: {
-                name: order.course?.title || 'Curso online',
-                price: order.amount,
-                duration_days: null,
-              },
-              sede: 'online',
-            });
-          });
-        }
-      }
-
-      // Ordenar todos los pagos por fecha de registro facturado (más recientes primero)
-      allPayments.sort((a, b) => {
-        const dateA = new Date(a.created_at || a.payment_date).getTime();
-        const dateB = new Date(b.created_at || b.payment_date).getTime();
-        return dateB - dateA;
-      });
-
-      setDailyPayments(allPayments);
-    } catch (_error) {
-      setDailyPayments([]);
-    } finally {
-      setLoadingDailyPayments(false);
-    }
-  };
+  }, [userSearchTerm, paymentStatusFilter, currentPage]);
 
   // Cargar ingresos cuando cambien los filtros
-
   useEffect(() => {
     if (activeTab === 'overview') {
       let startDate = '';
@@ -1171,22 +425,577 @@ function AdminDashboardContent() {
         }
       }
     }
-  }, [
-    dateFilter,
-    customStartDate,
-    customEndDate,
-    sedeFilter,
-    activeTab,
-    loadBirthdayClients,
-    loadDailyPayments,
-    loadRevenueStats,
-    loadWeeklyData,
-  ]);
+  }, [dateFilter, customStartDate, customEndDate, sedeFilter, activeTab]);
 
-  const toggleCoursePublish = async (
-    courseId: string,
-    currentStatus: boolean,
-  ) => {
+  const loadAdminData = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/admin/dashboard-stats');
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al cargar estadísticas');
+      }
+
+      setStats(data);
+    } catch (error) {
+      console.error('Error loading admin data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadRevenueStats = async (startDate: string, endDate: string, sede: string) => {
+    try {
+      setLoadingRevenue(true);
+      const response = await fetch(`/api/admin/revenue-stats?start_date=${startDate}&end_date=${endDate}&sede=${sede}`);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al cargar ingresos');
+      }
+
+      // Convertir array de resultados a objeto por sede
+      const statsBySede: {
+        fisica?: { total: number; cash: number; transfer: number; mixed: number; count: number };
+        online?: { total: number; cash: number; transfer: number; mixed: number; count: number };
+        ambas?: { total: number; cash: number; transfer: number; mixed: number; count: number };
+      } = {};
+      if (data.results) {
+        data.results.forEach((result: { sede: 'fisica' | 'online' | 'ambas'; total: number; cash: number; transfer: number; mixed: number; count: number }) => {
+          const sede = result.sede;
+          if (sede === 'fisica' || sede === 'online' || sede === 'ambas') {
+            statsBySede[sede] = {
+              total: result.total,
+              cash: result.cash,
+              transfer: result.transfer,
+              mixed: result.mixed,
+              count: result.count,
+            };
+          }
+        });
+      }
+
+      setRevenueStats(statsBySede);
+    } catch (error) {
+      console.error('Error loading revenue stats:', error);
+    } finally {
+      setLoadingRevenue(false);
+    }
+  };
+
+
+  const loadWeeklyData = async (customStartDate?: string, customEndDate?: string) => {
+    try {
+      setLoadingWeeklyData(true);
+      let startDate: Date;
+      let endDate: Date;
+
+      if (customStartDate && customEndDate) {
+        const [sy, sm, sd] = customStartDate.split('-').map(Number);
+        const [ey, em, ed] = customEndDate.split('-').map(Number);
+        startDate = new Date(sy, sm - 1, sd, 0, 0, 0, 0);
+        endDate = new Date(ey, em - 1, ed, 23, 59, 59, 999);
+      } else {
+        const today = new Date();
+        endDate = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
+        startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0, 0);
+        startDate.setDate(startDate.getDate() - 6);
+      }
+
+      const startStr = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${String(startDate.getDate()).padStart(2, '0')}`;
+      const endStr = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`;
+
+      // Una sola petición con desglose por día (evita 7–11 peticiones)
+      const response = await fetch(`/api/admin/revenue-stats?start_date=${startStr}&end_date=${endStr}&sede=${sedeFilter}&group_by=day`);
+      const data = await response.json();
+
+      const weeklyDataArray: { date: string; amount: number; dayName: string }[] = [];
+      const byDay = data.byDay || [];
+
+      for (const day of byDay) {
+        let totalAmount = 0;
+        if (day.results) {
+          const ambasData = day.results.find((r: any) => r.sede === 'ambas');
+          const fisicaData = day.results.find((r: any) => r.sede === 'fisica');
+          const onlineData = day.results.find((r: any) => r.sede === 'online');
+          if (sedeFilter === 'ambas' && ambasData) totalAmount = ambasData.total;
+          else if (sedeFilter === 'fisica' && fisicaData) totalAmount = fisicaData.total;
+          else if (sedeFilter === 'online' && onlineData) totalAmount = onlineData.total;
+        }
+        const dateObj = new Date(day.date + 'T12:00:00');
+        const dayName = dateObj.toLocaleDateString('es-ES', { weekday: 'short' });
+        weeklyDataArray.push({
+          date: day.date,
+          amount: totalAmount,
+          dayName: dayName.charAt(0).toUpperCase() + dayName.slice(1),
+        });
+      }
+
+      setWeeklyData(weeklyDataArray);
+    } catch (error) {
+      console.error('Error loading weekly data:', error);
+    } finally {
+      setLoadingWeeklyData(false);
+    }
+  };
+
+  const loadDailyPayments = async (startDate: string, endDate: string) => {
+    try {
+      setLoadingDailyPayments(true);
+      const allPayments: any[] = [];
+      
+      // Parsear fechas correctamente para evitar problemas de zona horaria
+      // Las fechas vienen en formato YYYY-MM-DD
+      const [startYear, startMonth, startDay] = startDate.split('-').map(Number);
+      const [endYear, endMonth, endDay] = endDate.split('-').map(Number);
+      
+      // Crear fechas locales sin problemas de zona horaria
+      const start = new Date(startYear, startMonth - 1, startDay, 0, 0, 0, 0);
+      const end = new Date(endYear, endMonth - 1, endDay, 23, 59, 59, 999);
+      
+      // Convertir a formato ISO para la consulta
+      const startISO = start.toISOString();
+      const endISO = end.toISOString();
+
+      // Cargar pagos de sede física si el filtro lo permite
+      if (sedeFilter === 'fisica' || sedeFilter === 'ambas') {
+        const { data: gymPayments, error: gymError } = await supabaseAdmin
+          .from('gym_payments')
+          .select(`
+            *,
+            client_info:gym_client_info(
+              id,
+              name,
+              document_id,
+              email,
+              whatsapp
+            ),
+            plan:gym_plans(
+              id,
+              name,
+              price,
+              duration_days
+            )
+          `)
+          .gte('created_at', startISO)
+          .lte('created_at', endISO)
+          .order('created_at', { ascending: false });
+
+        if (gymError) {
+          console.error('Error loading gym payments:', gymError);
+        } else if (gymPayments) {
+          // Agregar tipo de sede a cada pago
+          gymPayments.forEach((payment: any) => {
+            allPayments.push({ ...payment, sede: 'fisica' });
+          });
+        }
+      }
+
+      // Cargar orders de sede online si el filtro lo permite
+      if (sedeFilter === 'online' || sedeFilter === 'ambas') {
+        const { data: orders, error: ordersError } = await supabaseAdmin
+          .from('orders')
+          .select(`
+            *,
+            user:profiles(
+              id,
+              name,
+              email
+            ),
+            course:courses(
+              id,
+              title
+            )
+          `)
+          .eq('status', 'approved')
+          .gte('created_at', startISO)
+          .lte('created_at', endISO)
+          .order('created_at', { ascending: false });
+
+        if (ordersError) {
+          console.error('Error loading orders:', ordersError);
+        } else if (orders) {
+          // Transformar orders a formato similar a payments
+          orders.forEach((order: any) => {
+            allPayments.push({
+              id: order.id,
+              amount: order.amount,
+              payment_method: 'transfer', // Orders siempre son transferencia
+              payment_date: order.created_at.split('T')[0],
+              created_at: order.created_at,
+              invoice_number: null,
+              client_info: {
+                name: order.user?.name || 'Cliente online',
+                document_id: null,
+                email: order.user?.email || null
+              },
+              plan: {
+                name: order.course?.title || 'Curso online',
+                price: order.amount,
+                duration_days: null
+              },
+              sede: 'online'
+            });
+          });
+        }
+      }
+
+      // Ordenar todos los pagos por fecha de registro facturado (más recientes primero)
+      allPayments.sort((a, b) => {
+        const dateA = new Date(a.created_at || a.payment_date).getTime();
+        const dateB = new Date(b.created_at || b.payment_date).getTime();
+        return dateB - dateA;
+      });
+
+      setDailyPayments(allPayments);
+    } catch (error) {
+      console.error('Error loading daily payments:', error);
+      setDailyPayments([]);
+    } finally {
+      setLoadingDailyPayments(false);
+    }
+  };
+
+  const loadBirthdayClients = async (startDate?: string, endDate?: string) => {
+    try {
+      setLoadingBirthdays(true);
+      
+      // Determinar el rango de fechas a buscar
+      let searchStartDate: Date;
+      let searchEndDate: Date;
+      
+      if (startDate && endDate) {
+        // Parsear fechas correctamente para evitar problemas de zona horaria
+        // Las fechas vienen en formato YYYY-MM-DD, parsearlas como fecha local
+        const [startYear, startMonth, startDay] = startDate.split('-').map(Number);
+        const [endYear, endMonth, endDay] = endDate.split('-').map(Number);
+        
+        searchStartDate = new Date(startYear, startMonth - 1, startDay);
+        searchEndDate = new Date(endYear, endMonth - 1, endDay);
+        
+        // Si startDate y endDate son iguales, asegurarse de que searchEndDate sea el mismo día
+        if (startDate === endDate) {
+          searchEndDate = new Date(startYear, startMonth - 1, startDay);
+        }
+      } else {
+        // Por defecto: hoy
+        const today = new Date();
+        searchStartDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        searchEndDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      }
+      
+      searchStartDate.setHours(0, 0, 0, 0);
+      searchEndDate.setHours(0, 0, 0, 0); // Cambiar a inicio del día para comparación correcta
+
+      // Obtener todos los clientes con fecha de nacimiento
+      const { data: clients, error } = await supabaseAdmin
+        .from('gym_client_info')
+        .select(`
+          *,
+          gym_memberships(
+            id,
+            status,
+            plan:gym_plans(
+              id,
+              name
+            )
+          )
+        `)
+        .not('birth_date', 'is', null);
+
+      if (error) {
+        console.error('Error loading birthday clients:', error);
+        setBirthdayClients([]);
+        return;
+      }
+
+      // Filtrar clientes que cumplen años en el rango de fechas seleccionado
+      // Los cumpleaños se comparan por mes y día, no por año completo
+      const birthdaysInRange = (clients || []).filter((client: any) => {
+        if (!client.birth_date) return false;
+        
+        // Parsear fecha de nacimiento correctamente
+        // La fecha puede venir como string ISO (YYYY-MM-DD o YYYY-MM-DDTHH:mm:ss) o como Date object
+        let birthDateStr: string;
+        if (typeof client.birth_date === 'string') {
+          // Si viene como string, extraer solo la parte de la fecha YYYY-MM-DD
+          // Manejar tanto formato '1982-02-16' como '1982-02-16T00:00:00.000Z'
+          birthDateStr = client.birth_date.split('T')[0].split(' ')[0];
+          
+          // Validar que tenga el formato correcto YYYY-MM-DD
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(birthDateStr)) {
+            console.warn('Formato de fecha inválido:', client.birth_date);
+            return false;
+          }
+        } else {
+          // Si es un objeto Date o timestamp, parsear como fecha local
+          // IMPORTANTE: Usar métodos locales para evitar problemas de zona horaria
+          const tempDate = new Date(client.birth_date);
+          // Verificar que la fecha sea válida
+          if (isNaN(tempDate.getTime())) {
+            console.warn('Fecha inválida:', client.birth_date);
+            return false;
+          }
+          const year = tempDate.getFullYear();
+          const month = String(tempDate.getMonth() + 1).padStart(2, '0');
+          const day = String(tempDate.getDate()).padStart(2, '0');
+          birthDateStr = `${year}-${month}-${day}`;
+        }
+        
+        // Extraer mes y día directamente del string (evitar problemas de zona horaria)
+        const parts = birthDateStr.split('-');
+        if (parts.length !== 3) {
+          console.warn('Fecha no tiene formato YYYY-MM-DD:', birthDateStr);
+          return false;
+        }
+        
+        // Parsear directamente del string sin crear objetos Date
+        const birthYear = parseInt(parts[0], 10);
+        const birthMonthNum = parseInt(parts[1], 10); // Mes (1-12)
+        const birthDayNum = parseInt(parts[2], 10); // Día (1-31)
+        
+        // Validar que los valores sean válidos
+        if (isNaN(birthYear) || isNaN(birthMonthNum) || isNaN(birthDayNum)) {
+          console.warn('Valores de fecha inválidos:', { birthYear, birthMonthNum, birthDayNum });
+          return false;
+        }
+        
+        if (birthMonthNum < 1 || birthMonthNum > 12 || birthDayNum < 1 || birthDayNum > 31) {
+          console.warn('Valores de fecha fuera de rango:', { birthMonthNum, birthDayNum });
+          return false;
+        }
+        
+        // Crear un array de todas las fechas en el rango
+        // Usar las fechas parseadas directamente sin crear objetos Date para evitar problemas de zona horaria
+        const datesInRange: { month: number; day: number }[] = [];
+        
+        // Parsear fechas del rango desde los strings
+        const [startYear, startMonth, startDay] = startDate ? startDate.split('-').map(Number) : [
+          searchStartDate.getFullYear(), 
+          searchStartDate.getMonth() + 1, 
+          searchStartDate.getDate()
+        ];
+        const [endYear, endMonth, endDay] = endDate ? endDate.split('-').map(Number) : [
+          searchEndDate.getFullYear(), 
+          searchEndDate.getMonth() + 1, 
+          searchEndDate.getDate()
+        ];
+        
+        // Crear fechas locales sin problemas de zona horaria usando el constructor local
+        // Usar directamente los valores parseados para evitar problemas de zona horaria
+        let currentYear = startYear;
+        let currentMonth = startMonth;
+        let currentDayNum = startDay;
+        
+        // Comparar fechas usando números en lugar de objetos Date para evitar problemas de zona horaria
+        const endDateNum = endYear * 10000 + endMonth * 100 + endDay;
+        
+        // Iterar día por día hasta llegar al día final (inclusive)
+        while (true) {
+          // Calcular el número de fecha actual
+          const currentDateNum = currentYear * 10000 + currentMonth * 100 + currentDayNum;
+          
+          // Si ya pasamos la fecha final, salir del bucle
+          if (currentDateNum > endDateNum) {
+            break;
+          }
+          
+          // Agregar la fecha actual al rango
+          datesInRange.push({
+            month: currentMonth,
+            day: currentDayNum
+          });
+          
+          // Avanzar al siguiente día
+          currentDayNum++;
+          
+          // Manejar cambio de mes
+          const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
+          if (currentDayNum > daysInMonth) {
+            currentDayNum = 1;
+            currentMonth++;
+            // Manejar cambio de año
+            if (currentMonth > 12) {
+              currentMonth = 1;
+              currentYear++;
+            }
+          }
+        }
+        
+        // Verificar si el cumpleaños coincide con alguna fecha en el rango
+        const matches = datesInRange.some(date => 
+          date.month === birthMonthNum && date.day === birthDayNum
+        );
+        
+        // Debug temporal para Ana Julia
+        if (client.name && client.name.toLowerCase().includes('ana julia')) {
+          console.log('🔍 Debug Ana Julia:', {
+            nombre: client.name,
+            birth_date_original: client.birth_date,
+            birth_date_type: typeof client.birth_date,
+            birthDateStr: birthDateStr,
+            birthMonthNum,
+            birthDayNum,
+            datesInRange,
+            matches,
+            searchStartDate_str: startDate,
+            searchEndDate_str: endDate,
+            searchStartDate_parsed: `${startYear}-${String(startMonth).padStart(2, '0')}-${String(startDay).padStart(2, '0')}`,
+            searchEndDate_parsed: `${endYear}-${String(endMonth).padStart(2, '0')}-${String(endDay).padStart(2, '0')}`
+          });
+        }
+        
+        return matches;
+      });
+
+      // Calcular la edad de cada cliente usando la fecha de referencia (última fecha del rango o hoy)
+      const referenceDate = endDate ? new Date(endDate) : new Date();
+      const clientsWithAge = birthdaysInRange.map((client: any) => {
+        const birthDate = new Date(client.birth_date);
+        const age = referenceDate.getFullYear() - birthDate.getFullYear();
+        const monthDiff = referenceDate.getMonth() - birthDate.getMonth();
+        const dayDiff = referenceDate.getDate() - birthDate.getDate();
+        
+        // Ajustar edad si aún no ha cumplido años en la fecha de referencia
+        const finalAge = (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) ? age - 1 : age;
+
+        return {
+          ...client,
+          age: finalAge,
+          activeMembership: client.gym_memberships?.find((m: any) => m.status === 'active')
+        };
+      });
+
+      setBirthdayClients(clientsWithAge);
+    } catch (error) {
+      console.error('Error loading birthday clients:', error);
+      setBirthdayClients([]);
+    } finally {
+      setLoadingBirthdays(false);
+    }
+  };
+
+  const loadCourses = async () => {
+    try {
+      setLoadingCourses(true);
+      const { data, error } = await supabase
+        .from('courses')
+        .select(
+          `
+          *,
+          course_lessons (
+            id,
+            title,
+            description,
+            video_url,
+            preview_image,
+            lesson_number,
+            lesson_order,
+            duration_minutes
+          )
+        `
+        )
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setCourses(data || []);
+    } catch (error) {
+      console.error('Error loading courses:', error);
+    } finally {
+      setLoadingCourses(false);
+    }
+  };
+
+  const loadUsers = async (search?: string, status?: string, page?: number) => {
+    try {
+      setLoadingUsers(true);
+      const params = new URLSearchParams({
+        page: String(page || currentPage),
+        limit: String(usersPerPage),
+        search: search ?? userSearchTerm,
+        status: status ?? paymentStatusFilter,
+      });
+      
+      const response = await fetch(`/api/admin/users?${params}`);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al cargar clientes');
+      }
+
+      setUsers(data.users || []);
+      setTotalPages(data.pagination?.totalPages || 1);
+      setUserCounts(data.counts || { total: 0, active: 0, renewal: 0, noProducts: 0, inactive: 0 });
+    } catch (error) {
+      console.error('Error loading users:', error);
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
+
+  const loadSales = async () => {
+    try {
+      setLoadingSales(true);
+
+      // Obtener órdenes con cursos y planes físicos
+      const { data: ordersData, error: ordersError } = await supabase
+        .from('orders')
+        .select(
+          `
+          *,
+          course:courses (
+            id,
+            title,
+            preview_image,
+            price
+          ),
+          gym_plan:gym_plans (
+            id,
+            name,
+            price
+          )
+        `
+        )
+        .order('created_at', { ascending: false });
+
+      if (ordersError) throw ordersError;
+
+      // Luego obtenemos los perfiles de los usuarios
+      const userIds = [...new Set(ordersData?.map((order) => order.user_id).filter(Boolean))];
+
+      let profilesMap: Record<string, any> = {};
+
+      if (userIds.length > 0) {
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('id, name, email, phone')
+          .in('id', userIds);
+
+        if (profilesData) {
+          profilesMap = profilesData.reduce((acc, profile) => {
+            acc[profile.id] = profile;
+            return acc;
+          }, {} as Record<string, any>);
+        }
+      }
+
+      // Combinamos los datos
+      const salesWithProfiles =
+        ordersData?.map((order) => ({
+          ...order,
+          profile: order.user_id ? profilesMap[order.user_id] : null,
+        })) || [];
+
+      setSales(salesWithProfiles);
+    } catch (error) {
+      console.error('Error loading sales:', error);
+    } finally {
+      setLoadingSales(false);
+    }
+  };
+
+  const toggleCoursePublish = async (courseId: string, currentStatus: boolean) => {
     try {
       const { error } = await supabase
         .from('courses')
@@ -1195,13 +1004,11 @@ function AdminDashboardContent() {
 
       if (error) throw error;
       setCourses((prev) =>
-        prev.map((course) =>
-          course.id === courseId
-            ? { ...course, is_published: !currentStatus }
-            : course,
-        ),
+        prev.map((course) => (course.id === courseId ? { ...course, is_published: !currentStatus } : course))
       );
-    } catch (_error) {}
+    } catch (error) {
+      console.error('Error updating course status:', error);
+    }
   };
 
   const editCourse = (courseId: string) => {
@@ -1219,9 +1026,18 @@ function AdminDashboardContent() {
     });
   };
 
-  const handleDeleteCourse = async (courseId: string, _courseTitle: string) => {
+  const handleDeleteCourse = async (courseId: string, courseTitle: string) => {
     try {
       setConfirmDialog((prev) => ({ ...prev, isLoading: true }));
+
+      console.log('🗑️ Intentando eliminar curso:', { courseId, courseTitle });
+      console.log('🔍 Configuración Supabase:', {
+        url: process.env.NEXT_PUBLIC_SUPABASE_URL || 'N/A',
+        hasServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY || !!process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY
+      });
+
+      // Primero eliminar lecciones relacionadas
+      console.log('📝 Eliminando lecciones del curso...');
       const { data: lessonsData, error: lessonsError } = await supabaseAdmin
         .from('course_lessons')
         .delete()
@@ -1229,8 +1045,13 @@ function AdminDashboardContent() {
         .select();
 
       if (lessonsError) {
+        console.error('❌ Error eliminando lecciones:', lessonsError);
         throw new Error(`Error al eliminar lecciones: ${lessonsError.message}`);
       }
+      console.log(`✅ Lecciones eliminadas: ${lessonsData?.length || 0}`);
+
+      // Usar API route del servidor (service_role key solo funciona en servidor)
+      console.log('📝 Eliminando curso vía API...');
 
       const response = await fetch(`/api/admin/courses/${courseId}`, {
         method: 'DELETE',
@@ -1245,20 +1066,21 @@ function AdminDashboardContent() {
         throw new Error(errorData.error || 'Error al eliminar el curso');
       }
 
-      const _result = await response.json();
+      const result = await response.json();
+      console.log('✅ Curso eliminado exitosamente:', result);
 
       setCourses((prev) => prev.filter((course) => course.id !== courseId));
 
       // Cerrar el diálogo de confirmación sin mostrar modal de éxito
       setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
-    } catch (_error) {
+    } catch (error) {
+      console.error('Error deleting course:', error);
       setConfirmDialog({
         isOpen: true,
         title: 'Error',
         message: 'Error al eliminar el curso. Por favor, inténtalo de nuevo.',
         type: 'danger',
-        onConfirm: () =>
-          setConfirmDialog((prev) => ({ ...prev, isOpen: false })),
+        onConfirm: () => setConfirmDialog((prev) => ({ ...prev, isOpen: false })),
         isLoading: false,
       });
     }
@@ -1274,12 +1096,7 @@ function AdminDashboardContent() {
   };
 
   if (authLoading || loading) {
-    return (
-      <QuickLoading
-        message="Cargando panel de administración..."
-        duration={1000}
-      />
-    );
+    return <QuickLoading message="Cargando panel de administración..." duration={1000} />;
   }
 
   if (!loading && !user) {
@@ -1290,12 +1107,8 @@ function AdminDashboardContent() {
     return (
       <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-[#164151] dark:text-white mb-4">
-            Acceso Denegado
-          </h1>
-          <p className="text-[#164151]/80 dark:text-gray-400">
-            No tienes permisos para acceder a esta sección.
-          </p>
+          <h1 className="text-2xl font-bold text-[#164151] dark:text-white mb-4">Acceso Denegado</h1>
+          <p className="text-[#164151]/80 dark:text-gray-400">No tienes permisos para acceder a esta sección.</p>
         </div>
       </div>
     );
@@ -1345,18 +1158,14 @@ function AdminDashboardContent() {
           )}
           {sidebarCollapsed && (
             <div className="w-10 h-10 bg-gray-200 dark:bg-white/10 rounded-lg flex items-center justify-center">
-              <span className="text-[#164151] dark:text-white font-bold text-sm">
-                R
-              </span>
+              <span className="text-[#164151] dark:text-white font-bold text-sm">R</span>
             </div>
           )}
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
             className="hidden md:flex w-8 h-8 items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-gray-500 dark:text-white/60 hover:text-[#164151] dark:hover:text-white transition-colors"
           >
-            <ChevronLeft
-              className={`w-4 h-4 transition-transform ${sidebarCollapsed ? 'rotate-180' : ''}`}
-            />
+            <ChevronLeft className={`w-4 h-4 transition-transform ${sidebarCollapsed ? 'rotate-180' : ''}`} />
           </button>
         </div>
 
@@ -1374,7 +1183,7 @@ function AdminDashboardContent() {
                   const Icon = item.icon;
                   const isActive = activeTab === item.id;
                   // Indicador especial para Usuarios (incluye ambas sedes)
-                  const _isUsersItem = item.id === 'users';
+                  const isUsersItem = item.id === 'users';
                   return (
                     <button
                       key={item.id}
@@ -1386,10 +1195,9 @@ function AdminDashboardContent() {
                       className={`
                         w-full flex items-center gap-3 px-4 py-2.5 rounded-lg
                         transition-all duration-200 group
-                        ${
-                          isActive
-                            ? 'bg-[#85ea10]/20 dark:bg-[#85ea10]/20 text-[#164151] dark:text-white'
-                            : 'text-[#164151]/80 dark:text-white/60 hover:text-[#164151] dark:hover:text-white hover:bg-gray-50 dark:hover:bg-white/5'
+                        ${isActive
+                          ? 'bg-[#85ea10]/20 dark:bg-[#85ea10]/20 text-[#164151] dark:text-white'
+                          : 'text-[#164151]/80 dark:text-white/60 hover:text-[#164151] dark:hover:text-white hover:bg-gray-50 dark:hover:bg-white/5'
                         }
                         ${sidebarCollapsed ? 'justify-center' : ''}
                       `}
@@ -1427,9 +1235,7 @@ function AdminDashboardContent() {
                 <p className="text-xs font-semibold text-[#164151] dark:text-white truncate">
                   {user?.user_metadata?.name || profile?.name || 'Admin'}
                 </p>
-                <p className="text-[10px] font-medium text-gray-500 dark:text-white/50 truncate">
-                  Admin
-                </p>
+                <p className="text-[10px] font-medium text-gray-500 dark:text-white/50 truncate">Admin</p>
               </div>
               <button
                 onClick={() => router.push('/dashboard')}
@@ -1465,9 +1271,7 @@ function AdminDashboardContent() {
             </button>
 
             <div>
-              <h1 className="text-xl font-black text-[#164151] dark:text-white uppercase tracking-tight">
-                {activeItem.label}
-              </h1>
+              <h1 className="text-xl font-black text-[#164151] dark:text-white uppercase tracking-tight">{activeItem.label}</h1>
               <p className="text-xs text-[#164151]/80 dark:text-white/60 hidden sm:block font-medium">
                 {activeItem.description}
               </p>
@@ -1578,25 +1382,15 @@ function AdminDashboardContent() {
                 <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
                   {/* Filtro de Sede */}
                   <div className="flex items-center gap-3">
-                    <label className="text-sm font-semibold text-[#164151] dark:text-white">
-                      Sede:
-                    </label>
+                    <label className="text-sm font-semibold text-[#164151] dark:text-white">Sede:</label>
                     <select
                       value={sedeFilter}
-                      onChange={(e) =>
-                        setSedeFilter(
-                          e.target.value as 'fisica' | 'online' | 'ambas',
-                        )
-                      }
+                      onChange={(e) => setSedeFilter(e.target.value as 'fisica' | 'online' | 'ambas')}
                       className="px-4 py-2 rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-gray-800 text-[#164151] dark:text-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#164151]/50"
                     >
                       <option value="fisica">Física</option>
-                      <option value="ambas" disabled className="text-gray-400">
-                        Ambas (deshabilitado)
-                      </option>
-                      <option value="online" disabled className="text-gray-400">
-                        En Línea (deshabilitado)
-                      </option>
+                      <option value="ambas" disabled className="text-gray-400">Ambas (deshabilitado)</option>
+                      <option value="online" disabled className="text-gray-400">En Línea (deshabilitado)</option>
                     </select>
                   </div>
 
@@ -1604,15 +1398,9 @@ function AdminDashboardContent() {
                   <div className="flex items-center gap-3 flex-wrap">
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={() =>
-                          setShowRevenueNumbers(!showRevenueNumbers)
-                        }
+                        onClick={() => setShowRevenueNumbers(!showRevenueNumbers)}
                         className="w-6 h-6 flex items-center justify-center text-[#164151]/70 dark:text-white/60 hover:text-[#164151] dark:hover:text-white transition-colors"
-                        title={
-                          showRevenueNumbers
-                            ? 'Ocultar números'
-                            : 'Mostrar números'
-                        }
+                        title={showRevenueNumbers ? 'Ocultar números' : 'Mostrar números'}
                       >
                         {showRevenueNumbers ? (
                           <EyeOff className="w-5 h-5" />
@@ -1620,28 +1408,24 @@ function AdminDashboardContent() {
                           <Eye className="w-5 h-5" />
                         )}
                       </button>
-                      <label className="text-sm font-semibold text-[#164151] dark:text-white">
-                        Período:
-                      </label>
+                      <label className="text-sm font-semibold text-[#164151] dark:text-white">Período:</label>
                     </div>
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => setDateFilter('today')}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                          dateFilter === 'today'
-                            ? 'bg-[#164151] text-white'
-                            : 'bg-gray-100 dark:bg-white/10 text-[#164151] dark:text-white hover:bg-gray-200 dark:hover:bg-white/20'
-                        }`}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${dateFilter === 'today'
+                          ? 'bg-[#164151] text-white'
+                          : 'bg-gray-100 dark:bg-white/10 text-[#164151] dark:text-white hover:bg-gray-200 dark:hover:bg-white/20'
+                          }`}
                       >
                         Hoy
                       </button>
                       <button
                         onClick={() => setDateFilter('custom')}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                          dateFilter === 'custom'
-                            ? 'bg-[#164151] text-white'
-                            : 'bg-gray-100 dark:bg-white/10 text-[#164151] dark:text-white hover:bg-gray-200 dark:hover:bg-white/20'
-                        }`}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${dateFilter === 'custom'
+                          ? 'bg-[#164151] text-white'
+                          : 'bg-gray-100 dark:bg-white/10 text-[#164151] dark:text-white hover:bg-gray-200 dark:hover:bg-white/20'
+                          }`}
                       >
                         Personalizado
                       </button>
@@ -1653,11 +1437,7 @@ function AdminDashboardContent() {
                         <div
                           className="relative flex items-center rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-gray-800 focus-within:ring-2 focus-within:ring-[#164151]/50 cursor-pointer min-w-[140px]"
                           onClick={(e) => {
-                            const target = (e.target as HTMLElement)
-                              .closest('div')
-                              ?.querySelector(
-                                'input[type="date"]',
-                              ) as HTMLInputElement | null;
+                            const target = (e.target as HTMLElement).closest('div')?.querySelector('input[type="date"]') as HTMLInputElement | null;
                             target?.showPicker?.();
                           }}
                         >
@@ -1669,17 +1449,11 @@ function AdminDashboardContent() {
                           />
                           <Calendar className="absolute right-2.5 w-4 h-4 text-[#164151] dark:text-white pointer-events-none" />
                         </div>
-                        <span className="text-gray-500 dark:text-white/50">
-                          -
-                        </span>
+                        <span className="text-gray-500 dark:text-white/50">-</span>
                         <div
                           className="relative flex items-center rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-gray-800 focus-within:ring-2 focus-within:ring-[#164151]/50 cursor-pointer min-w-[140px]"
                           onClick={(e) => {
-                            const target = (e.target as HTMLElement)
-                              .closest('div')
-                              ?.querySelector(
-                                'input[type="date"]',
-                              ) as HTMLInputElement | null;
+                            const target = (e.target as HTMLElement).closest('div')?.querySelector('input[type="date"]') as HTMLInputElement | null;
                             target?.showPicker?.();
                           }}
                         >
@@ -1702,9 +1476,7 @@ function AdminDashboardContent() {
                 <div className="flex items-center justify-center py-12">
                   <div className="text-center">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#164151] mx-auto mb-4"></div>
-                    <p className="text-sm text-gray-500 dark:text-white/50">
-                      Cargando ingresos...
-                    </p>
+                    <p className="text-sm text-gray-500 dark:text-white/50">Cargando ingresos...</p>
                   </div>
                 </div>
               ) : revenueStats ? (
@@ -1719,18 +1491,12 @@ function AdminDashboardContent() {
                             <TrendingUp className="w-4 h-4 text-[#164151] dark:text-white" />
                           </div>
                           <div>
-                            <p className="text-xs font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide">
-                              Total
-                            </p>
-                            <p className="text-[10px] text-gray-500 dark:text-white/50">
-                              Ingresos totales de la sede física
-                            </p>
+                            <p className="text-xs font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide">Total</p>
+                            <p className="text-[10px] text-gray-500 dark:text-white/50">Ingresos totales de la sede física</p>
                           </div>
                         </div>
                         <p className="text-xl font-semibold text-[#164151] dark:text-white">
-                          {showRevenueNumbers
-                            ? `$${revenueStats.fisica.total.toLocaleString('es-CO')}`
-                            : '••••••'}
+                          {showRevenueNumbers ? `$${revenueStats.fisica.total.toLocaleString('es-CO')}` : '••••••'}
                         </p>
                       </div>
 
@@ -1741,18 +1507,12 @@ function AdminDashboardContent() {
                             <Wallet className="w-4 h-4 text-[#164151] dark:text-[#85ea10]" />
                           </div>
                           <div>
-                            <p className="text-xs font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide">
-                              Efectivo
-                            </p>
-                            <p className="text-[10px] text-gray-500 dark:text-white/50">
-                              Pagos recibidos en efectivo
-                            </p>
+                            <p className="text-xs font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide">Efectivo</p>
+                            <p className="text-[10px] text-gray-500 dark:text-white/50">Pagos recibidos en efectivo</p>
                           </div>
                         </div>
                         <p className="text-xl font-semibold text-[#164151] dark:text-white">
-                          {showRevenueNumbers
-                            ? `$${revenueStats.fisica.cash.toLocaleString('es-CO')}`
-                            : '••••••'}
+                          {showRevenueNumbers ? `$${revenueStats.fisica.cash.toLocaleString('es-CO')}` : '••••••'}
                         </p>
                       </div>
 
@@ -1763,18 +1523,12 @@ function AdminDashboardContent() {
                             <CreditCard className="w-4 h-4 text-[#164151]/70 dark:text-white/70" />
                           </div>
                           <div>
-                            <p className="text-xs font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide">
-                              Transferencia
-                            </p>
-                            <p className="text-[10px] text-gray-500 dark:text-white/50">
-                              Pagos recibidos por transferencia bancaria
-                            </p>
+                            <p className="text-xs font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide">Transferencia</p>
+                            <p className="text-[10px] text-gray-500 dark:text-white/50">Pagos recibidos por transferencia bancaria</p>
                           </div>
                         </div>
                         <p className="text-xl font-semibold text-[#164151] dark:text-white">
-                          {showRevenueNumbers
-                            ? `$${revenueStats.fisica.transfer.toLocaleString('es-CO')}`
-                            : '••••••'}
+                          {showRevenueNumbers ? `$${revenueStats.fisica.transfer.toLocaleString('es-CO')}` : '••••••'}
                         </p>
                       </div>
                     </div>
@@ -1790,18 +1544,12 @@ function AdminDashboardContent() {
                             <TrendingUp className="w-4 h-4 text-[#164151] dark:text-white" />
                           </div>
                           <div>
-                            <p className="text-xs font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide">
-                              Total
-                            </p>
-                            <p className="text-[10px] text-gray-500 dark:text-white/50">
-                              Ingresos totales de la sede en línea
-                            </p>
+                            <p className="text-xs font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide">Total</p>
+                            <p className="text-[10px] text-gray-500 dark:text-white/50">Ingresos totales de la sede en línea</p>
                           </div>
                         </div>
                         <p className="text-xl font-semibold text-[#164151] dark:text-white">
-                          {showRevenueNumbers
-                            ? `$${revenueStats.online.total.toLocaleString('es-CO')}`
-                            : '••••••'}
+                          {showRevenueNumbers ? `$${revenueStats.online.total.toLocaleString('es-CO')}` : '••••••'}
                         </p>
                       </div>
 
@@ -1812,18 +1560,12 @@ function AdminDashboardContent() {
                             <CreditCard className="w-4 h-4 text-[#164151]/70 dark:text-white/70" />
                           </div>
                           <div>
-                            <p className="text-xs font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide">
-                              Pagos Online
-                            </p>
-                            <p className="text-[10px] text-gray-500 dark:text-white/50">
-                              Pagos procesados electrónicamente
-                            </p>
+                            <p className="text-xs font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide">Pagos Online</p>
+                            <p className="text-[10px] text-gray-500 dark:text-white/50">Pagos procesados electrónicamente</p>
                           </div>
                         </div>
                         <p className="text-xl font-semibold text-[#164151] dark:text-white">
-                          {showRevenueNumbers
-                            ? `$${revenueStats.online.transfer.toLocaleString('es-CO')}`
-                            : '••••••'}
+                          {showRevenueNumbers ? `$${revenueStats.online.transfer.toLocaleString('es-CO')}` : '••••••'}
                         </p>
                       </div>
 
@@ -1834,18 +1576,12 @@ function AdminDashboardContent() {
                             <ShoppingCart className="w-4 h-4 text-[#85ea10] dark:text-[#85ea10]" />
                           </div>
                           <div>
-                            <p className="text-xs font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide">
-                              Transacciones
-                            </p>
-                            <p className="text-[10px] text-gray-500 dark:text-white/50">
-                              Número total de ventas realizadas
-                            </p>
+                            <p className="text-xs font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide">Transacciones</p>
+                            <p className="text-[10px] text-gray-500 dark:text-white/50">Número total de ventas realizadas</p>
                           </div>
                         </div>
                         <p className="text-xl font-semibold text-[#164151] dark:text-white">
-                          {showRevenueNumbers
-                            ? revenueStats.online.count
-                            : '•••'}
+                          {showRevenueNumbers ? revenueStats.online.count : '•••'}
                         </p>
                       </div>
                     </div>
@@ -1861,18 +1597,12 @@ function AdminDashboardContent() {
                             <TrendingUp className="w-4 h-4 text-[#164151] dark:text-white" />
                           </div>
                           <div>
-                            <p className="text-xs font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide">
-                              Total
-                            </p>
-                            <p className="text-[10px] text-gray-500 dark:text-white/50">
-                              Ingresos totales de ambas sedes
-                            </p>
+                            <p className="text-xs font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide">Total</p>
+                            <p className="text-[10px] text-gray-500 dark:text-white/50">Ingresos totales de ambas sedes</p>
                           </div>
                         </div>
                         <p className="text-xl font-semibold text-[#164151] dark:text-white">
-                          {showRevenueNumbers
-                            ? `$${(revenueStats.ambas?.total || 0).toLocaleString('es-CO')}`
-                            : '••••••'}
+                          {showRevenueNumbers ? `$${(revenueStats.ambas?.total || 0).toLocaleString('es-CO')}` : '••••••'}
                         </p>
                       </div>
 
@@ -1883,18 +1613,12 @@ function AdminDashboardContent() {
                             <Wallet className="w-4 h-4 text-[#164151] dark:text-[#85ea10]" />
                           </div>
                           <div>
-                            <p className="text-xs font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide">
-                              Efectivo
-                            </p>
-                            <p className="text-[10px] text-gray-500 dark:text-white/50">
-                              Pagos en efectivo de la sede física
-                            </p>
+                            <p className="text-xs font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide">Efectivo</p>
+                            <p className="text-[10px] text-gray-500 dark:text-white/50">Pagos en efectivo de la sede física</p>
                           </div>
                         </div>
                         <p className="text-xl font-semibold text-[#164151] dark:text-white">
-                          {showRevenueNumbers
-                            ? `$${(revenueStats.ambas?.cash || 0).toLocaleString('es-CO')}`
-                            : '••••••'}
+                          {showRevenueNumbers ? `$${(revenueStats.ambas?.cash || 0).toLocaleString('es-CO')}` : '••••••'}
                         </p>
                       </div>
 
@@ -1905,18 +1629,12 @@ function AdminDashboardContent() {
                             <CreditCard className="w-4 h-4 text-[#164151]/70 dark:text-white/70" />
                           </div>
                           <div>
-                            <p className="text-xs font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide">
-                              Transferencia
-                            </p>
-                            <p className="text-[10px] text-gray-500 dark:text-white/50">
-                              Transferencias y pagos online
-                            </p>
+                            <p className="text-xs font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide">Transferencia</p>
+                            <p className="text-[10px] text-gray-500 dark:text-white/50">Transferencias y pagos online</p>
                           </div>
                         </div>
                         <p className="text-xl font-semibold text-[#164151] dark:text-white">
-                          {showRevenueNumbers
-                            ? `$${(revenueStats.ambas?.transfer || 0).toLocaleString('es-CO')}`
-                            : '••••••'}
+                          {showRevenueNumbers ? `$${(revenueStats.ambas?.transfer || 0).toLocaleString('es-CO')}` : '••••••'}
                         </p>
                       </div>
                     </div>
@@ -1924,9 +1642,7 @@ function AdminDashboardContent() {
                 </>
               ) : (
                 <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-white/10 p-12 text-center">
-                  <p className="text-sm text-gray-500 dark:text-white/50">
-                    No hay datos para mostrar
-                  </p>
+                  <p className="text-sm text-gray-500 dark:text-white/50">No hay datos para mostrar</p>
                 </div>
               )}
 
@@ -1953,44 +1669,29 @@ function AdminDashboardContent() {
                       {/* Gráfica */}
                       <div className="relative h-64 flex items-end justify-between gap-1 mb-0">
                         {weeklyData.map((day, index) => {
-                          const maxAmount = Math.max(
-                            ...weeklyData.map((d) => d.amount),
-                            1,
-                          );
-                          const height =
-                            maxAmount > 0 ? (day.amount / maxAmount) * 100 : 0;
+                          const maxAmount = Math.max(...weeklyData.map(d => d.amount), 1);
+                          const height = maxAmount > 0 ? (day.amount / maxAmount) * 100 : 0;
                           const barHeight = Math.max(height, 8);
 
                           // Formatear fecha en hora local (evita que 11 se muestre como 10 por UTC)
                           const date = parseLocalDate(day.date);
                           const dayNumber = date.getDate();
-                          const month = date.toLocaleDateString('es-ES', {
-                            month: 'short',
-                          });
+                          const month = date.toLocaleDateString('es-ES', { month: 'short' });
 
                           return (
-                            <div
-                              key={index}
-                              className="flex-1 flex flex-col items-center gap-1 h-full relative group"
-                            >
+                            <div key={index} className="flex-1 flex flex-col items-center gap-1 h-full relative group">
                               {/* Tooltip con fecha e ingresos */}
                               <div className="absolute -top-20 left-1/2 transform -translate-x-1/2 bg-[#164151] dark:bg-gray-800 text-white text-xs rounded-lg px-3 py-2 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 whitespace-nowrap">
-                                <p className="font-semibold mb-1">
-                                  {day.dayName}, {dayNumber} {month}
-                                </p>
+                                <p className="font-semibold mb-1">{day.dayName}, {dayNumber} {month}</p>
                                 <p className="text-[#85ea10] font-bold">
-                                  {showRevenueNumbers
-                                    ? `$${day.amount.toLocaleString('es-CO')}`
-                                    : '••••••'}
+                                  {showRevenueNumbers ? `$${day.amount.toLocaleString('es-CO')}` : '••••••'}
                                 </p>
                               </div>
 
                               {/* Valor sobre el punto */}
                               <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 text-center w-full">
                                 <p className="text-xs font-semibold text-[#164151] dark:text-white">
-                                  {showRevenueNumbers
-                                    ? `$${day.amount.toLocaleString('es-CO')}`
-                                    : '••••'}
+                                  {showRevenueNumbers ? `$${day.amount.toLocaleString('es-CO')}` : '••••'}
                                 </p>
                               </div>
 
@@ -2021,28 +1722,16 @@ function AdminDashboardContent() {
                       </div>
 
                       {/* Línea conectando los puntos */}
-                      <svg
-                        className="absolute top-8 left-0 right-0 h-40 pointer-events-none"
-                        style={{ zIndex: 1 }}
-                      >
+                      <svg className="absolute top-8 left-0 right-0 h-40 pointer-events-none" style={{ zIndex: 1 }}>
                         <polyline
-                          points={weeklyData
-                            .map((day, index) => {
-                              const maxAmount = Math.max(
-                                ...weeklyData.map((d) => d.amount),
-                                1,
-                              );
-                              const height =
-                                maxAmount > 0
-                                  ? (day.amount / maxAmount) * 100
-                                  : 0;
-                              const barHeight = Math.max(height, 8);
-                              const x =
-                                ((index + 0.5) / weeklyData.length) * 100;
-                              const y = 100 - barHeight;
-                              return `${x}%,${y}%`;
-                            })
-                            .join(' ')}
+                          points={weeklyData.map((day, index) => {
+                            const maxAmount = Math.max(...weeklyData.map(d => d.amount), 1);
+                            const height = maxAmount > 0 ? (day.amount / maxAmount) * 100 : 0;
+                            const barHeight = Math.max(height, 8);
+                            const x = ((index + 0.5) / weeklyData.length) * 100;
+                            const y = 100 - barHeight;
+                            return `${x}%,${y}%`;
+                          }).join(' ')}
                           fill="none"
                           stroke="currentColor"
                           strokeWidth="2"
@@ -2053,9 +1742,7 @@ function AdminDashboardContent() {
                     </div>
                   ) : (
                     <div className="text-center py-8">
-                      <p className="text-sm text-gray-500 dark:text-white/50">
-                        No hay datos para mostrar
-                      </p>
+                      <p className="text-sm text-gray-500 dark:text-white/50">No hay datos para mostrar</p>
                     </div>
                   )}
                 </div>
@@ -2072,21 +1759,15 @@ function AdminDashboardContent() {
                           Facturas del Período
                         </h3>
                         <p className="text-xs text-gray-500 dark:text-white/50 mt-1">
-                          {dateFilter === 'custom' &&
-                          customStartDate &&
-                          customEndDate
+                          {dateFilter === 'custom' && customStartDate && customEndDate
                             ? `Facturas emitidas del ${parseLocalDate(customStartDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })} al ${parseLocalDate(customEndDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })}`
                             : `Facturas emitidas hoy (${new Date().toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })})`}
                         </p>
                       </div>
                       {dailyPayments.length > 0 && (
                         <div className="text-right">
-                          <p className="text-xs text-gray-500 dark:text-white/50">
-                            Total facturas
-                          </p>
-                          <p className="text-lg font-bold text-[#164151] dark:text-white">
-                            {dailyPayments.length}
-                          </p>
+                          <p className="text-xs text-gray-500 dark:text-white/50">Total facturas</p>
+                          <p className="text-lg font-bold text-[#164151] dark:text-white">{dailyPayments.length}</p>
                         </div>
                       )}
                     </div>
@@ -2095,42 +1776,28 @@ function AdminDashboardContent() {
                       <div className="flex items-center justify-center py-12">
                         <div className="text-center">
                           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#164151] mx-auto mb-4"></div>
-                          <p className="text-sm text-gray-500 dark:text-white/50">
-                            Cargando facturas...
-                          </p>
+                          <p className="text-sm text-gray-500 dark:text-white/50">Cargando facturas...</p>
                         </div>
                       </div>
                     ) : dailyPayments.length > 0 ? (
                       <div className="space-y-3 mt-4 max-h-[600px] overflow-y-auto scrollbar-hide">
                         {dailyPayments.map((payment) => {
                           // Usar created_at (fecha de registro facturado) como prioridad
-                          const paymentDate = new Date(
-                            payment.created_at || payment.payment_date,
-                          );
-                          const paymentMethodLabels: { [key: string]: string } =
-                            {
-                              cash: 'Efectivo',
-                              transfer: 'Transferencia',
-                              mixed: 'Mixto',
-                            };
-
+                          const paymentDate = new Date(payment.created_at || payment.payment_date);
+                          const paymentMethodLabels: { [key: string]: string } = {
+                            cash: 'Efectivo',
+                            transfer: 'Transferencia',
+                            mixed: 'Mixto'
+                          };
+                          
                           // Determinar nombre del cliente y documento según la sede
-                          const clientName =
-                            payment.sede === 'online'
-                              ? payment.user?.name ||
-                                payment.client_info?.name ||
-                                'Cliente online'
-                              : payment.client_info?.name ||
-                                'Cliente sin nombre';
-                          const clientDoc =
-                            payment.sede === 'online'
-                              ? payment.user?.email || 'Sin documento'
-                              : payment.client_info?.document_id ||
-                                'Sin documento';
-                          const planName =
-                            payment.plan?.name ||
-                            payment.course?.title ||
-                            'Producto no disponible';
+                          const clientName = payment.sede === 'online' 
+                            ? (payment.user?.name || payment.client_info?.name || 'Cliente online')
+                            : (payment.client_info?.name || 'Cliente sin nombre');
+                          const clientDoc = payment.sede === 'online'
+                            ? (payment.user?.email || 'Sin documento')
+                            : (payment.client_info?.document_id || 'Sin documento');
+                          const planName = payment.plan?.name || payment.course?.title || 'Producto no disponible';
 
                           return (
                             <div
@@ -2149,16 +1816,12 @@ function AdminDashboardContent() {
                                           {clientName}
                                         </p>
                                         {payment.sede && (
-                                          <span
-                                            className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
-                                              payment.sede === 'fisica'
-                                                ? 'bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300'
-                                                : 'bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300'
-                                            }`}
-                                          >
-                                            {payment.sede === 'fisica'
-                                              ? 'Física'
-                                              : 'Online'}
+                                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                                            payment.sede === 'fisica' 
+                                              ? 'bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300'
+                                              : 'bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300'
+                                          }`}>
+                                            {payment.sede === 'fisica' ? 'Física' : 'Online'}
                                           </span>
                                         )}
                                       </div>
@@ -2167,50 +1830,31 @@ function AdminDashboardContent() {
                                       </p>
                                     </div>
                                   </div>
-
+                                  
                                   <div className="grid grid-cols-2 gap-4 mt-3 ml-13">
                                     <div>
                                       <p className="text-xs text-gray-500 dark:text-white/50 mb-1">
-                                        {payment.sede === 'online'
-                                          ? 'Curso/Plan'
-                                          : 'Plan'}
+                                        {payment.sede === 'online' ? 'Curso/Plan' : 'Plan'}
                                       </p>
                                       <p className="text-sm font-medium text-[#164151] dark:text-white">
                                         {planName}
                                       </p>
                                     </div>
                                     <div>
-                                      <p className="text-xs text-gray-500 dark:text-white/50 mb-1">
-                                        Método de pago
-                                      </p>
+                                      <p className="text-xs text-gray-500 dark:text-white/50 mb-1">Método de pago</p>
                                       <p className="text-sm font-medium text-[#164151] dark:text-white">
-                                        {paymentMethodLabels[
-                                          payment.payment_method
-                                        ] ||
-                                          payment.payment_method ||
-                                          'Transferencia'}
+                                        {paymentMethodLabels[payment.payment_method] || payment.payment_method || 'Transferencia'}
                                       </p>
                                     </div>
                                     <div>
-                                      <p className="text-xs text-gray-500 dark:text-white/50 mb-1">
-                                        Fecha
-                                      </p>
+                                      <p className="text-xs text-gray-500 dark:text-white/50 mb-1">Fecha</p>
                                       <p className="text-sm font-medium text-[#164151] dark:text-white">
-                                        {paymentDate.toLocaleDateString(
-                                          'es-ES',
-                                          {
-                                            day: '2-digit',
-                                            month: 'short',
-                                            year: 'numeric',
-                                          },
-                                        )}
+                                        {paymentDate.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })}
                                       </p>
                                     </div>
                                     {payment.invoice_number && (
                                       <div>
-                                        <p className="text-xs text-gray-500 dark:text-white/50 mb-1">
-                                          Factura
-                                        </p>
+                                        <p className="text-xs text-gray-500 dark:text-white/50 mb-1">Factura</p>
                                         <p className="text-sm font-medium text-[#164151] dark:text-white">
                                           #{payment.invoice_number}
                                         </p>
@@ -2218,15 +1862,11 @@ function AdminDashboardContent() {
                                     )}
                                   </div>
                                 </div>
-
+                                
                                 <div className="ml-4 text-right">
-                                  <p className="text-xs text-gray-500 dark:text-white/50 mb-1">
-                                    Monto
-                                  </p>
+                                  <p className="text-xs text-gray-500 dark:text-white/50 mb-1">Monto</p>
                                   <p className="text-xl font-bold text-[#85ea10]">
-                                    {showRevenueNumbers
-                                      ? `$${Number(payment.amount).toLocaleString('es-CO')}`
-                                      : '••••••'}
+                                    {showRevenueNumbers ? `$${Number(payment.amount).toLocaleString('es-CO')}` : '••••••'}
                                   </p>
                                 </div>
                               </div>
@@ -2253,33 +1893,25 @@ function AdminDashboardContent() {
                         <div>
                           <h3 className="text-sm font-semibold text-[#164151] dark:text-white uppercase tracking-wide">
                             🎉 Cumpleaños
-                            {dateFilter === 'custom' &&
-                            customStartDate &&
-                            customEndDate
-                              ? customStartDate === customEndDate
-                                ? ` del ${parseLocalDate(customStartDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'long' })}`
-                                : ` del ${parseLocalDate(customStartDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'long' })} al ${parseLocalDate(customEndDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'long' })}`
+                            {dateFilter === 'custom' && customStartDate && customEndDate
+                              ? (customStartDate === customEndDate
+                                  ? ` del ${parseLocalDate(customStartDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'long' })}`
+                                  : ` del ${parseLocalDate(customStartDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'long' })} al ${parseLocalDate(customEndDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'long' })}`)
                               : ' de Hoy'}
                           </h3>
                           <p className="text-xs text-gray-500 dark:text-white/50 mt-1">
-                            {dateFilter === 'custom' &&
-                            customStartDate &&
-                            customEndDate
-                              ? customStartDate === customEndDate
-                                ? `Clientes que cumplen años el ${parseLocalDate(customStartDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })}`
-                                : `Clientes que cumplen años entre el ${parseLocalDate(customStartDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'long' })} y el ${parseLocalDate(customEndDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'long' })}`
+                            {dateFilter === 'custom' && customStartDate && customEndDate
+                              ? (customStartDate === customEndDate
+                                  ? `Clientes que cumplen años el ${parseLocalDate(customStartDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })}`
+                                  : `Clientes que cumplen años entre el ${parseLocalDate(customStartDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'long' })} y el ${parseLocalDate(customEndDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'long' })}`)
                               : `Clientes que cumplen años hoy (${new Date().toLocaleDateString('es-ES', { day: '2-digit', month: 'long' })})`}
                           </p>
                         </div>
                       </div>
                       {birthdayClients.length > 0 && (
                         <div className="text-right">
-                          <p className="text-xs text-gray-500 dark:text-white/50">
-                            Total
-                          </p>
-                          <p className="text-lg font-bold text-[#164151] dark:text-white">
-                            {birthdayClients.length}
-                          </p>
+                          <p className="text-xs text-gray-500 dark:text-white/50">Total</p>
+                          <p className="text-lg font-bold text-[#164151] dark:text-white">{birthdayClients.length}</p>
                         </div>
                       )}
                     </div>
@@ -2288,9 +1920,7 @@ function AdminDashboardContent() {
                       <div className="flex items-center justify-center py-12">
                         <div className="text-center">
                           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#164151] mx-auto mb-4"></div>
-                          <p className="text-sm text-gray-500 dark:text-white/50">
-                            Cargando cumpleaños...
-                          </p>
+                          <p className="text-sm text-gray-500 dark:text-white/50">Cargando cumpleaños...</p>
                         </div>
                       </div>
                     ) : birthdayClients.length > 0 ? (
@@ -2303,37 +1933,19 @@ function AdminDashboardContent() {
                           } else {
                             const tempDate = new Date(client.birth_date);
                             const year = tempDate.getFullYear();
-                            const month = String(
-                              tempDate.getMonth() + 1,
-                            ).padStart(2, '0');
-                            const day = String(tempDate.getDate()).padStart(
-                              2,
-                              '0',
-                            );
+                            const month = String(tempDate.getMonth() + 1).padStart(2, '0');
+                            const day = String(tempDate.getDate()).padStart(2, '0');
                             birthDateStr = `${year}-${month}-${day}`;
                           }
-
+                          
                           // Extraer día y mes directamente del string para evitar problemas de zona horaria
                           const parts = birthDateStr.split('-');
-                          const _birthYear = parseInt(parts[0], 10);
+                          const birthYear = parseInt(parts[0], 10);
                           const birthMonth = parseInt(parts[1], 10);
                           const birthDay = parseInt(parts[2], 10);
-
+                          
                           // Formatear directamente sin crear objeto Date para evitar problemas de zona horaria
-                          const monthNames = [
-                            'enero',
-                            'febrero',
-                            'marzo',
-                            'abril',
-                            'mayo',
-                            'junio',
-                            'julio',
-                            'agosto',
-                            'septiembre',
-                            'octubre',
-                            'noviembre',
-                            'diciembre',
-                          ];
+                          const monthNames = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
                           const formattedBirthday = `${birthDay} de ${monthNames[birthMonth - 1]}`;
 
                           return (
@@ -2361,30 +1973,22 @@ function AdminDashboardContent() {
                                       </p>
                                     </div>
                                   </div>
-
+                                  
                                   <div className="grid grid-cols-2 gap-4 mt-3 ml-13">
                                     <div>
-                                      <p className="text-xs text-gray-500 dark:text-white/50 mb-1">
-                                        Fecha de nacimiento
-                                      </p>
+                                      <p className="text-xs text-gray-500 dark:text-white/50 mb-1">Fecha de nacimiento</p>
                                       <p className="text-sm font-medium text-[#164151] dark:text-white">
                                         {formattedBirthday}
                                       </p>
                                     </div>
                                     {client.whatsapp && (
                                       <div>
-                                        <p className="text-xs text-gray-500 dark:text-white/50 mb-1">
-                                          WhatsApp
-                                        </p>
+                                        <p className="text-xs text-gray-500 dark:text-white/50 mb-1">WhatsApp</p>
                                         <button
                                           onClick={() => {
-                                            const phoneNumber =
-                                              client.whatsapp.replace(
-                                                /\D/g,
-                                                '',
-                                              );
+                                            const phoneNumber = client.whatsapp.replace(/\D/g, '');
                                             const message = encodeURIComponent(
-                                              `Hola ${client.name}! Felicidades desde Rogerbox, gracias por hacer parte de este equipo. ¡Que tengas un excelente día!`,
+                                              `Hola ${client.name}! Felicidades desde Rogerbox, gracias por hacer parte de este equipo. ¡Que tengas un excelente día!`
                                             );
                                             const whatsappUrl = `https://wa.me/${phoneNumber}?text=${message}`;
                                             window.open(whatsappUrl, '_blank');
@@ -2398,9 +2002,7 @@ function AdminDashboardContent() {
                                     )}
                                     {client.email && (
                                       <div>
-                                        <p className="text-xs text-gray-500 dark:text-white/50 mb-1">
-                                          Email
-                                        </p>
+                                        <p className="text-xs text-gray-500 dark:text-white/50 mb-1">Email</p>
                                         <p className="text-sm font-medium text-[#164151] dark:text-white">
                                           {client.email}
                                         </p>
@@ -2408,7 +2010,7 @@ function AdminDashboardContent() {
                                     )}
                                   </div>
                                 </div>
-
+                                
                                 <div className="ml-4 text-center">
                                   <div className="w-12 h-12 rounded-full bg-[#85ea10]/20 dark:bg-[#85ea10]/20 flex items-center justify-center border-2 border-[#85ea10]/30">
                                     <Cake className="w-6 h-6 text-[#85ea10]" />
@@ -2466,9 +2068,7 @@ function AdminDashboardContent() {
                       course={course}
                       onEdit={() => editCourse(course.id)}
                       onDelete={() => deleteCourse(course.id, course.title)}
-                      onTogglePublish={() =>
-                        toggleCoursePublish(course.id, course.is_published)
-                      }
+                      onTogglePublish={() => toggleCoursePublish(course.id, course.is_published)}
                     />
                   ))}
                 </div>
@@ -2498,16 +2098,13 @@ function AdminDashboardContent() {
           )}
 
           {/* Gym Plans Tab */}
-          {activeTab === 'gym-plans' && (
-            <GymPlansManagement ref={gymPlansRef} />
-          )}
+          {activeTab === 'gym-plans' && <GymPlansManagement ref={gymPlansRef} />}
 
           {/* Gym Payments Tab */}
-          {activeTab === 'gym-payments' && (
-            <GymPaymentsManagement ref={gymPaymentsRef} />
-          )}
+          {activeTab === 'gym-payments' && <GymPaymentsManagement ref={gymPaymentsRef} />}
 
           {/* Gym Collections Tab */}
+
 
           {/* Users Tab */}
           {activeTab === 'users' && (
@@ -2515,67 +2112,39 @@ function AdminDashboardContent() {
               {/* Status Summary - Compact */}
               <div className="flex flex-wrap gap-2">
                 <button
-                  onClick={() => {
-                    setPaymentStatusFilter(
-                      paymentStatusFilter === 'active' ? 'all' : 'active',
-                    );
-                    setCurrentPage(1);
-                  }}
+                  onClick={() => { setPaymentStatusFilter(paymentStatusFilter === 'active' ? 'all' : 'active'); setCurrentPage(1); }}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${paymentStatusFilter === 'active' ? 'bg-[#85ea10] text-[#164151]' : 'bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-white/70 hover:bg-[#85ea10]/20'}`}
                 >
                   <span className="font-bold">{userCounts.active}</span> Al día
                 </button>
                 <button
-                  onClick={() => {
-                    setPaymentStatusFilter(
-                      paymentStatusFilter === 'renewal' ? 'all' : 'renewal',
-                    );
-                    setCurrentPage(1);
-                  }}
+                  onClick={() => { setPaymentStatusFilter(paymentStatusFilter === 'renewal' ? 'all' : 'renewal'); setCurrentPage(1); }}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${paymentStatusFilter === 'renewal' ? 'bg-orange-500 text-white' : 'bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-white/70 hover:bg-orange-500/20'}`}
                 >
-                  <span className="font-bold">{userCounts.renewal}</span>{' '}
-                  Renovar
+                  <span className="font-bold">{userCounts.renewal}</span> Renovar
                 </button>
                 <button
-                  onClick={() => {
-                    setPaymentStatusFilter(
-                      paymentStatusFilter === 'no-products'
-                        ? 'all'
-                        : 'no-products',
-                    );
-                    setCurrentPage(1);
-                  }}
+                  onClick={() => { setPaymentStatusFilter(paymentStatusFilter === 'no-products' ? 'all' : 'no-products'); setCurrentPage(1); }}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${paymentStatusFilter === 'no-products' ? 'bg-gray-500 text-white' : 'bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-white/70 hover:bg-gray-500/20'}`}
                 >
-                  <span className="font-bold">{userCounts.noProducts}</span> Sin
-                  productos
+                  <span className="font-bold">{userCounts.noProducts}</span> Sin productos
                 </button>
                 <button
-                  onClick={() => {
-                    setPaymentStatusFilter(
-                      paymentStatusFilter === 'inactive' ? 'all' : 'inactive',
-                    );
-                    setCurrentPage(1);
-                  }}
+                  onClick={() => { setPaymentStatusFilter(paymentStatusFilter === 'inactive' ? 'all' : 'inactive'); setCurrentPage(1); }}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${paymentStatusFilter === 'inactive' ? 'bg-red-500 text-white' : 'bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-white/70 hover:bg-red-500/20'}`}
                 >
-                  <span className="font-bold">{userCounts.inactive}</span>{' '}
-                  Inactivos
+                  <span className="font-bold">{userCounts.inactive}</span> Inactivos
                 </button>
                 {paymentStatusFilter !== 'all' && (
                   <button
-                    onClick={() => {
-                      setPaymentStatusFilter('all');
-                      setCurrentPage(1);
-                    }}
+                    onClick={() => { setPaymentStatusFilter('all'); setCurrentPage(1); }}
                     className="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-200 dark:bg-white/20 text-gray-700 dark:text-white hover:bg-gray-300 dark:hover:bg-white/30 transition-all"
                   >
                     Ver todos ({userCounts.total})
                   </button>
                 )}
               </div>
-
+              
               {/* Search and Filters Bar */}
               <div className="bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl border border-gray-200 dark:border-white/10 p-4 shadow-sm dark:shadow-none">
                 <div className="flex flex-col sm:flex-row gap-4">
@@ -2643,1176 +2212,865 @@ function AdminDashboardContent() {
                 ) : users.length === 0 ? (
                   <EmptyState
                     icon={userSearchTerm ? Search : Users}
-                    title={
-                      userSearchTerm
-                        ? 'No se encontraron clientes'
-                        : 'No hay clientes registrados'
-                    }
-                    description={
-                      userSearchTerm
-                        ? `No hay clientes que coincidan con "${userSearchTerm}"`
-                        : 'Los clientes aparecerán aquí cuando se registren'
-                    }
+                    title={userSearchTerm ? "No se encontraron clientes" : "No hay clientes registrados"}
+                    description={userSearchTerm ? `No hay clientes que coincidan con "${userSearchTerm}"` : "Los clientes aparecerán aquí cuando se registren"}
                   />
                 ) : (
                   <>
-                    <div className="hidden md:block overflow-x-auto">
-                      <table className="w-full min-w-[800px]">
-                        <thead>
-                          <tr className="border-b border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-transparent">
-                            <th className="text-left px-3 md:px-4 py-3 md:py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
-                              Cliente
-                            </th>
-                            <th className="text-left px-3 md:px-4 py-3 md:py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
-                              Documento
-                            </th>
-                            <th className="text-left px-3 md:px-4 py-3 md:py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
-                              Productos
-                            </th>
-                            <th className="text-left px-3 md:px-4 py-3 md:py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
-                              Tipo
-                            </th>
-                            <th className="text-left px-3 md:px-4 py-3 md:py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
-                              WhatsApp
-                            </th>
-                            <th className="text-left px-3 md:px-4 py-3 md:py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
-                              Estado
-                            </th>
-                            <th className="text-right px-3 md:px-4 py-3 md:py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
-                              Acciones
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100 dark:divide-white/5">
+                        <div className="hidden md:block overflow-x-auto">
+                          <table className="w-full min-w-[800px]">
+                            <thead>
+                              <tr className="border-b border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-transparent">
+                                <th className="text-left px-3 md:px-4 py-3 md:py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
+                                  Cliente
+                                </th>
+                                <th className="text-left px-3 md:px-4 py-3 md:py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
+                                  Documento
+                                </th>
+                                <th className="text-left px-3 md:px-4 py-3 md:py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
+                                  Productos
+                                </th>
+                                <th className="text-left px-3 md:px-4 py-3 md:py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
+                                  Tipo
+                                </th>
+                                <th className="text-left px-3 md:px-4 py-3 md:py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
+                                  WhatsApp
+                                </th>
+                                <th className="text-left px-3 md:px-4 py-3 md:py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
+                                  Estado
+                                </th>
+                                <th className="text-right px-3 md:px-4 py-3 md:py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
+                                  Acciones
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100 dark:divide-white/5">
+                              {users.map((user) => {
+                                // Calcular si tiene más de 30 días sin pagar
+                                const today = new Date();
+                                today.setHours(0, 0, 0, 0);
+                                const allMemberships = user.gym_memberships || [];
+                                const expiredMemberships = allMemberships.filter((m: any) => {
+                                  const endDate = new Date(m.end_date);
+                                  endDate.setHours(0, 0, 0, 0);
+                                  return endDate < today;
+                                });
+                                const latestExpired = expiredMemberships.length > 0
+                                  ? expiredMemberships.sort((a: any, b: any) =>
+                                    new Date(b.end_date).getTime() - new Date(a.end_date).getTime()
+                                  )[0]
+                                  : null;
+                                const daysSinceExpired = latestExpired
+                                  ? Math.floor((today.getTime() - new Date(latestExpired.end_date).getTime()) / (1000 * 60 * 60 * 24))
+                                  : 0;
+                                const hasExpiredMoreThan30Days = daysSinceExpired > 30;
+                                const isInactive = user.is_inactive || false;
+                                // Solo mostrar botón de inactivar si tiene más de 30 días PERO NO está inactivo aún
+                                const shouldShowInactiveButton = hasExpiredMoreThan30Days && !isInactive;
+                                const isAdminUser = user.email === 'rogerbox@admin.com' || user.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+
+                                return (
+                                  <tr
+                                    key={user.id}
+                                    onClick={() => !isAdminUser && router.push(`/admin/users/${user.id}`)}
+                                    className={`${isAdminUser ? '' : 'hover:bg-gray-100 dark:hover:bg-white/10 cursor-pointer hover:border-[#85ea10]/30'} transition-all group border-l-4 border-transparent ${isInactive ? 'opacity-60 bg-gray-50 dark:bg-gray-900/30' : ''
+                                      }`}
+                                  >
+                                    <td className="px-3 md:px-4 py-3 md:py-4">
+                                      <div>
+                                        <div className="flex items-center gap-2">
+                                          <p className="text-sm font-medium text-[#164151] dark:text-white truncate">
+                                            {user.name || user.full_name || 'Sin nombre'}
+                                          </p>
+                                          {/* Check verde rellenito para usuarios registrados */}
+                                          {!user.isUnregisteredClient && (
+                                            <div className="w-4 h-4 rounded-full bg-[#85ea10] flex items-center justify-center flex-shrink-0">
+                                              <Check className="w-2.5 h-2.5 text-white stroke-[3]" />
+                                            </div>
+                                          )}
+                                        </div>
+                                        <p className="text-xs text-[#164151]/60 dark:text-white/50 mt-0.5 truncate">
+                                          {user.email || 'Sin email'}
+                                        </p>
+                                      </div>
+                                    </td>
+                                    <td className="px-3 md:px-4 py-3 md:py-4">
+                                      {user.document_id ? (
+                                        <div className="flex items-center gap-1.5">
+                                          <CreditCard className="w-3 h-3 text-gray-400" />
+                                          <span className="text-xs font-medium text-[#164151] dark:text-white">
+                                            {user.document_id}
+                                          </span>
+                                        </div>
+                                      ) : (
+                                        <span className="text-xs text-gray-400 dark:text-white/40">-</span>
+                                      )}
+                                    </td>
+                                    <td className="px-3 md:px-4 py-3 md:py-4">
+                                      <div onClick={(e) => e.stopPropagation()}>
+                                        {(() => {
+                                          const today = new Date();
+                                          today.setHours(0, 0, 0, 0);
+
+                                          // Obtener todas las membresías físicas
+                                          const allMemberships = user.gym_memberships || [];
+
+                                          // Obtener todos los cursos activos
+                                          const allCourses = user.activeCoursePurchases || [];
+
+                                          // Si no tiene productos
+                                          if (allMemberships.length === 0 && allCourses.length === 0) {
+                                            return (
+                                              <span className="text-sm font-medium text-gray-500 dark:text-white/50">
+                                                Sin productos
+                                              </span>
+                                            );
+                                          }
+
+                                          // Calcular estados
+                                          const activeMemberships = allMemberships.filter((m: any) => {
+                                            const endDate = new Date(m.end_date);
+                                            endDate.setHours(0, 0, 0, 0);
+                                            return endDate >= today && m.status !== 'cancelled';
+                                          });
+                                          const expiredMemberships = allMemberships.filter((m: any) => {
+                                            const endDate = new Date(m.end_date);
+                                            endDate.setHours(0, 0, 0, 0);
+                                            return endDate < today && m.status !== 'cancelled';
+                                          });
+
+                                          // Construir lista completa de productos con estados
+                                          const allProducts: Array<{ name: string; type: 'membership' | 'course'; isActive: boolean; isCancelled?: boolean; isScheduled?: boolean; membership?: any }> = [];
+
+                                          // Membresías canceladas (para mostrar al final)
+                                          const cancelledMemberships = allMemberships.filter((m: any) => m.status === 'cancelled');
+
+                                          // 1. Primero: Agregar membresías activas actuales (no programadas)
+                                          activeMemberships.forEach((m: any) => {
+                                            const startDate = new Date(m.start_date);
+                                            startDate.setHours(0, 0, 0, 0);
+                                            const isScheduled = startDate > today;
+                                            
+                                            if (!isScheduled) {
+                                              allProducts.push({
+                                                name: m.plan?.name || 'Plan',
+                                                type: 'membership',
+                                                isActive: true,
+                                                membership: m,
+                                              });
+                                            }
+                                          });
+
+                                          // 2. Segundo: Agregar membresías programadas (pagos anticipados)
+                                          activeMemberships.forEach((m: any) => {
+                                            const startDate = new Date(m.start_date);
+                                            startDate.setHours(0, 0, 0, 0);
+                                            const isScheduled = startDate > today;
+                                            
+                                            if (isScheduled) {
+                                              allProducts.push({
+                                                name: m.plan?.name || 'Plan',
+                                                type: 'membership',
+                                                isActive: true,
+                                                isScheduled: true,
+                                                membership: m,
+                                              });
+                                            }
+                                          });
+
+                                          // 3. Tercero: Agregar membresías vencidas (para renovar)
+                                          expiredMemberships.forEach((m: any) => {
+                                            allProducts.push({
+                                              name: m.plan?.name || 'Plan',
+                                              type: 'membership',
+                                              isActive: false,
+                                              membership: m,
+                                            });
+                                          });
+
+                                          // 4. Cuarto: Agregar membresías canceladas
+                                          cancelledMemberships.forEach((m: any) => {
+                                            allProducts.push({
+                                              name: m.plan?.name || 'Plan',
+                                              type: 'membership',
+                                              isActive: false,
+                                              isCancelled: true,
+                                              membership: m,
+                                            });
+                                          });
+
+                                          // Agregar cursos
+                                          allCourses.forEach((p: any) => {
+                                            allProducts.push({
+                                              name: p.course?.title || 'Curso',
+                                              type: 'course',
+                                              isActive: true,
+                                            });
+                                          });
+
+                                          // Obtener el primer producto para mostrar
+                                          const firstProduct = allProducts.length > 0 ? allProducts[0] : null;
+                                          const hasMoreProducts = allProducts.length > 1;
+
+                                          const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+                                            const rect = e.currentTarget.getBoundingClientRect();
+                                            const popoverWidth = 288; // w-72 = 288px
+                                            const spaceOnRight = window.innerWidth - rect.right;
+                                            const spaceOnLeft = rect.left;
+
+                                            // Decidir si mostrar a la derecha o izquierda
+                                            const showOnRight = spaceOnRight >= popoverWidth || spaceOnRight > spaceOnLeft;
+
+                                            setProductsModal({
+                                              isOpen: true,
+                                              user: { ...user, allProducts },
+                                              position: {
+                                                x: showOnRight ? rect.right + 8 : rect.left - popoverWidth - 8, // 8px de separación
+                                                y: rect.top, // Alineado con el elemento
+                                              }
+                                            });
+                                          };
+
+                                          if (!firstProduct) {
+                                            return (
+                                              <span className="text-sm font-medium text-gray-500 dark:text-white/50">
+                                                Sin productos
+                                              </span>
+                                            );
+                                          }
+
+                                          return (
+                                            <button
+                                              onClick={handleClick}
+                                              className="text-left hover:opacity-80 transition-opacity cursor-pointer flex items-center gap-1.5"
+                                              title={hasMoreProducts ? `Ver todos los productos (${allProducts.length})` : undefined}
+                                            >
+                                              <span className="text-sm font-medium text-[#164151] dark:text-white">
+                                                {firstProduct.name}
+                                              </span>
+                                              {hasMoreProducts && (
+                                                <span className="w-5 h-5 flex items-center justify-center rounded-full bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-white/60 text-xs font-semibold hover:bg-gray-200 dark:hover:bg-white/20 transition-colors">
+                                                  +{allProducts.length - 1}
+                                                </span>
+                                              )}
+                                            </button>
+                                          );
+                                        })()}
+                                      </div>
+                                    </td>
+                                    <td className="px-3 md:px-4 py-3 md:py-4">
+                                      <div>
+                                        {user.userType === 'both' && (
+                                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-[#164151]/15 text-[#164151] dark:bg-white/10 dark:text-white/70">
+                                            Ambos
+                                          </span>
+                                        )}
+                                        {user.userType === 'physical' && (
+                                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-[#164151]/15 text-[#164151] dark:bg-white/10 dark:text-white/70">
+                                            <Dumbbell className="w-3 h-3" />
+                                            Físico
+                                          </span>
+                                        )}
+                                        {user.userType === 'online' && (
+                                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-cyan-100 text-cyan-700 dark:bg-cyan-500/15 dark:text-cyan-400">
+                                            <Globe className="w-3 h-3" />
+                                            Online
+                                          </span>
+                                        )}
+                                        {user.userType === 'none' && (
+                                          <span className="text-xs text-gray-400 dark:text-white/40">-</span>
+                                        )}
+                                      </div>
+                                    </td>
+                                    <td className="px-3 md:px-4 py-3 md:py-4">
+                                      {user.phone || user.whatsapp ? (
+                                        <a
+                                          href={`https://wa.me/${(user.phone || user.whatsapp).replace(/\D/g, '')}`}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-colors"
+                                        >
+                                          <Phone className="w-3 h-3" />
+                                          {user.phone || user.whatsapp}
+                                        </a>
+                                      ) : (
+                                        <span className="text-xs text-gray-400 dark:text-white/40">-</span>
+                                      )}
+                                    </td>
+                                    <td className="px-3 md:px-4 py-3 md:py-4">
+                                      <div>
+                                        {(() => {
+                                          // Si está inactivo, siempre mostrar "Inactivo" primero
+                                          if (user.is_inactive) {
+                                            return (
+                                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400">
+                                                <X className="w-3 h-3" />
+                                                Inactivo
+                                              </span>
+                                            );
+                                          }
+
+                                          const today = new Date();
+                                          today.setHours(0, 0, 0, 0);
+
+                                          // Obtener todas las membresías físicas
+                                          const allMemberships = user.gym_memberships || [];
+
+                                          // Obtener todos los cursos activos
+                                          const allCourses = user.activeCoursePurchases || [];
+
+                                          // Si no tiene productos
+                                          if (allMemberships.length === 0 && allCourses.length === 0) {
+                                            return (
+                                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-white/60">
+                                                <AlertCircle className="w-3 h-3" />
+                                                Sin pagos
+                                              </span>
+                                            );
+                                          }
+
+                                          // Calcular estados de membresías físicas
+                                          const activeMemberships = allMemberships.filter((m: any) => {
+                                            const endDate = new Date(m.end_date);
+                                            endDate.setHours(0, 0, 0, 0);
+                                            return endDate >= today && m.status !== 'cancelled';
+                                          });
+                                          const expiredMemberships = allMemberships.filter((m: any) => {
+                                            const endDate = new Date(m.end_date);
+                                            endDate.setHours(0, 0, 0, 0);
+                                            return endDate < today && m.status !== 'cancelled';
+                                          });
+
+                                          // Membresías canceladas
+                                          const cancelledMemberships = allMemberships.filter((m: any) => m.status === 'cancelled');
+                                          const hasOnlyCancelled = cancelledMemberships.length > 0 && activeMemberships.length === 0 && expiredMemberships.length === 0;
+
+                                          // Si solo tiene membresías canceladas
+                                          if (hasOnlyCancelled) {
+                                            return (
+                                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-500/20 text-slate-600 dark:text-slate-400">
+                                                <X className="w-3 h-3" />
+                                                Cancelado
+                                              </span>
+                                            );
+                                          }
+
+                                          // Si solo tiene cursos online
+                                          if (allMemberships.length === 0 && allCourses.length > 0) {
+                                            return (
+                                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400">
+                                                <CheckCircle className="w-3 h-3" />
+                                                Al día
+                                              </span>
+                                            );
+                                          }
+
+                                          // Si solo tiene membresías físicas (no canceladas)
+                                          const nonCancelledMemberships = allMemberships.filter((m: any) => m.status !== 'cancelled');
+                                          if (nonCancelledMemberships.length > 0 && allCourses.length === 0) {
+                                            // Todos activos
+                                            if (activeMemberships.length === nonCancelledMemberships.length && expiredMemberships.length === 0) {
+                                              return (
+                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400">
+                                                  <CheckCircle className="w-3 h-3" />
+                                                  Al día
+                                                </span>
+                                              );
+                                            }
+                                            // Todos vencidos
+                                            if (expiredMemberships.length === nonCancelledMemberships.length && activeMemberships.length === 0) {
+                                              // Siempre mostrar "Renovar" cuando está vencido (no importa cuántos días)
+                                              return (
+                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400">
+                                                  <AlertTriangle className="w-3 h-3" />
+                                                  Renovar
+                                                </span>
+                                              );
+                                            }
+                                            // Mezcla: algunos activos, algunos vencidos
+                                            if (activeMemberships.length > 0 && expiredMemberships.length > 0) {
+                                              return (
+                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400">
+                                                  <Bell className="w-3 h-3" />
+                                                  Parcial
+                                                </span>
+                                              );
+                                            }
+                                          }
+
+                                          // Si tiene ambos (físico y online)
+                                          if (nonCancelledMemberships.length > 0 && allCourses.length > 0) {
+                                            // Si todas las membresías están activas
+                                            if (activeMemberships.length === nonCancelledMemberships.length && expiredMemberships.length === 0) {
+                                              return (
+                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400">
+                                                  <CheckCircle className="w-3 h-3" />
+                                                  Al día
+                                                </span>
+                                              );
+                                            }
+                                            // Si hay membresías vencidas (aunque tenga cursos activos)
+                                            if (expiredMemberships.length > 0) {
+                                              return (
+                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400">
+                                                  <Bell className="w-3 h-3" />
+                                                  Parcial
+                                                </span>
+                                              );
+                                            }
+                                          }
+
+                                          // Fallback
+                                          return (
+                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-white/60">
+                                              <AlertCircle className="w-3 h-3" />
+                                              Sin pagos
+                                            </span>
+                                          );
+                                        })()}
+                                      </div>
+                                    </td>
+                                    <td className="px-3 md:px-4 py-3 md:py-4">
+                                      <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                                        {/* Botón Recordatorio/Inactivar - visible solo cuando tiene estado "Renovar" (planes vencidos) */}
+                                        {(() => {
+                                          const today = new Date();
+                                          today.setHours(0, 0, 0, 0);
+
+                                          // Calcular estados de membresías
+                                          const allMemberships = user.gym_memberships || [];
+                                          const activeMemberships = allMemberships.filter((m: any) => {
+                                            const endDate = new Date(m.end_date);
+                                            endDate.setHours(0, 0, 0, 0);
+                                            return endDate >= today && m.status !== 'cancelled';
+                                          });
+                                          const expiredMemberships = allMemberships.filter((m: any) => {
+                                            const endDate = new Date(m.end_date);
+                                            endDate.setHours(0, 0, 0, 0);
+                                            return endDate < today && m.status !== 'cancelled';
+                                          });
+
+                                          const isInactive = user.is_inactive || false;
+
+                                          // Solo mostrar si:
+                                          // 1. Tiene planes vencidos (estado "Renovar")
+                                          // 2. NO tiene planes activos
+                                          // 3. Tiene contacto
+                                          // 4. NO está inactivo
+                                          const hasOnlyExpiredMemberships = expiredMemberships.length > 0 && activeMemberships.length === 0;
+
+                                          if (!hasOnlyExpiredMemberships || !(user.whatsapp || user.phone) || isInactive) {
+                                            return null;
+                                          }
+
+                                          // Calcular días desde que venció
+                                          const latestExpired = expiredMemberships.sort((a: any, b: any) =>
+                                            new Date(b.end_date).getTime() - new Date(a.end_date).getTime()
+                                          )[0];
+                                          const expiredDate = new Date(latestExpired.end_date);
+                                          expiredDate.setHours(0, 0, 0, 0);
+                                          const daysSinceExpired = Math.floor((today.getTime() - expiredDate.getTime()) / (1000 * 60 * 60 * 24));
+
+                                          // Si tiene más de 30 días sin pagar, mostrar botón "Inactivar" en rojo
+                                          if (daysSinceExpired > 30) {
+                                            const clientInfoId = user.isUnregisteredClient
+                                              ? user.id
+                                              : (user.client_info_id || user.gym_memberships?.[0]?.client_info_id || null);
+
+                                            if (!clientInfoId) return null;
+
+                                            const handleInactivate = async (e: React.MouseEvent) => {
+                                              e.stopPropagation();
+
+                                              if (!confirm(`¿Estás seguro de inactivar a ${user.name || user.full_name || 'este usuario'}?`)) {
+                                                return;
+                                              }
+
+                                              try {
+                                                const response = await fetch(`/api/admin/gym/clients/${clientInfoId}/toggle-inactive`, {
+                                                  method: 'PATCH',
+                                                  headers: { 'Content-Type': 'application/json' },
+                                                  body: JSON.stringify({ is_inactive: true }),
+                                                });
+
+                                                if (!response.ok) {
+                                                  throw new Error('Error al actualizar estado');
+                                                }
+
+                                                // Recargar usuarios
+                                                loadUsers();
+                                              } catch (error) {
+                                                console.error('Error inactivating user:', error);
+                                                alert('Error al inactivar el usuario');
+                                              }
+                                            };
+
+                                            return (
+                                              <button
+                                                onClick={handleInactivate}
+                                                className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-white/40 hover:bg-gray-200 dark:hover:bg-white/20 transition-colors"
+                                                title="Inactivar usuario (30 días sin pagar)"
+                                              >
+                                                <Ban className="w-4 h-4" />
+                                              </button>
+                                            );
+                                          }
+
+                                          // Menos de 30 días, mostrar botón "Recordatorio" normal
+                                          const latestMembership = allMemberships.length > 0
+                                            ? allMemberships.sort((a: any, b: any) => new Date(b.end_date).getTime() - new Date(a.end_date).getTime())[0]
+                                            : null;
+                                          const planName = latestMembership?.plan?.name || 'tu plan';
+                                          const endDate = latestMembership?.end_date
+                                            ? new Date(latestMembership.end_date).toLocaleDateString('es-ES', {
+                                              day: '2-digit',
+                                              month: 'long',
+                                              year: 'numeric',
+                                            })
+                                            : 'la fecha indicada';
+
+                                          const handleReminder = () => {
+                                            const clientName = user.name || user.full_name || 'Cliente';
+                                            const whatsappNumber = (user.whatsapp || user.phone || '').replace(/\D/g, '');
+
+                                            if (!whatsappNumber) return;
+
+                                            const message = encodeURIComponent(
+                                              `Hola ${clientName}, tu plan "${planName}" venció el ${endDate}. ¿Deseas renovarlo?`
+                                            );
+
+                                            const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${message}`;
+                                            window.open(whatsappUrl, '_blank');
+                                          };
+
+                                          return (
+                                            <button
+                                              onClick={handleReminder}
+                                              className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-white/40 hover:bg-gray-200 dark:hover:bg-white/20 transition-colors"
+                                              title="Enviar recordatorio de renovación"
+                                            >
+                                              <MessageSquare className="w-4 h-4" />
+                                            </button>
+                                          );
+                                        })()}
+                                        {!isAdminUser && (
+                                          <>
+                                            <button
+                                              onClick={() => router.push(`/admin/users/${user.id}`)}
+                                              className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-white/40 hover:bg-gray-200 dark:hover:bg-white/20 transition-colors"
+                                              title="Ver detalles"
+                                            >
+                                              <Eye className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                              onClick={() => router.push(`/admin/users/${user.id}?edit=true`)}
+                                              className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-white/40 hover:bg-gray-200 dark:hover:bg-white/20 transition-colors"
+                                              title="Editar"
+                                            >
+                                              <Edit className="w-4 h-4" />
+                                            </button>
+                                          </>
+                                        )}
+                                      </div>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        {/* Card view para móviles */}
+                        <div className="md:hidden divide-y divide-gray-100 dark:divide-white/5">
                           {users.map((user) => {
-                            // Calcular si tiene más de 30 días sin pagar
+                            // Calcular estados para la tarjeta
                             const today = new Date();
                             today.setHours(0, 0, 0, 0);
-                            const allMemberships = user.gym_memberships || [];
-                            const expiredMemberships = allMemberships.filter(
-                              (m: any) => {
-                                const endDate = new Date(m.end_date);
-                                endDate.setHours(0, 0, 0, 0);
-                                return endDate < today;
-                              },
-                            );
-                            const latestExpired =
-                              expiredMemberships.length > 0
-                                ? expiredMemberships.sort(
-                                    (a: any, b: any) =>
-                                      new Date(b.end_date).getTime() -
-                                      new Date(a.end_date).getTime(),
-                                  )[0]
-                                : null;
-                            const daysSinceExpired = latestExpired
-                              ? Math.floor(
-                                  (today.getTime() -
-                                    new Date(
-                                      latestExpired.end_date,
-                                    ).getTime()) /
-                                    (1000 * 60 * 60 * 24),
-                                )
-                              : 0;
-                            const hasExpiredMoreThan30Days =
-                              daysSinceExpired > 30;
-                            const isInactive = user.is_inactive || false;
-                            // Solo mostrar botón de inactivar si tiene más de 30 días PERO NO está inactivo aún
-                            const _shouldShowInactiveButton =
-                              hasExpiredMoreThan30Days && !isInactive;
-                            const isAdminUser =
-                              user.email === 'rogerbox@admin.com' ||
-                              user.email ===
-                                process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+                            const memberships = user.gym_memberships || [];
+                            const activeMemberships = memberships.filter((m: any) => {
+                              const endDate = new Date(m.end_date);
+                              endDate.setHours(0, 0, 0, 0);
+                              return endDate >= today && m.status !== 'cancelled';
+                            });
+                            const nonCancelledMemberships = memberships.filter((m: any) => m.status !== 'cancelled');
+                            const cancelledMemberships = memberships.filter((m: any) => m.status === 'cancelled');
+                            const hasActive = activeMemberships.length > 0;
+                            const hasExpired = nonCancelledMemberships.length > 0 && !hasActive;
+                            const hasOnlyCancelled = cancelledMemberships.length > 0 && nonCancelledMemberships.length === 0;
+
+                            let statusColor = 'border-gray-300';
+                            let statusBadge = null;
+
+                            if (user.is_inactive) {
+                              statusColor = 'border-red-400/60';
+                              statusBadge = <span className="bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">Inactivo</span>;
+                            } else if (hasActive) {
+                              statusColor = 'border-emerald-400/50';
+                              statusBadge = <span className="bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">Al día</span>;
+                            } else if (hasExpired) {
+                              statusColor = 'border-orange-400/60';
+                              statusBadge = <span className="bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">Renovación</span>;
+                            } else if (hasOnlyCancelled) {
+                              statusColor = 'border-slate-400/60';
+                              statusBadge = <span className="bg-slate-100 dark:bg-slate-500/20 text-slate-600 dark:text-slate-400 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">Cancelado</span>;
+                            } else {
+                              statusBadge = <span className="bg-gray-100 dark:bg-gray-500/20 text-gray-500 dark:text-gray-400 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">Sin productos</span>;
+                            }
+
+                            const isAdminUserMobile = user.email === 'rogerbox@admin.com' || user.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL;
 
                             return (
-                              <tr
+                              <div
                                 key={user.id}
-                                onClick={() =>
-                                  !isAdminUser &&
-                                  router.push(`/admin/users/${user.id}`)
-                                }
-                                className={`${isAdminUser ? '' : 'hover:bg-gray-100 dark:hover:bg-white/10 cursor-pointer hover:border-[#85ea10]/30'} transition-all group border-l-4 border-transparent ${
-                                  isInactive
-                                    ? 'opacity-60 bg-gray-50 dark:bg-gray-900/30'
-                                    : ''
-                                }`}
+                                onClick={() => !isAdminUserMobile && router.push(`/admin/users/${user.id}`)}
+                                className={`p-4 ${isAdminUserMobile ? '' : 'hover:bg-gray-50 dark:hover:bg-white/5 cursor-pointer active:bg-gray-100'} transition-all border-l-4 ${statusColor} relative group bg-white dark:bg-gray-900`}
                               >
-                                <td className="px-3 md:px-4 py-3 md:py-4">
-                                  <div>
-                                    <div className="flex items-center gap-2">
-                                      <p className="text-sm font-medium text-[#164151] dark:text-white truncate">
-                                        {user.name ||
-                                          user.full_name ||
-                                          'Sin nombre'}
-                                      </p>
-                                      {/* Check verde rellenito para usuarios registrados */}
+                                <div className="flex justify-between items-start mb-2">
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <h4 className="text-base font-bold text-[#164151] dark:text-white truncate">
+                                        {user.name || user.full_name || 'Sin nombre'}
+                                      </h4>
                                       {!user.isUnregisteredClient && (
                                         <div className="w-4 h-4 rounded-full bg-[#85ea10] flex items-center justify-center flex-shrink-0">
                                           <Check className="w-2.5 h-2.5 text-white stroke-[3]" />
                                         </div>
                                       )}
+                                      {statusBadge}
                                     </div>
-                                    <p className="text-xs text-[#164151]/60 dark:text-white/50 mt-0.5 truncate">
-                                      {user.email || 'Sin email'}
-                                    </p>
-                                  </div>
-                                </td>
-                                <td className="px-3 md:px-4 py-3 md:py-4">
-                                  {user.document_id ? (
-                                    <div className="flex items-center gap-1.5">
-                                      <CreditCard className="w-3 h-3 text-gray-400" />
-                                      <span className="text-xs font-medium text-[#164151] dark:text-white">
-                                        {user.document_id}
+                                    <div className="flex flex-col gap-1 mt-1">
+                                      <p className="text-xs text-gray-500 dark:text-white/40 truncate">
+                                        ID: {user.document_id || 'N/A'} • {user.email}
+                                      </p>
+                                      <span className="inline-flex w-fit items-center px-1.5 py-0.5 rounded-md bg-[#164151]/5 dark:bg-white/5 text-[9px] font-bold text-[#164151]/50 dark:text-white/30 uppercase tracking-wider">
+                                        {user.user_type === 'online' ? 'Usuario Online' : 'Usuario Presencial'}
                                       </span>
                                     </div>
-                                  ) : (
-                                    <span className="text-xs text-gray-400 dark:text-white/40">
-                                      -
-                                    </span>
-                                  )}
-                                </td>
-                                <td className="px-3 md:px-4 py-3 md:py-4">
-                                  <div onClick={(e) => e.stopPropagation()}>
-                                    {(() => {
-                                      const today = new Date();
-                                      today.setHours(0, 0, 0, 0);
-
-                                      // Obtener todas las membresías físicas
-                                      const allMemberships =
-                                        user.gym_memberships || [];
-
-                                      // Obtener todos los cursos activos
-                                      const allCourses =
-                                        user.activeCoursePurchases || [];
-
-                                      // Si no tiene productos
-                                      if (
-                                        allMemberships.length === 0 &&
-                                        allCourses.length === 0
-                                      ) {
-                                        return (
-                                          <span className="text-sm font-medium text-gray-500 dark:text-white/50">
-                                            Sin productos
-                                          </span>
-                                        );
-                                      }
-
-                                      // Calcular estados
-                                      const activeMemberships =
-                                        allMemberships.filter((m: any) => {
-                                          const endDate = new Date(m.end_date);
-                                          endDate.setHours(0, 0, 0, 0);
-                                          return (
-                                            endDate >= today &&
-                                            m.status !== 'cancelled'
-                                          );
-                                        });
-                                      const expiredMemberships =
-                                        allMemberships.filter((m: any) => {
-                                          const endDate = new Date(m.end_date);
-                                          endDate.setHours(0, 0, 0, 0);
-                                          return (
-                                            endDate < today &&
-                                            m.status !== 'cancelled'
-                                          );
-                                        });
-
-                                      // Construir lista completa de productos con estados
-                                      const allProducts: Array<{
-                                        name: string;
-                                        type: 'membership' | 'course';
-                                        isActive: boolean;
-                                        isCancelled?: boolean;
-                                        isScheduled?: boolean;
-                                        membership?: any;
-                                      }> = [];
-
-                                      // Membresías canceladas (para mostrar al final)
-                                      const cancelledMemberships =
-                                        allMemberships.filter(
-                                          (m: any) => m.status === 'cancelled',
-                                        );
-
-                                      // 1. Primero: Agregar membresías activas actuales (no programadas)
-                                      activeMemberships.forEach((m: any) => {
-                                        const startDate = new Date(
-                                          m.start_date,
-                                        );
-                                        startDate.setHours(0, 0, 0, 0);
-                                        const isScheduled = startDate > today;
-
-                                        if (!isScheduled) {
-                                          allProducts.push({
-                                            name: m.plan?.name || 'Plan',
-                                            type: 'membership',
-                                            isActive: true,
-                                            membership: m,
-                                          });
-                                        }
-                                      });
-
-                                      // 2. Segundo: Agregar membresías programadas (pagos anticipados)
-                                      activeMemberships.forEach((m: any) => {
-                                        const startDate = new Date(
-                                          m.start_date,
-                                        );
-                                        startDate.setHours(0, 0, 0, 0);
-                                        const isScheduled = startDate > today;
-
-                                        if (isScheduled) {
-                                          allProducts.push({
-                                            name: m.plan?.name || 'Plan',
-                                            type: 'membership',
-                                            isActive: true,
-                                            isScheduled: true,
-                                            membership: m,
-                                          });
-                                        }
-                                      });
-
-                                      // 3. Tercero: Agregar membresías vencidas (para renovar)
-                                      expiredMemberships.forEach((m: any) => {
-                                        allProducts.push({
-                                          name: m.plan?.name || 'Plan',
-                                          type: 'membership',
-                                          isActive: false,
-                                          membership: m,
-                                        });
-                                      });
-
-                                      // 4. Cuarto: Agregar membresías canceladas
-                                      cancelledMemberships.forEach((m: any) => {
-                                        allProducts.push({
-                                          name: m.plan?.name || 'Plan',
-                                          type: 'membership',
-                                          isActive: false,
-                                          isCancelled: true,
-                                          membership: m,
-                                        });
-                                      });
-
-                                      // Agregar cursos
-                                      allCourses.forEach((p: any) => {
-                                        allProducts.push({
-                                          name: p.course?.title || 'Curso',
-                                          type: 'course',
-                                          isActive: true,
-                                        });
-                                      });
-
-                                      // Obtener el primer producto para mostrar
-                                      const firstProduct =
-                                        allProducts.length > 0
-                                          ? allProducts[0]
-                                          : null;
-                                      const hasMoreProducts =
-                                        allProducts.length > 1;
-
-                                      const handleClick = (
-                                        e: React.MouseEvent<HTMLButtonElement>,
-                                      ) => {
-                                        const rect =
-                                          e.currentTarget.getBoundingClientRect();
-                                        const popoverWidth = 288; // w-72 = 288px
-                                        const spaceOnRight =
-                                          window.innerWidth - rect.right;
-                                        const spaceOnLeft = rect.left;
-
-                                        // Decidir si mostrar a la derecha o izquierda
-                                        const showOnRight =
-                                          spaceOnRight >= popoverWidth ||
-                                          spaceOnRight > spaceOnLeft;
-
-                                        setProductsModal({
-                                          isOpen: true,
-                                          user: { ...user, allProducts },
-                                          position: {
-                                            x: showOnRight
-                                              ? rect.right + 8
-                                              : rect.left - popoverWidth - 8, // 8px de separación
-                                            y: rect.top, // Alineado con el elemento
-                                          },
-                                        });
-                                      };
-
-                                      if (!firstProduct) {
-                                        return (
-                                          <span className="text-sm font-medium text-gray-500 dark:text-white/50">
-                                            Sin productos
-                                          </span>
-                                        );
-                                      }
-
-                                      return (
-                                        <button
-                                          onClick={handleClick}
-                                          className="text-left hover:opacity-80 transition-opacity cursor-pointer flex items-center gap-1.5"
-                                          title={
-                                            hasMoreProducts
-                                              ? `Ver todos los productos (${allProducts.length})`
-                                              : undefined
-                                          }
-                                        >
-                                          <span className="text-sm font-medium text-[#164151] dark:text-white">
-                                            {firstProduct.name}
-                                          </span>
-                                          {hasMoreProducts && (
-                                            <span className="w-5 h-5 flex items-center justify-center rounded-full bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-white/60 text-xs font-semibold hover:bg-gray-200 dark:hover:bg-white/20 transition-colors">
-                                              +{allProducts.length - 1}
-                                            </span>
-                                          )}
-                                        </button>
-                                      );
-                                    })()}
                                   </div>
-                                </td>
-                                <td className="px-3 md:px-4 py-3 md:py-4">
-                                  <div>
-                                    {user.userType === 'both' && (
-                                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-[#164151]/15 text-[#164151] dark:bg-white/10 dark:text-white/70">
-                                        Ambos
-                                      </span>
-                                    )}
-                                    {user.userType === 'physical' && (
-                                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-[#164151]/15 text-[#164151] dark:bg-white/10 dark:text-white/70">
-                                        <Dumbbell className="w-3 h-3" />
-                                        Físico
-                                      </span>
-                                    )}
-                                    {user.userType === 'online' && (
-                                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-cyan-100 text-cyan-700 dark:bg-cyan-500/15 dark:text-cyan-400">
-                                        <Globe className="w-3 h-3" />
-                                        Online
-                                      </span>
-                                    )}
-                                    {user.userType === 'none' && (
-                                      <span className="text-xs text-gray-400 dark:text-white/40">
-                                        -
-                                      </span>
-                                    )}
-                                  </div>
-                                </td>
-                                <td className="px-3 md:px-4 py-3 md:py-4">
-                                  {user.phone || user.whatsapp ? (
-                                    <a
-                                      href={`https://wa.me/${(user.phone || user.whatsapp).replace(/\D/g, '')}`}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-colors"
-                                    >
-                                      <Phone className="w-3 h-3" />
-                                      {user.phone || user.whatsapp}
-                                    </a>
-                                  ) : (
-                                    <span className="text-xs text-gray-400 dark:text-white/40">
-                                      -
-                                    </span>
-                                  )}
-                                </td>
-                                <td className="px-3 md:px-4 py-3 md:py-4">
-                                  <div>
-                                    {(() => {
-                                      // Si está inactivo, siempre mostrar "Inactivo" primero
-                                      if (user.is_inactive) {
-                                        return (
-                                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400">
-                                            <X className="w-3 h-3" />
-                                            Inactivo
-                                          </span>
-                                        );
-                                      }
 
-                                      const today = new Date();
-                                      today.setHours(0, 0, 0, 0);
-
-                                      // Obtener todas las membresías físicas
-                                      const allMemberships =
-                                        user.gym_memberships || [];
-
-                                      // Obtener todos los cursos activos
-                                      const allCourses =
-                                        user.activeCoursePurchases || [];
-
-                                      // Si no tiene productos
-                                      if (
-                                        allMemberships.length === 0 &&
-                                        allCourses.length === 0
-                                      ) {
-                                        return (
-                                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-white/60">
-                                            <AlertCircle className="w-3 h-3" />
-                                            Sin pagos
-                                          </span>
-                                        );
-                                      }
-
-                                      // Calcular estados de membresías físicas
-                                      const activeMemberships =
-                                        allMemberships.filter((m: any) => {
-                                          const endDate = new Date(m.end_date);
-                                          endDate.setHours(0, 0, 0, 0);
-                                          return (
-                                            endDate >= today &&
-                                            m.status !== 'cancelled'
+                                  {/* Solo mostrar botón WhatsApp si está en Renovación o Inactivo */}
+                                  {(user.phone || user.whatsapp) && (hasExpired || user.is_inactive) && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        const phone = (user.phone || user.whatsapp).replace(/\D/g, '');
+                                        const clientName = user.name || user.full_name || 'Cliente';
+                                        
+                                        let message = '';
+                                        if (user.is_inactive) {
+                                          message = encodeURIComponent(
+                                            `Hola ${clientName}, te extrañamos en RogerBox. ¿Te gustaría volver a entrenar con nosotros?`
                                           );
-                                        });
-                                      const expiredMemberships =
-                                        allMemberships.filter((m: any) => {
-                                          const endDate = new Date(m.end_date);
-                                          endDate.setHours(0, 0, 0, 0);
-                                          return (
-                                            endDate < today &&
-                                            m.status !== 'cancelled'
-                                          );
-                                        });
-
-                                      // Membresías canceladas
-                                      const cancelledMemberships =
-                                        allMemberships.filter(
-                                          (m: any) => m.status === 'cancelled',
-                                        );
-                                      const hasOnlyCancelled =
-                                        cancelledMemberships.length > 0 &&
-                                        activeMemberships.length === 0 &&
-                                        expiredMemberships.length === 0;
-
-                                      // Si solo tiene membresías canceladas
-                                      if (hasOnlyCancelled) {
-                                        return (
-                                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-500/20 text-slate-600 dark:text-slate-400">
-                                            <X className="w-3 h-3" />
-                                            Cancelado
-                                          </span>
-                                        );
-                                      }
-
-                                      // Si solo tiene cursos online
-                                      if (
-                                        allMemberships.length === 0 &&
-                                        allCourses.length > 0
-                                      ) {
-                                        return (
-                                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400">
-                                            <CheckCircle className="w-3 h-3" />
-                                            Al día
-                                          </span>
-                                        );
-                                      }
-
-                                      // Si solo tiene membresías físicas (no canceladas)
-                                      const nonCancelledMemberships =
-                                        allMemberships.filter(
-                                          (m: any) => m.status !== 'cancelled',
-                                        );
-                                      if (
-                                        nonCancelledMemberships.length > 0 &&
-                                        allCourses.length === 0
-                                      ) {
-                                        // Todos activos
-                                        if (
-                                          activeMemberships.length ===
-                                            nonCancelledMemberships.length &&
-                                          expiredMemberships.length === 0
-                                        ) {
-                                          return (
-                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400">
-                                              <CheckCircle className="w-3 h-3" />
-                                              Al día
-                                            </span>
+                                        } else if (hasExpired && memberships.length > 0) {
+                                          // Obtener la última membresía vencida
+                                          const lastMembership = memberships[0];
+                                          const planName = lastMembership?.plan?.name || 'tu plan';
+                                          const endDate = lastMembership?.end_date 
+                                            ? new Date(lastMembership.end_date).toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })
+                                            : 'la fecha indicada';
+                                          message = encodeURIComponent(
+                                            `Hola ${clientName}, tu plan "${planName}" venció el ${endDate}. ¿Deseas renovarlo?`
                                           );
                                         }
-                                        // Todos vencidos
-                                        if (
-                                          expiredMemberships.length ===
-                                            nonCancelledMemberships.length &&
-                                          activeMemberships.length === 0
-                                        ) {
-                                          // Siempre mostrar "Renovar" cuando está vencido (no importa cuántos días)
-                                          return (
-                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400">
-                                              <AlertTriangle className="w-3 h-3" />
-                                              Renovar
-                                            </span>
-                                          );
-                                        }
-                                        // Mezcla: algunos activos, algunos vencidos
-                                        if (
-                                          activeMemberships.length > 0 &&
-                                          expiredMemberships.length > 0
-                                        ) {
-                                          return (
-                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400">
-                                              <Bell className="w-3 h-3" />
-                                              Parcial
-                                            </span>
-                                          );
-                                        }
-                                      }
-
-                                      // Si tiene ambos (físico y online)
-                                      if (
-                                        nonCancelledMemberships.length > 0 &&
-                                        allCourses.length > 0
-                                      ) {
-                                        // Si todas las membresías están activas
-                                        if (
-                                          activeMemberships.length ===
-                                            nonCancelledMemberships.length &&
-                                          expiredMemberships.length === 0
-                                        ) {
-                                          return (
-                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400">
-                                              <CheckCircle className="w-3 h-3" />
-                                              Al día
-                                            </span>
-                                          );
-                                        }
-                                        // Si hay membresías vencidas (aunque tenga cursos activos)
-                                        if (expiredMemberships.length > 0) {
-                                          return (
-                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400">
-                                              <Bell className="w-3 h-3" />
-                                              Parcial
-                                            </span>
-                                          );
-                                        }
-                                      }
-
-                                      // Fallback
-                                      return (
-                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-white/60">
-                                          <AlertCircle className="w-3 h-3" />
-                                          Sin pagos
-                                        </span>
-                                      );
-                                    })()}
-                                  </div>
-                                </td>
-                                <td className="px-3 md:px-4 py-3 md:py-4">
-                                  <div
-                                    className="flex items-center justify-end gap-2"
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
-                                    {/* Botón Recordatorio/Inactivar - visible solo cuando tiene estado "Renovar" (planes vencidos) */}
-                                    {(() => {
-                                      const today = new Date();
-                                      today.setHours(0, 0, 0, 0);
-
-                                      // Calcular estados de membresías
-                                      const allMemberships =
-                                        user.gym_memberships || [];
-                                      const activeMemberships =
-                                        allMemberships.filter((m: any) => {
-                                          const endDate = new Date(m.end_date);
-                                          endDate.setHours(0, 0, 0, 0);
-                                          return (
-                                            endDate >= today &&
-                                            m.status !== 'cancelled'
-                                          );
-                                        });
-                                      const expiredMemberships =
-                                        allMemberships.filter((m: any) => {
-                                          const endDate = new Date(m.end_date);
-                                          endDate.setHours(0, 0, 0, 0);
-                                          return (
-                                            endDate < today &&
-                                            m.status !== 'cancelled'
-                                          );
-                                        });
-
-                                      const isInactive =
-                                        user.is_inactive || false;
-
-                                      // Solo mostrar si:
-                                      // 1. Tiene planes vencidos (estado "Renovar")
-                                      // 2. NO tiene planes activos
-                                      // 3. Tiene contacto
-                                      // 4. NO está inactivo
-                                      const hasOnlyExpiredMemberships =
-                                        expiredMemberships.length > 0 &&
-                                        activeMemberships.length === 0;
-
-                                      if (
-                                        !hasOnlyExpiredMemberships ||
-                                        !(user.whatsapp || user.phone) ||
-                                        isInactive
-                                      ) {
-                                        return null;
-                                      }
-
-                                      // Calcular días desde que venció
-                                      const latestExpired =
-                                        expiredMemberships.sort(
-                                          (a: any, b: any) =>
-                                            new Date(b.end_date).getTime() -
-                                            new Date(a.end_date).getTime(),
-                                        )[0];
-                                      const expiredDate = new Date(
-                                        latestExpired.end_date,
-                                      );
-                                      expiredDate.setHours(0, 0, 0, 0);
-                                      const daysSinceExpired = Math.floor(
-                                        (today.getTime() -
-                                          expiredDate.getTime()) /
-                                          (1000 * 60 * 60 * 24),
-                                      );
-
-                                      // Si tiene más de 30 días sin pagar, mostrar botón "Inactivar" en rojo
-                                      if (daysSinceExpired > 30) {
-                                        const clientInfoId =
-                                          user.isUnregisteredClient
-                                            ? user.id
-                                            : user.client_info_id ||
-                                              user.gym_memberships?.[0]
-                                                ?.client_info_id ||
-                                              null;
-
-                                        if (!clientInfoId) return null;
-
-                                        const handleInactivate = async (
-                                          e: React.MouseEvent,
-                                        ) => {
-                                          e.stopPropagation();
-
-                                          if (
-                                            !confirm(
-                                              `¿Estás seguro de inactivar a ${user.name || user.full_name || 'este usuario'}?`,
-                                            )
-                                          ) {
-                                            return;
-                                          }
-
-                                          try {
-                                            const response = await fetch(
-                                              `/api/admin/gym/clients/${clientInfoId}/toggle-inactive`,
-                                              {
-                                                method: 'PATCH',
-                                                headers: {
-                                                  'Content-Type':
-                                                    'application/json',
-                                                },
-                                                body: JSON.stringify({
-                                                  is_inactive: true,
-                                                }),
-                                              },
-                                            );
-
-                                            if (!response.ok) {
-                                              throw new Error(
-                                                'Error al actualizar estado',
-                                              );
-                                            }
-
-                                            // Recargar usuarios
-                                            loadUsers();
-                                          } catch (_error) {
-                                            alert(
-                                              'Error al inactivar el usuario',
-                                            );
-                                          }
-                                        };
-
-                                        return (
-                                          <button
-                                            onClick={handleInactivate}
-                                            className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-white/40 hover:bg-gray-200 dark:hover:bg-white/20 transition-colors"
-                                            title="Inactivar usuario (30 días sin pagar)"
-                                          >
-                                            <Ban className="w-4 h-4" />
-                                          </button>
-                                        );
-                                      }
-
-                                      // Menos de 30 días, mostrar botón "Recordatorio" normal
-                                      const latestMembership =
-                                        allMemberships.length > 0
-                                          ? allMemberships.sort(
-                                              (a: any, b: any) =>
-                                                new Date(b.end_date).getTime() -
-                                                new Date(a.end_date).getTime(),
-                                            )[0]
-                                          : null;
-                                      const planName =
-                                        latestMembership?.plan?.name ||
-                                        'tu plan';
-                                      const endDate = latestMembership?.end_date
-                                        ? new Date(
-                                            latestMembership.end_date,
-                                          ).toLocaleDateString('es-ES', {
-                                            day: '2-digit',
-                                            month: 'long',
-                                            year: 'numeric',
-                                          })
-                                        : 'la fecha indicada';
-
-                                      const handleReminder = () => {
-                                        const clientName =
-                                          user.name ||
-                                          user.full_name ||
-                                          'Cliente';
-                                        const whatsappNumber = (
-                                          user.whatsapp ||
-                                          user.phone ||
-                                          ''
-                                        ).replace(/\D/g, '');
-
-                                        if (!whatsappNumber) return;
-
-                                        const message = encodeURIComponent(
-                                          `Hola ${clientName}, tu plan "${planName}" venció el ${endDate}. ¿Deseas renovarlo?`,
-                                        );
-
-                                        const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${message}`;
+                                        
+                                        const whatsappUrl = message 
+                                          ? `https://wa.me/${phone}?text=${message}`
+                                          : `https://wa.me/${phone}`;
                                         window.open(whatsappUrl, '_blank');
-                                      };
-
-                                      return (
-                                        <button
-                                          onClick={handleReminder}
-                                          className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-white/40 hover:bg-gray-200 dark:hover:bg-white/20 transition-colors"
-                                          title="Enviar recordatorio de renovación"
-                                        >
-                                          <MessageSquare className="w-4 h-4" />
-                                        </button>
-                                      );
-                                    })()}
-                                    {!isAdminUser && (
-                                      <>
-                                        <button
-                                          onClick={() =>
-                                            router.push(
-                                              `/admin/users/${user.id}`,
-                                            )
-                                          }
-                                          className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-white/40 hover:bg-gray-200 dark:hover:bg-white/20 transition-colors"
-                                          title="Ver detalles"
-                                        >
-                                          <Eye className="w-4 h-4" />
-                                        </button>
-                                        <button
-                                          onClick={() =>
-                                            router.push(
-                                              `/admin/users/${user.id}?edit=true`,
-                                            )
-                                          }
-                                          className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-white/40 hover:bg-gray-200 dark:hover:bg-white/20 transition-colors"
-                                          title="Editar"
-                                        >
-                                          <Edit className="w-4 h-4" />
-                                        </button>
-                                      </>
-                                    )}
-                                  </div>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-
-                    {/* Card view para móviles */}
-                    <div className="md:hidden divide-y divide-gray-100 dark:divide-white/5">
-                      {users.map((user) => {
-                        // Calcular estados para la tarjeta
-                        const today = new Date();
-                        today.setHours(0, 0, 0, 0);
-                        const memberships = user.gym_memberships || [];
-                        const activeMemberships = memberships.filter(
-                          (m: any) => {
-                            const endDate = new Date(m.end_date);
-                            endDate.setHours(0, 0, 0, 0);
-                            return endDate >= today && m.status !== 'cancelled';
-                          },
-                        );
-                        const nonCancelledMemberships = memberships.filter(
-                          (m: any) => m.status !== 'cancelled',
-                        );
-                        const cancelledMemberships = memberships.filter(
-                          (m: any) => m.status === 'cancelled',
-                        );
-                        const hasActive = activeMemberships.length > 0;
-                        const hasExpired =
-                          nonCancelledMemberships.length > 0 && !hasActive;
-                        const hasOnlyCancelled =
-                          cancelledMemberships.length > 0 &&
-                          nonCancelledMemberships.length === 0;
-
-                        let statusColor = 'border-gray-300';
-                        let statusBadge = null;
-
-                        if (user.is_inactive) {
-                          statusColor = 'border-red-400/60';
-                          statusBadge = (
-                            <span className="bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">
-                              Inactivo
-                            </span>
-                          );
-                        } else if (hasActive) {
-                          statusColor = 'border-emerald-400/50';
-                          statusBadge = (
-                            <span className="bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">
-                              Al día
-                            </span>
-                          );
-                        } else if (hasExpired) {
-                          statusColor = 'border-orange-400/60';
-                          statusBadge = (
-                            <span className="bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">
-                              Renovación
-                            </span>
-                          );
-                        } else if (hasOnlyCancelled) {
-                          statusColor = 'border-slate-400/60';
-                          statusBadge = (
-                            <span className="bg-slate-100 dark:bg-slate-500/20 text-slate-600 dark:text-slate-400 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">
-                              Cancelado
-                            </span>
-                          );
-                        } else {
-                          statusBadge = (
-                            <span className="bg-gray-100 dark:bg-gray-500/20 text-gray-500 dark:text-gray-400 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">
-                              Sin productos
-                            </span>
-                          );
-                        }
-
-                        const isAdminUserMobile =
-                          user.email === 'rogerbox@admin.com' ||
-                          user.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL;
-
-                        return (
-                          <div
-                            key={user.id}
-                            onClick={() =>
-                              !isAdminUserMobile &&
-                              router.push(`/admin/users/${user.id}`)
-                            }
-                            className={`p-4 ${isAdminUserMobile ? '' : 'hover:bg-gray-50 dark:hover:bg-white/5 cursor-pointer active:bg-gray-100'} transition-all border-l-4 ${statusColor} relative group bg-white dark:bg-gray-900`}
-                          >
-                            <div className="flex justify-between items-start mb-2">
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <h4 className="text-base font-bold text-[#164151] dark:text-white truncate">
-                                    {user.name ||
-                                      user.full_name ||
-                                      'Sin nombre'}
-                                  </h4>
-                                  {!user.isUnregisteredClient && (
-                                    <div className="w-4 h-4 rounded-full bg-[#85ea10] flex items-center justify-center flex-shrink-0">
-                                      <Check className="w-2.5 h-2.5 text-white stroke-[3]" />
-                                    </div>
+                                      }}
+                                      className="p-2.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full hover:bg-emerald-500/20 transition-colors"
+                                    >
+                                      <MessageSquare className="w-5 h-5 flex-shrink-0" />
+                                    </button>
                                   )}
-                                  {statusBadge}
                                 </div>
-                                <div className="flex flex-col gap-1 mt-1">
-                                  <p className="text-xs text-gray-500 dark:text-white/40 truncate">
-                                    ID: {user.document_id || 'N/A'} •{' '}
-                                    {user.email}
-                                  </p>
-                                  <span className="inline-flex w-fit items-center px-1.5 py-0.5 rounded-md bg-[#164151]/5 dark:bg-white/5 text-[9px] font-bold text-[#164151]/50 dark:text-white/30 uppercase tracking-wider">
-                                    {user.user_type === 'online'
-                                      ? 'Usuario Online'
-                                      : 'Usuario Presencial'}
-                                  </span>
-                                </div>
-                              </div>
 
-                              {/* Solo mostrar botón WhatsApp si está en Renovación o Inactivo */}
-                              {(user.phone || user.whatsapp) &&
-                                (hasExpired || user.is_inactive) && (
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      const phone = (
-                                        user.phone || user.whatsapp
-                                      ).replace(/\D/g, '');
-                                      const clientName =
-                                        user.name ||
-                                        user.full_name ||
-                                        'Cliente';
-
-                                      let message = '';
-                                      if (user.is_inactive) {
-                                        message = encodeURIComponent(
-                                          `Hola ${clientName}, te extrañamos en RogerBox. ¿Te gustaría volver a entrenar con nosotros?`,
-                                        );
-                                      } else if (
-                                        hasExpired &&
-                                        memberships.length > 0
-                                      ) {
-                                        // Obtener la última membresía vencida
-                                        const lastMembership = memberships[0];
-                                        const planName =
-                                          lastMembership?.plan?.name ||
-                                          'tu plan';
-                                        const endDate = lastMembership?.end_date
-                                          ? new Date(
-                                              lastMembership.end_date,
-                                            ).toLocaleDateString('es-CO', {
-                                              day: 'numeric',
-                                              month: 'long',
-                                              year: 'numeric',
-                                            })
-                                          : 'la fecha indicada';
-                                        message = encodeURIComponent(
-                                          `Hola ${clientName}, tu plan "${planName}" venció el ${endDate}. ¿Deseas renovarlo?`,
-                                        );
-                                      }
-
-                                      const whatsappUrl = message
-                                        ? `https://wa.me/${phone}?text=${message}`
-                                        : `https://wa.me/${phone}`;
-                                      window.open(whatsappUrl, '_blank');
-                                    }}
-                                    className="p-2.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full hover:bg-emerald-500/20 transition-colors"
-                                  >
-                                    <MessageSquare className="w-5 h-5 flex-shrink-0" />
-                                  </button>
-                                )}
-                            </div>
-
-                            <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100 dark:border-white/5">
-                              <div
-                                onClick={(e) => e.stopPropagation()}
-                                className="flex items-center gap-2 overflow-hidden flex-wrap"
-                              >
-                                {(user.activeCoursePurchases || []).length >
-                                  0 && (
-                                  <div className="flex items-center gap-1 bg-blue-50 dark:bg-blue-500/10 px-2 py-1 rounded-lg">
-                                    <BookOpen className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                                    <span className="text-[10px] font-bold text-blue-700 dark:text-blue-300">
-                                      {
-                                        (user.activeCoursePurchases || [])
-                                          .length
-                                      }
-                                    </span>
-                                  </div>
-                                )}
-                                {/* Mostrar planes activos */}
-                                {activeMemberships.length > 0 &&
-                                  activeMemberships.map(
-                                    (membership: any, idx: number) => (
-                                      <div
-                                        key={membership.id || idx}
-                                        className="flex items-center gap-1 bg-emerald-100 dark:bg-emerald-500/15 px-2 py-1 rounded-lg"
-                                      >
+                                <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100 dark:border-white/5">
+                                  <div onClick={(e) => e.stopPropagation()} className="flex items-center gap-2 overflow-hidden flex-wrap">
+                                    {(user.activeCoursePurchases || []).length > 0 && (
+                                      <div className="flex items-center gap-1 bg-blue-50 dark:bg-blue-500/10 px-2 py-1 rounded-lg">
+                                        <BookOpen className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                                        <span className="text-[10px] font-bold text-blue-700 dark:text-blue-300">{(user.activeCoursePurchases || []).length}</span>
+                                      </div>
+                                    )}
+                                    {/* Mostrar planes activos */}
+                                    {activeMemberships.length > 0 && activeMemberships.map((membership: any, idx: number) => (
+                                      <div key={membership.id || idx} className="flex items-center gap-1 bg-emerald-100 dark:bg-emerald-500/15 px-2 py-1 rounded-lg">
                                         <Dumbbell className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
                                         <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 leading-none">
-                                          {membership.plan?.name?.split(
-                                            ' ',
-                                          )[0] || 'Plan'}
+                                          {membership.plan?.name?.split(' ')[0] || 'Plan'}
                                         </span>
                                       </div>
-                                    ),
-                                  )}
-                                {/* Mostrar planes vencidos (para renovar) */}
-                                {memberships
-                                  .filter((m: any) => {
-                                    const endDate = new Date(m.end_date);
-                                    endDate.setHours(0, 0, 0, 0);
-                                    return endDate < today;
-                                  })
-                                  .map((membership: any, idx: number) => (
-                                    <div
-                                      key={`expired-${membership.id || idx}`}
-                                      className="flex items-center gap-1 bg-orange-100 dark:bg-orange-500/10 px-2 py-1 rounded-lg"
-                                    >
-                                      <Dumbbell className="w-3.5 h-3.5 text-orange-600 dark:text-orange-400" />
-                                      <span className="text-[10px] font-bold text-orange-600 dark:text-orange-400 leading-none">
-                                        {membership.plan?.name?.split(' ')[0] ||
-                                          'Plan'}
-                                      </span>
-                                      <AlertTriangle className="w-3 h-3 text-orange-600 dark:text-orange-400" />
-                                    </div>
-                                  ))}
+                                    ))}
+                                    {/* Mostrar planes vencidos (para renovar) */}
+                                    {memberships.filter((m: any) => {
+                                      const endDate = new Date(m.end_date);
+                                      endDate.setHours(0, 0, 0, 0);
+                                      return endDate < today;
+                                    }).map((membership: any, idx: number) => (
+                                      <div key={`expired-${membership.id || idx}`} className="flex items-center gap-1 bg-orange-100 dark:bg-orange-500/10 px-2 py-1 rounded-lg">
+                                        <Dumbbell className="w-3.5 h-3.5 text-orange-600 dark:text-orange-400" />
+                                        <span className="text-[10px] font-bold text-orange-600 dark:text-orange-400 leading-none">
+                                          {membership.plan?.name?.split(' ')[0] || 'Plan'}
+                                        </span>
+                                        <AlertTriangle className="w-3 h-3 text-orange-600 dark:text-orange-400" />
+                                      </div>
+                                    ))}
+                                  </div>
+
+                                  <div className="flex items-center gap-1 text-[#164151]/30 dark:text-white/20 font-bold uppercase text-[9px] tracking-widest group-hover:text-[#85ea10] transition-colors">
+                                    Ver Perfil
+                                    <ChevronRight className="w-4 h-4" />
+                                  </div>
+                                </div>
                               </div>
-
-                              <div className="flex items-center gap-1 text-[#164151]/30 dark:text-white/20 font-bold uppercase text-[9px] tracking-widest group-hover:text-[#85ea10] transition-colors">
-                                Ver Perfil
-                                <ChevronRight className="w-4 h-4" />
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    {/* Pagination Controls */}
-                    <div className="px-6 py-4 mb-16 border-t border-gray-200 dark:border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4">
-                      <div className="text-sm text-gray-500 dark:text-white/40">
-                        Mostrando{' '}
-                        <span className="text-[#164151] dark:text-white font-medium">
-                          {(currentPage - 1) * usersPerPage + 1}
-                        </span>{' '}
-                        a{' '}
-                        <span className="text-[#164151] dark:text-white font-medium">
-                          {Math.min(
-                            currentPage * usersPerPage,
-                            userCounts.total,
-                          )}
-                        </span>{' '}
-                        de{' '}
-                        <span className="text-[#164151] dark:text-white font-medium">
-                          {userCounts.total}
-                        </span>{' '}
-                        clientes
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        {/* First Page Button */}
-                        <button
-                          onClick={() => setCurrentPage(1)}
-                          disabled={currentPage === 1}
-                          className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${
-                            currentPage === 1
-                              ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
-                              : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
-                          }`}
-                          title="Primera página"
-                        >
-                          <ChevronsLeft className="w-4 h-4" />
-                        </button>
-
-                        {/* Previous Page Button */}
-                        <button
-                          onClick={() =>
-                            setCurrentPage((prev) => Math.max(1, prev - 1))
-                          }
-                          disabled={currentPage === 1}
-                          className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${
-                            currentPage === 1
-                              ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
-                              : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
-                          }`}
-                          title="Página anterior"
-                        >
-                          <ChevronLeft className="w-4 h-4" />
-                        </button>
-
-                        {/* Page Numbers */}
-                        <div className="flex items-center gap-1">
-                          {(() => {
-                            const pages = [];
-                            const maxVisiblePages = 5;
-                            let startPage = Math.max(
-                              1,
-                              currentPage - Math.floor(maxVisiblePages / 2),
                             );
-                            const endPage = Math.min(
-                              totalPages,
-                              startPage + maxVisiblePages - 1,
-                            );
-
-                            if (endPage - startPage + 1 < maxVisiblePages) {
-                              startPage = Math.max(
-                                1,
-                                endPage - maxVisiblePages + 1,
-                              );
-                            }
-
-                            if (startPage > 1) {
-                              pages.push(
-                                <button
-                                  key={1}
-                                  onClick={() => setCurrentPage(1)}
-                                  className="w-9 h-9 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 transition-all cursor-pointer text-sm"
-                                >
-                                  1
-                                </button>,
-                              );
-                              if (startPage > 2) {
-                                pages.push(
-                                  <span
-                                    key="ellipsis-start"
-                                    className="px-2 text-gray-400 dark:text-white/40"
-                                  >
-                                    ...
-                                  </span>,
-                                );
-                              }
-                            }
-
-                            for (let i = startPage; i <= endPage; i++) {
-                              pages.push(
-                                <button
-                                  key={i}
-                                  onClick={() => setCurrentPage(i)}
-                                  className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all text-sm cursor-pointer ${
-                                    currentPage === i
-                                      ? 'bg-[#164151] text-white font-semibold'
-                                      : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20'
-                                  }`}
-                                >
-                                  {i}
-                                </button>,
-                              );
-                            }
-
-                            if (endPage < totalPages) {
-                              if (endPage < totalPages - 1) {
-                                pages.push(
-                                  <span
-                                    key="ellipsis-end"
-                                    className="px-2 text-gray-400 dark:text-white/40"
-                                  >
-                                    ...
-                                  </span>,
-                                );
-                              }
-                              pages.push(
-                                <button
-                                  key={totalPages}
-                                  onClick={() => setCurrentPage(totalPages)}
-                                  className="w-9 h-9 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 transition-all cursor-pointer text-sm"
-                                >
-                                  {totalPages}
-                                </button>,
-                              );
-                            }
-
-                            return pages;
-                          })()}
+                          })}
                         </div>
 
-                        {/* Next Page Button */}
-                        <button
-                          onClick={() =>
-                            setCurrentPage((prev) =>
-                              Math.min(totalPages, prev + 1),
-                            )
-                          }
-                          disabled={
-                            currentPage === totalPages || totalPages === 0
-                          }
-                          className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${
-                            currentPage === totalPages || totalPages === 0
-                              ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
-                              : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
-                          }`}
-                          title="Página siguiente"
-                        >
-                          <ChevronRight className="w-4 h-4" />
-                        </button>
+                        {/* Pagination Controls */}
+                        <div className="px-6 py-4 mb-16 border-t border-gray-200 dark:border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4">
+                          <div className="text-sm text-gray-500 dark:text-white/40">
+                            Mostrando{' '}
+                            <span className="text-[#164151] dark:text-white font-medium">{((currentPage - 1) * usersPerPage) + 1}</span>{' '}
+                            a{' '}
+                            <span className="text-[#164151] dark:text-white font-medium">
+                              {Math.min(currentPage * usersPerPage, userCounts.total)}
+                            </span>{' '}
+                            de <span className="text-[#164151] dark:text-white font-medium">{userCounts.total}</span>{' '}
+                            clientes
+                          </div>
 
-                        {/* Last Page Button */}
-                        <button
-                          onClick={() => setCurrentPage(totalPages)}
-                          disabled={
-                            currentPage === totalPages || totalPages === 0
-                          }
-                          className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${
-                            currentPage === totalPages || totalPages === 0
-                              ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
-                              : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
-                          }`}
-                          title="Última página"
-                        >
-                          <ChevronsRight className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  </>
+                          <div className="flex items-center gap-2">
+                            {/* First Page Button */}
+                            <button
+                              onClick={() => setCurrentPage(1)}
+                              disabled={currentPage === 1}
+                              className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${currentPage === 1
+                                ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
+                                : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
+                                }`}
+                              title="Primera página"
+                            >
+                              <ChevronsLeft className="w-4 h-4" />
+                            </button>
+
+                            {/* Previous Page Button */}
+                            <button
+                              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                              disabled={currentPage === 1}
+                              className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${currentPage === 1
+                                ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
+                                : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
+                                }`}
+                              title="Página anterior"
+                            >
+                              <ChevronLeft className="w-4 h-4" />
+                            </button>
+
+                            {/* Page Numbers */}
+                            <div className="flex items-center gap-1">
+                              {(() => {
+                                const pages = [];
+                                const maxVisiblePages = 5;
+                                let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+                                let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+                                if (endPage - startPage + 1 < maxVisiblePages) {
+                                  startPage = Math.max(1, endPage - maxVisiblePages + 1);
+                                }
+
+                                if (startPage > 1) {
+                                  pages.push(
+                                    <button
+                                      key={1}
+                                      onClick={() => setCurrentPage(1)}
+                                      className="w-9 h-9 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 transition-all cursor-pointer text-sm"
+                                    >
+                                      1
+                                    </button>
+                                  );
+                                  if (startPage > 2) {
+                                    pages.push(
+                                      <span
+                                        key="ellipsis-start"
+                                        className="px-2 text-gray-400 dark:text-white/40"
+                                      >
+                                        ...
+                                      </span>
+                                    );
+                                  }
+                                }
+
+                                for (let i = startPage; i <= endPage; i++) {
+                                  pages.push(
+                                    <button
+                                      key={i}
+                                      onClick={() => setCurrentPage(i)}
+                                      className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all text-sm cursor-pointer ${currentPage === i
+                                        ? 'bg-[#164151] text-white font-semibold'
+                                        : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20'
+                                        }`}
+                                    >
+                                      {i}
+                                    </button>
+                                  );
+                                }
+
+                                if (endPage < totalPages) {
+                                  if (endPage < totalPages - 1) {
+                                    pages.push(
+                                      <span
+                                        key="ellipsis-end"
+                                        className="px-2 text-gray-400 dark:text-white/40"
+                                      >
+                                        ...
+                                      </span>
+                                    );
+                                  }
+                                  pages.push(
+                                    <button
+                                      key={totalPages}
+                                      onClick={() => setCurrentPage(totalPages)}
+                                      className="w-9 h-9 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 transition-all cursor-pointer text-sm"
+                                    >
+                                      {totalPages}
+                                    </button>
+                                  );
+                                }
+
+                                return pages;
+                              })()}
+                            </div>
+
+                            {/* Next Page Button */}
+                            <button
+                              onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                              disabled={currentPage === totalPages || totalPages === 0}
+                              className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${currentPage === totalPages || totalPages === 0
+                                ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
+                                : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
+                                }`}
+                              title="Página siguiente"
+                            >
+                              <ChevronRight className="w-4 h-4" />
+                            </button>
+
+                            {/* Last Page Button */}
+                            <button
+                              onClick={() => setCurrentPage(totalPages)}
+                              disabled={currentPage === totalPages || totalPages === 0}
+                              className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${currentPage === totalPages || totalPages === 0
+                                ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
+                                : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
+                                }`}
+                              title="Última página"
+                            >
+                              <ChevronsRight className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </>
                 )}
               </div>
             </div>
@@ -3857,9 +3115,7 @@ function AdminDashboardContent() {
           {/* Overlay transparente para cerrar al hacer click fuera */}
           <div
             className="fixed inset-0 z-40"
-            onClick={() =>
-              setProductsModal({ isOpen: false, user: null, position: null })
-            }
+            onClick={() => setProductsModal({ isOpen: false, user: null, position: null })}
           />
           {/* Popover pequeño posicionado */}
           <div
@@ -3875,13 +3131,7 @@ function AdminDashboardContent() {
                 Productos
               </h3>
               <button
-                onClick={() =>
-                  setProductsModal({
-                    isOpen: false,
-                    user: null,
-                    position: null,
-                  })
-                }
+                onClick={() => setProductsModal({ isOpen: false, user: null, position: null })}
                 className="w-5 h-5 flex items-center justify-center rounded hover:bg-gray-100 dark:hover:bg-white/10 text-[#164151]/80 dark:text-white/60 transition-colors"
               >
                 <X className="w-3.5 h-3.5" />
@@ -3889,61 +3139,51 @@ function AdminDashboardContent() {
             </div>
 
             <div className="p-2 space-y-1.5 max-h-72 overflow-y-auto">
-              {productsModal.user.allProducts &&
-              productsModal.user.allProducts.length > 0 ? (
-                productsModal.user.allProducts.map(
-                  (product: any, idx: number) => (
-                    <div
-                      key={idx}
-                      className="p-2 bg-gray-50 dark:bg-white/5 rounded border border-gray-200 dark:border-white/10"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                          {product.type === 'membership' ? (
-                            <Dumbbell
-                              className={`w-3.5 h-3.5 flex-shrink-0 ${product.isActive ? 'text-[#85ea10]' : 'text-gray-400'}`}
-                            />
-                          ) : (
-                            <Globe className="w-3.5 h-3.5 flex-shrink-0 text-cyan-600 dark:text-cyan-400" />
-                          )}
-                          <div className="min-w-0 flex-1">
-                            <p className="text-xs font-medium text-[#164151] dark:text-white truncate">
-                              {product.name}
+              {productsModal.user.allProducts && productsModal.user.allProducts.length > 0 ? (
+                productsModal.user.allProducts.map((product: any, idx: number) => (
+                  <div
+                    key={idx}
+                    className="p-2 bg-gray-50 dark:bg-white/5 rounded border border-gray-200 dark:border-white/10"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                        {product.type === 'membership' ? (
+                          <Dumbbell className={`w-3.5 h-3.5 flex-shrink-0 ${product.isActive ? 'text-[#85ea10]' : 'text-gray-400'}`} />
+                        ) : (
+                          <Globe className="w-3.5 h-3.5 flex-shrink-0 text-cyan-600 dark:text-cyan-400" />
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-medium text-[#164151] dark:text-white truncate">
+                            {product.name}
+                          </p>
+                          {product.membership && (
+                            <p className="text-xs text-gray-500 dark:text-white/50">
+                              {product.isScheduled 
+                                ? `Inicia: ${new Date(product.membership.start_date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}`
+                                : product.isActive 
+                                  ? `Vence: ${new Date(product.membership.end_date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}`
+                                  : `Venció: ${new Date(product.membership.end_date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}`
+                              }
                             </p>
-                            {product.membership && (
-                              <p className="text-xs text-gray-500 dark:text-white/50">
-                                {product.isScheduled
-                                  ? `Inicia: ${new Date(product.membership.start_date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}`
-                                  : product.isActive
-                                    ? `Vence: ${new Date(product.membership.end_date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}`
-                                    : `Venció: ${new Date(product.membership.end_date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}`}
-                              </p>
-                            )}
-                          </div>
+                          )}
                         </div>
-                        <span
-                          className={`px-1.5 py-0.5 rounded text-xs font-medium flex-shrink-0 ${
-                            product.isScheduled
-                              ? 'bg-cyan-100 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-400'
-                              : product.isActive
-                                ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400'
-                                : product.isCancelled
-                                  ? 'bg-slate-100 dark:bg-slate-500/20 text-slate-600 dark:text-slate-400'
-                                  : 'bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400'
-                          }`}
-                        >
-                          {product.isScheduled
-                            ? 'Próximo'
-                            : product.isActive
-                              ? 'Al día'
-                              : product.isCancelled
-                                ? 'Cancelado'
-                                : 'Renovar'}
-                        </span>
                       </div>
+                      <span
+                        className={`px-1.5 py-0.5 rounded text-xs font-medium flex-shrink-0 ${
+                          product.isScheduled
+                            ? 'bg-cyan-100 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-400'
+                            : product.isActive
+                              ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400'
+                              : product.isCancelled
+                                ? 'bg-slate-100 dark:bg-slate-500/20 text-slate-600 dark:text-slate-400'
+                                : 'bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400'
+                          }`}
+                      >
+                        {product.isScheduled ? 'Próximo' : product.isActive ? 'Al día' : product.isCancelled ? 'Cancelado' : 'Renovar'}
+                      </span>
                     </div>
-                  ),
-                )
+                  </div>
+                ))
               ) : (
                 <p className="text-xs text-gray-500 dark:text-white/50 text-center py-2">
                   Sin productos
@@ -3968,6 +3208,7 @@ function AdminDashboardContent() {
         }}
         clientToEdit={editingClient}
       />
+
     </div>
   );
 }
@@ -3982,6 +3223,8 @@ export default function AdminDashboard() {
 
 // ===== Componentes Auxiliares =====
 
+
+
 interface CourseCardProps {
   course: Course;
   onEdit: () => void;
@@ -3989,12 +3232,7 @@ interface CourseCardProps {
   onTogglePublish: () => void;
 }
 
-function CourseCard({
-  course,
-  onEdit,
-  onDelete,
-  onTogglePublish,
-}: CourseCardProps) {
+function CourseCard({ course, onEdit, onDelete, onTogglePublish }: CourseCardProps) {
   return (
     <div className="bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl border border-gray-200 dark:border-white/10 shadow-sm dark:shadow-none hover:shadow-lg hover:border-[#85ea10]/30 transition-all duration-200 overflow-hidden">
       {/* Imagen del curso */}
@@ -4012,11 +3250,10 @@ function CourseCard({
         )}
         <div className="absolute top-3 right-3">
           <span
-            className={`px-2.5 py-1 text-xs font-semibold rounded-full ${
-              course.is_published
-                ? 'bg-[#85ea10] text-black'
-                : 'bg-gray-100 dark:bg-white/10 text-[#164151] dark:text-white/70'
-            }`}
+            className={`px-2.5 py-1 text-xs font-semibold rounded-full ${course.is_published
+              ? 'bg-[#85ea10] text-black'
+              : 'bg-gray-100 dark:bg-white/10 text-[#164151] dark:text-white/70'
+              }`}
           >
             {course.is_published ? 'Publicado' : 'Borrador'}
           </span>
@@ -4031,45 +3268,31 @@ function CourseCard({
               {course.title}
             </h3>
             {course.short_description && (
-              <p className="text-sm text-[#164151]/60 dark:text-white/60 line-clamp-2">
-                {course.short_description}
-              </p>
+              <p className="text-sm text-[#164151]/60 dark:text-white/60 line-clamp-2">{course.short_description}</p>
             )}
           </div>
         </div>
 
         <div className="space-y-2 mb-4">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-[#164151]/80 dark:text-white/60">
-              Precio:
-            </span>
+            <span className="text-sm text-[#164151]/80 dark:text-white/60">Precio:</span>
             <span className="text-lg font-bold text-[#164151] dark:text-white">
               ${Number(course.price ?? 0).toLocaleString('es-CO')}
             </span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-sm text-[#164151]/80 dark:text-white/60">
-              Duración:
-            </span>
+            <span className="text-sm text-[#164151]/80 dark:text-white/60">Duración:</span>
             <span className="text-sm font-semibold text-[#164151] dark:text-white">
               {course.duration_days} días
             </span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-sm text-[#164151]/80 dark:text-white/60">
-              Nivel:
-            </span>
-            <span className="text-sm font-semibold text-[#164151] dark:text-white capitalize">
-              {course.level}
-            </span>
+            <span className="text-sm text-[#164151]/80 dark:text-white/60">Nivel:</span>
+            <span className="text-sm font-semibold text-[#164151] dark:text-white capitalize">{course.level}</span>
           </div>
           <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-white/5">
-            <span className="text-sm text-[#164151]/80 dark:text-white/60">
-              Estudiantes:
-            </span>
-            <span
-              className={`text-sm font-bold px-2.5 py-1 rounded-full ${(course.students_count ?? 0) > 0 ? 'bg-[#85ea10]/10 text-[#85ea10]' : 'bg-gray-100 dark:bg-white/5 text-gray-500 dark:text-white/40'}`}
-            >
+            <span className="text-sm text-[#164151]/80 dark:text-white/60">Estudiantes:</span>
+            <span className={`text-sm font-bold px-2.5 py-1 rounded-full ${(course.students_count ?? 0) > 0 ? 'bg-[#85ea10]/10 text-[#85ea10]' : 'bg-gray-100 dark:bg-white/5 text-gray-500 dark:text-white/40'}`}>
               {course.students_count ?? 0}
             </span>
           </div>
@@ -4092,11 +3315,10 @@ function CourseCard({
           </button>
           <button
             onClick={onTogglePublish}
-            className={`flex-1 px-3 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${
-              course.is_published
-                ? 'bg-gray-100 dark:bg-white/10 text-[#164151] dark:text-white/80 hover:bg-gray-200 dark:hover:bg-white/20'
-                : 'bg-[#85ea10] hover:bg-[#7dd30f] text-black'
-            }`}
+            className={`flex-1 px-3 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${course.is_published
+              ? 'bg-gray-100 dark:bg-white/10 text-[#164151] dark:text-white/80 hover:bg-gray-200 dark:hover:bg-white/20'
+              : 'bg-[#85ea10] hover:bg-[#7dd30f] text-black'
+              }`}
           >
             {course.is_published ? (
               <>
@@ -4121,9 +3343,7 @@ function LoadingState({ message }: { message: string }) {
     <div className="bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl border border-gray-200 dark:border-white/10 p-10 shadow-sm dark:shadow-none">
       <div className="flex flex-col items-center justify-center">
         <div className="w-12 h-12 border-4 border-[#85ea10]/30 border-t-[#85ea10] rounded-full animate-spin mb-3"></div>
-        <p className="text-sm font-medium text-[#164151]/80 dark:text-white/70">
-          {message}
-        </p>
+        <p className="text-sm font-medium text-[#164151]/80 dark:text-white/70">{message}</p>
       </div>
     </div>
   );
@@ -4139,19 +3359,12 @@ interface EmptyStateProps {
   };
 }
 
-function EmptyState({
-  icon: Icon,
-  title,
-  description,
-  action,
-}: EmptyStateProps) {
+function EmptyState({ icon: Icon, title, description, action }: EmptyStateProps) {
   return (
     <div className="bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl border border-gray-200 dark:border-white/10 p-12 text-center shadow-sm dark:shadow-none">
       <Icon className="w-12 h-12 text-gray-300 dark:text-white/20 mx-auto mb-4" />
       <p className="text-[#164151] dark:text-white font-medium mb-2">{title}</p>
-      <p className="text-sm text-[#164151]/60 dark:text-white/60 mb-6 max-w-sm mx-auto">
-        {description}
-      </p>
+      <p className="text-sm text-[#164151]/60 dark:text-white/60 mb-6 max-w-sm mx-auto">{description}</p>
       {action && (
         <button
           onClick={action.onClick}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface SimpleLoadingProps {
   message?: string;
@@ -8,41 +8,41 @@ interface SimpleLoadingProps {
   showProgress?: boolean;
 }
 
-export default function SimpleLoading({
-  message = 'Cargando...',
+export default function SimpleLoading({ 
+  message = "Cargando...", 
   size = 'md',
-  showProgress = false,
+  showProgress = false
 }: SimpleLoadingProps) {
-  const [_progress, setProgress] = useState(0);
+  const [progress, setProgress] = useState(0);
   const [currentMessage, setCurrentMessage] = useState(message);
 
   const sizeClasses = {
     sm: 'h-8 w-8',
     md: 'h-12 w-12',
-    lg: 'h-16 w-16',
+    lg: 'h-16 w-16'
   };
 
-  const _textSizes = {
+  const textSizes = {
     sm: 'text-sm',
     md: 'text-base',
-    lg: 'text-lg',
+    lg: 'text-lg'
   };
 
   const loadingMessages = [
-    'Cada repetición te acerca a tu meta',
-    'Tu cuerpo puede hacerlo, tu mente debe creerlo',
-    'La disciplina es el puente entre metas y logros',
-    'El éxito es la suma de pequeños esfuerzos repetidos',
-    'No esperes el momento perfecto, empieza ahora',
-    'La transformación comienza con una decisión',
-    'Eres más fuerte de lo que piensas',
+    "Cada repetición te acerca a tu meta",
+    "Tu cuerpo puede hacerlo, tu mente debe creerlo",
+    "La disciplina es el puente entre metas y logros",
+    "El éxito es la suma de pequeños esfuerzos repetidos",
+    "No esperes el momento perfecto, empieza ahora",
+    "La transformación comienza con una decisión",
+    "Eres más fuerte de lo que piensas"
   ];
 
   useEffect(() => {
     if (showProgress) {
       // Simular progreso suave
       const interval = setInterval(() => {
-        setProgress((prev) => {
+        setProgress(prev => {
           if (prev >= 100) {
             clearInterval(interval);
             return 100;
@@ -53,7 +53,7 @@ export default function SimpleLoading({
 
       // Cambiar mensajes
       const messageInterval = setInterval(() => {
-        setCurrentMessage((prev) => {
+        setCurrentMessage(prev => {
           const currentIndex = loadingMessages.indexOf(prev);
           const nextIndex = (currentIndex + 1) % loadingMessages.length;
           return loadingMessages[nextIndex];
@@ -65,7 +65,7 @@ export default function SimpleLoading({
         clearInterval(messageInterval);
       };
     }
-  }, [showProgress, loadingMessages]);
+  }, [showProgress]);
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center">
@@ -78,9 +78,7 @@ export default function SimpleLoading({
         </div>
 
         {/* Spinner Simple */}
-        <div
-          className={`${sizeClasses[size]} border-4 border-gray-200 dark:border-white/20 border-t-[#85ea10] rounded-full animate-spin mx-auto mb-6`}
-        ></div>
+        <div className={`${sizeClasses[size]} border-4 border-gray-200 dark:border-white/20 border-t-[#85ea10] rounded-full animate-spin mx-auto mb-6`}></div>
 
         {/* Mensaje Simple */}
         <p className="text-gray-600 dark:text-white/80 text-lg font-medium">

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface QuickLoadingProps {
   message?: string;
@@ -8,9 +8,9 @@ interface QuickLoadingProps {
   onComplete?: () => void;
 }
 
-export default function QuickLoading({
+export default function QuickLoading({ 
   duration = 4500,
-  onComplete,
+  onComplete
 }: QuickLoadingProps) {
   const [isVisible, setIsVisible] = useState(true);
 
@@ -37,15 +37,15 @@ export default function QuickLoading({
 
         {/* 3 puntitos cute animados */}
         <div className="flex justify-center space-x-1">
-          <div
+          <div 
             className="w-1.5 h-1.5 bg-[#85ea10] rounded-full animate-pulse"
             style={{ animationDelay: '0ms', animationDuration: '600ms' }}
           />
-          <div
+          <div 
             className="w-1.5 h-1.5 bg-[#85ea10] rounded-full animate-pulse"
             style={{ animationDelay: '200ms', animationDuration: '600ms' }}
           />
-          <div
+          <div 
             className="w-1.5 h-1.5 bg-[#85ea10] rounded-full animate-pulse"
             style={{ animationDelay: '400ms', animationDuration: '600ms' }}
           />

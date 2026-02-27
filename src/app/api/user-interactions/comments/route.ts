@@ -1,11 +1,12 @@
-import { type NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { getSession } from '@/lib/supabase-server';
 
 export async function GET(request: NextRequest) {
   try {
     const { session } = await getSession();
-
+    
+    
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -14,10 +15,7 @@ export async function GET(request: NextRequest) {
     const complement_id = searchParams.get('complement_id');
 
     if (!complement_id) {
-      return NextResponse.json(
-        { error: 'Complement ID is required' },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: 'Complement ID is required' }, { status: 400 });
     }
 
     const { data, error } = await supabase
@@ -28,25 +26,22 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: false });
 
     if (error) {
-      return NextResponse.json(
-        { error: 'Failed to fetch comments' },
-        { status: 500 },
-      );
+      console.error('Error fetching comments:', error);
+      return NextResponse.json({ error: 'Failed to fetch comments' }, { status: 500 });
     }
 
     return NextResponse.json({ comments: data });
-  } catch (_error) {
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 },
-    );
+  } catch (error) {
+    console.error('Error in GET /api/user-interactions/comments:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
     const { session } = await getSession();
-
+    
+    
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -55,10 +50,7 @@ export async function POST(request: NextRequest) {
     const { complement_id, comment } = body;
 
     if (!complement_id || !comment) {
-      return NextResponse.json(
-        { error: 'Complement ID and comment are required' },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: 'Complement ID and comment are required' }, { status: 400 });
     }
 
     // Verificar que el complemento existe
@@ -70,10 +62,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (complementError || !complement) {
-      return NextResponse.json(
-        { error: 'Complement not found' },
-        { status: 404 },
-      );
+      return NextResponse.json({ error: 'Complement not found' }, { status: 404 });
     }
 
     // Insertar el comentario
@@ -82,26 +71,22 @@ export async function POST(request: NextRequest) {
       .insert({
         user_id: session.user.id,
         complement_id,
-        comment: comment.trim(),
+        comment: comment.trim()
       })
       .select()
       .single();
 
     if (error) {
-      return NextResponse.json(
-        { error: 'Failed to create comment' },
-        { status: 500 },
-      );
+      console.error('Error creating comment:', error);
+      return NextResponse.json({ error: 'Failed to create comment' }, { status: 500 });
     }
 
-    return NextResponse.json({
-      success: true,
-      comment: data,
+    return NextResponse.json({ 
+      success: true, 
+      comment: data 
     });
-  } catch (_error) {
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 },
-    );
+  } catch (error) {
+    console.error('Error in POST /api/user-interactions/comments:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

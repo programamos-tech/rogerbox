@@ -1,41 +1,26 @@
 'use client';
 
-import {
-  Bell,
-  BookOpen,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  Clock,
-  Dumbbell,
-  Info,
-  LogOut,
-  Play,
-  Settings,
-  ShoppingCart,
-  Star,
-  Target,
-  User,
-  Users,
-  X,
-  Zap,
-} from 'lucide-react';
+import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
+import { Play, Clock, Users, Star, Search, User, LogOut, ChevronDown, ShoppingCart, Heart, BookOpen, Target, Zap, Utensils, ChefHat, Award, TrendingUp, Trophy, Weight, X, Info, Settings, RefreshCw, ChevronLeft, ChevronRight, Dumbbell, Sparkles, Bell } from 'lucide-react';
+import { supabase } from '@/lib/supabase-browser';
+import { trackCourseView } from '@/lib/analytics';
 import Footer from '@/components/Footer';
-import InsightsSection from '@/components/InsightsSection';
 import QuickLoading from '@/components/QuickLoading';
-import StoriesSection from '@/components/StoriesSection';
+import CourseLoadingSkeleton from '@/components/CourseLoadingSkeleton';
+import GoalSuggestionCard from '@/components/GoalSuggestionCard';
+import ProgressCard from '@/components/ProgressCard';
+import CourseHeroCard from '@/components/CourseHeroCard';
 import WeeklyWeightReminder from '@/components/WeeklyWeightReminder';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import NutritionalBlogs from '@/components/NutritionalBlogs';
+import ReadMoreText from '@/components/ReadMoreText';
+import ComplementSection from '@/components/ComplementSection';
+import StoriesSection from '@/components/StoriesSection';
+import InsightsSection from '@/components/InsightsSection';
 import { useUnifiedCourses } from '@/hooks/useUnifiedCourses';
 import { useUserPurchases } from '@/hooks/useUserPurchases';
-import {
-  type GoalSuggestion,
-  generateGoalSuggestion,
-} from '@/lib/goalSuggestion';
-import { supabase } from '@/lib/supabase-browser';
-import { useCallback } from 'react';
+import { generateGoalSuggestion, GoalSuggestion } from '@/lib/goalSuggestion';
 import NewsModal from '@/components/modalNews';
 
 interface UserProfile {
@@ -82,24 +67,18 @@ interface Course {
 }
 
 export default function DashboardPage() {
-  const {
-    user,
-    profile: authProfile,
-    loading: authLoading,
-    signOut: handleSignOut,
-  } = useSupabaseAuth();
+  const { user, profile: authProfile, loading: authLoading, signOut: handleSignOut } = useSupabaseAuth();
   const router = useRouter();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [selectedCategory, _setSelectedCategory] = useState('all');
-  const [searchQuery, _setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const isAdmin = useMemo(() => {
     if (!user) return false;
     const envId = process.env.NEXT_PUBLIC_ADMIN_USER_ID;
-    const envEmail =
-      process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'rogerbox@admin.com'; // fallback seguro
+    const envEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'rogerbox@admin.com'; // fallback seguro
     const matchId = envId && user.id === envId;
     const matchEmail = envEmail && user.email === envEmail;
     const matchRole = user.user_metadata?.role === 'admin';
@@ -131,7 +110,7 @@ export default function DashboardPage() {
         message: 'Registra tu peso para ver tu progreso semanal',
         icon: '⚖️',
         action: () => setShowWeeklyWeightReminder(true),
-        actionText: 'Registrar peso',
+        actionText: 'Registrar peso'
       });
     }
 
@@ -142,10 +121,7 @@ export default function DashboardPage() {
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
-      if (
-        showNotifications &&
-        !target.closest('[data-notifications-dropdown]')
-      ) {
+      if (showNotifications && !target.closest('[data-notifications-dropdown]')) {
         setShowNotifications(false);
       }
       if (showUserMenu && !target.closest('[data-user-menu]')) {
@@ -161,17 +137,15 @@ export default function DashboardPage() {
     courses: realCourses,
     loading: loadingCourses,
     error: coursesError,
-    refresh: refreshCourses,
+    refresh: refreshCourses
   } = useUnifiedCourses();
 
   const BANNER_PLACEHOLDER = '/images/banner.jpeg';
 
   // Hook para compras del usuario
-  const {
-    purchases,
-    loading: loadingPurchases,
-    hasActivePurchases,
-  } = useUserPurchases();
+  const { purchases, loading: loadingPurchases, hasActivePurchases } = useUserPurchases();
+
+
 
   // Funciones de precios
   const calculateFinalPrice = (course: any) => {
@@ -191,13 +165,13 @@ export default function DashboardPage() {
 
   // Mapeo de categorías a nombres legibles
   const categoryNames: { [key: string]: string } = {
-    lose_weight: 'Bajar de Peso',
-    gain_muscle: 'Ganar Músculo',
-    flexibility: 'Flexibilidad',
-    cardio: 'Cardio',
-    strength: 'Fuerza',
-    wellness: 'Bienestar',
-    nutrition: 'Nutrición',
+    'lose_weight': 'Bajar de Peso',
+    'gain_muscle': 'Ganar Músculo',
+    'flexibility': 'Flexibilidad',
+    'cardio': 'Cardio',
+    'strength': 'Fuerza',
+    'wellness': 'Bienestar',
+    'nutrition': 'Nutrición'
   };
 
   const getCategoryDisplayName = (course: any) => {
@@ -210,42 +184,34 @@ export default function DashboardPage() {
     return categoryNames[categoryCode] || categoryCode || 'General';
   };
 
+
+
+
   // Cursos recomendados y filtrados memoizados para evitar re-renders y miles de peticiones
   const recommendedCourses = useMemo(
-    () =>
-      realCourses
-        ?.filter((course) => (course.rating ?? 0) >= 4.5)
-        .slice(0, 3) || [],
-    [realCourses],
+    () => realCourses?.filter(course => (course.rating ?? 0) >= 4.5).slice(0, 3) || [],
+    [realCourses]
   );
-  const recommendedIds = useMemo(
-    () => new Set(recommendedCourses.map((c) => c.id)),
-    [recommendedCourses],
-  );
+  const recommendedIds = useMemo(() => new Set(recommendedCourses.map(c => c.id)), [recommendedCourses]);
 
-  const _filteredCourses = useMemo(
+  const filteredCourses = useMemo(
     () =>
-      realCourses?.filter((course) => {
-        const matchesCategory =
-          selectedCategory === 'all' ||
-          course.category_name === selectedCategory;
-        const matchesSearch =
-          !searchQuery ||
+      realCourses?.filter(course => {
+        const matchesCategory = selectedCategory === 'all' || course.category_name === selectedCategory;
+        const matchesSearch = !searchQuery ||
           course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          course.short_description
-            ?.toLowerCase()
-            .includes(searchQuery.toLowerCase());
+          course.short_description?.toLowerCase().includes(searchQuery.toLowerCase());
         const notRecommended = !recommendedIds.has(course.id);
         return matchesCategory && matchesSearch && notRecommended;
       }) || [],
-    [realCourses, selectedCategory, searchQuery, recommendedIds],
+    [realCourses, selectedCategory, searchQuery, recommendedIds]
   );
 
   const [showGoalModal, setShowGoalModal] = useState(false);
   const [goalData, setGoalData] = useState({
     targetWeight: '',
     goalType: 'lose', // 'lose', 'maintain', 'gain'
-    deadline: '',
+    deadline: ''
   });
   const [goalError, setGoalError] = useState('');
   const [goalLoading, setGoalLoading] = useState(false);
@@ -253,30 +219,24 @@ export default function DashboardPage() {
 
   // Estados para blogs nutricionales
   const [nutritionalBlogs, setNutritionalBlogs] = useState<any[]>([]);
-  const [_loadingBlogs, setLoadingBlogs] = useState(true);
+  const [loadingBlogs, setLoadingBlogs] = useState(true);
 
   // Estados para la sugerencia de meta
-  const [goalSuggestion, setGoalSuggestion] = useState<GoalSuggestion | null>(
-    null,
-  );
-  const [_showGoalSuggestion, setShowGoalSuggestion] = useState(false);
-  const [_isAcceptingGoal, setIsAcceptingGoal] = useState(false);
-  const [_showProgressCard, setShowProgressCard] = useState(false);
+  const [goalSuggestion, setGoalSuggestion] = useState<GoalSuggestion | null>(null);
+  const [showGoalSuggestion, setShowGoalSuggestion] = useState(false);
+  const [isAcceptingGoal, setIsAcceptingGoal] = useState(false);
+  const [showProgressCard, setShowProgressCard] = useState(false);
   const [isCustomizingGoal, setIsCustomizingGoal] = useState(false);
-  const [showWeeklyWeightReminder, setShowWeeklyWeightReminder] =
-    useState(false);
+  const [showWeeklyWeightReminder, setShowWeeklyWeightReminder] = useState(false);
 
   // Estados para cursos comprados
-  const [_purchasedCourses, setPurchasedCourses] = useState<any[]>([]);
-  const [_nextLesson, setNextLesson] = useState<any>(null);
-  const [_loadingPurchasedCourses, setLoadingPurchasedCourses] =
-    useState(false);
-  const [_purchasedCourseLessons, setPurchasedCourseLessons] = useState<any[]>(
-    [],
-  );
+  const [purchasedCourses, setPurchasedCourses] = useState<any[]>([]);
+  const [nextLesson, setNextLesson] = useState<any>(null);
+  const [loadingPurchasedCourses, setLoadingPurchasedCourses] = useState(false);
+  const [purchasedCourseLessons, setPurchasedCourseLessons] = useState<any[]>([]);
 
   // Función para simular cursos comprados (en producción vendría de la base de datos)
-  const _loadPurchasedCourses = async () => {
+  const loadPurchasedCourses = async () => {
     setLoadingPurchasedCourses(true);
     try {
       // Usar el primer curso real de la base de datos como curso comprado
@@ -285,19 +245,16 @@ export default function DashboardPage() {
         {
           id: realCourse?.id || '1',
           title: realCourse?.title || 'CARDIO HIIT 40 MIN ¡BAJA DE PESO!',
-          description:
-            realCourse?.description ||
-            'Rutina intensa de 40 minutos para quemar grasa y bajar de peso. Este programa te ayudará a mejorar tu resistencia cardiovascular y a definir tu cuerpo.',
-          preview_image:
-            realCourse?.preview_image || '/images/course-placeholder.jpg',
+          description: realCourse?.description || 'Rutina intensa de 40 minutos para quemar grasa y bajar de peso. Este programa te ayudará a mejorar tu resistencia cardiovascular y a definir tu cuerpo.',
+          preview_image: realCourse?.preview_image || '/images/course-placeholder.jpg',
           completed_lessons: 0, // Cambiado a 0 para mostrar progreso inicial
           total_lessons: 12,
           duration_days: 30,
           level: 'Intermedio',
           estimated_calories_per_lesson: 150, // Calorías estimadas por lección
           purchased_at: new Date().toISOString(),
-          start_date: new Date().toISOString().split('T')[0], // Hoy
-        },
+          start_date: new Date().toISOString().split('T')[0] // Hoy
+        }
       ];
 
       // Obtener lecciones reales de la base de datos
@@ -311,94 +268,88 @@ export default function DashboardPage() {
             .order('lesson_order', { ascending: true });
 
           if (lessonsError) {
+            console.log('ℹ️ Información: lessons:', lessonsError);
           } else {
             realLessons = lessonsData || [];
           }
-        } catch (_error) {}
+        } catch (error) {
+          console.log('ℹ️ Información: lessons:', error);
+        }
       }
 
       // Si no hay lecciones en la DB, usar datos de ejemplo como fallback
-      const mockLessons =
-        realLessons.length > 0
-          ? realLessons
-          : [
-              {
-                id: 'lesson-1',
-                course_id: realCourse?.id || '1',
-                title: 'Introducción y Calentamiento',
-                description: 'Prepara tu cuerpo para la rutina',
-                video_url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-                preview_image:
-                  realCourse?.preview_image || '/images/course-placeholder.jpg',
-                lesson_number: 1,
-                lesson_order: 1,
-                duration_minutes: 15,
-                is_preview: true,
-                views_count: 120,
-                created_at: new Date().toISOString(),
-              },
-              {
-                id: 'lesson-2',
-                course_id: realCourse?.id || '1',
-                title: 'Rutina HIIT: Piernas y Glúteos',
-                description: 'Entrenamiento intenso para tren inferior',
-                video_url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-                preview_image:
-                  realCourse?.preview_image || '/images/course-placeholder.jpg',
-                lesson_number: 2,
-                lesson_order: 2,
-                duration_minutes: 30,
-                is_preview: false,
-                views_count: 80,
-                created_at: new Date().toISOString(),
-              },
-              {
-                id: 'lesson-3',
-                course_id: realCourse?.id || '1',
-                title: 'Rutina HIIT: Brazos y Abdomen',
-                description: 'Fortalece tu tren superior y core',
-                video_url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-                preview_image:
-                  realCourse?.preview_image || '/images/course-placeholder.jpg',
-                lesson_number: 3,
-                lesson_order: 3,
-                duration_minutes: 25,
-                is_preview: false,
-                views_count: 60,
-                created_at: new Date().toISOString(),
-              },
-              {
-                id: 'lesson-4',
-                course_id: realCourse?.id || '1',
-                title: 'Rutina HIIT Intensiva - Día 4',
-                description:
-                  'Ejercicios de alta intensidad para maximizar la quema de grasa',
-                video_url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-                preview_image:
-                  realCourse?.preview_image || '/images/course-placeholder.jpg',
-                lesson_number: 4,
-                lesson_order: 4,
-                duration_minutes: 40,
-                is_preview: false,
-                views_count: 40,
-                created_at: new Date().toISOString(),
-              },
-              {
-                id: 'lesson-5',
-                course_id: realCourse?.id || '1',
-                title: 'Cardio Quema Grasa - Día 5',
-                description: 'Sesión de cardio para acelerar el metabolismo',
-                video_url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-                preview_image:
-                  realCourse?.preview_image || '/images/course-placeholder.jpg',
-                lesson_number: 5,
-                lesson_order: 5,
-                duration_minutes: 35,
-                is_preview: false,
-                views_count: 0,
-                created_at: new Date().toISOString(),
-              },
-            ];
+      const mockLessons = realLessons.length > 0 ? realLessons : [
+        {
+          id: 'lesson-1',
+          course_id: realCourse?.id || '1',
+          title: 'Introducción y Calentamiento',
+          description: 'Prepara tu cuerpo para la rutina',
+          video_url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+          preview_image: realCourse?.preview_image || '/images/course-placeholder.jpg',
+          lesson_number: 1,
+          lesson_order: 1,
+          duration_minutes: 15,
+          is_preview: true,
+          views_count: 120,
+          created_at: new Date().toISOString()
+        },
+        {
+          id: 'lesson-2',
+          course_id: realCourse?.id || '1',
+          title: 'Rutina HIIT: Piernas y Glúteos',
+          description: 'Entrenamiento intenso para tren inferior',
+          video_url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+          preview_image: realCourse?.preview_image || '/images/course-placeholder.jpg',
+          lesson_number: 2,
+          lesson_order: 2,
+          duration_minutes: 30,
+          is_preview: false,
+          views_count: 80,
+          created_at: new Date().toISOString()
+        },
+        {
+          id: 'lesson-3',
+          course_id: realCourse?.id || '1',
+          title: 'Rutina HIIT: Brazos y Abdomen',
+          description: 'Fortalece tu tren superior y core',
+          video_url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+          preview_image: realCourse?.preview_image || '/images/course-placeholder.jpg',
+          lesson_number: 3,
+          lesson_order: 3,
+          duration_minutes: 25,
+          is_preview: false,
+          views_count: 60,
+          created_at: new Date().toISOString()
+        },
+        {
+          id: 'lesson-4',
+          course_id: realCourse?.id || '1',
+          title: 'Rutina HIIT Intensiva - Día 4',
+          description: 'Ejercicios de alta intensidad para maximizar la quema de grasa',
+          video_url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+          preview_image: realCourse?.preview_image || '/images/course-placeholder.jpg',
+          lesson_number: 4,
+          lesson_order: 4,
+          duration_minutes: 40,
+          is_preview: false,
+          views_count: 40,
+          created_at: new Date().toISOString()
+        },
+        {
+          id: 'lesson-5',
+          course_id: realCourse?.id || '1',
+          title: 'Cardio Quema Grasa - Día 5',
+          description: 'Sesión de cardio para acelerar el metabolismo',
+          video_url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+          preview_image: realCourse?.preview_image || '/images/course-placeholder.jpg',
+          lesson_number: 5,
+          lesson_order: 5,
+          duration_minutes: 35,
+          is_preview: false,
+          views_count: 0,
+          created_at: new Date().toISOString()
+        }
+      ];
 
       setPurchasedCourses(mockPurchasedCourses);
       setPurchasedCourseLessons(mockLessons);
@@ -408,22 +359,23 @@ export default function DashboardPage() {
 
       // La próxima lección es la siguiente después de las completadas
       const nextAvailableLesson = mockLessons.find(
-        (lesson) => lesson.lesson_order === completedLessons + 1,
+        (lesson) => lesson.lesson_order === completedLessons + 1
       );
 
       // Si no hay próxima lección, usar la primera
       setNextLesson(nextAvailableLesson || mockLessons[0]);
-    } catch (_error) {
+    } catch (error) {
+      console.log('ℹ️ No se pudieron cargar cursos comprados (puede ser normal si no hay compras):', error);
     } finally {
       setLoadingPurchasedCourses(false);
     }
   };
 
   // Función para obtener el curso recomendado basado en el perfil del usuario
-  const _getRecommendedCourse = (profile: any) => {
+  const getRecommendedCourse = (profile: any) => {
     if (!profile) return 'CARDIO HIIT 40 MIN ¡BAJA DE PESO!';
 
-    const currentBMI = profile.weight / (profile.height / 100) ** 2;
+    const currentBMI = profile.weight / Math.pow(profile.height / 100, 2);
 
     if (currentBMI >= 30) {
       return 'CARDIO HIIT 40 MIN ¡BAJA DE PESO!';
@@ -437,10 +389,10 @@ export default function DashboardPage() {
   };
 
   // Función para obtener la duración estimada basada en el perfil
-  const _getEstimatedDuration = (profile: any) => {
+  const getEstimatedDuration = (profile: any) => {
     if (!profile) return '12 semanas';
 
-    const currentBMI = profile.weight / (profile.height / 100) ** 2;
+    const currentBMI = profile.weight / Math.pow(profile.height / 100, 2);
 
     if (currentBMI >= 30) {
       return '24 semanas';
@@ -468,42 +420,40 @@ export default function DashboardPage() {
     // Usar la última fecha de peso registrada; si no existe, evitar mostrar de inmediato post-onboarding
     const lastUpdateStr = userProfile.last_weight_update;
     const lastUpdate = lastUpdateStr ? new Date(lastUpdateStr) : null;
-    const daysSinceUpdate = lastUpdate
-      ? (today.getTime() - lastUpdate.getTime()) / (1000 * 60 * 60 * 24)
-      : Infinity;
+    const daysSinceUpdate = lastUpdate ? (today.getTime() - lastUpdate.getTime()) / (1000 * 60 * 60 * 24) : Infinity;
 
     // Mostrar recordatorio solo si es viernes, no se mostró hoy, y han pasado al menos 6 días desde el último registro
-    if (
-      isFriday &&
-      lastWeightReminder !== todayString &&
-      daysSinceUpdate >= 6
-    ) {
+    if (isFriday && lastWeightReminder !== todayString && daysSinceUpdate >= 6) {
       setShowWeeklyWeightReminder(true);
     }
   }, [authLoading, userProfile]);
 
   // Función para cargar blogs nutricionales
-  const fetchNutritionalBlogs = useCallback(async () => {
+  const fetchNutritionalBlogs = async () => {
     try {
       const response = await fetch('/api/blogs');
       const data = await response.json();
       setNutritionalBlogs(data.blogs || []);
-    } catch (_error) {
+    } catch (error) {
+      console.log('ℹ️ Información: nutritional blogs:', error);
       setNutritionalBlogs([]);
     } finally {
       setLoadingBlogs(false);
     }
-  }, []); // La función ya no cambia nunca
+  };
 
+  // Cargar blogs nutricionales
   useEffect(() => {
     fetchNutritionalBlogs();
-  }, [fetchNutritionalBlogs]);
+  }, []);
 
   // Obtener datos del perfil desde Supabase
   useEffect(() => {
     const fetchUserProfile = async () => {
       if (user?.id) {
         try {
+          console.log('Dashboard: Buscando perfil para ID:', user.id);
+
           const { data, error } = await supabase
             .from('profiles')
             .select('*')
@@ -512,25 +462,33 @@ export default function DashboardPage() {
 
           // Si no hay perfil, redirigir al onboarding
           if (!data) {
+            console.log('Dashboard: No hay perfil, redirigiendo al onboarding');
             router.push('/onboarding');
             return;
           }
 
           // Verificar que height y weight sean números válidos
-          const hasValidHeight =
-            typeof data.height === 'number' && data.height > 0;
-          const hasValidWeight =
-            typeof data.weight === 'number' && data.weight > 0;
+          const hasValidHeight = typeof data.height === 'number' && data.height > 0;
+          const hasValidWeight = typeof data.weight === 'number' && data.weight > 0;
 
           if (!hasValidHeight || !hasValidWeight) {
+            console.log('Dashboard: Perfil incompleto', {
+              height: data.height,
+              weight: data.weight,
+              hasValidHeight,
+              hasValidWeight
+            });
             router.push('/onboarding');
             return;
           }
 
           if (error) {
+            console.error('❌ Error al cargar perfil de usuario:', error);
             setLoading(false);
             return;
           }
+
+          console.log('Dashboard: Perfil encontrado:', data);
           setUserProfile(data);
 
           // Generar sugerencia de meta si no tiene target_weight establecido
@@ -545,14 +503,15 @@ export default function DashboardPage() {
               gender: data.gender,
               goals: data.goals || [],
               birthYear: data.birth_year,
-              dietaryHabits: data.dietary_habits,
+              dietaryHabits: data.dietary_habits
             });
             setGoalSuggestion(suggestion);
             setShowGoalSuggestion(true);
           }
 
           setLoading(false);
-        } catch (_error) {
+        } catch (error) {
+          console.error('❌ Error inesperado en dashboard:', error);
           setLoading(false);
         }
       }
@@ -568,10 +527,10 @@ export default function DashboardPage() {
     if (!authLoading && !user) {
       router.push('/');
     }
-  }, [authLoading, router, user]);
+  }, [authLoading, router]);
 
-  const [_categories, setCategories] = useState([
-    { id: 'all', name: 'Todos', icon: '🎯', color: '#85ea10' },
+  const [categories, setCategories] = useState([
+    { id: 'all', name: 'Todos', icon: '🎯', color: '#85ea10' }
   ]);
 
   // Cargar categorías desde la base de datos
@@ -589,20 +548,22 @@ export default function DashboardPage() {
         // Agregar "Todos" al inicio
         setCategories([
           { id: 'all', name: 'Todos', icon: '🎯', color: '#85ea10' },
-          ...(data || []).map((cat) => ({
+          ...(data || []).map(cat => ({
             id: cat.name, // Usar el nombre como ID para el filtrado
             name: cat.name,
             icon: cat.icon,
-            color: cat.color,
-          })),
+            color: cat.color
+          }))
         ]);
-      } catch (_error) {
+      } catch (error) {
+        console.log('ℹ️ No se pudieron cargar categorías (puede ser normal si no hay categorías creadas):', error);
         // No mostrar error, simplemente mantener las categorías por defecto
       }
     };
 
     fetchCategories();
   }, []);
+
 
   // La lógica de carga de cursos ahora está en el hook useCoursesCache
 
@@ -623,52 +584,50 @@ export default function DashboardPage() {
     if (bmi < 18.5) {
       return {
         category: 'Bajo peso',
-        message:
-          'Tu peso está por debajo del rango saludable. Te recomendamos ganar peso de forma saludable.',
+        message: 'Tu peso está por debajo del rango saludable. Te recomendamos ganar peso de forma saludable.',
         recommendation: 'Ganar peso',
         color: 'text-blue-600',
         bgColor: 'bg-blue-50',
-        borderColor: 'border-blue-200',
+        borderColor: 'border-blue-200'
       };
     } else if (bmi >= 18.5 && bmi < 25) {
       return {
         category: 'Peso normal',
-        message:
-          '¡Excelente! Tu peso está en el rango saludable. Mantén tu estilo de vida saludable.',
+        message: '¡Excelente! Tu peso está en el rango saludable. Mantén tu estilo de vida saludable.',
         recommendation: 'Mantener peso',
         color: 'text-green-600',
         bgColor: 'bg-green-50',
-        borderColor: 'border-green-200',
+        borderColor: 'border-green-200'
       };
     } else if (bmi >= 25 && bmi < 30) {
       return {
         category: 'Sobrepeso',
-        message:
-          'Tienes sobrepeso. Te recomendamos bajar entre 5-10 kg para alcanzar un peso más saludable.',
+        message: 'Tienes sobrepeso. Te recomendamos bajar entre 5-10 kg para alcanzar un peso más saludable.',
         recommendation: 'Bajar peso',
         color: 'text-orange-600',
         bgColor: 'bg-orange-50',
-        borderColor: 'border-orange-200',
+        borderColor: 'border-orange-200'
       };
     } else {
       return {
         category: 'Obesidad',
-        message:
-          'Tienes obesidad. Te recomendamos bajar entre 10-20 kg para mejorar tu salud significativamente.',
+        message: 'Tienes obesidad. Te recomendamos bajar entre 10-20 kg para mejorar tu salud significativamente.',
         recommendation: 'Bajar peso',
         color: 'text-red-600',
         bgColor: 'bg-red-50',
-        borderColor: 'border-red-200',
+        borderColor: 'border-red-200'
       };
     }
   };
 
   // Función para aceptar la meta sugerida
-  const _handleAcceptGoalSuggestion = async (suggestion: GoalSuggestion) => {
+  const handleAcceptGoalSuggestion = async (suggestion: GoalSuggestion) => {
     setIsAcceptingGoal(true);
     setGoalError('');
 
     try {
+      console.log('Aceptando meta sugerida:', suggestion);
+
       if (!userProfile?.id) {
         throw new Error('No se encontró el ID del usuario');
       }
@@ -679,27 +638,24 @@ export default function DashboardPage() {
         .update({
           target_weight: suggestion.targetWeight,
           goal_deadline: suggestion.deadline,
-          updated_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         })
         .eq('id', userProfile.id)
         .select();
 
       if (error) {
-        throw new Error(
-          `Error al establecer la meta: ${error.message || 'Error desconocido'}`,
-        );
+        console.error('❌ Error al actualizar meta:', error);
+        throw new Error(`Error al establecer la meta: ${error.message || 'Error desconocido'}`);
       }
 
+      console.log('Meta establecida exitosamente:', data);
+
       // Actualizar el perfil local
-      setUserProfile((prev) =>
-        prev
-          ? {
-              ...prev,
-              target_weight: suggestion.targetWeight,
-              goal_deadline: suggestion.deadline,
-            }
-          : null,
-      );
+      setUserProfile(prev => prev ? {
+        ...prev,
+        target_weight: suggestion.targetWeight,
+        goal_deadline: suggestion.deadline
+      } : null);
 
       // Ocultar la sugerencia
       setShowGoalSuggestion(false);
@@ -710,23 +666,23 @@ export default function DashboardPage() {
 
       // Resetear estado de personalización
       setIsCustomizingGoal(false);
+
     } catch (error: any) {
-      setGoalError(
-        error.message || 'Error al establecer la meta. Inténtalo de nuevo.',
-      );
+      console.error('❌ Error al aceptar meta:', error);
+      setGoalError(error.message || 'Error al establecer la meta. Inténtalo de nuevo.');
     } finally {
       setIsAcceptingGoal(false);
     }
   };
 
   // Función para personalizar la meta sugerida
-  const _handleCustomizeGoalSuggestion = () => {
+  const handleCustomizeGoalSuggestion = () => {
     // Pre-llenar el modal con la sugerencia
     if (goalSuggestion) {
       setGoalData({
         targetWeight: goalSuggestion.targetWeight.toString(),
         goalType: 'lose', // Por defecto, el usuario puede cambiar
-        deadline: goalSuggestion.deadline,
+        deadline: goalSuggestion.deadline
       });
     }
     setShowGoalSuggestion(false);
@@ -735,7 +691,7 @@ export default function DashboardPage() {
   };
 
   // Función para rechazar la meta sugerida
-  const _handleDismissGoalSuggestion = () => {
+  const handleDismissGoalSuggestion = () => {
     setShowGoalSuggestion(false);
     setGoalSuggestion(null);
   };
@@ -768,19 +724,17 @@ export default function DashboardPage() {
       // Guardar registro de peso en weight_records
       const { error: weightRecordError } = await supabase
         .from('weight_records')
-        .upsert(
-          {
-            user_id: user.id,
-            weight: weight,
-            record_date: today,
-            updated_at: new Date().toISOString(),
-          },
-          {
-            onConflict: 'user_id,record_date',
-          },
-        );
+        .upsert({
+          user_id: user.id,
+          weight: weight,
+          record_date: today,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_id,record_date'
+        });
 
       if (weightRecordError) {
+        console.error('❌ Error al guardar peso:', weightRecordError);
       }
 
       // Actualizar también el peso actual en el perfil
@@ -789,11 +743,12 @@ export default function DashboardPage() {
         .update({
           current_weight: weight,
           last_weight_update: today,
-          updated_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         })
         .eq('id', user.id);
 
       if (profileError) {
+        console.error('Error actualizando perfil:', profileError);
       }
 
       // Actualizar el perfil local
@@ -801,10 +756,14 @@ export default function DashboardPage() {
         setUserProfile({
           ...userProfile,
           current_weight: weight,
-          last_weight_update: today,
+          last_weight_update: today
         });
       }
-    } catch (_error) {}
+
+      console.log('Peso actualizado:', weight);
+    } catch (error) {
+      console.error('Error al actualizar peso:', error);
+    }
   };
 
   const handleGoalSubmit = async () => {
@@ -817,6 +776,9 @@ export default function DashboardPage() {
     setGoalError('');
 
     try {
+      console.log('Actualizando meta para usuario:', userProfile?.id);
+      console.log('Datos de la meta:', goalData);
+
       // Verificar que tenemos el ID del usuario
       if (!userProfile?.id) {
         throw new Error('No se encontró el ID del usuario');
@@ -830,36 +792,37 @@ export default function DashboardPage() {
         .single();
 
       if (fetchError) {
+        console.error('Error obteniendo perfil:', fetchError);
         throw new Error('No se pudo obtener el perfil del usuario');
       }
+
+      console.log('Perfil encontrado:', existingProfile);
 
       // Actualizar solo los campos de meta
       const { data, error } = await supabase
         .from('profiles')
         .update({
-          target_weight: parseInt(goalData.targetWeight, 10),
+          target_weight: parseInt(goalData.targetWeight),
           goal_deadline: goalData.deadline,
-          updated_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         })
         .eq('id', userProfile.id)
         .select();
 
       if (error) {
-        throw new Error(
-          `Error al actualizar la meta: ${error.message || 'Error desconocido'}`,
-        );
+        console.error('Error de Supabase al actualizar:', error);
+        console.error('Detalles del error:', JSON.stringify(error, null, 2));
+        throw new Error(`Error al actualizar la meta: ${error.message || 'Error desconocido'}`);
       }
 
+      console.log('Meta actualizada exitosamente:', data);
+
       // Actualizar el perfil local
-      setUserProfile((prev) =>
-        prev
-          ? {
-              ...prev,
-              target_weight: parseInt(goalData.targetWeight, 10),
-              goal_deadline: goalData.deadline,
-            }
-          : null,
-      );
+      setUserProfile(prev => prev ? {
+        ...prev,
+        target_weight: parseInt(goalData.targetWeight),
+        goal_deadline: goalData.deadline
+      } : null);
 
       setShowGoalModal(false);
       setGoalData({ targetWeight: '', goalType: 'lose', deadline: '' });
@@ -867,9 +830,8 @@ export default function DashboardPage() {
       // Recargar la página para reflejar los cambios
       window.location.reload();
     } catch (error: any) {
-      setGoalError(
-        error.message || 'Error al actualizar la meta. Inténtalo de nuevo.',
-      );
+      console.error('❌ Error al actualizar meta:', error);
+      setGoalError(error.message || 'Error al actualizar la meta. Inténtalo de nuevo.');
     } finally {
       setGoalLoading(false);
     }
@@ -945,9 +907,7 @@ export default function DashboardPage() {
                       {notifications.length === 0 ? (
                         <div className="px-4 py-6 text-center">
                           <Bell className="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
-                          <p className="text-sm text-gray-500 dark:text-gray-400">
-                            No tienes notificaciones
-                          </p>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">No tienes notificaciones</p>
                         </div>
                       ) : (
                         <div className="max-h-80 overflow-y-auto">
@@ -1021,9 +981,7 @@ export default function DashboardPage() {
                           className="flex items-center space-x-2 w-full px-4 py-2.5 text-sm text-[#164151] dark:text-[#85ea10] hover:bg-[#85ea10]/10 dark:hover:bg-[#85ea10]/10 transition-colors border-t border-gray-100 dark:border-white/5"
                         >
                           <Settings className="w-4 h-4" />
-                          <span className="font-bold">
-                            Panel Administrativo
-                          </span>
+                          <span className="font-bold">Panel Administrativo</span>
                         </button>
                       )}
                       <button
@@ -1064,10 +1022,7 @@ export default function DashboardPage() {
                     const today = new Date();
                     today.setHours(0, 0, 0, 0);
                     startDate.setHours(0, 0, 0, 0);
-                    const daysDiff = Math.floor(
-                      (today.getTime() - startDate.getTime()) /
-                        (1000 * 60 * 60 * 24),
-                    );
+                    const daysDiff = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
                     return daysDiff >= 0;
                   });
 
@@ -1076,6 +1031,17 @@ export default function DashboardPage() {
 
                   if (!purchase) return null;
 
+                  // Debug: Verificar datos del purchase
+                  console.log('🔍 Dashboard Banner: Purchase data:', {
+                    purchase_id: purchase.id,
+                    course_id: purchase.course_id,
+                    has_course: !!purchase.course,
+                    course_title: purchase.course?.title || 'NO COURSE',
+                    course_preview_image: purchase.course?.preview_image ? (purchase.course.preview_image.substring(0, 100) + '...') : 'NO IMAGE',
+                    is_base64: purchase.course?.preview_image?.startsWith('data:image') || false,
+                    preview_image_length: purchase.course?.preview_image?.length || 0
+                  });
+
                   // Verificar si hay clase disponible hoy
                   const hasAvailableClass = (() => {
                     if (!purchase.start_date) return false;
@@ -1083,10 +1049,7 @@ export default function DashboardPage() {
                     const today = new Date();
                     today.setHours(0, 0, 0, 0);
                     startDate.setHours(0, 0, 0, 0);
-                    const daysDiff = Math.floor(
-                      (today.getTime() - startDate.getTime()) /
-                        (1000 * 60 * 60 * 24),
-                    );
+                    const daysDiff = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
                     return daysDiff >= 0; // Si ya pasó el día de inicio, hay clase disponible
                   })();
 
@@ -1097,9 +1060,7 @@ export default function DashboardPage() {
                     midnight.setHours(24, 0, 0, 0);
                     const diff = midnight.getTime() - now.getTime();
                     const hours = Math.floor(diff / (1000 * 60 * 60));
-                    const minutes = Math.floor(
-                      (diff % (1000 * 60 * 60)) / (1000 * 60),
-                    );
+                    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
                     return { hours, minutes };
                   };
 
@@ -1111,7 +1072,8 @@ export default function DashboardPage() {
                     return BANNER_PLACEHOLDER;
                   };
 
-                  const _imageUrl = getImageUrl();
+                  const imageUrl = getImageUrl();
+                  console.log('🔍 Banner: URL final de imagen (siempre placeholder):', imageUrl);
 
                   return (
                     <div
@@ -1129,16 +1091,13 @@ export default function DashboardPage() {
                                 <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4 flex-wrap">
                                   <div className="inline-flex items-center gap-2 bg-[#85ea10] rounded-full px-3 py-1 sm:px-4 sm:py-1.5">
                                     <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-                                    <span className="text-black text-[10px] sm:text-xs font-bold uppercase">
-                                      Nueva Clase Disponible
-                                    </span>
+                                    <span className="text-black text-[10px] sm:text-xs font-bold uppercase">Nueva Clase Disponible</span>
                                   </div>
                                   {timeLeft.hours > 0 && (
                                     <div className="inline-flex items-center gap-2 bg-[#1e3a8a] rounded-full px-3 py-1 sm:px-4 sm:py-1.5">
                                       <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-white" />
                                       <span className="text-white text-[10px] sm:text-xs font-bold">
-                                        {timeLeft.hours}h {timeLeft.minutes}m
-                                        restantes
+                                        {timeLeft.hours}h {timeLeft.minutes}m restantes
                                       </span>
                                     </div>
                                   )}
@@ -1149,28 +1108,20 @@ export default function DashboardPage() {
                                 </h3>
 
                                 <p className="text-gray-700 dark:text-gray-300 text-sm sm:text-base md:text-lg mb-4 sm:mb-5 line-clamp-1">
-                                  {purchase.course?.short_description ||
-                                    purchase.course?.description ||
-                                    '¡No te pierdas esta increíble clase!'}
+                                  {purchase.course?.short_description || purchase.course?.description || '¡No te pierdas esta increíble clase!'}
                                 </p>
 
                                 <div className="flex flex-wrap items-center gap-3 sm:gap-4 mb-4 sm:mb-0">
                                   <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                                     <Clock className="w-3 h-3 sm:w-4 sm:h-4 text-[#85ea10]" />
                                     <span className="font-semibold">
-                                      {purchase.course?.duration_days
-                                        ? `${purchase.course.duration_days} días`
-                                        : '30 días'}
+                                      {purchase.course?.duration_days ? `${purchase.course.duration_days} días` : '30 días'}
                                     </span>
                                   </div>
                                   <div className="flex items-center gap-2 text-[10px] sm:text-xs text-gray-500 dark:text-gray-500">
                                     <Clock className="w-3 h-3" />
-                                    <span className="hidden sm:inline">
-                                      Se bloquea antes de las 12:00 AM
-                                    </span>
-                                    <span className="sm:hidden">
-                                      Bloquea a las 12:00 AM
-                                    </span>
+                                    <span className="hidden sm:inline">Se bloquea antes de las 12:00 AM</span>
+                                    <span className="sm:hidden">Bloquea a las 12:00 AM</span>
                                   </div>
                                 </div>
                               </div>
@@ -1185,10 +1136,7 @@ export default function DashboardPage() {
                                 }}
                                 className="bg-[#85ea10] hover:bg-[#7dd30f] text-black font-bold py-2 px-4 sm:py-2.5 sm:px-5 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-105 flex items-center justify-center gap-1.5 whitespace-nowrap text-xs sm:text-sm"
                               >
-                                <Play
-                                  className="w-3 h-3 sm:w-4 sm:h-4"
-                                  fill="currentColor"
-                                />
+                                <Play className="w-3 h-3 sm:w-4 sm:h-4" fill="currentColor" />
                                 <span>Tomar Clase Ahora</span>
                               </button>
                             </div>
@@ -1232,37 +1180,24 @@ export default function DashboardPage() {
             {/* Layout de 2 columnas: Complementos e Insights */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 flex-1 min-h-0 mb-4 sm:mb-6">
               {/* COLUMNA 1: COMPLEMENTOS (STORIES) */}
-              <div
-                className="lg:col-span-1 flex flex-col min-h-[400px] sm:min-h-[500px] lg:min-h-[600px]"
-                data-section="complementos"
-                id="complementos"
-              >
-                <StoriesSection
-                  courseStartDate={
-                    purchases.find((p: any) => p.start_date)?.start_date || null
-                  }
-                />
+              <div className="lg:col-span-1 flex flex-col min-h-[400px] sm:min-h-[500px] lg:min-h-[600px]" data-section="complementos" id="complementos">
+                <StoriesSection courseStartDate={purchases.find((p: any) => p.start_date)?.start_date || null} />
               </div>
 
               {/* COLUMNA 2: INSIGHTS */}
               <div className="lg:col-span-1 flex flex-col min-h-0">
                 {(() => {
                   // Obtener el purchase principal (con clase disponible o el más reciente)
-                  const effectivePurchase =
-                    purchases.find((p: any) => p.start_date) || purchases[0];
-                  const courseWithLessons = effectivePurchase?.course
-                    ? {
-                        ...effectivePurchase.course,
-                        lessons: effectivePurchase.course.lessons || [],
-                      }
-                    : null;
+                  const effectivePurchase = purchases.find((p: any) => p.start_date) || purchases[0];
+                  const courseWithLessons = effectivePurchase?.course ? {
+                    ...effectivePurchase.course,
+                    lessons: effectivePurchase.course.lessons || []
+                  } : null;
 
                   return (
                     <InsightsSection
                       userProfile={userProfile}
-                      completedLessons={purchases.flatMap(
-                        (p: any) => p.completed_lessons || [],
-                      )}
+                      completedLessons={purchases.flatMap((p: any) => p.completed_lessons || [])}
                       courseWithLessons={courseWithLessons}
                       effectivePurchase={effectivePurchase}
                     />
@@ -1301,31 +1236,19 @@ export default function DashboardPage() {
                 {/* Botones de navegación */}
                 <button
                   onClick={() => {
-                    const container =
-                      document.getElementById('courses-carousel');
+                    const container = document.getElementById('courses-carousel');
                     if (container) {
                       // Obtener el primer card visible
-                      const firstCard = container.querySelector(
-                        'div > div',
-                      ) as HTMLElement;
+                      const firstCard = container.querySelector('div > div') as HTMLElement;
                       if (firstCard) {
                         const cardWidth = firstCard.offsetWidth;
                         const gap = window.innerWidth < 640 ? 16 : 32; // gap-4 en mobile, gap-8 en desktop
                         const scrollAmount = cardWidth + gap;
-                        container.scrollBy({
-                          left: -scrollAmount,
-                          behavior: 'smooth',
-                        });
+                        container.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
                       } else {
                         // Fallback: usar el ancho del card + gap
-                        const scrollAmount =
-                          window.innerWidth < 640
-                            ? window.innerWidth - 32
-                            : 850 + 32;
-                        container.scrollBy({
-                          left: -scrollAmount,
-                          behavior: 'smooth',
-                        });
+                        const scrollAmount = window.innerWidth < 640 ? window.innerWidth - 32 : 850 + 32;
+                        container.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
                       }
                     }
                   }}
@@ -1336,31 +1259,19 @@ export default function DashboardPage() {
 
                 <button
                   onClick={() => {
-                    const container =
-                      document.getElementById('courses-carousel');
+                    const container = document.getElementById('courses-carousel');
                     if (container) {
                       // Obtener el primer card visible
-                      const firstCard = container.querySelector(
-                        'div > div',
-                      ) as HTMLElement;
+                      const firstCard = container.querySelector('div > div') as HTMLElement;
                       if (firstCard) {
                         const cardWidth = firstCard.offsetWidth;
                         const gap = window.innerWidth < 640 ? 16 : 32; // gap-4 en mobile, gap-8 en desktop
                         const scrollAmount = cardWidth + gap;
-                        container.scrollBy({
-                          left: scrollAmount,
-                          behavior: 'smooth',
-                        });
+                        container.scrollBy({ left: scrollAmount, behavior: 'smooth' });
                       } else {
                         // Fallback: usar el ancho del card + gap
-                        const scrollAmount =
-                          window.innerWidth < 640
-                            ? window.innerWidth - 32
-                            : 850 + 32;
-                        container.scrollBy({
-                          left: scrollAmount,
-                          behavior: 'smooth',
-                        });
+                        const scrollAmount = window.innerWidth < 640 ? window.innerWidth - 32 : 850 + 32;
+                        container.scrollBy({ left: scrollAmount, behavior: 'smooth' });
                       }
                     }
                   }}
@@ -1373,11 +1284,7 @@ export default function DashboardPage() {
                 <div
                   id="courses-carousel"
                   className="overflow-x-auto scrollbar-hide -mx-3 sm:-mx-4 md:mx-0"
-                  style={{
-                    scrollbarWidth: 'none',
-                    msOverflowStyle: 'none',
-                    WebkitOverflowScrolling: 'touch',
-                  }}
+                  style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}
                 >
                   <div className="flex gap-4 sm:gap-6 md:gap-8 px-3 sm:px-4 md:px-6 lg:px-20 xl:px-32 justify-start md:justify-center">
                     {/* Card Coming Soon Izquierda - Oculto en mobile */}
@@ -1419,45 +1326,29 @@ export default function DashboardPage() {
                               <div className="flex items-center justify-center space-x-2">
                                 <Play className="w-4 h-4 text-gray-400 dark:text-gray-600 flex-shrink-0" />
                                 <div className="flex flex-col items-center">
-                                  <div className="text-xs text-gray-400 dark:text-gray-600 mb-0.5">
-                                    Clases
-                                  </div>
-                                  <div className="text-sm font-semibold text-gray-400 dark:text-gray-600">
-                                    -
-                                  </div>
+                                  <div className="text-xs text-gray-400 dark:text-gray-600 mb-0.5">Clases</div>
+                                  <div className="text-sm font-semibold text-gray-400 dark:text-gray-600">-</div>
                                 </div>
                               </div>
                               <div className="flex items-center justify-center space-x-2">
                                 <Clock className="w-4 h-4 text-gray-400 dark:text-gray-600 flex-shrink-0" />
                                 <div className="flex flex-col items-center">
-                                  <div className="text-xs text-gray-400 dark:text-gray-600 mb-0.5">
-                                    Duración
-                                  </div>
-                                  <div className="text-sm font-semibold text-gray-400 dark:text-gray-600">
-                                    -
-                                  </div>
+                                  <div className="text-xs text-gray-400 dark:text-gray-600 mb-0.5">Duración</div>
+                                  <div className="text-sm font-semibold text-gray-400 dark:text-gray-600">-</div>
                                 </div>
                               </div>
                               <div className="flex items-center justify-center space-x-2">
                                 <Users className="w-4 h-4 text-gray-400 dark:text-gray-600 flex-shrink-0" />
                                 <div className="flex flex-col items-center">
-                                  <div className="text-xs text-gray-400 dark:text-gray-600 mb-0.5">
-                                    Estudiantes
-                                  </div>
-                                  <div className="text-sm font-semibold text-gray-400 dark:text-gray-600">
-                                    -
-                                  </div>
+                                  <div className="text-xs text-gray-400 dark:text-gray-600 mb-0.5">Estudiantes</div>
+                                  <div className="text-sm font-semibold text-gray-400 dark:text-gray-600">-</div>
                                 </div>
                               </div>
                               <div className="flex items-center justify-center space-x-2">
                                 <Zap className="w-4 h-4 text-gray-400 dark:text-gray-600 flex-shrink-0" />
                                 <div className="flex flex-col items-center">
-                                  <div className="text-xs text-gray-400 dark:text-gray-600 mb-0.5">
-                                    Nivel
-                                  </div>
-                                  <div className="text-sm font-semibold text-gray-400 dark:text-gray-600">
-                                    -
-                                  </div>
+                                  <div className="text-xs text-gray-400 dark:text-gray-600 mb-0.5">Nivel</div>
+                                  <div className="text-sm font-semibold text-gray-400 dark:text-gray-600">-</div>
                                 </div>
                               </div>
                             </div>
@@ -1483,7 +1374,7 @@ export default function DashboardPage() {
                                 gap: '6px',
                                 fontSize: '0.875rem',
                                 cursor: 'not-allowed',
-                                border: 'none',
+                                border: 'none'
                               }}
                               className="opacity-50"
                             >
@@ -1497,12 +1388,10 @@ export default function DashboardPage() {
 
                     {/* Cursos Reales - Cards horizontales estilo landing */}
                     {realCourses.map((course) => (
-                      <div
-                        key={course.id}
-                        className="flex-shrink-0 w-[calc(100vw-2rem)] sm:w-[calc(100vw-4rem)] md:w-[850px]"
-                      >
+                      <div key={course.id} className="flex-shrink-0 w-[calc(100vw-2rem)] sm:w-[calc(100vw-4rem)] md:w-[850px]">
                         <div
-                          onClick={(_e) => {
+                          onClick={(e) => {
+                            console.log('🖱️ Dashboard card clicked:', course.title);
                             router.push(`/course/${course.slug || course.id}`);
                           }}
                           className="flex flex-col md:flex-row bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl hover:shadow-[#85ea10]/10 hover:border-[#85ea10]/30 transition-all duration-200 rounded-2xl cursor-pointer w-full overflow-hidden h-auto md:h-full"
@@ -1511,34 +1400,19 @@ export default function DashboardPage() {
                           <div className="w-full md:w-[320px] h-[200px] sm:h-[250px] md:h-full flex-shrink-0 relative">
                             <div className="absolute inset-0 w-full h-full rounded-t-2xl md:rounded-l-2xl md:rounded-tr-none overflow-hidden">
                               <img
-                                src={
-                                  course.thumbnail ||
-                                  course.preview_image ||
-                                  '/images/course-placeholder.jpg'
-                                }
+                                src={course.thumbnail || course.preview_image || '/images/course-placeholder.jpg'}
                                 alt={course.title}
                                 className="w-full h-full object-cover"
-                                style={{
-                                  objectPosition: 'center center',
-                                  display: 'block',
-                                }}
+                                style={{ objectPosition: 'center center', display: 'block' }}
                                 onError={(e) => {
                                   const target = e.target as HTMLImageElement;
-                                  if (
-                                    !target.src?.endsWith(
-                                      'course-placeholder.jpg',
-                                    )
-                                  ) {
-                                    target.src =
-                                      '/images/course-placeholder.jpg';
+                                  if (!target.src?.endsWith('course-placeholder.jpg')) {
+                                    target.src = '/images/course-placeholder.jpg';
                                   }
                                 }}
                               />
                               <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-all duration-300 flex items-center justify-center opacity-0 hover:opacity-100 z-10">
-                                <Play
-                                  className="w-12 h-12 text-white drop-shadow-lg"
-                                  fill="currentColor"
-                                />
+                                <Play className="w-12 h-12 text-white drop-shadow-lg" fill="currentColor" />
                               </div>
                             </div>
 
@@ -1557,9 +1431,7 @@ export default function DashboardPage() {
 
                             <div className="absolute bottom-3 right-3 flex items-center space-x-1 bg-black/70 backdrop-blur-sm text-white px-3 py-1.5 rounded-full z-10">
                               <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                              <span className="text-sm font-semibold">
-                                {course.rating || '4.8'}
-                              </span>
+                              <span className="text-sm font-semibold">{course.rating || '4.8'}</span>
                             </div>
                           </div>
 
@@ -1580,27 +1452,19 @@ export default function DashboardPage() {
                               <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 mb-4">
                                 <div className="flex items-center gap-1.5">
                                   <Play className="w-4 h-4 text-[#85ea10]" />
-                                  <span className="text-sm text-gray-600 dark:text-white/80">
-                                    {course.lessons_count || 0} clases
-                                  </span>
+                                  <span className="text-sm text-gray-600 dark:text-white/80">{course.lessons_count || 0} clases</span>
                                 </div>
                                 <div className="flex items-center gap-1.5">
                                   <Clock className="w-4 h-4 text-[#85ea10]" />
-                                  <span className="text-sm text-gray-600 dark:text-white/80">
-                                    {course.duration || '8 semanas'}
-                                  </span>
+                                  <span className="text-sm text-gray-600 dark:text-white/80">{course.duration || '8 semanas'}</span>
                                 </div>
                                 <div className="flex items-center gap-1.5">
                                   <Users className="w-4 h-4 text-[#85ea10]" />
-                                  <span className="text-sm text-gray-600 dark:text-white/80">
-                                    {course.students_count || 0} estudiantes
-                                  </span>
+                                  <span className="text-sm text-gray-600 dark:text-white/80">{course.students_count || 0} estudiantes</span>
                                 </div>
                                 <div className="flex items-center gap-1.5">
                                   <Zap className="w-4 h-4 text-[#85ea10]" />
-                                  <span className="text-sm text-gray-600 dark:text-white/80">
-                                    {course.level || 'Todos'}
-                                  </span>
+                                  <span className="text-sm text-gray-600 dark:text-white/80">{course.level || 'Todos'}</span>
                                 </div>
                               </div>
                             </div>
@@ -1609,37 +1473,25 @@ export default function DashboardPage() {
                                 {(course.discount_percentage ?? 0) > 0 ? (
                                   <>
                                     <span className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
-                                      $
-                                      {calculateFinalPrice(
-                                        course,
-                                      ).toLocaleString('es-CO')}
+                                      ${calculateFinalPrice(course).toLocaleString('es-CO')}
                                     </span>
                                     <span className="text-lg md:text-xl text-gray-500 dark:text-white/50 line-through">
-                                      $
-                                      {calculateOriginalPrice(
-                                        course,
-                                      ).toLocaleString('es-CO')}
+                                      ${calculateOriginalPrice(course).toLocaleString('es-CO')}
                                     </span>
                                     <span className="text-xs md:text-sm text-[#85ea10] font-bold bg-[#85ea10]/10 px-2 py-1 rounded-lg">
-                                      {course.discount_percentage ?? 0}% de
-                                      descuento
+                                      {course.discount_percentage ?? 0}% de descuento
                                     </span>
                                   </>
                                 ) : (
                                   <span className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
-                                    $
-                                    {calculateFinalPrice(course).toLocaleString(
-                                      'es-CO',
-                                    )}
+                                    ${calculateFinalPrice(course).toLocaleString('es-CO')}
                                   </span>
                                 )}
                               </div>
                               <button
                                 onClick={async (e) => {
                                   e.stopPropagation();
-                                  router.push(
-                                    `/course/${course.slug || course.id}`,
-                                  );
+                                  router.push(`/course/${course.slug || course.id}`);
                                 }}
                                 style={{
                                   width: '100%',
@@ -1654,7 +1506,7 @@ export default function DashboardPage() {
                                   gap: '6px',
                                   fontSize: '0.875rem',
                                   cursor: 'pointer',
-                                  border: 'none',
+                                  border: 'none'
                                 }}
                                 className="hover:bg-[#7dd30f] transition-colors duration-150 shadow-lg"
                               >
@@ -1706,45 +1558,29 @@ export default function DashboardPage() {
                               <div className="flex items-center justify-center space-x-2">
                                 <Play className="w-4 h-4 text-gray-400 dark:text-gray-600 flex-shrink-0" />
                                 <div className="flex flex-col items-center">
-                                  <div className="text-xs text-gray-400 dark:text-gray-600 mb-0.5">
-                                    Clases
-                                  </div>
-                                  <div className="text-sm font-semibold text-gray-400 dark:text-gray-600">
-                                    -
-                                  </div>
+                                  <div className="text-xs text-gray-400 dark:text-gray-600 mb-0.5">Clases</div>
+                                  <div className="text-sm font-semibold text-gray-400 dark:text-gray-600">-</div>
                                 </div>
                               </div>
                               <div className="flex items-center justify-center space-x-2">
                                 <Clock className="w-4 h-4 text-gray-400 dark:text-gray-600 flex-shrink-0" />
                                 <div className="flex flex-col items-center">
-                                  <div className="text-xs text-gray-400 dark:text-gray-600 mb-0.5">
-                                    Duración
-                                  </div>
-                                  <div className="text-sm font-semibold text-gray-400 dark:text-gray-600">
-                                    -
-                                  </div>
+                                  <div className="text-xs text-gray-400 dark:text-gray-600 mb-0.5">Duración</div>
+                                  <div className="text-sm font-semibold text-gray-400 dark:text-gray-600">-</div>
                                 </div>
                               </div>
                               <div className="flex items-center justify-center space-x-2">
                                 <Users className="w-4 h-4 text-gray-400 dark:text-gray-600 flex-shrink-0" />
                                 <div className="flex flex-col items-center">
-                                  <div className="text-xs text-gray-400 dark:text-gray-600 mb-0.5">
-                                    Estudiantes
-                                  </div>
-                                  <div className="text-sm font-semibold text-gray-400 dark:text-gray-600">
-                                    -
-                                  </div>
+                                  <div className="text-xs text-gray-400 dark:text-gray-600 mb-0.5">Estudiantes</div>
+                                  <div className="text-sm font-semibold text-gray-400 dark:text-gray-600">-</div>
                                 </div>
                               </div>
                               <div className="flex items-center justify-center space-x-2">
                                 <Zap className="w-4 h-4 text-gray-400 dark:text-gray-600 flex-shrink-0" />
                                 <div className="flex flex-col items-center">
-                                  <div className="text-xs text-gray-400 dark:text-gray-600 mb-0.5">
-                                    Nivel
-                                  </div>
-                                  <div className="text-sm font-semibold text-gray-400 dark:text-gray-600">
-                                    -
-                                  </div>
+                                  <div className="text-xs text-gray-400 dark:text-gray-600 mb-0.5">Nivel</div>
+                                  <div className="text-sm font-semibold text-gray-400 dark:text-gray-600">-</div>
                                 </div>
                               </div>
                             </div>
@@ -1770,7 +1606,7 @@ export default function DashboardPage() {
                                 gap: '6px',
                                 fontSize: '0.875rem',
                                 cursor: 'not-allowed',
-                                border: 'none',
+                                border: 'none'
                               }}
                               className="opacity-50"
                             >
@@ -1829,9 +1665,7 @@ export default function DashboardPage() {
                             className="w-full h-full object-cover"
                             onError={(e) => {
                               const target = e.target as HTMLImageElement;
-                              if (
-                                !target.src?.endsWith('course-placeholder.jpg')
-                              ) {
+                              if (!target.src?.endsWith('course-placeholder.jpg')) {
                                 target.src = '/images/course-placeholder.jpg';
                               }
                             }}
@@ -1892,8 +1726,7 @@ export default function DashboardPage() {
                 {/* Botones de navegación */}
                 <button
                   onClick={() => {
-                    const container =
-                      document.getElementById('courses-carousel');
+                    const container = document.getElementById('courses-carousel');
                     if (container) {
                       container.scrollBy({ left: -400, behavior: 'smooth' });
                     }
@@ -1905,8 +1738,7 @@ export default function DashboardPage() {
 
                 <button
                   onClick={() => {
-                    const container =
-                      document.getElementById('courses-carousel');
+                    const container = document.getElementById('courses-carousel');
                     if (container) {
                       container.scrollBy({ left: 400, behavior: 'smooth' });
                     }
@@ -1925,10 +1757,7 @@ export default function DashboardPage() {
                   <div className="flex gap-6 md:gap-8 lg:gap-12 px-4 md:px-6 lg:px-20 xl:px-32 justify-start md:justify-center">
                     {/* Card Coming Soon Izquierda - Oculto en mobile */}
                     <div className="hidden md:flex flex-shrink-0 w-full md:w-[400px] lg:w-[500px]">
-                      <div
-                        className="bg-gray-100 dark:bg-gray-800 rounded-2xl overflow-hidden h-full"
-                        style={{ filter: 'grayscale(100%)' }}
-                      >
+                      <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl overflow-hidden h-full" style={{ filter: 'grayscale(100%)' }}>
                         <div className="relative aspect-video">
                           <div className="w-full h-full bg-gradient-to-br from-gray-300 to-gray-400 dark:from-gray-600 dark:to-gray-700 flex items-center justify-center">
                             <Play className="w-16 h-16 text-gray-400 dark:text-gray-600" />
@@ -1962,20 +1791,12 @@ export default function DashboardPage() {
                     <div className="flex-shrink-0 w-full md:w-[400px] lg:w-[500px]">
                       {realCourses[0] && (
                         <div
-                          onClick={() =>
-                            router.push(
-                              `/course/${realCourses[0].slug || realCourses[0].id}`,
-                            )
-                          }
+                          onClick={() => router.push(`/course/${realCourses[0].slug || realCourses[0].id}`)}
                           className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 cursor-pointer"
                         >
                           <div className="relative aspect-video">
                             <img
-                              src={
-                                realCourses[0].preview_image ||
-                                realCourses[0].thumbnail ||
-                                '/images/course-placeholder.jpg'
-                              }
+                              src={realCourses[0].preview_image || realCourses[0].thumbnail || '/images/course-placeholder.jpg'}
                               alt={realCourses[0].title}
                               className="w-full h-full object-cover"
                             />
@@ -1993,9 +1814,7 @@ export default function DashboardPage() {
                             </div>
                             <div className="absolute top-3 right-3 flex items-center space-x-1 bg-black/70 backdrop-blur-sm text-white px-3 py-1.5 rounded-full">
                               <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                              <span className="text-sm font-semibold">
-                                {realCourses[0]?.rating}
-                              </span>
+                              <span className="text-sm font-semibold">{realCourses[0]?.rating}</span>
                             </div>
                           </div>
                           <div className="p-6">
@@ -2009,26 +1828,15 @@ export default function DashboardPage() {
                               <div>
                                 <div className="flex items-center space-x-2">
                                   <span className="text-2xl font-black text-gray-900 dark:text-white">
-                                    $
-                                    {realCourses[0]
-                                      ? calculateFinalPrice(
-                                          realCourses[0],
-                                        ).toLocaleString('es-CO')
-                                      : '0'}
+                                    ${realCourses[0] ? calculateFinalPrice(realCourses[0]).toLocaleString('es-CO') : '0'}
                                   </span>
-                                  {realCourses[0]?.original_price &&
-                                    (realCourses[0]?.original_price || 0) >
-                                      (realCourses[0]?.price || 0) && (
-                                      <span className="text-lg text-gray-500 line-through">
-                                        $
-                                        {realCourses[0]?.original_price?.toLocaleString(
-                                          'es-CO',
-                                        )}
-                                      </span>
-                                    )}
+                                  {realCourses[0]?.original_price && (realCourses[0]?.original_price || 0) > (realCourses[0]?.price || 0) && (
+                                    <span className="text-lg text-gray-500 line-through">
+                                      ${realCourses[0]?.original_price?.toLocaleString('es-CO')}
+                                    </span>
+                                  )}
                                 </div>
-                                {(realCourses[0]?.discount_percentage || 0) >
-                                  0 && (
+                                {(realCourses[0]?.discount_percentage || 0) > 0 && (
                                   <span className="text-sm text-[#85ea10] font-semibold">
                                     {realCourses[0]?.discount_percentage}% OFF
                                   </span>
@@ -2038,9 +1846,7 @@ export default function DashboardPage() {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                router.push(
-                                  `/course/${realCourses[0]?.slug || realCourses[0]?.id}`,
-                                );
+                                router.push(`/course/${realCourses[0]?.slug || realCourses[0]?.id}`);
                               }}
                               className="w-full bg-[#85ea10] hover:bg-[#7dd30f] text-black font-bold py-3 rounded-lg transition-all duration-200 flex items-center justify-center space-x-2"
                             >
@@ -2054,10 +1860,7 @@ export default function DashboardPage() {
 
                     {/* Card Coming Soon Derecha - Oculto en mobile */}
                     <div className="hidden md:flex flex-shrink-0 w-full md:w-[400px] lg:w-[500px]">
-                      <div
-                        className="bg-gray-100 dark:bg-gray-800 rounded-2xl overflow-hidden h-full"
-                        style={{ filter: 'grayscale(100%)' }}
-                      >
+                      <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl overflow-hidden h-full" style={{ filter: 'grayscale(100%)' }}>
                         <div className="relative aspect-video">
                           <div className="w-full h-full bg-gradient-to-br from-gray-300 to-gray-400 dark:from-gray-600 dark:to-gray-700 flex items-center justify-center">
                             <Play className="w-16 h-16 text-gray-400 dark:text-gray-600" />
@@ -2091,6 +1894,7 @@ export default function DashboardPage() {
               </div>
             </div>
           )}
+
         </main>
 
         {/* Footer */}
@@ -2110,9 +1914,7 @@ export default function DashboardPage() {
             <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 w-full max-w-md">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {userProfile?.target_weight
-                    ? 'Establece una Meta Adicional'
-                    : 'Establece tu Meta'}
+                  {userProfile?.target_weight ? 'Establece una Meta Adicional' : 'Establece tu Meta'}
                 </h2>
                 <button
                   onClick={() => setShowGoalModal(false)}
@@ -2124,40 +1926,18 @@ export default function DashboardPage() {
 
               {/* Análisis de IMC */}
               {userProfile && (
-                <div
-                  className={`mb-6 p-4 rounded-xl border ${getBMIRecommendation(calculateBMI(userProfile.weight, userProfile.height)).bgColor} ${getBMIRecommendation(calculateBMI(userProfile.weight, userProfile.height)).borderColor}`}
-                >
+                <div className={`mb-6 p-4 rounded-xl border ${getBMIRecommendation(calculateBMI(userProfile.weight, userProfile.height)).bgColor} ${getBMIRecommendation(calculateBMI(userProfile.weight, userProfile.height)).borderColor}`}>
                   <div className="flex items-center space-x-2 mb-2">
-                    <Target
-                      className={`w-5 h-5 ${getBMIRecommendation(calculateBMI(userProfile.weight, userProfile.height)).color}`}
-                    />
-                    <h3
-                      className={`font-semibold ${getBMIRecommendation(calculateBMI(userProfile.weight, userProfile.height)).color}`}
-                    >
-                      {
-                        getBMIRecommendation(
-                          calculateBMI(userProfile.weight, userProfile.height),
-                        ).category
-                      }
+                    <Target className={`w-5 h-5 ${getBMIRecommendation(calculateBMI(userProfile.weight, userProfile.height)).color}`} />
+                    <h3 className={`font-semibold ${getBMIRecommendation(calculateBMI(userProfile.weight, userProfile.height)).color}`}>
+                      {getBMIRecommendation(calculateBMI(userProfile.weight, userProfile.height)).category}
                     </h3>
                   </div>
-                  <p
-                    className={`text-sm ${getBMIRecommendation(calculateBMI(userProfile.weight, userProfile.height)).color}`}
-                  >
-                    {
-                      getBMIRecommendation(
-                        calculateBMI(userProfile.weight, userProfile.height),
-                      ).message
-                    }
+                  <p className={`text-sm ${getBMIRecommendation(calculateBMI(userProfile.weight, userProfile.height)).color}`}>
+                    {getBMIRecommendation(calculateBMI(userProfile.weight, userProfile.height)).message}
                   </p>
                   <div className="mt-2 flex items-center space-x-2 text-xs text-gray-600 dark:text-gray-400">
-                    <span>
-                      IMC:{' '}
-                      {calculateBMI(
-                        userProfile.weight,
-                        userProfile.height,
-                      ).toFixed(1)}
-                    </span>
+                    <span>IMC: {calculateBMI(userProfile.weight, userProfile.height).toFixed(1)}</span>
                     <button
                       onClick={() => setShowBMIModal(true)}
                       className="bg-[#85ea10] hover:bg-[#7dd30f] text-white rounded-full p-1 transition-all duration-200 hover:scale-110 shadow-sm"
@@ -2178,12 +1958,7 @@ export default function DashboardPage() {
                   <input
                     type="number"
                     value={goalData.targetWeight}
-                    onChange={(e) =>
-                      setGoalData((prev) => ({
-                        ...prev,
-                        targetWeight: e.target.value,
-                      }))
-                    }
+                    onChange={(e) => setGoalData(prev => ({ ...prev, targetWeight: e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-200 dark:border-white/20 rounded-lg focus:ring-2 focus:ring-[#85ea10] focus:border-[#85ea10] bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                     placeholder="Ej: 65"
                     min="30"
@@ -2198,12 +1973,7 @@ export default function DashboardPage() {
                   <input
                     type="date"
                     value={goalData.deadline}
-                    onChange={(e) =>
-                      setGoalData((prev) => ({
-                        ...prev,
-                        deadline: e.target.value,
-                      }))
-                    }
+                    onChange={(e) => setGoalData(prev => ({ ...prev, deadline: e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-200 dark:border-white/20 rounded-lg focus:ring-2 focus:ring-[#85ea10] focus:border-[#85ea10] bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                     min={new Date().toISOString().split('T')[0]}
                   />
@@ -2211,9 +1981,7 @@ export default function DashboardPage() {
 
                 {goalError && (
                   <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
-                    <p className="text-red-600 dark:text-red-400 text-sm">
-                      {goalError}
-                    </p>
+                    <p className="text-red-600 dark:text-red-400 text-sm">{goalError}</p>
                   </div>
                 )}
               </div>
@@ -2221,11 +1989,7 @@ export default function DashboardPage() {
               {/* Botones */}
               <div className="flex space-x-3 mt-6">
                 <button
-                  onClick={
-                    isCustomizingGoal
-                      ? handleCancelGoalCustomization
-                      : () => setShowGoalModal(false)
-                  }
+                  onClick={isCustomizingGoal ? handleCancelGoalCustomization : () => setShowGoalModal(false)}
                   disabled={goalLoading}
                   className="flex-1 px-4 py-2 border border-gray-200 dark:border-white/20 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-white dark:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -2233,9 +1997,7 @@ export default function DashboardPage() {
                 </button>
                 <button
                   onClick={handleGoalSubmit}
-                  disabled={
-                    goalLoading || !goalData.targetWeight || !goalData.deadline
-                  }
+                  disabled={goalLoading || !goalData.targetWeight || !goalData.deadline}
                   className="flex-1 px-4 py-2 bg-[#85ea10] hover:bg-[#7dd30f] text-black font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                 >
                   {goalLoading ? (
@@ -2270,20 +2032,14 @@ export default function DashboardPage() {
 
               <div className="space-y-4">
                 <div>
-                  <h3 className="font-semibold text-gray-900 dark:text-white mb-2">
-                    ¿Qué significa?
-                  </h3>
+                  <h3 className="font-semibold text-gray-900 dark:text-white mb-2">¿Qué significa?</h3>
                   <p className="text-sm text-gray-600 dark:text-gray-300">
-                    El <strong>Índice de Masa Corporal (IMC)</strong> es una
-                    medida que relaciona tu peso con tu altura para evaluar si
-                    tienes un peso saludable.
+                    El <strong>Índice de Masa Corporal (IMC)</strong> es una medida que relaciona tu peso con tu altura para evaluar si tienes un peso saludable.
                   </p>
                 </div>
 
                 <div>
-                  <h3 className="font-semibold text-gray-900 dark:text-white mb-2">
-                    Fórmula:
-                  </h3>
+                  <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Fórmula:</h3>
                   <div className="bg-gray-100 dark:bg-white dark:bg-gray-800 p-3 rounded-lg">
                     <code className="text-sm text-gray-800 dark:text-gray-200">
                       IMC = Peso (kg) ÷ Altura (m)²
@@ -2292,54 +2048,30 @@ export default function DashboardPage() {
                 </div>
 
                 <div>
-                  <h3 className="font-semibold text-gray-900 dark:text-white mb-2">
-                    Clasificación:
-                  </h3>
+                  <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Clasificación:</h3>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-300">
-                        Bajo peso:
-                      </span>
-                      <span className="text-blue-600 font-medium">
-                        &lt; 18.5
-                      </span>
+                      <span className="text-gray-600 dark:text-gray-300">Bajo peso:</span>
+                      <span className="text-blue-600 font-medium">&lt; 18.5</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-300">
-                        Peso normal:
-                      </span>
-                      <span className="text-green-600 font-medium">
-                        18.5 - 24.9
-                      </span>
+                      <span className="text-gray-600 dark:text-gray-300">Peso normal:</span>
+                      <span className="text-green-600 font-medium">18.5 - 24.9</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-300">
-                        Sobrepeso:
-                      </span>
-                      <span className="text-orange-600 font-medium">
-                        25.0 - 29.9
-                      </span>
+                      <span className="text-gray-600 dark:text-gray-300">Sobrepeso:</span>
+                      <span className="text-orange-600 font-medium">25.0 - 29.9</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-300">
-                        Obesidad I:
-                      </span>
-                      <span className="text-red-600 font-medium">
-                        30.0 - 34.9
-                      </span>
+                      <span className="text-gray-600 dark:text-gray-300">Obesidad I:</span>
+                      <span className="text-red-600 font-medium">30.0 - 34.9</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-300">
-                        Obesidad II:
-                      </span>
-                      <span className="text-red-700 font-medium">
-                        35.0 - 39.9
-                      </span>
+                      <span className="text-gray-600 dark:text-gray-300">Obesidad II:</span>
+                      <span className="text-red-700 font-medium">35.0 - 39.9</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-300">
-                        Obesidad III:
-                      </span>
+                      <span className="text-gray-600 dark:text-gray-300">Obesidad III:</span>
                       <span className="text-red-800 font-medium">≥ 40.0</span>
                     </div>
                   </div>
@@ -2347,25 +2079,15 @@ export default function DashboardPage() {
 
                 <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
                   <p className="text-sm text-blue-800 dark:text-blue-200">
-                    <strong>Tu IMC actual:</strong>{' '}
-                    {calculateBMI(
-                      userProfile.weight,
-                      userProfile.height,
-                    ).toFixed(1)}
+                    <strong>Tu IMC actual:</strong> {calculateBMI(userProfile.weight, userProfile.height).toFixed(1)}
                     <br />
-                    <strong>Clasificación:</strong>{' '}
-                    {
-                      getBMIRecommendation(
-                        calculateBMI(userProfile.weight, userProfile.height),
-                      ).category
-                    }
+                    <strong>Clasificación:</strong> {getBMIRecommendation(calculateBMI(userProfile.weight, userProfile.height)).category}
                   </p>
                 </div>
 
                 <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3">
                   <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                    <strong>Nota:</strong> El IMC es una guía general. Consulta
-                    con un profesional de la salud para una evaluación completa.
+                    <strong>Nota:</strong> El IMC es una guía general. Consulta con un profesional de la salud para una evaluación completa.
                   </p>
                 </div>
               </div>

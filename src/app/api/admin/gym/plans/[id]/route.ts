@@ -1,20 +1,16 @@
-import { type NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { NextRequest, NextResponse } from 'next/server';
 import { getUser } from '@/lib/supabase-server';
-import type { GymPlanUpdate } from '@/types/gym';
+import { supabaseAdmin } from '@/lib/supabase';
+import { GymPlanUpdate } from '@/types/gym';
 
 function normalizeEmail(val?: string | null) {
   return (val || '').trim().toLowerCase();
 }
 
-function isAdminUser(
-  user: { id?: string; email?: string; user_metadata?: any } | null,
-) {
+function isAdminUser(user: { id?: string; email?: string; user_metadata?: any } | null) {
   if (!user) return false;
   const envId = (process.env.NEXT_PUBLIC_ADMIN_USER_ID || '').trim();
-  const envEmail = normalizeEmail(
-    process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'rogerbox@admin.com',
-  );
+  const envEmail = normalizeEmail(process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'rogerbox@admin.com');
   const matchId = !!envId && user.id === envId;
   const matchEmail = normalizeEmail(user.email) === envEmail;
   const matchRole = user.user_metadata?.role === 'admin';
@@ -23,12 +19,12 @@ function isAdminUser(
 
 // GET - Obtener un plan por ID
 export async function GET(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { user } = await getUser();
-
+    
     if (!isAdminUser(user)) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
@@ -43,34 +39,27 @@ export async function GET(
 
     if (error) {
       if (error.code === 'PGRST116') {
-        return NextResponse.json(
-          { error: 'Plan no encontrado' },
-          { status: 404 },
-        );
+        return NextResponse.json({ error: 'Plan no encontrado' }, { status: 404 });
       }
-      return NextResponse.json(
-        { error: 'Error al obtener plan' },
-        { status: 500 },
-      );
+      console.error('Error fetching gym plan:', error);
+      return NextResponse.json({ error: 'Error al obtener plan' }, { status: 500 });
     }
 
     return NextResponse.json(data);
-  } catch (_error) {
-    return NextResponse.json(
-      { error: 'Error interno del servidor' },
-      { status: 500 },
-    );
+  } catch (error) {
+    console.error('Error in GET /api/admin/gym/plans/[id]:', error);
+    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
   }
 }
 
 // PUT - Actualizar un plan
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { user } = await getUser();
-
+    
     if (!isAdminUser(user)) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
@@ -83,14 +72,14 @@ export async function PUT(
     if (price !== undefined && price <= 0) {
       return NextResponse.json(
         { error: 'El precio debe ser mayor a 0' },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
     if (duration_days !== undefined && duration_days <= 0) {
       return NextResponse.json(
         { error: 'La duración debe ser mayor a 0 días' },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
@@ -99,8 +88,7 @@ export async function PUT(
     };
 
     if (name !== undefined) updateData.name = name.trim();
-    if (description !== undefined)
-      updateData.description = description?.trim() || null;
+    if (description !== undefined) updateData.description = description?.trim() || null;
     if (price !== undefined) updateData.price = price;
     if (duration_days !== undefined) updateData.duration_days = duration_days;
     if (is_active !== undefined) updateData.is_active = is_active;
@@ -114,34 +102,27 @@ export async function PUT(
 
     if (error) {
       if (error.code === 'PGRST116') {
-        return NextResponse.json(
-          { error: 'Plan no encontrado' },
-          { status: 404 },
-        );
+        return NextResponse.json({ error: 'Plan no encontrado' }, { status: 404 });
       }
-      return NextResponse.json(
-        { error: 'Error al actualizar plan' },
-        { status: 500 },
-      );
+      console.error('Error updating gym plan:', error);
+      return NextResponse.json({ error: 'Error al actualizar plan' }, { status: 500 });
     }
 
     return NextResponse.json(data);
-  } catch (_error) {
-    return NextResponse.json(
-      { error: 'Error interno del servidor' },
-      { status: 500 },
-    );
+  } catch (error) {
+    console.error('Error in PUT /api/admin/gym/plans/[id]:', error);
+    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
   }
 }
 
 // DELETE - Eliminar un plan (soft delete: desactivar)
 export async function DELETE(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { user } = await getUser();
-
+    
     if (!isAdminUser(user)) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
@@ -151,17 +132,15 @@ export async function DELETE(
     // Verificar si hay membresías activas y vigentes usando este plan
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-
+    
     const { data: activeMemberships, error: checkError } = await supabaseAdmin
       .from('gym_memberships')
       .select('id, end_date, status')
       .eq('plan_id', id);
 
     if (checkError) {
-      return NextResponse.json(
-        { error: 'Error al verificar membresías' },
-        { status: 500 },
-      );
+      console.error('Error checking memberships:', checkError);
+      return NextResponse.json({ error: 'Error al verificar membresías' }, { status: 500 });
     }
 
     // Verificar si hay membresías activas y vigentes (no vencidas)
@@ -180,11 +159,11 @@ export async function DELETE(
       }).length;
 
       return NextResponse.json(
-        {
+        { 
           error: `No se puede eliminar este plan porque tiene ${activeCount} ${activeCount === 1 ? 'usuario activo' : 'usuarios activos'}. Debe esperar a que todas las membresías venzan o desactivar el plan en su lugar.`,
-          activeMembershipsCount: activeCount,
+          activeMembershipsCount: activeCount
         },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
@@ -201,25 +180,15 @@ export async function DELETE(
 
     if (error) {
       if (error.code === 'PGRST116') {
-        return NextResponse.json(
-          { error: 'Plan no encontrado' },
-          { status: 404 },
-        );
+        return NextResponse.json({ error: 'Plan no encontrado' }, { status: 404 });
       }
-      return NextResponse.json(
-        { error: 'Error al eliminar plan' },
-        { status: 500 },
-      );
+      console.error('Error deleting gym plan:', error);
+      return NextResponse.json({ error: 'Error al eliminar plan' }, { status: 500 });
     }
 
-    return NextResponse.json({
-      message: 'Plan desactivado exitosamente',
-      data,
-    });
-  } catch (_error) {
-    return NextResponse.json(
-      { error: 'Error interno del servidor' },
-      { status: 500 },
-    );
+    return NextResponse.json({ message: 'Plan desactivado exitosamente', data });
+  } catch (error) {
+    console.error('Error in DELETE /api/admin/gym/plans/[id]:', error);
+    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
   }
 }

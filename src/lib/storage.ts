@@ -13,10 +13,7 @@ export interface UploadResult {
  * @param quality - Calidad de compresión (0-1, recomendado: 0.85)
  * @returns Promise<File> - Archivo WebP convertido
  */
-async function convertToWebP(
-  file: File,
-  quality: number = 0.85,
-): Promise<File> {
+async function convertToWebP(file: File, quality: number = 0.85): Promise<File> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -25,31 +22,31 @@ async function convertToWebP(
         const canvas = document.createElement('canvas');
         canvas.width = img.width;
         canvas.height = img.height;
-
+        
         const ctx = canvas.getContext('2d');
         if (!ctx) {
           reject(new Error('No se pudo obtener contexto del canvas'));
           return;
         }
-
+        
         ctx.drawImage(img, 0, 0);
-
+        
         canvas.toBlob(
           (blob) => {
             if (!blob) {
               reject(new Error('Error al convertir imagen a WebP'));
               return;
             }
-
+            
             const webpFile = new File(
               [blob],
               file.name.replace(/\.[^/.]+$/, '.webp'),
-              { type: 'image/webp' },
+              { type: 'image/webp' }
             );
             resolve(webpFile);
           },
           'image/webp',
-          quality,
+          quality
         );
       };
       img.onerror = () => reject(new Error('Error al cargar la imagen'));
@@ -76,26 +73,29 @@ export async function uploadImage(
   folder: string,
   filename?: string,
   shouldConvertToWebP: boolean = true,
-  quality: number = 0.85,
+  quality: number = 0.85
 ): Promise<UploadResult> {
   try {
     let fileToUpload = file;
-
+    
     // Convertir a WebP si está habilitado y el archivo no es ya WebP
     if (shouldConvertToWebP && !file.type.includes('webp')) {
+      console.log('🔄 Convirtiendo imagen a WebP...');
       try {
         fileToUpload = await convertToWebP(file, quality);
-      } catch (_error) {
+        console.log(`✅ Imagen convertida a WebP: ${file.size} bytes → ${fileToUpload.size} bytes (${Math.round((1 - fileToUpload.size / file.size) * 100)}% reducción)`);
+      } catch (error) {
+        console.warn('⚠️ Error al convertir a WebP, subiendo imagen original:', error);
         // Continuar con el archivo original si falla la conversión
       }
     }
-
+    
     // Generar nombre único si no se proporciona
     const fileExtension = fileToUpload.name.split('.').pop() || 'webp';
-    const finalFilename =
-      filename ||
-      `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExtension}`;
-    const _filePath = `${folder}/${finalFilename}`;
+    const finalFilename = filename || `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExtension}`;
+    const filePath = `${folder}/${finalFilename}`;
+
+    console.log(`📤 Subiendo imagen a ${bucket}/${filePath} (${fileToUpload.size} bytes)`);
 
     // Subir archivo usando el endpoint API (más seguro, usa supabaseAdmin en el servidor)
     const formData = new FormData();
@@ -108,37 +108,41 @@ export async function uploadImage(
 
     const response = await fetch('/api/storage/upload', {
       method: 'POST',
-      body: formData,
+      body: formData
     });
 
     if (!response.ok) {
-      const errorData = await response
-        .json()
-        .catch(() => ({ error: 'Error desconocido' }));
+      const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
+      console.error('❌ Error subiendo imagen:', errorData.error);
       return {
         success: false,
-        error: errorData.error || 'Error al subir la imagen',
+        error: errorData.error || 'Error al subir la imagen'
       };
     }
 
     const result = await response.json();
 
     if (!result.success || !result.url) {
+      console.error('❌ Error en respuesta del servidor:', result.error);
       return {
         success: false,
-        error: result.error || 'Error al subir la imagen',
+        error: result.error || 'Error al subir la imagen'
       };
     }
+
+    console.log('✅ Imagen subida exitosamente:', result.url);
 
     return {
       success: true,
       url: result.url,
-      path: result.path,
+      path: result.path
     };
+
   } catch (error) {
+    console.error('❌ Error inesperado subiendo imagen:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Error desconocido',
+      error: error instanceof Error ? error.message : 'Error desconocido'
     };
   }
 }
@@ -151,16 +155,25 @@ export async function uploadImage(
  */
 export async function deleteImage(
   bucket: 'course-image' | 'lesson-image' | 'lesson-images',
-  path: string,
+  path: string
 ): Promise<boolean> {
   try {
-    const { error } = await supabase.storage.from(bucket).remove([path]);
+    console.log(`🗑️ Eliminando imagen de ${bucket}/${path}`);
+
+    const { error } = await supabase.storage
+      .from(bucket)
+      .remove([path]);
 
     if (error) {
+      console.error('❌ Error eliminando imagen:', error);
       return false;
     }
+
+    console.log('✅ Imagen eliminada exitosamente');
     return true;
-  } catch (_error) {
+
+  } catch (error) {
+    console.error('❌ Error inesperado eliminando imagen:', error);
     return false;
   }
 }
@@ -175,12 +188,13 @@ export function getImagePathFromUrl(url: string): string | null {
     // Extraer el path de la URL de Supabase Storage
     // Ejemplo: https://vzearvitzpwzscxhqfut.supabase.co/storage/v1/object/public/course-image/courses/123.jpg
     // Resultado: courses/123.jpg
-    const match = url.match(/\/storage\/v1\/object\/public\/([^/]+)\/(.+)$/);
-    if (match?.[2]) {
+    const match = url.match(/\/storage\/v1\/object\/public\/([^\/]+)\/(.+)$/);
+    if (match && match[2]) {
       return match[2];
     }
     return null;
-  } catch (_error) {
+  } catch (error) {
+    console.error('❌ Error extrayendo path de URL:', error);
     return null;
   }
 }
@@ -201,9 +215,10 @@ export function isSupabaseStorageUrl(url: string): boolean {
  */
 export function getBucketFromUrl(url: string): string | null {
   try {
-    const match = url.match(/\/storage\/v1\/object\/public\/([^/]+)\//);
+    const match = url.match(/\/storage\/v1\/object\/public\/([^\/]+)\//);
     return match ? match[1] : null;
-  } catch (_error) {
+  } catch (error) {
     return null;
   }
 }
+

@@ -1,24 +1,9 @@
 'use client';
 
-import {
-  BookOpen,
-  ChevronDown,
-  Clock,
-  Filter,
-  LogOut,
-  Play,
-  Search,
-  Star,
-  Target,
-  Trophy,
-  User,
-  Users,
-  Utensils,
-} from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
-
+import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
+import { Play, Clock, Users, Star, Filter, Search, ChevronRight, Trophy, Target, Zap, Utensils, BookOpen, ChefHat, User, LogOut, ChevronDown, Settings, Bookmark } from 'lucide-react';
 // ComplementSection removed - focusing on courses only
 
 interface Course {
@@ -57,25 +42,31 @@ export default function CourseDashboard({ userProfile }: CourseDashboardProps) {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
+  // Lógica inteligente para determinar el estado del usuario
+  console.log('CourseDashboard - userProfile:', userProfile);
+  console.log('CourseDashboard - goals:', userProfile?.goals);
+  console.log('CourseDashboard - goals length:', userProfile?.goals?.length);
+  
   const isNewUser = !userProfile?.goals || userProfile.goals.length === 0;
-  const _hasCompletedOnboarding =
-    userProfile?.goals && userProfile.goals.length > 0;
+  const hasCompletedOnboarding = userProfile?.goals && userProfile.goals.length > 0;
   const hasEnrolledCourses = false; // TODO: Implementar lógica real de cursos inscritos
+  
+  console.log('CourseDashboard - isNewUser:', isNewUser);
+  console.log('CourseDashboard - hasCompletedOnboarding:', hasCompletedOnboarding);
 
   const handleLogout = async () => {
     try {
       await handleSignOut();
       router.push('/');
-    } catch (_error) {}
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
   };
 
   // Close user menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (
-        userMenuRef.current &&
-        !userMenuRef.current.contains(event.target as Node)
-      ) {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
         setShowUserMenu(false);
       }
     };
@@ -93,7 +84,7 @@ export default function CourseDashboard({ userProfile }: CourseDashboardProps) {
     { id: 'gain_muscle', name: 'Ganar Músculo', icon: '🏋️' },
     { id: 'endurance', name: 'Resistencia', icon: '🏃' },
     { id: 'hiit', name: 'HIIT', icon: '⚡' },
-    { id: 'strength', name: 'Fuerza', icon: '💪' },
+    { id: 'strength', name: 'Fuerza', icon: '💪' }
   ];
 
   const defaultCourses: Course[] = [
@@ -108,10 +99,9 @@ export default function CourseDashboard({ userProfile }: CourseDashboardProps) {
       students: 2847,
       price: 89,
       thumbnail: '/images/curso-transformacion.jpg',
-      description:
-        'Programa completo de transformación física en 90 días con desbloqueo diario de clases.',
+      description: 'Programa completo de transformación física en 90 días con desbloqueo diario de clases.',
       lessons: 90,
-      isRecommended: userProfile?.goals?.includes('lose_weight') || false,
+      isRecommended: userProfile?.goals?.includes('lose_weight') || false
     },
     {
       id: '2',
@@ -124,10 +114,9 @@ export default function CourseDashboard({ userProfile }: CourseDashboardProps) {
       students: 1456,
       price: 69,
       thumbnail: '/images/curso-hiit.jpg',
-      description:
-        'Entrenamiento de alta intensidad para quemar grasa y tonificar músculos.',
+      description: 'Entrenamiento de alta intensidad para quemar grasa y tonificar músculos.',
       lessons: 21,
-      isRecommended: userProfile?.goals?.includes('hiit') || false,
+      isRecommended: userProfile?.goals?.includes('hiit') || false
     },
     {
       id: '3',
@@ -140,10 +129,9 @@ export default function CourseDashboard({ userProfile }: CourseDashboardProps) {
       students: 1923,
       price: 79,
       thumbnail: '/images/curso-fuerza.jpg',
-      description:
-        'Desarrolla fuerza muscular con ejercicios progresivos y técnicas avanzadas.',
+      description: 'Desarrolla fuerza muscular con ejercicios progresivos y técnicas avanzadas.',
       lessons: 60,
-      isRecommended: userProfile?.goals?.includes('strength') || false,
+      isRecommended: userProfile?.goals?.includes('strength') || false
     },
     {
       id: '4',
@@ -156,10 +144,9 @@ export default function CourseDashboard({ userProfile }: CourseDashboardProps) {
       students: 2156,
       price: 59,
       thumbnail: '/images/curso-cardio.jpg',
-      description:
-        'Entrenamientos cardiovasculares de alta intensidad para llevar tu resistencia al límite.',
+      description: 'Entrenamientos cardiovasculares de alta intensidad para llevar tu resistencia al límite.',
       lessons: 30,
-      isRecommended: userProfile?.goals?.includes('endurance') || false,
+      isRecommended: userProfile?.goals?.includes('endurance') || false
     },
     {
       id: '5',
@@ -172,10 +159,9 @@ export default function CourseDashboard({ userProfile }: CourseDashboardProps) {
       students: 1543,
       price: 69,
       thumbnail: '/images/curso-tonificacion.jpg',
-      description:
-        'Define y tonifica tu cuerpo con ejercicios específicos para cada grupo muscular.',
+      description: 'Define y tonifica tu cuerpo con ejercicios específicos para cada grupo muscular.',
       lessons: 45,
-      isRecommended: userProfile?.goals?.includes('tone') || false,
+      isRecommended: userProfile?.goals?.includes('tone') || false
     },
     {
       id: '6',
@@ -188,25 +174,20 @@ export default function CourseDashboard({ userProfile }: CourseDashboardProps) {
       students: 987,
       price: 99,
       thumbnail: '/images/curso-musculo.jpg',
-      description:
-        'Maximiza tu crecimiento muscular con ejercicios de alta intensidad.',
+      description: 'Maximiza tu crecimiento muscular con ejercicios de alta intensidad.',
       lessons: 75,
-      isRecommended: userProfile?.goals?.includes('gain_muscle') || false,
-    },
+      isRecommended: userProfile?.goals?.includes('gain_muscle') || false
+    }
   ];
 
-  const filteredCourses = defaultCourses.filter((course) => {
-    const matchesCategory =
-      selectedCategory === 'all' || course.category === selectedCategory;
-    const matchesSearch =
-      course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      course.instructor.toLowerCase().includes(searchQuery.toLowerCase());
+  const filteredCourses = defaultCourses.filter(course => {
+    const matchesCategory = selectedCategory === 'all' || course.category === selectedCategory;
+    const matchesSearch = course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          course.instructor.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
   });
 
-  const recommendedCourses = defaultCourses.filter(
-    (course) => course.isRecommended,
-  );
+  const recommendedCourses = defaultCourses.filter(course => course.isRecommended);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#164151]/80 via-[#29839c]/70 to-[#29839c]/60 text-white">
@@ -221,7 +202,7 @@ export default function CourseDashboard({ userProfile }: CourseDashboardProps) {
                   ROGER<span className="text-[#85ea10]">BOX</span>
                 </h1>
               </div>
-
+              
               {/* User Profile Menu */}
               <div className="relative" ref={userMenuRef}>
                 <button
@@ -232,28 +213,18 @@ export default function CourseDashboard({ userProfile }: CourseDashboardProps) {
                     <User className="w-5 h-5 text-black" />
                   </div>
                   <div className="text-left text-white">
-                    <div className="font-semibold text-sm">
-                      {userProfile?.name || 'Usuario'}
-                    </div>
-                    <div className="text-xs text-white/60">
-                      {userProfile?.email || 'email@ejemplo.com'}
-                    </div>
+                    <div className="font-semibold text-sm">{userProfile?.name || 'Usuario'}</div>
+                    <div className="text-xs text-white/60">{userProfile?.email || 'email@ejemplo.com'}</div>
                   </div>
-                  <ChevronDown
-                    className={`w-4 h-4 text-white transition-transform duration-200 ${showUserMenu ? 'rotate-180' : ''}`}
-                  />
+                  <ChevronDown className={`w-4 h-4 text-white transition-transform duration-200 ${showUserMenu ? 'rotate-180' : ''}`} />
                 </button>
 
                 {/* Dropdown Menu */}
                 {showUserMenu && (
                   <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
                     <div className="px-4 py-3 border-b border-gray-100">
-                      <div className="font-semibold text-gray-900">
-                        {userProfile?.name || 'Usuario'}
-                      </div>
-                      <div className="text-sm text-gray-600">
-                        {userProfile?.email || 'email@ejemplo.com'}
-                      </div>
+                      <div className="font-semibold text-gray-900">{userProfile?.name || 'Usuario'}</div>
+                      <div className="text-sm text-gray-600">{userProfile?.email || 'email@ejemplo.com'}</div>
                     </div>
                     <div className="py-1">
                       <button
@@ -290,10 +261,12 @@ export default function CourseDashboard({ userProfile }: CourseDashboardProps) {
               ¡Hola, {userProfile?.name || 'Usuario'}! 👋
             </h2>
             <p className="text-white/80">
-              {isNewUser
+              {isNewUser 
                 ? '¡Bienvenido a RogerBox! Comienza tu transformación'
-                : 'Listo para tu próxima sesión de entrenamiento'}
+                : 'Listo para tu próxima sesión de entrenamiento'
+              }
             </p>
+            
           </div>
 
           {/* Complement Section - Prioridad para usuarios nuevos */}
@@ -311,7 +284,7 @@ export default function CourseDashboard({ userProfile }: CourseDashboardProps) {
                   Ver todos
                 </button>
               </div>
-
+              
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {/* Sample enrolled course */}
                 <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20 hover:bg-white/15 transition-all duration-300">
@@ -324,14 +297,14 @@ export default function CourseDashboard({ userProfile }: CourseDashboardProps) {
                       <span className="text-sm font-medium">4.8</span>
                     </div>
                   </div>
-
+                  
                   <h4 className="text-xl font-bold text-white mb-2">
                     HIIT para Principiantes
                   </h4>
                   <p className="text-white/60 mb-4">
                     Rutinas de alta intensidad perfectas para empezar
                   </p>
-
+                  
                   <div className="flex items-center justify-between text-sm text-white/60 mb-4">
                     <div className="flex items-center space-x-1">
                       <Clock className="w-4 h-4" />
@@ -342,26 +315,23 @@ export default function CourseDashboard({ userProfile }: CourseDashboardProps) {
                       <span>1,234 estudiantes</span>
                     </div>
                   </div>
-
+                  
                   <div className="mb-4">
                     <div className="flex justify-between text-sm text-white/60 mb-1">
                       <span>Progreso</span>
                       <span>3/8 clases</span>
                     </div>
                     <div className="w-full bg-white/20 rounded-full h-2">
-                      <div
-                        className="bg-[#85ea10] h-2 rounded-full"
-                        style={{ width: '37.5%' }}
-                      ></div>
+                      <div className="bg-[#85ea10] h-2 rounded-full" style={{ width: '37.5%' }}></div>
                     </div>
                   </div>
-
+                  
                   <button className="w-full bg-[#85ea10] hover:bg-[#7dd30f] text-black font-bold py-3 px-6 rounded-xl transition-all duration-300 flex items-center justify-center space-x-2">
                     <Play className="w-5 h-5" />
                     <span>Continuar</span>
                   </button>
                 </div>
-
+                
                 {/* Sample completed course */}
                 <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20 hover:bg-white/15 transition-all duration-300">
                   <div className="flex items-center justify-between mb-4">
@@ -373,14 +343,14 @@ export default function CourseDashboard({ userProfile }: CourseDashboardProps) {
                       <span className="text-sm font-medium">4.9</span>
                     </div>
                   </div>
-
+                  
                   <h4 className="text-xl font-bold text-white mb-2">
                     Cardio Intenso
                   </h4>
                   <p className="text-white/60 mb-4">
                     Entrenamientos cardiovasculares de alta intensidad
                   </p>
-
+                  
                   <div className="flex items-center justify-between text-sm text-white/60 mb-4">
                     <div className="flex items-center space-x-1">
                       <Clock className="w-4 h-4" />
@@ -391,26 +361,23 @@ export default function CourseDashboard({ userProfile }: CourseDashboardProps) {
                       <span>2,156 estudiantes</span>
                     </div>
                   </div>
-
+                  
                   <div className="mb-4">
                     <div className="flex justify-between text-sm text-white/60 mb-1">
                       <span>Progreso</span>
                       <span>8/8 clases</span>
                     </div>
                     <div className="w-full bg-white/20 rounded-full h-2">
-                      <div
-                        className="bg-green-500 h-2 rounded-full"
-                        style={{ width: '100%' }}
-                      ></div>
+                      <div className="bg-green-500 h-2 rounded-full" style={{ width: '100%' }}></div>
                     </div>
                   </div>
-
+                  
                   <button className="w-full bg-white/20 hover:bg-white/30 text-white font-bold py-3 px-6 rounded-xl transition-all duration-300 flex items-center justify-center space-x-2">
                     <Trophy className="w-5 h-5" />
                     <span>Ver Certificado</span>
                   </button>
                 </div>
-
+                
                 {/* Empty state for more courses */}
                 <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-6 border border-white/10 hover:bg-white/10 transition-all duration-300 flex items-center justify-center">
                   <div className="text-center">
@@ -426,6 +393,8 @@ export default function CourseDashboard({ userProfile }: CourseDashboardProps) {
               </div>
             </div>
           )}
+          
+
 
           {/* Complement Section - Prioridad para usuarios nuevos */}
           {/* Complement section removed - focusing on courses only */}
@@ -442,7 +411,7 @@ export default function CourseDashboard({ userProfile }: CourseDashboardProps) {
                   Ver todos
                 </button>
               </div>
-
+              
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {/* Sample enrolled course */}
                 <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20 hover:bg-white/15 transition-all duration-300">
@@ -455,14 +424,14 @@ export default function CourseDashboard({ userProfile }: CourseDashboardProps) {
                       <span className="text-sm font-medium">4.8</span>
                     </div>
                   </div>
-
+                  
                   <h4 className="text-xl font-bold text-white mb-2">
                     HIIT para Principiantes
                   </h4>
                   <p className="text-white/60 mb-4">
                     Rutinas de alta intensidad perfectas para empezar
                   </p>
-
+                  
                   <div className="flex items-center justify-between text-sm text-white/60 mb-4">
                     <div className="flex items-center space-x-1">
                       <Clock className="w-4 h-4" />
@@ -473,26 +442,23 @@ export default function CourseDashboard({ userProfile }: CourseDashboardProps) {
                       <span>1,234 estudiantes</span>
                     </div>
                   </div>
-
+                  
                   <div className="mb-4">
                     <div className="flex justify-between text-sm text-white/60 mb-1">
                       <span>Progreso</span>
                       <span>3/8 clases</span>
                     </div>
                     <div className="w-full bg-white/20 rounded-full h-2">
-                      <div
-                        className="bg-[#85ea10] h-2 rounded-full"
-                        style={{ width: '37.5%' }}
-                      ></div>
+                      <div className="bg-[#85ea10] h-2 rounded-full" style={{ width: '37.5%' }}></div>
                     </div>
                   </div>
-
+                  
                   <button className="w-full bg-[#85ea10] hover:bg-[#7dd30f] text-black font-bold py-3 px-6 rounded-xl transition-all duration-300 flex items-center justify-center space-x-2">
                     <Play className="w-5 h-5" />
                     <span>Continuar</span>
                   </button>
                 </div>
-
+                
                 {/* Sample completed course */}
                 <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20 hover:bg-white/15 transition-all duration-300">
                   <div className="flex items-center justify-between mb-4">
@@ -504,14 +470,14 @@ export default function CourseDashboard({ userProfile }: CourseDashboardProps) {
                       <span className="text-sm font-medium">4.9</span>
                     </div>
                   </div>
-
+                  
                   <h4 className="text-xl font-bold text-white mb-2">
                     Cardio Intenso
                   </h4>
                   <p className="text-white/60 mb-4">
                     Entrenamientos cardiovasculares de alta intensidad
                   </p>
-
+                  
                   <div className="flex items-center justify-between text-sm text-white/60 mb-4">
                     <div className="flex items-center space-x-1">
                       <Clock className="w-4 h-4" />
@@ -522,26 +488,23 @@ export default function CourseDashboard({ userProfile }: CourseDashboardProps) {
                       <span>2,156 estudiantes</span>
                     </div>
                   </div>
-
+                  
                   <div className="mb-4">
                     <div className="flex justify-between text-sm text-white/60 mb-1">
                       <span>Progreso</span>
                       <span>8/8 clases</span>
                     </div>
                     <div className="w-full bg-white/20 rounded-full h-2">
-                      <div
-                        className="bg-green-500 h-2 rounded-full"
-                        style={{ width: '100%' }}
-                      ></div>
+                      <div className="bg-green-500 h-2 rounded-full" style={{ width: '100%' }}></div>
                     </div>
                   </div>
-
+                  
                   <button className="w-full bg-white/20 hover:bg-white/30 text-white font-bold py-3 px-6 rounded-xl transition-all duration-300 flex items-center justify-center space-x-2">
                     <Trophy className="w-5 h-5" />
                     <span>Ver Certificado</span>
                   </button>
                 </div>
-
+                
                 {/* Empty state for more courses */}
                 <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-6 border border-white/10 hover:bg-white/10 transition-all duration-300 flex items-center justify-center">
                   <div className="text-center">
@@ -557,6 +520,8 @@ export default function CourseDashboard({ userProfile }: CourseDashboardProps) {
               </div>
             </div>
           )}
+          
+
 
           {/* Recommended Courses Section */}
           <div id="recommended-courses" className="mb-8">
@@ -564,16 +529,12 @@ export default function CourseDashboard({ userProfile }: CourseDashboardProps) {
               {isNewUser ? 'Cursos Destacados' : 'Cursos Recomendados para Ti'}
             </h3>
             <p className="text-white/80 mb-6">
-              {isNewUser
+              {isNewUser 
                 ? 'Descubre nuestros cursos más populares y comienza tu transformación'
-                : `Basado en tus objetivos: ${
-                    userProfile?.goals
-                      ?.map(
-                        (goal) =>
-                          categories.find((cat) => cat.id === goal)?.name,
-                      )
-                      .join(', ') || 'Todos los cursos'
-                  }`}
+                : `Basado en tus objetivos: ${userProfile?.goals?.map(goal => 
+                    categories.find(cat => cat.id === goal)?.name
+                  ).join(', ') || 'Todos los cursos'}`
+              }
             </p>
 
             {/* Search and Filter */}
@@ -595,12 +556,8 @@ export default function CourseDashboard({ userProfile }: CourseDashboardProps) {
                   value={selectedCategory}
                   onChange={(e) => setSelectedCategory(e.target.value)}
                 >
-                  {categories.map((category) => (
-                    <option
-                      key={category.id}
-                      value={category.id}
-                      className="bg-gray-800 text-white"
-                    >
+                  {categories.map(category => (
+                    <option key={category.id} value={category.id} className="bg-gray-800 text-white">
                       {category.name}
                     </option>
                   ))}
@@ -639,11 +596,7 @@ export default function CourseDashboard({ userProfile }: CourseDashboardProps) {
                     <div
                       key={course.id}
                       className="bg-black/40 rounded-2xl overflow-hidden border border-white/20 hover:border-[#85ea10] transition-all duration-300 group cursor-pointer"
-                      onClick={() =>
-                        router.push(
-                          `/course/${(course as any).slug || course.id}`,
-                        )
-                      }
+                      onClick={() => router.push(`/course/${(course as any).slug || course.id}`)}
                     >
                       {/* Course card content */}
                       <div className="p-6">
@@ -653,19 +606,17 @@ export default function CourseDashboard({ userProfile }: CourseDashboardProps) {
                           </span>
                           <div className="flex items-center space-x-1 text-yellow-400">
                             <Star className="w-4 h-4 fill-current" />
-                            <span className="text-sm font-medium">
-                              {course.rating}
-                            </span>
+                            <span className="text-sm font-medium">{course.rating}</span>
                           </div>
                         </div>
-
+                        
                         <h4 className="text-xl font-bold text-white mb-2">
                           {course.title}
                         </h4>
                         <p className="text-white/60 mb-4">
                           {course.description}
                         </p>
-
+                        
                         <div className="flex items-center justify-between text-sm text-white/60 mb-4">
                           <div className="flex items-center space-x-1">
                             <Clock className="w-4 h-4" />
@@ -673,12 +624,10 @@ export default function CourseDashboard({ userProfile }: CourseDashboardProps) {
                           </div>
                           <div className="flex items-center space-x-1">
                             <Users className="w-4 h-4" />
-                            <span>
-                              {course.students.toLocaleString()} estudiantes
-                            </span>
+                            <span>{course.students.toLocaleString()} estudiantes</span>
                           </div>
                         </div>
-
+                        
                         <button className="w-full bg-[#85ea10] hover:bg-[#7dd30f] text-black font-bold py-3 px-6 rounded-xl transition-all duration-300 flex items-center justify-center space-x-2">
                           <Play className="w-5 h-5" />
                           <span>Ver Curso</span>
@@ -693,20 +642,15 @@ export default function CourseDashboard({ userProfile }: CourseDashboardProps) {
             {/* All Courses */}
             <div className="mb-8">
               <h4 className="text-xl font-bold text-white mb-6">
-                {selectedCategory === 'all'
-                  ? 'Todos los Cursos'
-                  : categories.find((cat) => cat.id === selectedCategory)?.name}
+                {selectedCategory === 'all' ? 'Todos los Cursos' : 
+                 categories.find(cat => cat.id === selectedCategory)?.name}
               </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredCourses.map((course) => (
+                {filteredCourses.map(course => (
                   <div
                     key={course.id}
                     className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20 hover:bg-white/15 transition-all duration-300 cursor-pointer"
-                    onClick={() =>
-                      router.push(
-                        `/course/${(course as any).slug || course.id}`,
-                      )
-                    }
+                    onClick={() => router.push(`/course/${(course as any).slug || course.id}`)}
                   >
                     <div className="flex items-center justify-between mb-4">
                       <span className="bg-blue-500 text-white px-3 py-1 rounded-full text-sm font-bold">
@@ -714,17 +658,17 @@ export default function CourseDashboard({ userProfile }: CourseDashboardProps) {
                       </span>
                       <div className="flex items-center space-x-1 text-yellow-400">
                         <Star className="w-4 h-4 fill-current" />
-                        <span className="text-sm font-medium">
-                          {course.rating}
-                        </span>
+                        <span className="text-sm font-medium">{course.rating}</span>
                       </div>
                     </div>
-
+                    
                     <h4 className="text-xl font-bold text-white mb-2">
                       {course.title}
                     </h4>
-                    <p className="text-white/60 mb-4">{course.description}</p>
-
+                    <p className="text-white/60 mb-4">
+                      {course.description}
+                    </p>
+                    
                     <div className="flex items-center justify-between text-sm text-white/60 mb-4">
                       <div className="flex items-center space-x-1">
                         <Clock className="w-4 h-4" />
@@ -732,12 +676,10 @@ export default function CourseDashboard({ userProfile }: CourseDashboardProps) {
                       </div>
                       <div className="flex items-center space-x-1">
                         <Users className="w-4 h-4" />
-                        <span>
-                          {course.students.toLocaleString()} estudiantes
-                        </span>
+                        <span>{course.students.toLocaleString()} estudiantes</span>
                       </div>
                     </div>
-
+                    
                     <button className="w-full bg-[#85ea10] hover:bg-[#7dd30f] text-black font-bold py-3 px-6 rounded-xl transition-all duration-300 flex items-center justify-center space-x-2">
                       <Play className="w-5 h-5" />
                       <span>Ver Curso</span>

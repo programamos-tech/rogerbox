@@ -10,12 +10,12 @@ interface ImageWithFallbackProps {
   fallbackColor?: string;
 }
 
-export default function ImageWithFallback({
-  src,
-  alt,
-  className = '',
+export default function ImageWithFallback({ 
+  src, 
+  alt, 
+  className = '', 
   fallbackText = 'IMAGE',
-  fallbackColor = '4F46E5',
+  fallbackColor = '4F46E5'
 }: ImageWithFallbackProps) {
   const [imageError, setImageError] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -30,11 +30,11 @@ export default function ImageWithFallback({
 
   if (imageError) {
     return (
-      <div
+      <div 
         className={`bg-gradient-to-br from-${fallbackColor}-500 to-${fallbackColor}-600 flex items-center justify-center text-white font-bold ${className}`}
-        style={{
+        style={{ 
           background: `linear-gradient(135deg, #${fallbackColor}, #${fallbackColor}CC)`,
-          minHeight: '100%',
+          minHeight: '100%'
         }}
       >
         <div className="text-center">
