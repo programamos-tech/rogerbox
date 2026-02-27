@@ -4,8 +4,6 @@ import { supabase } from '@/lib/supabase';
 
 export async function POST() {
   try {
-    console.log('🌱 Iniciando seed de complementos...');
-
     const sampleComplements = [
       {
         title: 'Rutina de Cardio Intenso',
@@ -108,21 +106,15 @@ export async function POST() {
         });
 
         if (error) {
-          console.error(
-            `❌ Error agregando "${complement.title}":`,
-            error.message,
-          );
           results.push({
             title: complement.title,
             status: 'error',
             error: error.message,
           });
         } else {
-          console.log(`✅ "${complement.title}" agregado correctamente`);
           results.push({ title: complement.title, status: 'success' });
         }
       } catch (error) {
-        console.error(`❌ Error inesperado con "${complement.title}":`, error);
         const message =
           error instanceof Error ? error.message : 'Unknown error';
         results.push({
@@ -139,7 +131,6 @@ export async function POST() {
       .select('id, title, category, is_new');
 
     if (fetchError) {
-      console.error('Error verificando complementos:', fetchError);
     }
 
     return NextResponse.json({
@@ -149,7 +140,6 @@ export async function POST() {
       totalComplements: allComplements?.length || 0,
     });
   } catch (error) {
-    console.error('Error en seed de complementos:', error);
     return NextResponse.json(
       {
         success: false,

@@ -506,9 +506,7 @@ class AppStore {
         }));
         return parsed;
       }
-    } catch (error) {
-      console.error('Error loading state from localStorage:', error);
-    }
+    } catch (error) {}
 
     return defaultState;
   }
@@ -518,9 +516,7 @@ class AppStore {
 
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
-    } catch (error) {
-      console.error('Error saving state to localStorage:', error);
-    }
+    } catch (error) {}
   }
 
   private notify() {

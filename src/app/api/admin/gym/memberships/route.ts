@@ -65,7 +65,6 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query;
 
     if (error) {
-      console.error('Error fetching gym memberships:', error);
       return NextResponse.json(
         { error: 'Error al obtener membresías' },
         { status: 500 },
@@ -74,7 +73,6 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(data || []);
   } catch (error) {
-    console.error('Error in GET /api/admin/gym/memberships:', error);
     return NextResponse.json(
       { error: 'Error interno del servidor' },
       { status: 500 },
@@ -220,7 +218,6 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error('Error creating gym membership:', error);
       return NextResponse.json(
         { error: 'Error al crear membresía' },
         { status: 500 },
@@ -244,7 +241,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ ...data, isAdvancePayment }, { status: 201 });
   } catch (error) {
-    console.error('Error in POST /api/admin/gym/memberships:', error);
     return NextResponse.json(
       { error: 'Error interno del servidor' },
       { status: 500 },

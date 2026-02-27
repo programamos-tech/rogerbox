@@ -199,9 +199,7 @@ export default function CourseCreator({
           if (draft.currentStep) setCurrentStep(draft.currentStep);
           if (draft.courseData?.price)
             setFormattedPrice(formatPrice(draft.courseData.price));
-        } catch (e) {
-          console.warn('Error cargando borrador:', e);
-        }
+        } catch (e) {}
       }
     }
   }, [courseToEdit]);
@@ -221,51 +219,11 @@ export default function CourseCreator({
   // Cargar datos del curso a editar
   useEffect(() => {
     if (courseToEdit) {
-      console.log('🔍 CourseCreator - courseToEdit recibido:', courseToEdit);
-      console.log(
-        '🔍 CourseCreator - lessons en courseToEdit:',
-        courseToEdit.lessons,
-      );
-      console.log(
-        '🔍 CourseCreator - price:',
-        courseToEdit.price,
-        'type:',
-        typeof courseToEdit.price,
-      );
-      console.log(
-        '🔍 CourseCreator - duration_days:',
-        courseToEdit.duration_days,
-        'type:',
-        typeof courseToEdit.duration_days,
-      );
-      console.log(
-        '🔍 CourseCreator - calories_burned:',
-        courseToEdit.calories_burned,
-        'type:',
-        typeof courseToEdit.calories_burned,
-      );
-      console.log(
-        '🔍 CourseCreator - category:',
-        courseToEdit.category,
-        'type:',
-        typeof courseToEdit.category,
-      );
-
       if (courseToEdit.lessons && courseToEdit.lessons.length > 0) {
-        console.log(
-          '🔍 CourseCreator - Primera lección:',
-          courseToEdit.lessons[0],
-        );
-        console.log(
-          '🔍 CourseCreator - duration_minutes primera lección:',
-          courseToEdit.lessons[0]?.duration_minutes,
-        );
       }
 
       // Mantener el ID de la categoría para la comparación
       const categoryValue = courseToEdit.category || '';
-      console.log('🔍 CourseCreator - categoryValue original:', categoryValue);
-
       const newCourseData = {
         title: courseToEdit.title || '',
         slug: courseToEdit.slug || '',
@@ -295,23 +253,6 @@ export default function CourseCreator({
         // iva_percentage: courseToEdit.iva_percentage !== undefined ? courseToEdit.iva_percentage : 19 // Temporalmente deshabilitado
       };
 
-      console.log(
-        '🔍 CourseCreator - newCourseData establecido:',
-        newCourseData,
-      );
-      console.log(
-        '🔍 CourseCreator - category en newCourseData:',
-        newCourseData.category,
-      );
-      console.log(
-        '🔍 CourseCreator - mux_playback_id en newCourseData:',
-        newCourseData.mux_playback_id,
-      );
-      console.log(
-        '🔍 CourseCreator - courseToEdit.mux_playback_id:',
-        courseToEdit.mux_playback_id,
-      );
-
       setCourseData(newCourseData);
 
       // Formatear precio para mostrar
@@ -319,13 +260,8 @@ export default function CourseCreator({
 
       // Cargar lecciones del curso
       if (courseToEdit.lessons) {
-        console.log(
-          '✅ CourseCreator - Cargando lecciones:',
-          courseToEdit.lessons,
-        );
         setLessons(courseToEdit.lessons);
       } else {
-        console.log('❌ CourseCreator - No hay lecciones en courseToEdit');
       }
     }
   }, [courseToEdit, categories]);
@@ -336,8 +272,6 @@ export default function CourseCreator({
     lessonIndex?: number,
   ) => {
     try {
-      console.log(`📤 Procesando imagen ${type}:`, file.name);
-
       // Determinar el bucket y folder según el tipo
       const bucket = type === 'course' ? 'course-image' : 'lesson-images';
       const folder = type === 'course' ? 'courses' : 'lessons';
@@ -350,7 +284,6 @@ export default function CourseCreator({
           : `lesson-${Date.now()}-${lessonIndex}.${fileExtension}`;
 
       // Subir imagen a Supabase Storage
-      console.log(`📤 Subiendo imagen a ${bucket}/${folder}/${filename}...`);
       const uploadResult = await uploadImage(file, bucket, folder, filename);
 
       if (!uploadResult.success || !uploadResult.url) {
@@ -358,8 +291,6 @@ export default function CourseCreator({
           uploadResult.error || 'Error desconocido al subir la imagen',
         );
       }
-
-      console.log('✅ Imagen subida exitosamente a Storage:', uploadResult.url);
 
       // Actualizar el estado con la URL de Storage
       if (type === 'course') {
@@ -373,7 +304,6 @@ export default function CourseCreator({
         setLessons(updatedLessons);
       }
     } catch (error) {
-      console.error('❌ Error procesando imagen:', error);
       setValidationErrors([
         `Error al procesar la imagen: ${error instanceof Error ? error.message : 'Error desconocido'}`,
       ]);
@@ -392,21 +322,17 @@ export default function CourseCreator({
         const path = getImagePathFromUrl(imageUrl);
 
         if (bucket && path) {
-          console.log(`🗑️ Eliminando imagen de Storage: ${bucket}/${path}`);
           const deleted = await deleteImage(
             bucket as 'course-image' | 'lesson-images',
             path,
           );
 
           if (deleted) {
-            console.log('✅ Imagen eliminada de Storage');
           } else {
-            console.warn('⚠️ No se pudo eliminar la imagen de Storage');
           }
         }
       } else if (imageUrl.startsWith('data:image')) {
         // Si es base64, no hay nada que eliminar en Storage
-        console.log('ℹ️ Imagen es base64, no se elimina de Storage');
       }
 
       // Eliminar del estado local
@@ -415,13 +341,8 @@ export default function CourseCreator({
       } else if (type === 'lesson') {
         // Necesitamos el índice de la lección, pero esta función no lo tiene
         // Por ahora, solo logueamos
-        console.log(
-          'ℹ️ Para eliminar imagen de lección, usar la función específica de la lección',
-        );
       }
-    } catch (error) {
-      console.error('❌ Error eliminando imagen:', error);
-    }
+    } catch (error) {}
   };
 
   const handleDrag = (e: React.DragEvent) => {
@@ -558,43 +479,6 @@ export default function CourseCreator({
       lessonsValid &&
       lessonsContentValid;
 
-    console.log('🔍 isFormValid - Validando formulario:');
-    console.log(
-      '  - titleValid:',
-      titleValid,
-      '(',
-      courseData.title.trim(),
-      ')',
-    );
-    console.log('  - slugValid:', slugValid, '(', courseData.slug.trim(), ')');
-    console.log(
-      '  - shortDescriptionValid:',
-      shortDescriptionValid,
-      '(',
-      courseData.short_description.trim(),
-      ')',
-    );
-    console.log('  - priceValid:', priceValid, '(', courseData.price, ')');
-    console.log(
-      '  - categoryValid:',
-      categoryValid,
-      '(',
-      courseData.category,
-      ')',
-    );
-    console.log(
-      '  - durationValid:',
-      durationValid,
-      '(',
-      courseData.duration_days,
-      ')',
-    );
-    console.log('  - levelValid:', levelValid, '(', courseData.level, ')');
-    console.log('  - lessonsValid:', lessonsValid, '(', lessons.length, ')');
-    console.log('  - lessonsContentValid:', lessonsContentValid);
-    console.log('  - lessons:', lessons);
-    console.log('  - isValid:', isValid);
-
     return isValid;
   };
 
@@ -710,13 +594,6 @@ export default function CourseCreator({
         // Temporalmente sin IVA hasta resolver problema de caché de Supabase
       };
 
-      console.log('Creando curso con datos:', courseDataToSubmit);
-      console.log('Lecciones:', lessons);
-      console.log(
-        '🔍 mux_playback_id en courseDataToSubmit:',
-        courseDataToSubmit.mux_playback_id,
-      );
-
       // Crear o actualizar el curso
       let course;
       let courseError;
@@ -749,11 +626,6 @@ export default function CourseCreator({
       }
 
       if (courseError) {
-        console.error('Error completo de Supabase:', courseError);
-        console.error('Mensaje de error:', courseError.message);
-        console.error('Código de error:', courseError.code);
-        console.error('Detalles de error:', courseError.details);
-
         // Manejo específico para errores de esquema (temporalmente deshabilitado)
         // if (courseError.message.includes('schema cache') || courseError.message.includes('include_iva')) {
         //   throw new Error('Error de esquema de base de datos. Las columnas de IVA no están disponibles. Por favor, contacta al administrador.');
@@ -764,17 +636,10 @@ export default function CourseCreator({
         );
       }
 
-      console.log(
-        `Curso ${courseToEdit ? 'actualizado' : 'creado'} exitosamente:`,
-        course,
-      );
-
       // Manejar lecciones
       if (lessons.length > 0) {
         if (courseToEdit) {
           // Actualizar lecciones existentes
-          console.log('Actualizando lecciones existentes...');
-
           // PASO 1: Primero, resetear todos los lesson_number a valores temporales negativos
           // para evitar conflictos con la restricción única
           const { data: existingLessons } = await supabase
@@ -813,10 +678,6 @@ export default function CourseCreator({
                 .eq('id', lesson.id);
 
               if (updateError) {
-                console.error(
-                  `Error actualizando lección ${i + 1}:`,
-                  updateError,
-                );
                 throw new Error(
                   `Error al actualizar la lección ${i + 1}: ${updateError.message}`,
                 );
@@ -833,7 +694,6 @@ export default function CourseCreator({
                 ]);
 
               if (insertError) {
-                console.error(`Error creando lección ${i + 1}:`, insertError);
                 throw new Error(
                   `Error al crear la lección ${i + 1}: ${insertError.message}`,
                 );
@@ -857,16 +717,10 @@ export default function CourseCreator({
                 );
 
               if (deleteError) {
-                console.error(
-                  'Error eliminando lecciones obsoletas:',
-                  deleteError,
-                );
                 // No lanzar error aquí, solo loguear
               }
             }
           }
-
-          console.log('Lecciones actualizadas exitosamente');
         } else {
           // Crear nuevas lecciones para curso nuevo
           const lessonsWithCourseId = lessons.map((lesson, index) => ({
@@ -876,20 +730,15 @@ export default function CourseCreator({
             lesson_order: index + 1,
           }));
 
-          console.log('Creando lecciones:', lessonsWithCourseId);
-
           const { error: lessonsError } = await supabase
             .from('course_lessons')
             .insert(lessonsWithCourseId);
 
           if (lessonsError) {
-            console.error('Error creando lecciones:', lessonsError);
             throw new Error(
               `Error al crear las lecciones: ${lessonsError.message}`,
             );
           }
-
-          console.log('Lecciones creadas exitosamente');
         }
       }
 
@@ -897,7 +746,6 @@ export default function CourseCreator({
       clearDraft(); // Limpiar borrador al guardar exitosamente
       onSuccess();
     } catch (error: any) {
-      console.error('Error creating course:', error);
       setValidationErrors([
         `Error al ${courseToEdit ? 'actualizar' : 'crear'} el curso: ${error.message || 'Error desconocido'}`,
       ]);

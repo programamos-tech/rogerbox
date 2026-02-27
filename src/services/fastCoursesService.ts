@@ -38,9 +38,7 @@ class FastCoursesService {
       if (videoId) {
         return `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
       }
-    } catch (error) {
-      console.warn('Error al extraer video ID de YouTube:', error);
-    }
+    } catch (error) {}
     return '/images/course-placeholder.jpg';
   }
 
@@ -50,17 +48,14 @@ class FastCoursesService {
   async getCourses(forceRefresh = false): Promise<FastCourse[]> {
     // Si hay caché válido y no se fuerza refresh, devolver inmediatamente
     if (!forceRefresh && this.cache && this.isCacheValid()) {
-      console.log('⚡ FastCourses: Usando caché instantáneo');
       return this.cache;
     }
 
     // Si ya está cargando, esperar
     if (this.loading) {
-      console.log('⏳ FastCourses: Ya está cargando, esperando...');
       return this.waitForCache();
     }
 
-    console.log('🚀 FastCourses: Cargando desde DB...');
     this.loading = true;
     const startTime = performance.now();
 
@@ -87,7 +82,6 @@ class FastCoursesService {
         .limit(20); // Limitar para velocidad
 
       if (error) {
-        console.error('❌ FastCourses: Error:', error);
         throw error;
       }
 
@@ -143,18 +137,12 @@ class FastCoursesService {
       this.loading = false;
 
       const endTime = performance.now();
-      console.log(
-        `⚡ FastCourses: Cargados en ${(endTime - startTime).toFixed(2)}ms`,
-      );
-
       return courses;
     } catch (error) {
-      console.error('❌ FastCourses: Error:', error);
       this.loading = false;
 
       // Devolver caché anterior si existe
       if (this.cache) {
-        console.log('🔄 FastCourses: Usando caché anterior por error');
         return this.cache;
       }
 
@@ -191,7 +179,6 @@ class FastCoursesService {
   clearCache(): void {
     this.cache = null;
     this.cacheTimestamp = 0;
-    console.log('🗑️ FastCourses: Caché limpiado');
   }
 
   /**

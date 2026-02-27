@@ -45,7 +45,6 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query;
 
     if (error) {
-      console.error('Error fetching gym plans:', error);
       return NextResponse.json(
         { error: 'Error al obtener planes' },
         { status: 500 },
@@ -72,7 +71,6 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(plansWithCounts);
   } catch (error) {
-    console.error('Error in GET /api/admin/gym/plans:', error);
     return NextResponse.json(
       { error: 'Error interno del servidor' },
       { status: 500 },
@@ -128,7 +126,6 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error('Error creating gym plan:', error);
       return NextResponse.json(
         { error: 'Error al crear plan' },
         { status: 500 },
@@ -137,7 +134,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(data, { status: 201 });
   } catch (error) {
-    console.error('Error in POST /api/admin/gym/plans:', error);
     return NextResponse.json(
       { error: 'Error interno del servidor' },
       { status: 500 },

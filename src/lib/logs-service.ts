@@ -25,7 +25,5 @@ export async function insertLog(entry: LogInsert): Promise<void> {
       details: entry.details ?? {},
       store_id: entry.store_id ?? null,
     });
-  } catch (e) {
-    console.error('[logs-service] insertLog', e);
-  }
+  } catch (e) {}
 }

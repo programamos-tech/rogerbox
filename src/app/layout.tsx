@@ -74,8 +74,6 @@ export default function RootLayout({
               (function() {
                 var checkWompi = setInterval(function() {
                   if (typeof window.WidgetCheckout !== 'undefined') {
-                    console.log('✅ Script de Wompi cargado correctamente');
-                    console.log('🔍 window.WidgetCheckout disponible:', typeof window.WidgetCheckout);
                     clearInterval(checkWompi);
                   }
                 }, 100);

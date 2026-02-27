@@ -327,13 +327,10 @@ export default function DashboardPage() {
             .order('lesson_order', { ascending: true });
 
           if (lessonsError) {
-            console.log('ℹ️ Información: lessons:', lessonsError);
           } else {
             realLessons = lessonsData || [];
           }
-        } catch (error) {
-          console.log('ℹ️ Información: lessons:', error);
-        }
+        } catch (error) {}
       }
 
       // Si no hay lecciones en la DB, usar datos de ejemplo como fallback
@@ -433,10 +430,6 @@ export default function DashboardPage() {
       // Si no hay próxima lección, usar la primera
       setNextLesson(nextAvailableLesson || mockLessons[0]);
     } catch (error) {
-      console.log(
-        'ℹ️ No se pudieron cargar cursos comprados (puede ser normal si no hay compras):',
-        error,
-      );
     } finally {
       setLoadingPurchasedCourses(false);
     }
@@ -512,7 +505,6 @@ export default function DashboardPage() {
       const data = await response.json();
       setNutritionalBlogs(data.blogs || []);
     } catch (error) {
-      console.log('ℹ️ Información: nutritional blogs:', error);
       setNutritionalBlogs([]);
     } finally {
       setLoadingBlogs(false);
@@ -529,8 +521,6 @@ export default function DashboardPage() {
     const fetchUserProfile = async () => {
       if (user?.id) {
         try {
-          console.log('Dashboard: Buscando perfil para ID:', user.id);
-
           const { data, error } = await supabase
             .from('profiles')
             .select('*')
@@ -539,7 +529,6 @@ export default function DashboardPage() {
 
           // Si no hay perfil, redirigir al onboarding
           if (!data) {
-            console.log('Dashboard: No hay perfil, redirigiendo al onboarding');
             router.push('/onboarding');
             return;
           }
@@ -551,23 +540,15 @@ export default function DashboardPage() {
             typeof data.weight === 'number' && data.weight > 0;
 
           if (!hasValidHeight || !hasValidWeight) {
-            console.log('Dashboard: Perfil incompleto', {
-              height: data.height,
-              weight: data.weight,
-              hasValidHeight,
-              hasValidWeight,
-            });
             router.push('/onboarding');
             return;
           }
 
           if (error) {
-            console.error('❌ Error al cargar perfil de usuario:', error);
             setLoading(false);
             return;
           }
 
-          console.log('Dashboard: Perfil encontrado:', data);
           setUserProfile(data);
 
           // Generar sugerencia de meta si no tiene target_weight establecido
@@ -590,7 +571,6 @@ export default function DashboardPage() {
 
           setLoading(false);
         } catch (error) {
-          console.error('❌ Error inesperado en dashboard:', error);
           setLoading(false);
         }
       }
@@ -635,10 +615,6 @@ export default function DashboardPage() {
           })),
         ]);
       } catch (error) {
-        console.log(
-          'ℹ️ No se pudieron cargar categorías (puede ser normal si no hay categorías creadas):',
-          error,
-        );
         // No mostrar error, simplemente mantener las categorías por defecto
       }
     };
@@ -711,8 +687,6 @@ export default function DashboardPage() {
     setGoalError('');
 
     try {
-      console.log('Aceptando meta sugerida:', suggestion);
-
       if (!userProfile?.id) {
         throw new Error('No se encontró el ID del usuario');
       }
@@ -729,13 +703,10 @@ export default function DashboardPage() {
         .select();
 
       if (error) {
-        console.error('❌ Error al actualizar meta:', error);
         throw new Error(
           `Error al establecer la meta: ${error.message || 'Error desconocido'}`,
         );
       }
-
-      console.log('Meta establecida exitosamente:', data);
 
       // Actualizar el perfil local
       setUserProfile((prev) =>
@@ -758,7 +729,6 @@ export default function DashboardPage() {
       // Resetear estado de personalización
       setIsCustomizingGoal(false);
     } catch (error: any) {
-      console.error('❌ Error al aceptar meta:', error);
       setGoalError(
         error.message || 'Error al establecer la meta. Inténtalo de nuevo.',
       );
@@ -829,7 +799,6 @@ export default function DashboardPage() {
         );
 
       if (weightRecordError) {
-        console.error('❌ Error al guardar peso:', weightRecordError);
       }
 
       // Actualizar también el peso actual en el perfil
@@ -843,7 +812,6 @@ export default function DashboardPage() {
         .eq('id', user.id);
 
       if (profileError) {
-        console.error('Error actualizando perfil:', profileError);
       }
 
       // Actualizar el perfil local
@@ -854,11 +822,7 @@ export default function DashboardPage() {
           last_weight_update: today,
         });
       }
-
-      console.log('Peso actualizado:', weight);
-    } catch (error) {
-      console.error('Error al actualizar peso:', error);
-    }
+    } catch (error) {}
   };
 
   const handleGoalSubmit = async () => {
@@ -871,9 +835,6 @@ export default function DashboardPage() {
     setGoalError('');
 
     try {
-      console.log('Actualizando meta para usuario:', userProfile?.id);
-      console.log('Datos de la meta:', goalData);
-
       // Verificar que tenemos el ID del usuario
       if (!userProfile?.id) {
         throw new Error('No se encontró el ID del usuario');
@@ -887,11 +848,8 @@ export default function DashboardPage() {
         .single();
 
       if (fetchError) {
-        console.error('Error obteniendo perfil:', fetchError);
         throw new Error('No se pudo obtener el perfil del usuario');
       }
-
-      console.log('Perfil encontrado:', existingProfile);
 
       // Actualizar solo los campos de meta
       const { data, error } = await supabase
@@ -905,14 +863,10 @@ export default function DashboardPage() {
         .select();
 
       if (error) {
-        console.error('Error de Supabase al actualizar:', error);
-        console.error('Detalles del error:', JSON.stringify(error, null, 2));
         throw new Error(
           `Error al actualizar la meta: ${error.message || 'Error desconocido'}`,
         );
       }
-
-      console.log('Meta actualizada exitosamente:', data);
 
       // Actualizar el perfil local
       setUserProfile((prev) =>
@@ -931,7 +885,6 @@ export default function DashboardPage() {
       // Recargar la página para reflejar los cambios
       window.location.reload();
     } catch (error: any) {
-      console.error('❌ Error al actualizar meta:', error);
       setGoalError(
         error.message || 'Error al actualizar la meta. Inténtalo de nuevo.',
       );
@@ -1142,22 +1095,6 @@ export default function DashboardPage() {
                   if (!purchase) return null;
 
                   // Debug: Verificar datos del purchase
-                  console.log('🔍 Dashboard Banner: Purchase data:', {
-                    purchase_id: purchase.id,
-                    course_id: purchase.course_id,
-                    has_course: !!purchase.course,
-                    course_title: purchase.course?.title || 'NO COURSE',
-                    course_preview_image: purchase.course?.preview_image
-                      ? purchase.course.preview_image.substring(0, 100) + '...'
-                      : 'NO IMAGE',
-                    is_base64:
-                      purchase.course?.preview_image?.startsWith(
-                        'data:image',
-                      ) || false,
-                    preview_image_length:
-                      purchase.course?.preview_image?.length || 0,
-                  });
-
                   // Verificar si hay clase disponible hoy
                   const hasAvailableClass = (() => {
                     if (!purchase.start_date) return false;
@@ -1194,11 +1131,6 @@ export default function DashboardPage() {
                   };
 
                   const imageUrl = getImageUrl();
-                  console.log(
-                    '🔍 Banner: URL final de imagen (siempre placeholder):',
-                    imageUrl,
-                  );
-
                   return (
                     <div
                       key={purchase.id}
@@ -1589,10 +1521,6 @@ export default function DashboardPage() {
                       >
                         <div
                           onClick={(e) => {
-                            console.log(
-                              '🖱️ Dashboard card clicked:',
-                              course.title,
-                            );
                             router.push(`/course/${course.slug || course.id}`);
                           }}
                           className="flex flex-col md:flex-row bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl hover:shadow-[#85ea10]/10 hover:border-[#85ea10]/30 transition-all duration-200 rounded-2xl cursor-pointer w-full overflow-hidden h-auto md:h-full"

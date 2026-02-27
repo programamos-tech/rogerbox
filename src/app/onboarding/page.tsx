@@ -24,7 +24,6 @@ export default function OnboardingPage() {
           data: { session: currentSession },
         } = await supabase.auth.getSession();
         if (!currentSession?.user) {
-          console.log('Onboarding: No hay sesión, redirigiendo a login');
           router.push('/login');
           return;
         }
@@ -44,7 +43,6 @@ export default function OnboardingPage() {
     const currentUser = currentSession?.user || user;
 
     if (!currentUser?.id) {
-      console.error('No hay usuario autenticado');
       alert('Error: No hay sesión activa. Por favor, inicia sesión de nuevo.');
       router.push('/login');
       return;
@@ -53,15 +51,9 @@ export default function OnboardingPage() {
     setIsUpdating(true);
 
     try {
-      console.log('=== ONBOARDING: Guardando perfil ===');
-      console.log('User ID:', currentUser.id);
-      console.log('User email:', currentUser.email);
-      console.log('Profile data:', profileData);
-
       const accessToken = currentSession?.access_token;
 
       if (!accessToken) {
-        console.error('No hay token de acceso');
         alert('Error de autenticación. Por favor, recarga la página.');
         setIsUpdating(false);
         return;
@@ -80,18 +72,14 @@ export default function OnboardingPage() {
       const result = await response.json();
 
       if (!response.ok) {
-        console.error('Error de API:', result);
         alert(`Error al guardar: ${result.error || 'Error desconocido'}`);
         setIsUpdating(false);
         return;
       }
 
-      console.log('✅ Perfil guardado:', result.data);
-
       // Redirigir al dashboard - usar window.location para forzar recarga completa
       window.location.href = '/dashboard';
     } catch (error) {
-      console.error('Error inesperado:', error);
       alert('Error inesperado. Intenta de nuevo.');
       setIsUpdating(false);
     }

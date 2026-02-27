@@ -118,20 +118,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
 
           // Debug: verificar si el plan se encontró
           if (planId && !plan) {
-            console.log('🔍 Plan no encontrado:', {
-              planIdBuscado: planId,
-              planesDisponibles: plans.map((p) => ({
-                id: p.id,
-                name: p.name,
-                is_active: p.is_active,
-              })),
-              totalPlanes: plans.length,
-            });
           } else if (planId && plan) {
-            console.log('✅ Plan encontrado:', {
-              id: plan.id,
-              name: plan.name,
-            });
           }
 
           // Solo procesar si encontramos al menos uno de los dos
@@ -177,11 +164,6 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                 }, 300);
               }
             } else if (planId) {
-              // Si el plan no se encontró, mostrar un error
-              console.warn(
-                `Plan con ID ${planId} no encontrado en la lista de planes disponibles. Planes disponibles:`,
-                plans.map((p) => ({ id: p.id, name: p.name })),
-              );
               setError(
                 `El plan seleccionado no está disponible. Por favor, selecciona otro plan.`,
               );
@@ -304,7 +286,6 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
           }
         }
       } catch (error) {
-        console.error('Error checking membership:', error);
       } finally {
         setCheckingMembership(false);
       }
@@ -331,7 +312,6 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
         // Cargar todos los planes (activos e inactivos) para permitir pagar planes vencidos
         setPlans(plansData || []);
       } catch (error) {
-        console.error('Error loading data:', error);
         setError('Error al cargar datos');
       } finally {
         setLoading(false);
@@ -347,7 +327,6 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
         // Manejar tanto la estructura antigua (array) como la nueva ({ payments: [...] })
         setPayments(Array.isArray(data) ? data : data.payments || []);
       } catch (error) {
-        console.error('Error loading payments:', error);
       } finally {
         setLoadingPayments(false);
       }
@@ -770,7 +749,6 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
         const fileName = `factura-${payment.invoice_number || payment.id.substring(0, 8)}-${new Date(payment.payment_date).toISOString().split('T')[0]}.pdf`;
         pdf.save(fileName);
       } catch (error) {
-        console.error('Error generando PDF:', error);
         alert('Error al generar la factura. Por favor, intenta nuevamente.');
       } finally {
         // Limpiar el elemento temporal

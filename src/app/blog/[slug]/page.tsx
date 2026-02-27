@@ -51,7 +51,6 @@ export default function BlogPostPage() {
         setError('Error al cargar el blog');
       }
     } catch (error) {
-      console.error('Error fetching blog:', error);
       setError('Error al cargar el blog');
     } finally {
       setLoading(false);

@@ -543,7 +543,6 @@ function AdminDashboardContent() {
 
       setStats(data);
     } catch (error) {
-      console.error('Error loading admin data:', error);
     } finally {
       setLoading(false);
     }
@@ -615,7 +614,6 @@ function AdminDashboardContent() {
 
       setRevenueStats(statsBySede);
     } catch (error) {
-      console.error('Error loading revenue stats:', error);
     } finally {
       setLoadingRevenue(false);
     }
@@ -700,7 +698,6 @@ function AdminDashboardContent() {
 
       setWeeklyData(weeklyDataArray);
     } catch (error) {
-      console.error('Error loading weekly data:', error);
     } finally {
       setLoadingWeeklyData(false);
     }
@@ -751,7 +748,6 @@ function AdminDashboardContent() {
           .order('created_at', { ascending: false });
 
         if (gymError) {
-          console.error('Error loading gym payments:', gymError);
         } else if (gymPayments) {
           // Agregar tipo de sede a cada pago
           gymPayments.forEach((payment: any) => {
@@ -782,7 +778,6 @@ function AdminDashboardContent() {
           .order('created_at', { ascending: false });
 
         if (ordersError) {
-          console.error('Error loading orders:', ordersError);
         } else if (orders) {
           // Transformar orders a formato similar a payments
           orders.forEach((order: any) => {
@@ -818,7 +813,6 @@ function AdminDashboardContent() {
 
       setDailyPayments(allPayments);
     } catch (error) {
-      console.error('Error loading daily payments:', error);
       setDailyPayments([]);
     } finally {
       setLoadingDailyPayments(false);
@@ -883,7 +877,6 @@ function AdminDashboardContent() {
         .not('birth_date', 'is', null);
 
       if (error) {
-        console.error('Error loading birthday clients:', error);
         setBirthdayClients([]);
         return;
       }
@@ -903,7 +896,6 @@ function AdminDashboardContent() {
 
           // Validar que tenga el formato correcto YYYY-MM-DD
           if (!/^\d{4}-\d{2}-\d{2}$/.test(birthDateStr)) {
-            console.warn('Formato de fecha inválido:', client.birth_date);
             return false;
           }
         } else {
@@ -912,7 +904,6 @@ function AdminDashboardContent() {
           const tempDate = new Date(client.birth_date);
           // Verificar que la fecha sea válida
           if (isNaN(tempDate.getTime())) {
-            console.warn('Fecha inválida:', client.birth_date);
             return false;
           }
           const year = tempDate.getFullYear();
@@ -924,7 +915,6 @@ function AdminDashboardContent() {
         // Extraer mes y día directamente del string (evitar problemas de zona horaria)
         const parts = birthDateStr.split('-');
         if (parts.length !== 3) {
-          console.warn('Fecha no tiene formato YYYY-MM-DD:', birthDateStr);
           return false;
         }
 
@@ -935,11 +925,6 @@ function AdminDashboardContent() {
 
         // Validar que los valores sean válidos
         if (isNaN(birthYear) || isNaN(birthMonthNum) || isNaN(birthDayNum)) {
-          console.warn('Valores de fecha inválidos:', {
-            birthYear,
-            birthMonthNum,
-            birthDayNum,
-          });
           return false;
         }
 
@@ -949,10 +934,6 @@ function AdminDashboardContent() {
           birthDayNum < 1 ||
           birthDayNum > 31
         ) {
-          console.warn('Valores de fecha fuera de rango:', {
-            birthMonthNum,
-            birthDayNum,
-          });
           return false;
         }
 
@@ -1025,20 +1006,6 @@ function AdminDashboardContent() {
 
         // Debug temporal para Ana Julia
         if (client.name && client.name.toLowerCase().includes('ana julia')) {
-          console.log('🔍 Debug Ana Julia:', {
-            nombre: client.name,
-            birth_date_original: client.birth_date,
-            birth_date_type: typeof client.birth_date,
-            birthDateStr: birthDateStr,
-            birthMonthNum,
-            birthDayNum,
-            datesInRange,
-            matches,
-            searchStartDate_str: startDate,
-            searchEndDate_str: endDate,
-            searchStartDate_parsed: `${startYear}-${String(startMonth).padStart(2, '0')}-${String(startDay).padStart(2, '0')}`,
-            searchEndDate_parsed: `${endYear}-${String(endMonth).padStart(2, '0')}-${String(endDay).padStart(2, '0')}`,
-          });
         }
 
         return matches;
@@ -1067,7 +1034,6 @@ function AdminDashboardContent() {
 
       setBirthdayClients(clientsWithAge);
     } catch (error) {
-      console.error('Error loading birthday clients:', error);
       setBirthdayClients([]);
     } finally {
       setLoadingBirthdays(false);
@@ -1099,7 +1065,6 @@ function AdminDashboardContent() {
       if (error) throw error;
       setCourses(data || []);
     } catch (error) {
-      console.error('Error loading courses:', error);
     } finally {
       setLoadingCourses(false);
     }
@@ -1134,7 +1099,6 @@ function AdminDashboardContent() {
         },
       );
     } catch (error) {
-      console.error('Error loading users:', error);
     } finally {
       setLoadingUsers(false);
     }
@@ -1200,7 +1164,6 @@ function AdminDashboardContent() {
 
       setSales(salesWithProfiles);
     } catch (error) {
-      console.error('Error loading sales:', error);
     } finally {
       setLoadingSales(false);
     }
@@ -1224,9 +1187,7 @@ function AdminDashboardContent() {
             : course,
         ),
       );
-    } catch (error) {
-      console.error('Error updating course status:', error);
-    }
+    } catch (error) {}
   };
 
   const editCourse = (courseId: string) => {
@@ -1248,16 +1209,7 @@ function AdminDashboardContent() {
     try {
       setConfirmDialog((prev) => ({ ...prev, isLoading: true }));
 
-      console.log('🗑️ Intentando eliminar curso:', { courseId, courseTitle });
-      console.log('🔍 Configuración Supabase:', {
-        url: process.env.NEXT_PUBLIC_SUPABASE_URL || 'N/A',
-        hasServiceKey:
-          !!process.env.SUPABASE_SERVICE_ROLE_KEY ||
-          !!process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY,
-      });
-
       // Primero eliminar lecciones relacionadas
-      console.log('📝 Eliminando lecciones del curso...');
       const { data: lessonsData, error: lessonsError } = await supabaseAdmin
         .from('course_lessons')
         .delete()
@@ -1265,14 +1217,9 @@ function AdminDashboardContent() {
         .select();
 
       if (lessonsError) {
-        console.error('❌ Error eliminando lecciones:', lessonsError);
         throw new Error(`Error al eliminar lecciones: ${lessonsError.message}`);
       }
-      console.log(`✅ Lecciones eliminadas: ${lessonsData?.length || 0}`);
-
       // Usar API route del servidor (service_role key solo funciona en servidor)
-      console.log('📝 Eliminando curso vía API...');
-
       const response = await fetch(`/api/admin/courses/${courseId}`, {
         method: 'DELETE',
         credentials: 'include', // Asegurar que las cookies se envíen
@@ -1287,14 +1234,11 @@ function AdminDashboardContent() {
       }
 
       const result = await response.json();
-      console.log('✅ Curso eliminado exitosamente:', result);
-
       setCourses((prev) => prev.filter((course) => course.id !== courseId));
 
       // Cerrar el diálogo de confirmación sin mostrar modal de éxito
       setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
     } catch (error) {
-      console.error('Error deleting course:', error);
       setConfirmDialog({
         isOpen: true,
         title: 'Error',
@@ -3349,10 +3293,6 @@ function AdminDashboardContent() {
                                             // Recargar usuarios
                                             loadUsers();
                                           } catch (error) {
-                                            console.error(
-                                              'Error inactivating user:',
-                                              error,
-                                            );
                                             alert(
                                               'Error al inactivar el usuario',
                                             );

@@ -47,11 +47,6 @@ export async function GET(request: Request) {
       );
     }
 
-    console.log('🔍 Debug: Buscando interacciones para:', {
-      complement_id,
-      user_id,
-    });
-
     const { data, error } = await supabase
       .from('user_complement_interactions')
       .select('*')
@@ -59,18 +54,14 @@ export async function GET(request: Request) {
       .eq('complement_id', complement_id);
 
     if (error) {
-      console.error('❌ Error en debug:', error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
-
-    console.log('✅ Debug: Interacciones encontradas:', data);
 
     return NextResponse.json({
       interactions: data,
       debug: true,
     });
   } catch (error) {
-    console.error('❌ Error en debug API:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 },

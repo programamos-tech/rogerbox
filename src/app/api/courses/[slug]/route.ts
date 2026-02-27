@@ -36,7 +36,6 @@ export async function GET(
       .order('order_index', { ascending: true });
 
     if (lessonsError) {
-      console.error('Error loading lessons:', lessonsError);
     }
 
     return NextResponse.json({
@@ -47,7 +46,6 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error('Error in get course by slug:', error);
     return NextResponse.json(
       { error: 'Error interno del servidor' },
       { status: 500 },

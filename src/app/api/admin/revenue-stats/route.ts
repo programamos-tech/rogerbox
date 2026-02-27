@@ -211,7 +211,6 @@ export async function GET(request: NextRequest) {
         .lte('payment_date', end.toISOString());
 
       if (gymError) {
-        console.error('Error fetching gym payments:', gymError);
       } else {
         const payments = gymPayments || [];
         const total = payments.reduce(
@@ -249,7 +248,6 @@ export async function GET(request: NextRequest) {
         .lte('created_at', end.toISOString());
 
       if (ordersError) {
-        console.error('Error fetching orders:', ordersError);
       } else {
         const approvedOrders = orders || [];
         const total = approvedOrders.reduce(
@@ -305,7 +303,6 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ results });
   } catch (error) {
-    console.error('Error in GET /api/admin/revenue-stats:', error);
     return NextResponse.json(
       { error: 'Error interno del servidor' },
       { status: 500 },

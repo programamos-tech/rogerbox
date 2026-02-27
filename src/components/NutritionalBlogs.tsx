@@ -20,7 +20,6 @@ export default function NutritionalBlogs() {
       const data = await response.json();
       setBlogs(data.blogs || []);
     } catch (error) {
-      console.error('Error fetching blogs:', error);
     } finally {
       setLoading(false);
     }

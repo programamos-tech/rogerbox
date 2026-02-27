@@ -63,28 +63,16 @@ export default function CourseDashboard({ userProfile }: CourseDashboardProps) {
   const userMenuRef = useRef<HTMLDivElement>(null);
 
   // Lógica inteligente para determinar el estado del usuario
-  console.log('CourseDashboard - userProfile:', userProfile);
-  console.log('CourseDashboard - goals:', userProfile?.goals);
-  console.log('CourseDashboard - goals length:', userProfile?.goals?.length);
-
   const isNewUser = !userProfile?.goals || userProfile.goals.length === 0;
   const hasCompletedOnboarding =
     userProfile?.goals && userProfile.goals.length > 0;
   const hasEnrolledCourses = false; // TODO: Implementar lógica real de cursos inscritos
 
-  console.log('CourseDashboard - isNewUser:', isNewUser);
-  console.log(
-    'CourseDashboard - hasCompletedOnboarding:',
-    hasCompletedOnboarding,
-  );
-
   const handleLogout = async () => {
     try {
       await handleSignOut();
       router.push('/');
-    } catch (error) {
-      console.error('Error signing out:', error);
-    }
+    } catch (error) {}
   };
 
   // Close user menu when clicking outside

@@ -46,7 +46,6 @@ export default function BlogManagement() {
       const data = await response.json();
       setBlogs(data.blogs || []);
     } catch (error) {
-      console.error('Error fetching blogs:', error);
     } finally {
       setLoading(false);
     }
@@ -76,7 +75,6 @@ export default function BlogManagement() {
         alert(`Error: ${error.error}`);
       }
     } catch (error) {
-      console.error('Error saving blog:', error);
       alert('Error al guardar el blog');
     }
   };
@@ -117,7 +115,6 @@ export default function BlogManagement() {
         alert('Error al eliminar el blog');
       }
     } catch (error) {
-      console.error('Error deleting blog:', error);
       alert('Error al eliminar el blog');
     } finally {
       setIsDeleting(false);

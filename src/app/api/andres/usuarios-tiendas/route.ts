@@ -25,7 +25,6 @@ export async function GET(request: NextRequest) {
       .order('id');
 
     if (storesError) {
-      console.error('[andres/usuarios-tiendas] stores:', storesError);
       return NextResponse.json(
         { error: 'Error fetching stores' },
         { status: 500 },
@@ -65,7 +64,6 @@ export async function GET(request: NextRequest) {
       { status: 200 },
     );
   } catch (error) {
-    console.error('[andres/usuarios-tiendas]', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 },

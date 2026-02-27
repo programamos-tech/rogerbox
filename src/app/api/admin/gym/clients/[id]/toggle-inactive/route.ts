@@ -60,7 +60,6 @@ export async function PATCH(
           { status: 404 },
         );
       }
-      console.error('Error updating client inactive status:', error);
       return NextResponse.json(
         { error: 'Error al actualizar estado del cliente' },
         { status: 500 },
@@ -69,10 +68,6 @@ export async function PATCH(
 
     return NextResponse.json(data);
   } catch (error) {
-    console.error(
-      'Error in PATCH /api/admin/gym/clients/[id]/toggle-inactive:',
-      error,
-    );
     return NextResponse.json(
       { error: 'Error interno del servidor' },
       { status: 500 },

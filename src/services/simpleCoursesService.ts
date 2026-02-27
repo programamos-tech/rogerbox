@@ -33,9 +33,7 @@ class SimpleCoursesService {
       if (videoId) {
         return `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
       }
-    } catch (error) {
-      console.warn('Error al extraer video ID de YouTube:', error);
-    }
+    } catch (error) {}
     return '/images/course-placeholder.jpg';
   }
 
@@ -44,8 +42,6 @@ class SimpleCoursesService {
    */
   async getCourses(): Promise<SimpleCourse[]> {
     try {
-      console.log('🚀 SimpleCourses: Cargando desde Supabase...');
-
       // Consulta directa a Supabase
       const { data: coursesData, error: coursesError } = await supabase
         .from('courses')
@@ -68,7 +64,6 @@ class SimpleCoursesService {
         .order('created_at', { ascending: false });
 
       if (coursesError) {
-        console.error('❌ SimpleCourses: Error en cursos:', coursesError);
         throw coursesError;
       }
 
@@ -79,10 +74,6 @@ class SimpleCoursesService {
         .eq('is_active', true);
 
       if (categoriesError) {
-        console.error(
-          '❌ SimpleCourses: Error en categorías:',
-          categoriesError,
-        );
         // Continuar sin categorías si hay error
       }
 
@@ -127,10 +118,8 @@ class SimpleCoursesService {
         };
       });
 
-      console.log(`✅ SimpleCourses: ${courses.length} cursos cargados`);
       return courses;
     } catch (error) {
-      console.error('❌ SimpleCourses: Error general:', error);
       throw error;
     }
   }
@@ -161,7 +150,6 @@ class SimpleCoursesService {
         .single();
 
       if (error) {
-        console.error('❌ SimpleCourses: Error al obtener curso:', error);
         return null;
       }
 
@@ -200,10 +188,6 @@ class SimpleCoursesService {
         created_at: data.created_at,
       };
     } catch (error) {
-      console.error(
-        '❌ SimpleCourses: Error al obtener curso específico:',
-        error,
-      );
       return null;
     }
   }

@@ -16,7 +16,6 @@ export async function POST(
       .single();
 
     if (fetchError) {
-      console.error('Error fetching current stats:', fetchError);
       return NextResponse.json(
         { error: 'Failed to fetch current stats' },
         { status: 500 },
@@ -35,7 +34,6 @@ export async function POST(
       .single();
 
     if (error) {
-      console.error('Error incrementing views:', error);
       return NextResponse.json(
         { error: 'Failed to increment views' },
         { status: 500 },
@@ -47,7 +45,6 @@ export async function POST(
       total_views: data.total_views,
     });
   } catch (error) {
-    console.error('Error in POST /api/complements/[id]/view:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 },

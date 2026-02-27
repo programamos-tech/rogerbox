@@ -105,13 +105,6 @@ function LoginForm() {
     const { error } = await signInWithEmail(formData.email, formData.password);
 
     if (error) {
-      console.error('Error en login:', error);
-      console.error('Error details:', {
-        message: error.message,
-        status: 'status' in error ? error.status : undefined,
-        name: error.name,
-      });
-
       if (
         error.message.includes('Invalid login credentials') ||
         error.message.includes('Invalid credentials')

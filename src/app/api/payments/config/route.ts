@@ -16,7 +16,6 @@ export async function GET() {
       environment: process.env.WOMPI_ENVIRONMENT || 'sandbox',
     });
   } catch (error) {
-    console.error('Error getting Wompi config:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 },

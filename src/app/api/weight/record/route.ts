@@ -33,7 +33,6 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (weightRecordError) {
-      console.error('Error guardando registro de peso:', weightRecordError);
       return NextResponse.json(
         {
           error:
@@ -54,7 +53,6 @@ export async function POST(request: NextRequest) {
       .eq('id', userId);
 
     if (profileError) {
-      console.warn('Error actualizando perfil (no crítico):', profileError);
       // No fallar si el perfil no se actualiza
     }
 
@@ -63,7 +61,6 @@ export async function POST(request: NextRequest) {
       data: weightData,
     });
   } catch (error) {
-    console.error('❌ Error inesperado guardando peso:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Error desconocido' },
       { status: 500 },

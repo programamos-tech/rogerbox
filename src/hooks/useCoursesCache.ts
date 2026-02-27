@@ -66,7 +66,6 @@ export function useCoursesCache(userProfile: any) {
       const cacheData: CacheData = JSON.parse(cached);
       return isCacheValid(cacheData) ? cacheData : null;
     } catch (error) {
-      console.error('Error loading from cache:', error);
       return null;
     }
   };
@@ -79,35 +78,26 @@ export function useCoursesCache(userProfile: any) {
         lastFetch: Date.now(),
       };
       localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
-    } catch (error) {
-      console.error('Error saving to cache:', error);
-    }
+    } catch (error) {}
   };
 
   // Cargar cursos desde Supabase
   const loadCoursesFromDB = async (page: number = 1) => {
     try {
-      console.log(`🔄 Cargando página ${page} desde Supabase...`);
-
       const from = (page - 1) * COURSES_PER_PAGE;
       const to = from + COURSES_PER_PAGE - 1;
 
       // Obtener total de cursos
-      console.log('📊 Obteniendo total de cursos...');
       const { count, error: countError } = await supabase
         .from('courses')
         .select('*', { count: 'exact', head: true })
         .eq('is_published', true);
 
       if (countError) {
-        console.error('❌ Error obteniendo count:', countError);
         throw countError;
       }
 
-      console.log('📊 Total de cursos encontrados:', count);
-
       // Obtener cursos paginados
-      console.log('📊 Obteniendo cursos paginados...');
       const { data, error } = await supabase
         .from('courses')
         .select('*')
@@ -116,15 +106,10 @@ export function useCoursesCache(userProfile: any) {
         .range(from, to);
 
       if (error) {
-        console.error('❌ Error obteniendo cursos:', error);
         throw error;
       }
 
-      console.log('📊 Cursos obtenidos:', data?.length || 0);
       if (data && data.length > 0) {
-        console.log('📊 Primer curso raw:', data[0]);
-        console.log('📊 duration_days:', data[0].duration_days);
-        console.log('📊 students_count:', data[0].students_count);
       }
 
       const totalCount = count || 0;
@@ -146,8 +131,6 @@ export function useCoursesCache(userProfile: any) {
 
       // Obtener el curso más visitado
       const mostViewedCourseId = await getMostViewedCourse();
-      console.log('📊 Dashboard: Curso más visitado:', mostViewedCourseId);
-
       // Transformar cursos
       const transformedCourses = (data || []).map((course) => {
         const categoryName = categoryMap[course.category] || 'Sin categoría';
@@ -174,19 +157,10 @@ export function useCoursesCache(userProfile: any) {
           originalCategory: course.category,
         };
 
-        console.log('📊 Curso transformado:', {
-          title: transformed.title,
-          duration_days: transformed.duration_days,
-          students: transformed.students,
-          students_count: transformed.students_count,
-        });
-
         return transformed;
       });
 
-      console.log('📊 Cursos transformados:', transformedCourses.length);
       if (transformedCourses.length > 0) {
-        console.log('📊 Primer curso transformado:', transformedCourses[0]);
       }
 
       // Ordenar cursos: POPULAR primero, luego por fecha de creación
@@ -201,15 +175,6 @@ export function useCoursesCache(userProfile: any) {
         );
       });
 
-      console.log(
-        '📊 Dashboard: Cursos ordenados - Popular primero:',
-        sortedCourses.map((c) => ({
-          title: c.title,
-          isPopular: c.isPopular,
-          isNew: c.isNew,
-        })),
-      );
-
       return {
         courses: sortedCourses,
         totalCount,
@@ -217,7 +182,6 @@ export function useCoursesCache(userProfile: any) {
         totalPages,
       };
     } catch (error) {
-      console.error('Error loading courses from DB:', error);
       throw error;
     }
   };
@@ -235,7 +199,6 @@ export function useCoursesCache(userProfile: any) {
       if (!forceRefresh) {
         const cached = loadFromCache();
         if (cached && cached.currentPage === page) {
-          console.log('✅ Cargando desde caché...');
           setCourses(cached.courses);
           setCurrentPage(cached.currentPage);
           setTotalPages(cached.totalPages);
@@ -246,7 +209,6 @@ export function useCoursesCache(userProfile: any) {
       }
 
       // Cargar desde base de datos
-      console.log('🔄 Cargando desde base de datos...');
       const data = await loadCoursesFromDB(page);
 
       setCourses(data.courses);
@@ -257,7 +219,6 @@ export function useCoursesCache(userProfile: any) {
       // Guardar en caché
       saveToCache(data);
     } catch (error) {
-      console.error('Error loading courses:', error);
       setError(error instanceof Error ? error.message : 'Error desconocido');
     } finally {
       setLoading(false);
@@ -279,9 +240,7 @@ export function useCoursesCache(userProfile: any) {
 
   // Cargar datos iniciales
   useEffect(() => {
-    console.log('🔄 useCoursesCache: userProfile changed:', userProfile?.id);
     if (userProfile) {
-      console.log('🚀 useCoursesCache: Starting initial load...');
       // Limpiar caché y forzar recarga
       localStorage.removeItem(CACHE_KEY);
       loadCourses(1, true);

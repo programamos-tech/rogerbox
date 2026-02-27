@@ -85,7 +85,6 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error('Error updating completion:', error);
       return NextResponse.json(
         { error: 'Failed to update completion' },
         { status: 500 },
@@ -99,7 +98,6 @@ export async function POST(request: NextRequest) {
       last_completed_at: data.last_completed_at,
     });
   } catch (error) {
-    console.error('Error in POST /api/user-interactions/complete:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 },

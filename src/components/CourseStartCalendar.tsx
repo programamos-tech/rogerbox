@@ -56,7 +56,6 @@ export default function CourseStartCalendar({
     try {
       await onStartDateSelected(selectedDate);
     } catch (error) {
-      console.error('Error seleccionando fecha:', error);
     } finally {
       setIsSubmitting(false);
     }

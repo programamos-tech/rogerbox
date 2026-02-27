@@ -21,27 +21,13 @@ export const useUnifiedCourses = (): UseUnifiedCoursesReturn => {
     try {
       setLoading(true);
       setError(null);
-      console.log('🔄 useUnifiedCourses: INICIANDO carga de cursos...');
-
       const coursesData = await unifiedCoursesService.getCourses();
 
-      console.log(
-        `✅ useUnifiedCourses: ${coursesData.length} cursos cargados`,
-      );
       if (coursesData.length > 0) {
-        console.log(
-          '📊 useUnifiedCourses: Primer curso:',
-          coursesData[0].title,
-        );
       } else {
-        console.log('⚠️ useUnifiedCourses: Array vacío recibido del servicio');
       }
       setCourses(coursesData);
     } catch (err: any) {
-      console.error(
-        '❌ useUnifiedCourses: ERROR al cargar cursos:',
-        err?.message || err,
-      );
       setError(err?.message || 'Error desconocido');
       setCourses([]);
     } finally {
@@ -50,7 +36,6 @@ export const useUnifiedCourses = (): UseUnifiedCoursesReturn => {
   }, []);
 
   const refresh = useCallback(async () => {
-    console.log('🔄 useUnifiedCourses: Refrescando...');
     await loadCourses();
   }, [loadCourses]);
 

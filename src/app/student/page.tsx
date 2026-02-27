@@ -64,11 +64,6 @@ function StudentPageContent() {
   // Sincronizar completedLessonsList con effectivePurchase
   useEffect(() => {
     if (effectivePurchase?.completed_lessons) {
-      console.log('📊 Sincronizando completedLessonsList:', {
-        fromDB: effectivePurchase.completed_lessons,
-        length: effectivePurchase.completed_lessons.length,
-        currentState: completedLessonsList,
-      });
       setCompletedLessonsList(effectivePurchase.completed_lessons);
     }
   }, [effectivePurchase?.completed_lessons]);
@@ -90,7 +85,6 @@ function StudentPageContent() {
 
         if (error) {
           if (error.code !== 'PGRST116') {
-            console.error('Error loading profile:', error.message || error);
           }
           setUserProfile(null);
         } else {
@@ -98,7 +92,6 @@ function StudentPageContent() {
         }
       } catch (error: any) {
         if (error?.message) {
-          console.error('Error loading profile:', error.message);
         }
         setUserProfile(null);
       }
@@ -113,17 +106,7 @@ function StudentPageContent() {
     let isMounted = true; // Flag para evitar actualizaciones de estado después de desmontar
 
     const loadCourseWithLessons = async () => {
-      console.log('🔍 StudentPage: loadCourseWithLessons iniciado', {
-        hasEffectivePurchase: !!effectivePurchase,
-        effectivePurchase: effectivePurchase,
-        purchasesLoading,
-        purchasesCount: purchases?.length || 0,
-      });
-
       if (!effectivePurchase) {
-        console.log(
-          '⚠️ StudentPage: No hay compra efectiva, mostrando mensaje de no cursos',
-        );
         if (isMounted) {
           setLoading(false);
           setShowNoCourses(true);
@@ -133,7 +116,6 @@ function StudentPageContent() {
 
       const courseId = effectivePurchase.course_id;
       if (!courseId) {
-        console.error('❌ StudentPage: effectivePurchase no tiene course_id');
         if (isMounted) {
           setLoading(false);
           setShowNoCourses(true);
@@ -155,20 +137,11 @@ function StudentPageContent() {
           .maybeSingle();
 
         if (courseError) {
-          console.error('❌ Error cargando curso:', {
-            error: courseError,
-            message: courseError.message || 'Error desconocido',
-            details: courseError.details,
-            hint: courseError.hint,
-            code: courseError.code,
-            courseId,
-          });
           if (isMounted) setLoading(false);
           return;
         }
 
         if (!courseData) {
-          console.error('❌ Curso no encontrado:', courseId);
           if (isMounted) setLoading(false);
           return;
         }
@@ -202,30 +175,16 @@ function StudentPageContent() {
         // autoStart solo se activa cuando el usuario hace clic en "Tomar Clase Ahora" desde el dashboard
         if (autoStart && availableLesson) {
           // Si viene con autoStart, saltar el intro y mostrar directamente la clase (sin preview)
-          console.log(
-            '🚀 AutoStart activo - saltando intro y preview, mostrando video directamente',
-          );
           setShowIntro(false);
           setShowCourseImage(false);
           setIntroEnded(true);
         } else {
           // Por defecto, siempre mostrar el intro primero
-          console.log('🎬 Configurando para mostrar intro primero');
           setShowIntro(true);
           setShowCourseImage(false);
           setIntroEnded(false);
         }
       } catch (error: any) {
-        console.error('❌ Error en loadCourseWithLessons:', {
-          error,
-          message: error?.message || 'Error desconocido',
-          details: error?.details,
-          hint: error?.hint,
-          code: error?.code,
-          stack: error?.stack,
-          courseId,
-          effectivePurchase,
-        });
         if (isMounted) setLoading(false);
       } finally {
         if (isMounted) setLoading(false);
@@ -241,18 +200,9 @@ function StudentPageContent() {
 
     // Solo iniciar la carga cuando las compras hayan terminado de cargar Y haya una compra efectiva
     if (!purchasesLoading) {
-      console.log('🔍 StudentPage: Compras cargadas', {
-        purchasesCount: purchases?.length || 0,
-        hasEffectivePurchase: !!effectivePurchase,
-        effectivePurchase: effectivePurchase,
-      });
-
       if (effectivePurchase) {
         loadCourseWithLessons();
       } else {
-        console.log(
-          '⚠️ StudentPage: No hay compras efectivas después de cargar',
-        );
         if (isMounted) {
           setLoading(false);
           setShowNoCourses(true);
@@ -260,7 +210,6 @@ function StudentPageContent() {
       }
     } else {
       // Mantener loading en true mientras se cargan las compras
-      console.log('⏳ StudentPage: Esperando que se carguen las compras...');
       if (isMounted) setLoading(true);
     }
 
@@ -309,19 +258,7 @@ function StudentPageContent() {
 
     const finalDaysDiff = isSameDay ? 0 : daysDiff;
 
-    console.log('📅 Cálculo de clase disponible:', {
-      startDateStr,
-      startDateLocal: startDateLocal.toDateString(),
-      todayLocal: todayLocal.toDateString(),
-      timeDiff,
-      daysDiff,
-      isSameDay,
-      finalDaysDiff,
-      totalLessons: course.lessons.length,
-    });
-
     if (finalDaysDiff < 0) {
-      console.log('⚠️ El curso aún no ha empezado');
       return null; // Aún no ha empezado
     }
 
@@ -332,13 +269,6 @@ function StudentPageContent() {
       Math.min(finalDaysDiff, course.lessons.length - 1),
     );
     const selectedLesson = course.lessons[lessonIndex];
-
-    console.log('✅ Clase disponible:', {
-      finalDaysDiff,
-      lessonIndex,
-      lessonTitle: selectedLesson?.title,
-      lessonId: selectedLesson?.id,
-    });
 
     return selectedLesson;
   };
@@ -389,17 +319,7 @@ function StudentPageContent() {
     // Debug para la primera clase (solo una vez, no en cada render)
     // Comentado para evitar logs repetidos
     // if (index === 0) {
-    //   console.log('🔍 Estado Clase 1:', {
-    //     startDateStr,
-    //     startDateLocal: startDateLocal.toDateString(),
-    //     todayLocal: todayLocal.toDateString(),
-    //     daysDiff,
-    //     isSameDay,
-    //     finalDaysDiff,
-    //     lessonDay: index,
-    //     willBeAvailable: lessonDay === finalDaysDiff
-    //   });
-    // }
+    //   // }
 
     // Completada - usar estado local actualizado
     const completedLessons =
@@ -428,33 +348,19 @@ function StudentPageContent() {
 
   // Manejar finalización del intro
   const handleIntroEnd = () => {
-    console.log('🎬 Teaser terminado, mostrando imagen del curso');
-    console.log('📊 Estado antes de cambiar:', {
-      showIntro,
-      showCourseImage,
-      introEnded,
-      hasCourse: !!courseWithLessons,
-    });
     setIntroEnded(true);
     setShowCourseImage(true);
     setShowIntro(false);
-    console.log(
-      '✅ Estado actualizado - showCourseImage debería ser true ahora',
-    );
   };
 
   // Marcar lección como completada en la base de datos
   const markLessonAsCompleted = async (lessonId: string) => {
     if (!effectivePurchase || !user) {
-      console.warn(
-        '⚠️ No se puede marcar lección como completada: falta effectivePurchase o user',
-      );
       return;
     }
 
     const courseId = effectivePurchase.course_id;
     if (!courseId) {
-      console.error('❌ Error: effectivePurchase no tiene course_id válido');
       return;
     }
 
@@ -476,7 +382,6 @@ function StudentPageContent() {
         const errorData = await response
           .json()
           .catch(() => ({ error: 'Error desconocido' }));
-        console.error('❌ Error marcando lección completada:', errorData);
         // Aún así actualizar el estado local para feedback inmediato
         if (!completedLessonsList.includes(lessonId)) {
           setCompletedLessonsList((prev) => [...prev, lessonId]);
@@ -484,17 +389,11 @@ function StudentPageContent() {
         return;
       }
 
-      console.log('✅ Lección marcada como completada:', lessonId);
       // Actualizar el estado local inmediatamente
       if (!completedLessonsList.includes(lessonId)) {
         setCompletedLessonsList((prev) => [...prev, lessonId]);
       }
     } catch (error: any) {
-      console.error('❌ Error al marcar lección como completada:', {
-        error: error?.message || error,
-        lessonId,
-        courseId,
-      });
       // Actualizar el estado local como fallback
       if (!completedLessonsList.includes(lessonId)) {
         setCompletedLessonsList((prev) => [...prev, lessonId]);
@@ -506,12 +405,10 @@ function StudentPageContent() {
   const initializeLessonVideo = useCallback(() => {
     const video = lessonVideoRef.current;
     if (!video) {
-      console.error('❌ Video element no está disponible');
       return;
     }
 
     if (!currentLesson) {
-      console.error('❌ currentLesson no está disponible');
       return;
     }
 
@@ -521,18 +418,7 @@ function StudentPageContent() {
       currentLesson.playback_id ||
       currentLesson.mux_playback_id;
 
-    console.log('🎥 Inicializando video:', {
-      lessonId: currentLesson.id,
-      lessonTitle: currentLesson.title,
-      video_url: currentLesson.video_url,
-      playback_id: currentLesson.playback_id,
-      mux_playback_id: currentLesson.mux_playback_id,
-      playbackIdRaw: playbackId,
-      allFields: Object.keys(currentLesson),
-    });
-
     if (!playbackId) {
-      console.error('❌ No se encontró playback_id en la lección');
       return;
     }
 
@@ -551,18 +437,13 @@ function StudentPageContent() {
     }
 
     const videoUrl = `https://stream.mux.com/${playbackId}.m3u8`;
-    console.log('🔗 URL del video:', videoUrl);
-    console.log('✅ Playback ID limpio:', playbackId);
-
     // Verificar que el playbackId no esté vacío después de limpiar
     if (!playbackId || playbackId.trim() === '') {
-      console.error('❌ Playback ID está vacío después de limpiar');
       return;
     }
 
     // Verificar formato básico del playback ID (generalmente alfanumérico)
     if (playbackId.length < 10) {
-      console.warn('⚠️ Playback ID parece muy corto:', playbackId);
     }
 
     // Limpiar HLS anterior
@@ -573,28 +454,22 @@ function StudentPageContent() {
 
     // Verificar soporte HLS nativo
     if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      console.log('✅ Usando HLS nativo');
       setVideoLoading(true);
       video.src = videoUrl;
       video.load();
 
       video.addEventListener('loadeddata', () => {
-        console.log('✅ Video cargado (nativo)');
         setVideoLoading(false);
       });
 
       video.addEventListener('error', () => {
-        console.error('❌ Error en el elemento video (nativo)');
         setVideoLoading(false);
       });
 
       video.play().catch((err) => {
-        console.warn('⚠️ Error al reproducir (nativo):', err);
         setVideoLoading(false);
       });
     } else if (Hls.isSupported()) {
-      console.log('✅ Usando HLS.js');
-      console.log('📡 Intentando cargar:', videoUrl);
       try {
         setVideoLoading(true);
         const hls = new Hls({
@@ -604,28 +479,19 @@ function StudentPageContent() {
         });
 
         // Agregar TODOS los listeners ANTES de cargar el source
-        hls.on(Hls.Events.MANIFEST_LOADED, (event, data) => {
-          console.log('✅ Manifest cargado');
-        });
+        hls.on(Hls.Events.MANIFEST_LOADED, (event, data) => {});
 
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
-          console.log('✅ Manifest parseado correctamente');
           setVideoLoading(false);
           // Intentar reproducir automáticamente
           video.play().catch((err) => {
             if (err.name !== 'NotAllowedError') {
-              console.warn('⚠️ Error al reproducir:', err.message);
             } else {
-              console.log(
-                'ℹ️ Reproducción requiere interacción del usuario - click en play para iniciar',
-              );
             }
           });
         });
 
-        hls.on(Hls.Events.LEVEL_LOADED, (event, data) => {
-          console.log('✅ Nivel cargado');
-        });
+        hls.on(Hls.Events.LEVEL_LOADED, (event, data) => {});
 
         hls.on(Hls.Events.ERROR, (event, data) => {
           // Ignorar errores menores que son normales durante la reproducción
@@ -640,16 +506,6 @@ function StudentPageContent() {
 
           // Solo procesar errores fatales o errores importantes que no estén en la lista de ignorar
           if (data.fatal) {
-            console.error('❌ Error HLS FATAL:', {
-              type: data.type,
-              details: data.details,
-              fatal: data.fatal,
-              error: data.error,
-              url: data.url,
-              response: data.response,
-              errorType: data.type,
-            });
-
             // Mostrar error visible en la pantalla solo para errores fatales
             const errorDiv = document.createElement('div');
             errorDiv.className =
@@ -667,53 +523,42 @@ function StudentPageContent() {
             switch (data.type) {
               case Hls.ErrorTypes.NETWORK_ERROR:
                 try {
-                  console.log('🔄 Intentando recuperar error de red...');
                   hls.startLoad();
                 } catch (err) {
-                  console.error('❌ No se pudo recuperar, destruyendo HLS');
                   hls.destroy();
                 }
                 break;
               case Hls.ErrorTypes.MEDIA_ERROR:
                 try {
-                  console.log('🔄 Intentando recuperar error de media...');
                   hls.recoverMediaError();
                 } catch (err) {
-                  console.error('❌ No se pudo recuperar, destruyendo HLS');
                   hls.destroy();
                 }
                 break;
               default:
-                console.error('❌ Error fatal no recuperable, destruyendo HLS');
                 hls.destroy();
                 break;
             }
           } else if (data.details && !ignorarErrores.includes(data.details)) {
-            // Solo loggear errores no fatales que no estén en la lista de ignorar
-            console.warn('⚠️ Error HLS (no fatal):', data.details);
           }
           // Si el error está en la lista de ignorar o no es fatal, no hacer nada
         });
 
         // Agregar listeners del elemento video
         video.addEventListener('loadeddata', () => {
-          console.log('✅ Video cargado - datos listos');
           setVideoLoading(false);
         });
 
         video.addEventListener('canplay', () => {
-          console.log('✅ Video puede reproducirse');
           setVideoLoading(false);
         });
 
         video.addEventListener('error', (e) => {
-          console.error('❌ Error en el elemento video:', video.error);
           setVideoLoading(false);
         });
 
         // Escuchar cuando el video termine para mostrar el progreso
         video.addEventListener('ended', () => {
-          console.log('🎬 Video de la lección terminado');
           setLessonVideoEnded(true);
 
           // Marcar la lección como completada en la base de datos
@@ -723,17 +568,13 @@ function StudentPageContent() {
         });
 
         // Cargar el source y adjuntar al video DESPUÉS de configurar todos los listeners
-        console.log('📡 Cargando source de HLS:', videoUrl);
         hls.loadSource(videoUrl);
         hls.attachMedia(video);
         hlsRef.current = hls;
-        console.log('✅ HLS configurado y source cargado');
       } catch (err) {
-        console.error('❌ Error al inicializar HLS:', err);
         setVideoLoading(false);
       }
     } else {
-      console.error('❌ HLS no está soportado en este navegador');
       setVideoLoading(false);
     }
   }, [currentLesson]);
@@ -772,18 +613,6 @@ function StudentPageContent() {
       !showCourseImage &&
       !lessonVideoEnded
     ) {
-      console.log(
-        '🚀 AutoStart detectado - esperando a que el video esté en el DOM',
-      );
-      console.log('📊 Estado actual:', {
-        autoStart,
-        hasCurrentLesson: !!currentLesson,
-        showIntro,
-        showCourseImage,
-        lessonVideoEnded,
-        lessonTitle: currentLesson?.title,
-      });
-
       // Esperar a que el elemento de video esté disponible en el DOM
       let attempts = 0;
       const maxAttempts = 30; // Aumentar intentos a 30 (3 segundos)
@@ -793,24 +622,15 @@ function StudentPageContent() {
         attempts++;
         const videoElement = lessonVideoRef.current;
         if (videoElement) {
-          console.log(
-            `✅ Elemento de video encontrado (intento ${attempts}), inicializando...`,
-          );
           // Forzar un pequeño delay adicional para asegurar que el DOM esté completamente renderizado
           setTimeout(() => {
             initializeLessonVideo();
           }, 200);
         } else {
           if (attempts < maxAttempts) {
-            console.log(
-              `⏳ Esperando elemento de video... (intento ${attempts}/${maxAttempts})`,
-            );
             // Si el ref aún no está disponible, reintentar después de un breve delay
             timeoutId = setTimeout(checkAndInitialize, 100);
           } else {
-            console.warn(
-              '⚠️ No se pudo encontrar el elemento de video después de varios intentos. El video se inicializará automáticamente cuando esté disponible.',
-            );
             // No es un error crítico, el otro useEffect lo manejará
           }
         }
@@ -835,15 +655,6 @@ function StudentPageContent() {
   // IMPORTANTE: Solo inicializar si el intro ya terminó Y la imagen del curso también fue cerrada
   // El flujo correcto es: Intro → Preview (imagen del curso) → Video de la lección
   useEffect(() => {
-    console.log('🔍 useEffect video initialization - Estado actual:', {
-      hasCurrentLesson: !!currentLesson,
-      showIntro,
-      showCourseImage,
-      introEnded,
-      autoStart,
-      hasVideoRef: !!lessonVideoRef.current,
-    });
-
     // Solo inicializar el video si:
     // 1. Hay una lección actual
     // 2. El intro no se está mostrando
@@ -861,9 +672,6 @@ function StudentPageContent() {
       // Inicializar el video cuando se oculta el intro Y la imagen del curso
       // Solo si el intro ya terminó (y por lo tanto el preview ya se mostró y fue cerrado)
       const timer = setTimeout(() => {
-        console.log(
-          '🔄 Inicializando video - intro terminado y preview cerrado',
-        );
         initializeLessonVideo();
       }, 200);
 
@@ -877,7 +685,6 @@ function StudentPageContent() {
     ) {
       // Si viene con autoStart, saltar todo y mostrar directamente el video
       const timer = setTimeout(() => {
-        console.log('🔄 Inicializando video - autoStart activo');
         initializeLessonVideo();
       }, 200);
 
@@ -916,9 +723,6 @@ function StudentPageContent() {
 
     const timer = setTimeout(() => {
       if (introVideoRef.current && introVideoRef.current.readyState < 2) {
-        console.warn(
-          '⏰ Video intro no cargó en 3 segundos, mostrando preview automáticamente',
-        );
         handleIntroEnd();
       }
     }, 3000);
@@ -945,9 +749,6 @@ function StudentPageContent() {
   // Timeout de seguridad global para evitar loading infinito
   useEffect(() => {
     const globalTimeout = setTimeout(() => {
-      console.warn(
-        '⚠️ Timeout de seguridad: Forzando fin de carga después de 10 segundos',
-      );
       setLoading(false);
       if (!effectivePurchase && !purchasesLoading) {
         setShowNoCourses(true);
@@ -966,17 +767,7 @@ function StudentPageContent() {
     (!courseWithLessons && effectivePurchase && !purchasesLoading);
 
   // Debug: Log del estado de carga
-  useEffect(() => {
-    console.log('🔍 Estado de carga:', {
-      purchasesLoading,
-      loading,
-      hasEffectivePurchase: !!effectivePurchase,
-      hasCourseWithLessons: !!courseWithLessons,
-      purchasesCount: purchases?.length || 0,
-      showNoCourses,
-      isLoading,
-    });
-  }, [
+  useEffect(() => {}, [
     purchasesLoading,
     loading,
     effectivePurchase,
@@ -1010,18 +801,14 @@ function StudentPageContent() {
       try {
         const response = await fetch('/api/debug/purchases');
         const data = await response.json();
-        console.log('🔍 Debug de compras:', data);
         alert(
           `Compras con RLS: ${data.purchases?.withRLS?.count || 0}\nCompras con Admin: ${data.purchases?.withAdmin?.count || 0}\nÓrdenes: ${data.orders?.count || 0}\n\nRevisa la consola para más detalles.`,
         );
-      } catch (error) {
-        console.error('Error en debug:', error);
-      }
+      } catch (error) {}
     };
 
     const handleRefresh = async () => {
       await refreshPurchases();
-      console.log('🔄 Compras refrescadas manualmente');
     };
 
     return (
@@ -1152,24 +939,12 @@ function StudentPageContent() {
                   playsInline
                   onEnded={handleIntroEnd}
                   onError={(e) => {
-                    console.warn(
-                      '⚠️ Video intro no disponible, saltando al contenido del curso',
-                    );
-                    console.error('❌ Error del video:', e);
                     // Si el video no se puede cargar, saltar directamente a mostrar la imagen del curso
                     handleIntroEnd();
                   }}
-                  onLoadStart={() => {
-                    console.log('🎬 Iniciando carga del teaser');
-                  }}
-                  onLoadedData={() => {
-                    console.log(
-                      '✅ Video intro cargado y listo para reproducir',
-                    );
-                  }}
-                  onPlay={() => {
-                    console.log('▶️ Video intro comenzó a reproducirse');
-                  }}
+                  onLoadStart={() => {}}
+                  onLoadedData={() => {}}
+                  onPlay={() => {}}
                 >
                   <source src="/roger-hero.mp4" type="video/mp4" />
                   Tu navegador no soporta el elemento de video.
@@ -1193,14 +968,6 @@ function StudentPageContent() {
 
             {/* Imagen del Curso - Después del teaser */}
             {(() => {
-              console.log('🔍 Render: Verificando si mostrar preview:', {
-                showCourseImage,
-                hasCourse: !!courseWithLessons,
-                showIntro,
-                introEnded,
-                autoStart,
-                courseTitle: courseWithLessons?.title,
-              });
               return null;
             })()}
             {showCourseImage && courseWithLessons && (
@@ -1212,15 +979,6 @@ function StudentPageContent() {
                     courseWithLessons.preview_image ||
                     courseWithLessons.thumbnail_url;
 
-                  console.log('🖼️ Mostrando imagen del curso:', {
-                    showCourseImage,
-                    hasCourse: !!courseWithLessons,
-                    image_url: courseWithLessons.image_url,
-                    preview_image: courseWithLessons.preview_image,
-                    thumbnail_url: courseWithLessons.thumbnail_url,
-                    selectedImage: courseImage,
-                  });
-
                   return courseImage ? (
                     <Image
                       src={courseImage}
@@ -1231,10 +989,6 @@ function StudentPageContent() {
                       loading="lazy"
                       quality={85}
                       onError={(e) => {
-                        console.error(
-                          '❌ Error cargando imagen del curso:',
-                          courseImage,
-                        );
                         e.currentTarget.style.display = 'none';
                       }}
                     />

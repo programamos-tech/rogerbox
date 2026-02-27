@@ -114,7 +114,6 @@ export default function ProfilePage() {
         courses: mockCourses,
       }));
     } catch (error) {
-      console.error('Error cargando favoritos:', error);
     } finally {
       setFavoritesLoading(false);
     }
@@ -132,7 +131,6 @@ export default function ProfilePage() {
             .single();
 
           if (error) {
-            console.error('Error fetching profile:', error);
             return;
           }
 
@@ -145,7 +143,6 @@ export default function ProfilePage() {
             confirmPassword: '',
           });
         } catch (error) {
-          console.error('Error:', error);
         } finally {
           setLoading(false);
         }
@@ -232,7 +229,6 @@ export default function ProfilePage() {
       // Recargar la página para reflejar cambios
       window.location.reload();
     } catch (error) {
-      console.error('Error updating profile:', error);
       setEditError('Error inesperado al actualizar el perfil');
     } finally {
       setEditLoading(false);
@@ -302,7 +298,6 @@ export default function ProfilePage() {
       // Recargar la página para reflejar los cambios
       window.location.reload();
     } catch (error) {
-      console.error('Error actualizando datos físicos:', error);
       setEditError('Error al actualizar los datos. Inténtalo de nuevo.');
     } finally {
       setEditLoading(false);
@@ -334,7 +329,6 @@ export default function ProfilePage() {
         .select();
 
       if (error) {
-        console.error('Error de Supabase al actualizar:', error);
         throw new Error(
           `Error al actualizar la meta: ${error.message || 'Error desconocido'}`,
         );
@@ -355,7 +349,6 @@ export default function ProfilePage() {
 
       window.location.reload();
     } catch (error: any) {
-      console.error('Error actualizando meta:', error);
       setGoalError(
         error.message || 'Error al actualizar la meta. Inténtalo de nuevo.',
       );

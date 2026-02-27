@@ -150,17 +150,9 @@ export default function GoalSuggestionCard({
   };
 
   // Debug: Log suggestion data
-  console.log('🎯 GoalSuggestionCard received suggestion:', {
-    title: suggestion.title,
-    recommendedCourse: suggestion.recommendedCourse,
-    recommendedCourseImage: suggestion.recommendedCourseImage,
-    difficulty: suggestion.difficulty,
-  });
-
   // Find the best matching course from available courses
   const findBestCourse = () => {
     if (!availableCourses || availableCourses.length === 0) {
-      console.log('🎯 No available courses, using suggestion data');
       return null;
     }
 
@@ -178,35 +170,13 @@ export default function GoalSuggestionCard({
       bestCourse = availableCourses[0];
     }
 
-    console.log('🎯 Best course found:', bestCourse?.title);
     return bestCourse;
   };
 
   const bestCourse = findBestCourse();
 
   // Debug: Log bestCourse data
-  console.log(
-    '🎯 bestCourse found:',
-    bestCourse
-      ? {
-          id: bestCourse.id,
-          slug: bestCourse.slug,
-          title: bestCourse.title,
-          hasSlug: !!bestCourse.slug,
-        }
-      : 'No bestCourse found',
-  );
-
   // Debug: Log card state
-  console.log('🎯 GoalSuggestionCard state:', {
-    cardState,
-    hasSeenGoalSuggestion: localStorage.getItem('hasSeenGoalSuggestion'),
-    hasViewedRecommendedCourse: localStorage.getItem(
-      'hasViewedRecommendedCourse',
-    ),
-    lastGoalSuggestionShown: localStorage.getItem('lastGoalSuggestionShown'),
-  });
-
   // Use real course data if available, otherwise fallback to suggestion
   const displayCourse = bestCourse || {
     title: suggestion.recommendedCourse,
@@ -217,13 +187,6 @@ export default function GoalSuggestionCard({
   // Debug: Log image URL construction
   const imageUrl =
     displayCourse.preview_image || '/images/course-placeholder.jpg';
-  console.log('🖼️ GoalSuggestionCard image URL:', imageUrl);
-  console.log(
-    '🖼️ GoalSuggestionCard is Base64:',
-    imageUrl.startsWith('data:image/'),
-  );
-  console.log('🖼️ Display course:', displayCourse);
-
   // Obtener colores basados en el IMC
   const bmiColors = getBMIColor(userBMI);
 
@@ -363,16 +326,10 @@ export default function GoalSuggestionCard({
                   alt={displayCourse.title}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                   onError={(e) => {
-                    console.log('🖼️ Error loading course image:', imageUrl);
                     (e.target as HTMLImageElement).src =
                       '/images/course-placeholder.jpg';
                   }}
-                  onLoad={() => {
-                    console.log(
-                      '🖼️ Course image loaded successfully:',
-                      imageUrl,
-                    );
-                  }}
+                  onLoad={() => {}}
                 />
                 {/* Difficulty indicator */}
                 <div className="absolute top-1 right-1">

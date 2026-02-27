@@ -45,7 +45,6 @@ export default function BannerManagement() {
       const data = await response.json();
       setBanners(data.banners || []);
     } catch (error) {
-      console.error('Error fetching banners:', error);
     } finally {
       setLoading(false);
     }
@@ -106,7 +105,6 @@ export default function BannerManagement() {
         alert(`Error: ${error.error}`);
       }
     } catch (error) {
-      console.error('Error uploading banner:', error);
       alert('Error al subir el banner');
     } finally {
       setUploading(false);
@@ -128,9 +126,7 @@ export default function BannerManagement() {
           ),
         );
       }
-    } catch (error) {
-      console.error('Error toggling banner:', error);
-    }
+    } catch (error) {}
   };
 
   const handleDelete = async (id: string) => {
@@ -144,9 +140,7 @@ export default function BannerManagement() {
       if (response.ok) {
         setBanners((prev) => prev.filter((b) => b.id !== id));
       }
-    } catch (error) {
-      console.error('Error deleting banner:', error);
-    }
+    } catch (error) {}
   };
 
   const resetForm = () => {

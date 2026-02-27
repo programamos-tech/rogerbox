@@ -30,9 +30,6 @@ export async function POST(request: NextRequest) {
     // Formato: reference + amount + currency (sin la key, se usa en HMAC)
     const signatureString = `${reference}${amountInCents}${currency}`;
 
-    console.log('🔐 Signature string:', signatureString);
-    console.log('🔑 Key used:', keyToUse?.substring(0, 10) + '...');
-
     // Crear el checksum usando HMAC-SHA256
     if (!keyToUse) {
       return NextResponse.json(
@@ -46,13 +43,10 @@ export async function POST(request: NextRequest) {
       .update(signatureString)
       .digest('hex');
 
-    console.log('🔐 Generated checksum:', checksum);
-
     return NextResponse.json({
       checksum,
     });
   } catch (error) {
-    console.error('Error generating signature:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 },

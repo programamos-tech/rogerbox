@@ -300,7 +300,6 @@ export default function UserDetailPage() {
           'Tiempo de espera agotado. Comprueba la conexión o intenta de nuevo.',
         );
       } else {
-        console.error('Error loading user data:', error);
         setLoadError('No se pudo cargar el usuario. Intenta de nuevo.');
       }
     } finally {
@@ -322,7 +321,6 @@ export default function UserDetailPage() {
         setWeightRecords(data);
       }
     } catch (error) {
-      console.error('Error loading weight records:', error);
     } finally {
       setLoadingWeightRecords(false);
     }
@@ -1140,7 +1138,6 @@ export default function UserDetailPage() {
                             // Recargar datos del usuario usando la función existente
                             await loadUserData();
                           } catch (error) {
-                            console.error('Error inactivating user:', error);
                             alert('Error al inactivar el usuario');
                           }
                         };
@@ -1177,7 +1174,6 @@ export default function UserDetailPage() {
                             // Recargar datos del usuario usando la función existente
                             await loadUserData();
                           } catch (error) {
-                            console.error('Error activating user:', error);
                             alert('Error al activar el usuario');
                           }
                         };

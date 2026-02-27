@@ -78,8 +78,6 @@ export default function LessonPage({
   });
 
   useEffect(() => {
-    console.log('LessonPage mounted, params:', resolvedParams);
-
     if (!authLoading && !user) {
       router.push('/login');
       return;
@@ -101,11 +99,8 @@ export default function LessonPage({
   const loadUserProgress = async () => {
     try {
       if (!user?.id) {
-        console.log('No user ID found');
         return;
       }
-
-      console.log('Loading user progress for user:', user.id);
 
       // Obtener perfil del usuario
       const { data: profileData, error: profileError } = await supabase
@@ -115,7 +110,6 @@ export default function LessonPage({
         .single();
 
       if (profileError) {
-        console.error('Error fetching user profile:', profileError);
         // Usar datos por defecto si no hay perfil en la DB
         const defaultProfile = {
           user_id: user.id,
@@ -132,7 +126,6 @@ export default function LessonPage({
         return;
       }
 
-      console.log('User profile loaded:', profileData);
       setUserProfile(profileData);
 
       // Obtener progreso real del curso desde la DB
@@ -145,7 +138,6 @@ export default function LessonPage({
           .single();
 
       if (courseProgressError) {
-        console.log('No hay progreso de curso registrado, usando 0%');
         setCourseProgress(0);
       } else {
         // Calcular progreso basado en lecciones completadas
@@ -200,7 +192,6 @@ export default function LessonPage({
       // Usar datos reales del perfil
       setStreakDays(profileData?.streak_days || 0);
     } catch (error) {
-      console.error('Error loading user progress:', error);
       // En caso de error, usar datos por defecto
       const defaultProfile = {
         user_id: user?.id || 'default-user',
@@ -229,22 +220,17 @@ export default function LessonPage({
         .order('lesson_order', { ascending: true });
 
       if (lessonsError) {
-        console.error('Error fetching upcoming lessons:', lessonsError);
         return;
       }
 
-      console.log('Lessons loaded:', lessonsData?.length || 0);
       setUpcomingLessons(lessonsData || []);
 
       // Si no hay lecciones en la DB, mostrar modal de felicitaciones
       if (!lessonsData || lessonsData.length === 0) {
-        console.log('No lessons found, showing congratulations modal');
         await loadCourseStats();
         setShowCongratulationsModal(true);
       }
-    } catch (error) {
-      console.error('Error loading upcoming lessons:', error);
-    }
+    } catch (error) {}
   };
 
   const loadCourseStats = async () => {
@@ -258,7 +244,6 @@ export default function LessonPage({
         .eq('user_id', user.id);
 
       if (completionsError) {
-        console.error('Error fetching course stats:', completionsError);
         return;
       }
 
@@ -297,9 +282,7 @@ export default function LessonPage({
         lessonsCompleted,
         streakDays: userProfile?.streak_days || 0,
       });
-    } catch (error) {
-      console.error('Error loading course stats:', error);
-    }
+    } catch (error) {}
   };
 
   const shareToSocialMedia = (platform: string) => {
@@ -332,7 +315,6 @@ export default function LessonPage({
 
   const loadLessonData = async () => {
     try {
-      console.log('Loading lesson data for ID:', resolvedParams.id);
       setLoading(true);
       setError(null);
 
@@ -344,7 +326,6 @@ export default function LessonPage({
         .single();
 
       if (lessonError) {
-        console.error('Error fetching lesson:', lessonError);
         // Si no se encuentra en la DB, usar datos de ejemplo
         const mockLesson: Lesson = {
           id: resolvedParams.id,
@@ -362,14 +343,12 @@ export default function LessonPage({
         };
         setLesson(mockLesson);
       } else {
-        console.log('Real lesson data:', lessonData);
         setLesson(lessonData as Lesson);
       }
 
       // Cargar comentarios simulados
       loadComments();
     } catch (error) {
-      console.error('Error loading lesson data:', error);
       setError('Error al cargar la lección');
     } finally {
       setLoading(false);
@@ -389,7 +368,6 @@ export default function LessonPage({
         .order('created_at', { ascending: false });
 
       if (commentsError) {
-        console.error('Error fetching comments:', commentsError);
         // Si hay error, usar comentarios simulados como fallback
         const mockComments: Comment[] = [
           {
@@ -445,7 +423,6 @@ export default function LessonPage({
         setComments(realComments);
       }
     } catch (error) {
-      console.error('Error loading comments:', error);
       // En caso de error, usar comentarios simulados
       setComments([]);
     }
@@ -473,7 +450,6 @@ export default function LessonPage({
         .single();
 
       if (insertError) {
-        console.error('Error saving comment:', insertError);
         // Si hay error, agregar comentario localmente como fallback
         const fallbackComment: Comment = {
           id: Date.now().toString(),
@@ -504,9 +480,7 @@ export default function LessonPage({
       }
 
       setNewComment('');
-    } catch (error) {
-      console.error('Error submitting comment:', error);
-    }
+    } catch (error) {}
   };
 
   const handleLikeComment = async (commentId: string) => {
@@ -529,7 +503,6 @@ export default function LessonPage({
         .eq('id', commentId);
 
       if (updateError) {
-        console.error('Error updating like:', updateError);
         // Si hay error, actualizar solo localmente
         setComments((prev) =>
           prev.map((comment) =>
@@ -556,9 +529,7 @@ export default function LessonPage({
           ),
         );
       }
-    } catch (error) {
-      console.error('Error handling like:', error);
-    }
+    } catch (error) {}
   };
 
   const formatTimeAgo = (dateString: string) => {
@@ -574,15 +545,7 @@ export default function LessonPage({
     return `Hace ${Math.floor(diffInMinutes / 1440)}d`;
   };
 
-  console.log('Render state:', {
-    loading,
-    error,
-    lesson: !!lesson,
-    user: !!user,
-  });
-
   if (loading) {
-    console.log('Showing loading...');
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
@@ -596,7 +559,6 @@ export default function LessonPage({
   }
 
   if (error) {
-    console.log('Showing error:', error);
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
@@ -613,7 +575,6 @@ export default function LessonPage({
   }
 
   if (!lesson) {
-    console.log('No lesson found');
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
@@ -628,15 +589,6 @@ export default function LessonPage({
       </div>
     );
   }
-
-  console.log('Render state:', {
-    user: !!user,
-    userProfile: !!userProfile,
-    courseProgress,
-    goalProgress,
-    streakDays,
-    caloriesBurned,
-  });
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -870,13 +822,6 @@ export default function LessonPage({
 
             {/* Progress Section - Moved to sidebar below comments */}
             {(() => {
-              console.log('Rendering progress section in sidebar:', {
-                user: !!user,
-                courseProgress,
-                goalProgress,
-                streakDays,
-                caloriesBurned,
-              });
               return true;
             })() && (
               <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4">

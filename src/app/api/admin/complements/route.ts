@@ -26,7 +26,6 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ complements });
   } catch (error) {
-    console.error('Error fetching complements:', error);
     return NextResponse.json(
       { error: 'Error al obtener complementos' },
       { status: 500 },
@@ -76,7 +75,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ complement: data });
   } catch (error) {
-    console.error('Error creating complement:', error);
     return NextResponse.json(
       { error: 'Error al crear complemento' },
       { status: 500 },

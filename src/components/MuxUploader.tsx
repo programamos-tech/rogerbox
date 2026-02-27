@@ -36,7 +36,6 @@ export default function MuxUploader() {
         setUploadStatus('error');
       }
     } catch (error) {
-      console.error('Error uploading to Mux:', error);
       setUploadStatus('error');
     } finally {
       setIsUploading(false);

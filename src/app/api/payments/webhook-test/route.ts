@@ -13,14 +13,8 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    console.log('🔔 Webhook test received');
-
     const body = await request.text();
-    console.log('📥 Webhook body:', body);
-
     const headers = Object.fromEntries(request.headers.entries());
-    console.log('📥 Webhook headers:', headers);
-
     // Responder con HTTP 200 y un JSON simple
     return NextResponse.json(
       {
@@ -36,8 +30,6 @@ export async function POST(request: NextRequest) {
       },
     );
   } catch (error) {
-    console.error('❌ Error in webhook test:', error);
-
     // Incluso en caso de error, responder con 200 para evitar reintentos
     return NextResponse.json(
       {

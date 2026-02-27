@@ -29,7 +29,6 @@ export async function GET(request: NextRequest) {
       .single();
 
     if (fetchError && fetchError.code !== 'PGRST116') {
-      console.error('Error fetching interaction:', fetchError);
       return NextResponse.json(
         { error: 'Failed to fetch notes' },
         { status: 500 },
@@ -40,7 +39,6 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ notes: notes });
   } catch (error) {
-    console.error('Error in GET /api/user-interactions/notes-multiple:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 },
@@ -116,7 +114,6 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error('Error creating note:', error);
       return NextResponse.json(
         { error: 'Failed to create note' },
         { status: 500 },
@@ -128,10 +125,6 @@ export async function POST(request: NextRequest) {
       note: newNote,
     });
   } catch (error) {
-    console.error(
-      'Error in POST /api/user-interactions/notes-multiple:',
-      error,
-    );
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 },

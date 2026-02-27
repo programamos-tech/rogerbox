@@ -68,15 +68,12 @@ export default function WompiPaymentForm({
       }
 
       const orderResult = await orderResponse.json();
-      console.log('✅ Orden creada:', orderResult);
-
       // Simular procesamiento de pago exitoso
       setTimeout(() => {
         onPaymentSuccess(orderResult.transactionId || 'test-transaction-123');
         setIsProcessing(false);
       }, 2000);
     } catch (error) {
-      console.error('❌ Error en el pago:', error);
       onPaymentError(
         error instanceof Error ? error.message : 'Error desconocido',
       );

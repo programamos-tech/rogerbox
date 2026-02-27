@@ -44,7 +44,6 @@ export async function GET(request: NextRequest) {
       .select('id, name, document_id, whatsapp, email');
 
     if (clientsError) {
-      console.error('Error fetching clients:', clientsError);
       return NextResponse.json(
         { error: 'Error al obtener clientes' },
         { status: 500 },
@@ -80,7 +79,6 @@ export async function GET(request: NextRequest) {
       await membershipsQuery;
 
     if (membershipsError) {
-      console.error('Error fetching memberships:', membershipsError);
       return NextResponse.json(
         { error: 'Error al obtener membresías' },
         { status: 500 },
@@ -97,7 +95,6 @@ export async function GET(request: NextRequest) {
       .order('payment_date', { ascending: false });
 
     if (paymentsError) {
-      console.error('Error fetching payments:', paymentsError);
     }
 
     // Identificar clientes que NO están al día
@@ -255,7 +252,6 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(filteredResults);
   } catch (error) {
-    console.error('Error in GET /api/admin/gym/collections:', error);
     return NextResponse.json(
       { error: 'Error interno del servidor' },
       { status: 500 },

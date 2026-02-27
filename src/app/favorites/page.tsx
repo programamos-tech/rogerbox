@@ -141,7 +141,6 @@ export default function FavoritesPage() {
 
   const handleRemoveFavorite = (itemId: string) => {
     // Aquí implementarías la lógica para remover de favoritos
-    console.log('Removing from favorites:', itemId);
   };
 
   return (

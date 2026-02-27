@@ -65,7 +65,6 @@ export async function GET(request: NextRequest) {
     const { data: clients, error: clientsError, count } = await query;
 
     if (clientsError) {
-      console.error('Error fetching clients:', clientsError);
       throw clientsError;
     }
 
@@ -265,9 +264,7 @@ export async function GET(request: NextRequest) {
           0,
         );
       }
-    } catch (e) {
-      console.warn('Error fetching payment stats:', e);
-    }
+    } catch (e) {}
 
     // Aplicar paginación después de filtrar
     const paginatedClients = processedClients.slice(offset, offset + limit);
@@ -285,7 +282,6 @@ export async function GET(request: NextRequest) {
       stats,
     });
   } catch (error: any) {
-    console.error('Error in users API:', error);
     return NextResponse.json(
       { error: 'Error al obtener usuarios', details: error.message },
       { status: 500 },

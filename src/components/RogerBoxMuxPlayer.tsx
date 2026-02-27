@@ -135,9 +135,7 @@ export default function RogerBoxMuxPlayer({
           (document as any).msExitFullscreen();
         }
       }
-    } catch (error) {
-      console.warn('⚠️ Error al cambiar pantalla completa:', error);
-    }
+    } catch (error) {}
   };
 
   // Escuchar cambios de pantalla completa

@@ -58,7 +58,6 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query;
 
     if (error) {
-      console.error('Error fetching gym clients:', error);
       return NextResponse.json(
         { error: 'Error al obtener clientes' },
         { status: 500 },
@@ -67,7 +66,6 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(data || []);
   } catch (error) {
-    console.error('Error in GET /api/admin/gym/clients:', error);
     return NextResponse.json(
       { error: 'Error interno del servidor' },
       { status: 500 },
@@ -142,7 +140,6 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error('Error creating gym client:', error);
       if (error.code === '23505') {
         return NextResponse.json(
           { error: 'Ya existe un cliente con esta cédula' },
@@ -170,7 +167,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(data, { status: 201 });
   } catch (error) {
-    console.error('Error in POST /api/admin/gym/clients:', error);
     return NextResponse.json(
       { error: 'Error interno del servidor' },
       { status: 500 },

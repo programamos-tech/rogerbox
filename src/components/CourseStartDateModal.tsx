@@ -55,11 +55,6 @@ export default function CourseStartDateModal({
           return;
         }
 
-        console.log('🔍 CourseStartDateModal: Buscando compra...', {
-          orderId,
-          courseId,
-        });
-
         // Buscar la compra del curso
         const { data: purchase, error: purchaseError } = await supabase
           .from('course_purchases')
@@ -68,37 +63,13 @@ export default function CourseStartDateModal({
           .eq('course_id', courseId)
           .maybeSingle();
 
-        console.log('🔍 CourseStartDateModal: Resultado de búsqueda:', {
-          hasPurchase: !!purchase,
-          purchaseError: purchaseError
-            ? {
-                message: purchaseError.message,
-                code: purchaseError.code,
-                details: purchaseError.details,
-              }
-            : null,
-          purchase: purchase
-            ? {
-                id: purchase.id,
-                orderId: purchase.order_id,
-                courseId: purchase.course_id,
-              }
-            : null,
-        });
-
         if (purchaseError && purchaseError.code !== 'PGRST116') {
-          // Error real, no solo "no encontrado"
-          console.error(
-            '❌ CourseStartDateModal: Error buscando compra:',
-            purchaseError,
-          );
           throw new Error(
             `Error al buscar la compra: ${purchaseError.message}`,
           );
         }
 
         if (!purchase) {
-          console.error('❌ CourseStartDateModal: No se encontró la compra');
           throw new Error(
             'No se encontró la compra del curso. Por favor, recarga la página o contacta al soporte.',
           );
@@ -106,10 +77,6 @@ export default function CourseStartDateModal({
 
         purchaseIdToUse = purchase.id;
       } else {
-        console.log(
-          '✅ CourseStartDateModal: Usando purchaseId proporcionado:',
-          purchaseIdToUse,
-        );
       }
 
       // Actualizar la fecha de inicio del curso
@@ -125,16 +92,11 @@ export default function CourseStartDateModal({
         throw updateError;
       }
 
-      console.log('✅ Fecha de inicio guardada exitosamente:', selectedDate);
-
       // Refrescar las compras antes de redirigir
       await refreshPurchases();
-      console.log('🔄 CourseStartDateModal: Compras refrescadas');
-
       // Redirigir al dashboard del estudiante
       router.push('/student');
     } catch (err: any) {
-      console.error('Error setting start date:', err);
       setError(err.message || 'Error al guardar la fecha de inicio');
       setIsSubmitting(false);
     }

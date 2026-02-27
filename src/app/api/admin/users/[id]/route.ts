@@ -344,7 +344,6 @@ export async function GET(
       { status: 404 },
     );
   } catch (error: any) {
-    console.error('Error in GET user:', error);
     return NextResponse.json(
       { error: 'Error al obtener usuario', details: error.message },
       { status: 500 },
@@ -420,7 +419,6 @@ export async function PUT(
         .single();
 
       if (error) {
-        console.error('Error updating profile:', error);
         return NextResponse.json(
           { error: 'Error al actualizar usuario' },
           { status: 500 },
@@ -508,7 +506,6 @@ export async function PUT(
         .single();
 
       if (error) {
-        console.error('Error updating gym client:', error);
         return NextResponse.json(
           { error: 'Error al actualizar cliente' },
           { status: 500 },
@@ -518,7 +515,6 @@ export async function PUT(
       return NextResponse.json(data);
     }
   } catch (error: any) {
-    console.error('Error in PUT user:', error);
     return NextResponse.json(
       { error: 'Error al actualizar usuario', details: error.message },
       { status: 500 },
@@ -583,7 +579,6 @@ export async function DELETE(
         .eq('id', gymClient.id);
 
       if (deleteClientError) {
-        console.error('Error deleting gym client:', deleteClientError);
         return NextResponse.json(
           { error: 'Error al eliminar cliente del gym' },
           { status: 500 },
@@ -598,7 +593,6 @@ export async function DELETE(
       .eq('id', id);
 
     if (profileError) {
-      console.error('Error deleting profile:', profileError);
       // No falla si no existe el perfil
     }
 
@@ -607,7 +601,6 @@ export async function DELETE(
 
     return NextResponse.json({ message: 'Usuario eliminado exitosamente' });
   } catch (error: any) {
-    console.error('Error in DELETE user:', error);
     return NextResponse.json(
       { error: 'Error al eliminar usuario', details: error.message },
       { status: 500 },

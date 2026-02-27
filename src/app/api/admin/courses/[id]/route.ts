@@ -56,8 +56,6 @@ async function getSessionUser() {
       return user;
     }
 
-    console.error('getUser() error:', userError);
-
     // Fallback: intentar con getSession()
     const supabase = await createClient();
     const {
@@ -68,8 +66,6 @@ async function getSessionUser() {
       return session.user;
     }
 
-    console.error('getSession() error:', sessionError);
-
     // Último fallback: extraer token manualmente de cookies
     const token = await extractAccessTokenFromCookies();
     if (token) {
@@ -77,12 +73,10 @@ async function getSessionUser() {
       if (!error && data?.user) {
         return data.user;
       }
-      console.error('getUser(token) error:', error);
     }
 
     return null;
   } catch (err) {
-    console.error('Session unexpected error:', err);
     return null;
   }
 }
@@ -98,51 +92,18 @@ export async function DELETE(
     const cookieStore = await cookies();
     const allCookies = cookieStore.getAll();
     const authCookies = allCookies.filter((c) => c.name.includes('auth'));
-    console.log('🔍 DELETE Courses - Cookies recibidas:', {
-      totalCookies: allCookies.length,
-      authCookies: authCookies.map((c) => ({
-        name: c.name,
-        hasValue: !!c.value,
-      })),
-    });
-
     const user = await getSessionUser();
-
-    console.log('🔍 DELETE Courses - Usuario obtenido:', {
-      hasUser: !!user,
-      userId: user?.id,
-      userEmail: user?.email,
-      userRole: user?.user_metadata?.role,
-      envId: process.env.NEXT_PUBLIC_ADMIN_USER_ID,
-      envEmail: process.env.NEXT_PUBLIC_ADMIN_EMAIL,
-      isAdmin: isAdminUser(user),
-    });
 
     if (!isAdminUser(user)) {
       // Fallback dev bypass: si no hay user pero estamos en dev y hay service key, permitir
       const nodeEnv = String(process.env.NODE_ENV || 'development');
       const isNotProduction = nodeEnv !== 'production' && nodeEnv !== 'prod';
       if (isNotProduction && process.env.SUPABASE_SERVICE_ROLE_KEY && !user) {
-        console.warn(
-          '⚠️ Bypassing admin check in dev for courses DELETE (no user found)',
-        );
         // Continuar con la eliminación usando supabaseAdmin
       } else {
-        console.error('❌ Courses DELETE unauthorized', {
-          userId: user?.id,
-          userEmail: user?.email,
-          envId: process.env.NEXT_PUBLIC_ADMIN_USER_ID,
-          envEmail: process.env.NEXT_PUBLIC_ADMIN_EMAIL,
-          role: user?.user_metadata?.role,
-          isAdmin: isAdminUser(user),
-          nodeEnv: process.env.NODE_ENV,
-          hasServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-        });
         return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
       }
     }
-
-    console.log('🗑️ API: Eliminando curso:', id);
 
     // Primero eliminar lecciones relacionadas
     const { error: lessonsError } = await supabaseAdmin
@@ -151,7 +112,6 @@ export async function DELETE(
       .eq('course_id', id);
 
     if (lessonsError) {
-      console.error('❌ Error eliminando lecciones:', lessonsError);
       return NextResponse.json(
         { error: `Error al eliminar lecciones: ${lessonsError.message}` },
         { status: 500 },
@@ -166,7 +126,6 @@ export async function DELETE(
       .select();
 
     if (courseError) {
-      console.error('❌ Error eliminando curso:', courseError);
       return NextResponse.json(
         { error: `Error al eliminar curso: ${courseError.message}` },
         { status: 500 },
@@ -180,14 +139,11 @@ export async function DELETE(
       );
     }
 
-    console.log('✅ Curso eliminado exitosamente:', deletedData);
-
     return NextResponse.json({
       success: true,
       deleted: deletedData,
     });
   } catch (error) {
-    console.error('❌ Error inesperado:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Error desconocido' },
       { status: 500 },

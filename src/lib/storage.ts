@@ -83,17 +83,9 @@ export async function uploadImage(
 
     // Convertir a WebP si está habilitado y el archivo no es ya WebP
     if (shouldConvertToWebP && !file.type.includes('webp')) {
-      console.log('🔄 Convirtiendo imagen a WebP...');
       try {
         fileToUpload = await convertToWebP(file, quality);
-        console.log(
-          `✅ Imagen convertida a WebP: ${file.size} bytes → ${fileToUpload.size} bytes (${Math.round((1 - fileToUpload.size / file.size) * 100)}% reducción)`,
-        );
       } catch (error) {
-        console.warn(
-          '⚠️ Error al convertir a WebP, subiendo imagen original:',
-          error,
-        );
         // Continuar con el archivo original si falla la conversión
       }
     }
@@ -104,10 +96,6 @@ export async function uploadImage(
       filename ||
       `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExtension}`;
     const filePath = `${folder}/${finalFilename}`;
-
-    console.log(
-      `📤 Subiendo imagen a ${bucket}/${filePath} (${fileToUpload.size} bytes)`,
-    );
 
     // Subir archivo usando el endpoint API (más seguro, usa supabaseAdmin en el servidor)
     const formData = new FormData();
@@ -127,7 +115,6 @@ export async function uploadImage(
       const errorData = await response
         .json()
         .catch(() => ({ error: 'Error desconocido' }));
-      console.error('❌ Error subiendo imagen:', errorData.error);
       return {
         success: false,
         error: errorData.error || 'Error al subir la imagen',
@@ -137,14 +124,11 @@ export async function uploadImage(
     const result = await response.json();
 
     if (!result.success || !result.url) {
-      console.error('❌ Error en respuesta del servidor:', result.error);
       return {
         success: false,
         error: result.error || 'Error al subir la imagen',
       };
     }
-
-    console.log('✅ Imagen subida exitosamente:', result.url);
 
     return {
       success: true,
@@ -152,7 +136,6 @@ export async function uploadImage(
       path: result.path,
     };
   } catch (error) {
-    console.error('❌ Error inesperado subiendo imagen:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Error desconocido',
@@ -171,19 +154,14 @@ export async function deleteImage(
   path: string,
 ): Promise<boolean> {
   try {
-    console.log(`🗑️ Eliminando imagen de ${bucket}/${path}`);
-
     const { error } = await supabase.storage.from(bucket).remove([path]);
 
     if (error) {
-      console.error('❌ Error eliminando imagen:', error);
       return false;
     }
 
-    console.log('✅ Imagen eliminada exitosamente');
     return true;
   } catch (error) {
-    console.error('❌ Error inesperado eliminando imagen:', error);
     return false;
   }
 }
@@ -204,7 +182,6 @@ export function getImagePathFromUrl(url: string): string | null {
     }
     return null;
   } catch (error) {
-    console.error('❌ Error extrayendo path de URL:', error);
     return null;
   }
 }

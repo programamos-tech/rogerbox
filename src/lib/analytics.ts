@@ -14,14 +14,11 @@ export async function trackCourseView(courseId: string, userId?: string) {
     });
 
     if (error) {
-      console.error('Error tracking course view:', error);
       return false;
     }
 
-    console.log('✅ Course view tracked:', courseId);
     return true;
   } catch (error) {
-    console.error('Error tracking course view:', error);
     return false;
   }
 }
@@ -36,13 +33,11 @@ export async function getCourseViewCount(courseId: string): Promise<number> {
     });
 
     if (error) {
-      console.error('Error getting course view count:', error);
       return 0;
     }
 
     return data || 0;
   } catch (error) {
-    console.error('Error getting course view count:', error);
     return 0;
   }
 }
@@ -55,13 +50,11 @@ export async function getMostViewedCourse(): Promise<string | null> {
     const { data, error } = await supabase.rpc('get_most_viewed_course');
 
     if (error) {
-      console.error('Error getting most viewed course:', error);
       return null;
     }
 
     return data;
   } catch (error) {
-    console.error('Error getting most viewed course:', error);
     return null;
   }
 }

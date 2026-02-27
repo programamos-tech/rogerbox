@@ -52,7 +52,6 @@ export async function GET(
           { status: 404 },
         );
       }
-      console.error('Error fetching gym membership:', error);
       return NextResponse.json(
         { error: 'Error al obtener membresía' },
         { status: 500 },
@@ -61,7 +60,6 @@ export async function GET(
 
     return NextResponse.json(data);
   } catch (error) {
-    console.error('Error in GET /api/admin/gym/memberships/[id]:', error);
     return NextResponse.json(
       { error: 'Error interno del servidor' },
       { status: 500 },
@@ -153,7 +151,6 @@ export async function PUT(
           { status: 404 },
         );
       }
-      console.error('Error updating gym membership:', error);
       return NextResponse.json(
         { error: 'Error al actualizar membresía' },
         { status: 500 },
@@ -162,7 +159,6 @@ export async function PUT(
 
     return NextResponse.json(data);
   } catch (error) {
-    console.error('Error in PUT /api/admin/gym/memberships/[id]:', error);
     return NextResponse.json(
       { error: 'Error interno del servidor' },
       { status: 500 },
@@ -202,7 +198,6 @@ export async function DELETE(
           { status: 404 },
         );
       }
-      console.error('Error cancelling gym membership:', error);
       return NextResponse.json(
         { error: 'Error al cancelar membresía' },
         { status: 500 },
@@ -214,7 +209,6 @@ export async function DELETE(
       data,
     });
   } catch (error) {
-    console.error('Error in DELETE /api/admin/gym/memberships/[id]:', error);
     return NextResponse.json(
       { error: 'Error interno del servidor' },
       { status: 500 },

@@ -51,25 +51,14 @@ export async function POST(request: NextRequest) {
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    console.log(
-      `📤 Subiendo imagen a ${bucket}/${filePath} (${buffer.length} bytes)`,
-    );
-    console.log(
-      '🔧 Supabase URL:',
-      process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321',
-    );
-
     // Verificar que el bucket existe; si no, crearlo (solo para buckets conocidos)
     const { data: buckets, error: listError } =
       await supabaseAdmin.storage.listBuckets();
     const bucketNames = buckets?.map((b) => b.name) ?? [];
-    console.log('📦 Buckets disponibles:', bucketNames);
     if (listError) {
-      console.error('❌ Error listando buckets:', listError);
     }
 
     if (!bucketNames.includes(bucket)) {
-      console.log(`📦 Creando bucket "${bucket}"...`);
       const { error: createError } = await supabaseAdmin.storage.createBucket(
         bucket,
         {
@@ -78,7 +67,6 @@ export async function POST(request: NextRequest) {
         },
       );
       if (createError) {
-        console.error('❌ Error creando bucket:', createError);
         return NextResponse.json(
           {
             error: `Bucket "${bucket}" no existe y no se pudo crear: ${createError.message}`,
@@ -86,7 +74,6 @@ export async function POST(request: NextRequest) {
           { status: 500 },
         );
       }
-      console.log(`✅ Bucket "${bucket}" creado`);
     }
 
     // Subir archivo a Supabase Storage usando supabaseAdmin
@@ -99,8 +86,6 @@ export async function POST(request: NextRequest) {
       });
 
     if (error) {
-      console.error('❌ Error subiendo imagen:', error);
-      console.error('❌ Detalles del error:', JSON.stringify(error, null, 2));
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
@@ -109,15 +94,12 @@ export async function POST(request: NextRequest) {
       data: { publicUrl },
     } = supabaseAdmin.storage.from(bucket).getPublicUrl(data.path);
 
-    console.log('✅ Imagen subida exitosamente:', publicUrl);
-
     return NextResponse.json({
       success: true,
       url: publicUrl,
       path: data.path,
     });
   } catch (error) {
-    console.error('❌ Error inesperado subiendo imagen:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Error desconocido' },
       { status: 500 },

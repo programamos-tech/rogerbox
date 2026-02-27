@@ -215,7 +215,6 @@ export async function GET() {
       recentSales,
     });
   } catch (error) {
-    console.error('Error fetching dashboard stats:', error);
     return NextResponse.json(
       { error: 'Error al obtener estadísticas' },
       { status: 500 },

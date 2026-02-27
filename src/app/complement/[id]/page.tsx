@@ -65,31 +65,20 @@ export default function ComplementDetail() {
   // Función separada para cargar interacciones
   const loadUserInteractions = async (complementId: string) => {
     if (!user?.id) {
-      console.log('⚠️ Usuario no autenticado, no se cargan interacciones');
       return;
     }
 
     try {
       const userId = user?.id;
-      console.log('🔍 Cargando interacciones para usuario:', userId);
       if (!userId) return;
 
       // Usar la API de debug que sabemos que funciona
       const interactionsResponse = await fetch(
         `/api/debug-interactions?complement_id=${complementId}&user_id=${userId}`,
       );
-      console.log(
-        '📡 Respuesta de interacciones:',
-        interactionsResponse.status,
-      );
-
       if (interactionsResponse.ok) {
         const interactionsData = await interactionsResponse.json();
-        console.log('📊 Datos de interacciones:', interactionsData);
-
         const userInteraction = interactionsData.interactions[0]; // Tomar la primera (y única) interacción
-
-        console.log('🎯 Interacción encontrada:', userInteraction);
 
         if (userInteraction) {
           // Actualizar estados de manera más explícita
@@ -98,21 +87,11 @@ export default function ComplementDetail() {
           const newUserRating = userInteraction.user_rating || 0;
           const newNotes = userInteraction.notes_array || [];
 
-          console.log('🔄 Actualizando estados...', {
-            isCompleted: newIsCompleted,
-            isFavorite: newIsFavorite,
-            userRating: newUserRating,
-            notesCount: newNotes.length,
-          });
-
           setIsCompleted(newIsCompleted);
           setIsFavorite(newIsFavorite);
           setUserRating(newUserRating);
           setNotes(newNotes);
-
-          console.log('✅ Estados actualizados correctamente');
         } else {
-          console.log('⚠️ No se encontró interacción para este complemento');
           // Resetear a valores por defecto si no hay interacción
           setIsCompleted(false);
           setIsFavorite(false);
@@ -120,58 +99,40 @@ export default function ComplementDetail() {
           setNotes([]);
         }
       } else {
-        console.log(
-          '❌ Error en la respuesta de interacciones:',
-          interactionsResponse.status,
-        );
       }
-    } catch (error) {
-      console.log('❌ Error loading user interactions:', error);
-    }
+    } catch (error) {}
   };
 
   useEffect(() => {
     const fetchComplement = async () => {
       try {
         const complementId = params.id as string;
-        console.log('🔍 Cargando complemento:', complementId);
-
         // Fetch complement data
         const complementResponse = await fetch(
           `/api/complements/${complementId}`,
         );
         if (!complementResponse.ok) {
-          console.error('Complement not found for ID:', complementId);
           setLoading(false);
           return;
         }
         const complementData = await complementResponse.json();
-        console.log('📊 Complemento cargado:', complementData.complement.title);
-
         // Incrementar visualizaciones
         try {
           await fetch(`/api/complements/${complementId}/view`, {
             method: 'POST',
           });
-          console.log('👁️ Visualizaciones incrementadas');
-        } catch (error) {
-          console.log('Error incrementing views:', error);
-        }
+        } catch (error) {}
 
         setComplement(complementData.complement);
         setLoading(false);
 
         // Cargar interacciones inmediatamente después de cargar el complemento
         if (user?.id && !!user) {
-          console.log(
-            '🔄 Cargando interacciones inmediatamente después del complemento...',
-          );
           setTimeout(() => {
             loadUserInteractions(complementId);
           }, 100);
         }
       } catch (error) {
-        console.error('Error fetching complement:', error);
         setLoading(false);
       }
     };
@@ -181,38 +142,16 @@ export default function ComplementDetail() {
 
   // useEffect para cargar interacciones cuando esté todo listo
   useEffect(() => {
-    console.log(
-      '🔍 useEffect interacciones - complement:',
-      !!complement,
-      'user:',
-      !!(user as any)?.user?.id,
-      'authLoading:',
-      authLoading,
-    );
-
     if (complement && (user as any)?.user?.id && !!user) {
-      console.log('🔄 Cargando interacciones del usuario...');
       loadUserInteractions(complement.id);
     } else {
-      console.log(
-        '⚠️ No se cumplen las condiciones para cargar interacciones:',
-        {
-          hasComplement: !!complement,
-          hasUserId: !!(user as any)?.user?.id,
-          authLoading: authLoading,
-        },
-      );
     }
   }, [complement, (user as any)?.user?.id, authLoading]);
 
   // useEffect adicional como respaldo - se ejecuta después de que todo esté cargado
   useEffect(() => {
     if (complement && !!user && (user as any)?.user?.id) {
-      console.log(
-        '⏰ Respaldo: Cargando interacciones después de 1 segundo...',
-      );
       const timer = setTimeout(() => {
-        console.log('🔄 Respaldo: Ejecutando carga de interacciones...');
         loadUserInteractions(complement.id);
       }, 1000);
 
@@ -222,22 +161,10 @@ export default function ComplementDetail() {
 
   // useEffect adicional que se ejecuta cuando la página está completamente cargada
   useEffect(() => {
-    console.log(
-      '🔍 useEffect de montaje - complement:',
-      !!complement,
-      'user:',
-      !!(user as any)?.user?.id,
-      'authLoading:',
-      authLoading,
-    );
-
     const loadDataOnMount = () => {
-      console.log('🚀 Intentando carga inicial...');
       if (complement && (user as any)?.user?.id && !!user) {
-        console.log('🚀 Carga inicial: Ejecutando loadUserInteractions...');
         loadUserInteractions(complement.id);
       } else {
-        console.log('⚠️ Carga inicial fallida - condiciones no cumplidas');
       }
     };
 
@@ -246,7 +173,6 @@ export default function ComplementDetail() {
 
     // También ejecutar después de un pequeño delay
     const timer = setTimeout(() => {
-      console.log('⏰ Timer de 2 segundos ejecutándose...');
       loadDataOnMount();
     }, 2000);
 
@@ -256,7 +182,6 @@ export default function ComplementDetail() {
   const handleFavorite = async () => {
     if (!complement || !(user as any)?.user?.id || isFavoriting) {
       if (!(user as any)?.user?.id) {
-        console.log('Usuario no autenticado - redirigiendo al login');
         router.push('/');
       }
       return;
@@ -310,7 +235,6 @@ export default function ComplementDetail() {
         });
       }
     } catch (error) {
-      console.error('Error updating favorite:', error);
     } finally {
       setIsFavoriting(false);
     }
@@ -319,7 +243,6 @@ export default function ComplementDetail() {
   const handleComplete = async () => {
     if (!complement || !(user as any)?.user?.id || isCompleting) {
       if (!(user as any)?.user?.id) {
-        console.log('Usuario no autenticado - redirigiendo al login');
         router.push('/');
       }
       return;
@@ -358,7 +281,6 @@ export default function ComplementDetail() {
         setIsCompleted(true);
       }
     } catch (error) {
-      console.error('Error updating completion:', error);
     } finally {
       setIsCompleting(false);
     }
@@ -367,7 +289,6 @@ export default function ComplementDetail() {
   const handleRating = async (rating: number) => {
     if (!complement || !(user as any)?.user?.id || isRating) {
       if (!(user as any)?.user?.id) {
-        console.log('Usuario no autenticado - redirigiendo al login');
         router.push('/');
       }
       return;
@@ -389,12 +310,9 @@ export default function ComplementDetail() {
 
       if (response.ok) {
         setUserRating(rating);
-        console.log('⭐ Rating actualizado:', rating);
       } else {
-        console.log('❌ Error actualizando rating');
       }
     } catch (error) {
-      console.error('Error updating rating:', error);
     } finally {
       setIsRating(false);
     }
@@ -430,7 +348,6 @@ export default function ComplementDetail() {
         setNewNote('');
       }
     } catch (error) {
-      console.error('Error adding note:', error);
     } finally {
       setIsAddingNote(false);
     }

@@ -114,9 +114,7 @@ export default function CourseDetailPage() {
           map[cat.id] = cat.name;
         });
         setCategoryMap(map);
-      } catch (error) {
-        console.error('Error fetching categories:', error);
-      }
+      } catch (error) {}
     };
 
     fetchCategories();
@@ -148,9 +146,7 @@ export default function CourseDetailPage() {
           if (data) {
             setUserProfile(data);
           }
-        } catch (error) {
-          console.error('Error fetching user profile:', error);
-        }
+        } catch (error) {}
       }
     };
 
@@ -287,7 +283,6 @@ export default function CourseDetailPage() {
 
       setLoading(false);
     } catch (error) {
-      console.error('Error loading course data:', error);
       setError('Error al cargar el curso');
       setLoading(false);
     }

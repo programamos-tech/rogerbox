@@ -53,7 +53,6 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error('Error updating favorite:', error);
       return NextResponse.json(
         { error: 'Failed to update favorite' },
         { status: 500 },
@@ -65,7 +64,6 @@ export async function POST(request: NextRequest) {
       is_favorite: data.is_favorite,
     });
   } catch (error) {
-    console.error('Error in POST /api/user-interactions/favorite:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 },

@@ -79,7 +79,6 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (courseError) {
-      console.error('Error creating course:', courseError);
       return NextResponse.json(
         { error: 'Error al crear el curso' },
         { status: 500 },
@@ -97,7 +96,6 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Error in create course:', error);
     return NextResponse.json(
       { error: 'Error interno del servidor' },
       { status: 500 },
@@ -135,7 +133,6 @@ export async function GET(request: NextRequest) {
     const { data: courses, error } = await query;
 
     if (error) {
-      console.error('Error fetching courses:', error);
       return NextResponse.json(
         { error: 'Error al obtener los cursos' },
         { status: 500 },
@@ -147,7 +144,6 @@ export async function GET(request: NextRequest) {
       courses: courses || [],
     });
   } catch (error) {
-    console.error('Error in get courses:', error);
     return NextResponse.json(
       { error: 'Error interno del servidor' },
       { status: 500 },

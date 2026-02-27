@@ -65,7 +65,6 @@ const GymPlansManagement = forwardRef<GymPlansManagementRef>((props, ref) => {
       const data = await response.json();
       setPlans(data);
     } catch (error) {
-      console.error('Error loading plans:', error);
     } finally {
       setLoading(false);
     }
@@ -188,7 +187,6 @@ const GymPlansManagement = forwardRef<GymPlansManagementRef>((props, ref) => {
         }
       }
     } catch (error: any) {
-      console.error('Error verificando membresías:', error);
       // Si hay error al verificar, permitir intentar eliminar (el backend lo validará)
     } finally {
       setIsDeleting(false);

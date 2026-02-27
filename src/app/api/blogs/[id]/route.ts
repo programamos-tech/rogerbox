@@ -16,7 +16,6 @@ export async function GET(
       .single();
 
     if (error) {
-      console.error('Error fetching blog:', error);
       return NextResponse.json(
         { error: 'Blog no encontrado' },
         { status: 404 },
@@ -25,7 +24,6 @@ export async function GET(
 
     return NextResponse.json({ blog });
   } catch (error) {
-    console.error('Error in GET /api/blogs/[id]:', error);
     return NextResponse.json(
       { error: 'Error interno del servidor' },
       { status: 500 },
@@ -99,7 +97,6 @@ export async function PUT(
       .single();
 
     if (error) {
-      console.error('Error updating blog:', error);
       return NextResponse.json(
         { error: 'Error al actualizar el blog' },
         { status: 500 },
@@ -108,7 +105,6 @@ export async function PUT(
 
     return NextResponse.json({ blog });
   } catch (error) {
-    console.error('Error in PUT /api/blogs/[id]:', error);
     return NextResponse.json(
       { error: 'Error interno del servidor' },
       { status: 500 },
@@ -129,7 +125,6 @@ export async function DELETE(
       .eq('id', id);
 
     if (error) {
-      console.error('Error deleting blog:', error);
       return NextResponse.json(
         { error: 'Error al eliminar el blog' },
         { status: 500 },
@@ -138,7 +133,6 @@ export async function DELETE(
 
     return NextResponse.json({ message: 'Blog eliminado exitosamente' });
   } catch (error) {
-    console.error('Error in DELETE /api/blogs/[id]:', error);
     return NextResponse.json(
       { error: 'Error interno del servidor' },
       { status: 500 },

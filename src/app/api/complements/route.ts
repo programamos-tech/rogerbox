@@ -38,7 +38,6 @@ export async function GET(request: NextRequest) {
     });
 
     if (error) {
-      console.error('Error fetching complements:', error);
       return NextResponse.json(
         { error: 'Failed to fetch complements' },
         { status: 500 },
@@ -47,7 +46,6 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ complements: data });
   } catch (error) {
-    console.error('Error in GET /api/complements:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 },
@@ -87,7 +85,6 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error('Error creating complement:', error);
       return NextResponse.json(
         { error: 'Failed to create complement' },
         { status: 500 },
@@ -105,7 +102,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ complement: data }, { status: 201 });
   } catch (error) {
-    console.error('Error in POST /api/complements:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 },

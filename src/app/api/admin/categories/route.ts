@@ -25,7 +25,6 @@ async function getSessionUser() {
   try {
     const { session, error: sessionError } = await getSession();
     if (sessionError) {
-      console.error('Session error:', sessionError);
       // Intentar recuperar token desde cookie sb-*-auth-token y validar con supabaseAdmin (fallback)
       const token = await extractAccessTokenFromCookies();
       if (token) {
@@ -49,7 +48,6 @@ async function getSessionUser() {
 
     return null;
   } catch (err) {
-    console.error('Session unexpected error:', err);
     return null;
   }
 }
@@ -71,13 +69,6 @@ export async function GET() {
   const user = await getSessionUser();
 
   if (!isAdminUser(user)) {
-    console.error('Categories GET unauthorized', {
-      userId: user?.id,
-      userEmail: user?.email,
-      envId: process.env.NEXT_PUBLIC_ADMIN_USER_ID,
-      envEmail: process.env.NEXT_PUBLIC_ADMIN_EMAIL,
-      role: user?.user_metadata?.role,
-    });
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
   }
 
@@ -87,7 +78,6 @@ export async function GET() {
     .order('sort_order', { ascending: true });
 
   if (error) {
-    console.error('Categories GET error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
@@ -103,15 +93,7 @@ export async function POST(request: NextRequest) {
       process.env.NODE_ENV !== 'production' &&
       process.env.SUPABASE_SERVICE_ROLE_KEY
     ) {
-      console.warn('Bypassing admin check in dev for categories POST');
     } else {
-      console.error('Categories POST unauthorized', {
-        userId: user?.id,
-        userEmail: user?.email,
-        envId: process.env.NEXT_PUBLIC_ADMIN_USER_ID,
-        envEmail: process.env.NEXT_PUBLIC_ADMIN_EMAIL,
-        role: user?.user_metadata?.role,
-      });
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
   }
@@ -131,7 +113,6 @@ export async function POST(request: NextRequest) {
   ]);
 
   if (error) {
-    console.error('Categories POST error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
@@ -145,15 +126,7 @@ export async function PUT(request: NextRequest) {
     const nodeEnv = String(process.env.NODE_ENV || 'development');
     const isNotProduction = nodeEnv !== 'production' && nodeEnv !== 'prod';
     if (isNotProduction && process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      console.warn('Bypassing admin check in dev for categories PUT');
     } else {
-      console.error('Categories PUT unauthorized', {
-        userId: user?.id,
-        userEmail: user?.email,
-        envId: process.env.NEXT_PUBLIC_ADMIN_USER_ID,
-        envEmail: process.env.NEXT_PUBLIC_ADMIN_EMAIL,
-        role: user?.user_metadata?.role,
-      });
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
   }
@@ -170,7 +143,6 @@ export async function PUT(request: NextRequest) {
     .eq('id', id);
 
   if (error) {
-    console.error('Categories PUT error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
@@ -184,15 +156,7 @@ export async function DELETE(request: NextRequest) {
     const nodeEnv = String(process.env.NODE_ENV || 'development');
     const isNotProduction = nodeEnv !== 'production' && nodeEnv !== 'prod';
     if (isNotProduction && process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      console.warn('Bypassing admin check in dev for categories DELETE');
     } else {
-      console.error('Categories DELETE unauthorized', {
-        userId: user?.id,
-        userEmail: user?.email,
-        envId: process.env.NEXT_PUBLIC_ADMIN_USER_ID,
-        envEmail: process.env.NEXT_PUBLIC_ADMIN_EMAIL,
-        role: user?.user_metadata?.role,
-      });
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
   }
@@ -210,7 +174,6 @@ export async function DELETE(request: NextRequest) {
     .eq('id', id);
 
   if (error) {
-    console.error('Categories DELETE error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 

@@ -182,10 +182,8 @@ export default function PaymentDetailPage() {
       if (foundPayment) {
         setPayment(foundPayment);
       } else {
-        console.warn('Factura no encontrada');
       }
     } catch (error) {
-      console.error('Error loading payment data:', error);
     } finally {
       setLoading(false);
     }
@@ -288,7 +286,6 @@ export default function PaymentDetailPage() {
       const fileName = `factura-${payment.invoice_number || payment.id.substring(0, 8)}-${new Date(payment.payment_date).toISOString().split('T')[0]}.pdf`;
       pdf.save(fileName);
     } catch (error) {
-      console.error('Error generating PDF:', error);
       alert('Error al generar el PDF');
     } finally {
       document.body.removeChild(invoiceDiv);

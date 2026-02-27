@@ -89,7 +89,6 @@ export default function ComplementManagement() {
       const data = await response.json();
       setComplements(data.complements || []);
     } catch (error) {
-      console.error('Error fetching complements:', error);
     } finally {
       setLoading(false);
     }
@@ -168,7 +167,6 @@ export default function ComplementManagement() {
         alert(`Error: ${error.error}`);
       }
     } catch (error) {
-      console.error('Error saving complement:', error);
       alert('Error al guardar el complemento');
     } finally {
       setSaving(false);
@@ -186,9 +184,7 @@ export default function ComplementManagement() {
       if (response.ok) {
         await fetchComplements();
       }
-    } catch (error) {
-      console.error('Error deleting complement:', error);
-    }
+    } catch (error) {}
   };
 
   const handleTogglePublish = async (id: string, currentStatus: boolean) => {
@@ -206,9 +202,7 @@ export default function ComplementManagement() {
           ),
         );
       }
-    } catch (error) {
-      console.error('Error toggling publish:', error);
-    }
+    } catch (error) {}
   };
 
   const weekStartDate = getWeekStartDate(selectedWeek, selectedYear);

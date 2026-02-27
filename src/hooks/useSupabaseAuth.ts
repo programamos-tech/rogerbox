@@ -30,11 +30,7 @@ export function useSupabaseAuth() {
     // Timeout de seguridad: si Supabase no responde (ej. local no está arriba), mostrar landing
     const fallbackTimer = setTimeout(() => {
       if (cancelled) return;
-      setLoading((prev) => {
-        if (prev)
-          console.warn('Auth: timeout esperando sesión (¿Supabase accesible?)');
-        return false;
-      });
+      setLoading((prev) => (prev ? false : prev));
     }, 3000);
 
     // Obtener sesión inicial
@@ -54,7 +50,6 @@ export function useSupabaseAuth() {
       .catch((err) => {
         if (cancelled) return;
         clearTimeout(fallbackTimer);
-        console.error('Auth getSession error:', err);
         setLoading(false);
       });
 
@@ -88,7 +83,6 @@ export function useSupabaseAuth() {
         .maybeSingle();
 
       if (error && error.code !== 'PGRST116') {
-        console.error('Error loading profile:', error);
       }
 
       if (data) {
@@ -108,7 +102,6 @@ export function useSupabaseAuth() {
         });
       }
     } catch (error) {
-      console.error('Error loading profile:', error);
     } finally {
       setLoading(false);
     }
@@ -123,7 +116,6 @@ export function useSupabaseAuth() {
     });
 
     if (error) {
-      console.error('Error signing in with Google:', error);
       return { error };
     }
 
@@ -133,30 +125,19 @@ export function useSupabaseAuth() {
   const signInWithEmail = async (email: string, password: string) => {
     setLoading(true);
     try {
-      console.log('🔐 Intentando login con:', { email });
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim().toLowerCase(),
         password,
       });
 
       if (error) {
-        console.error('❌ Error de Supabase Auth:', {
-          message: error.message,
-          status: error.status,
-          name: error.name,
-        });
         setLoading(false);
         return { error };
       }
 
-      console.log('✅ Login exitoso:', {
-        userId: data.user?.id,
-        email: data.user?.email,
-      });
       setLoading(false);
       return { data, error: null };
     } catch (err) {
-      console.error('❌ Error inesperado en login:', err);
       setLoading(false);
       return {
         error: {
@@ -198,7 +179,6 @@ export function useSupabaseAuth() {
   const signOut = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) {
-      console.error('Error signing out:', error);
       return { error };
     }
 

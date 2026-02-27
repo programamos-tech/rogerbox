@@ -33,9 +33,7 @@ class UnifiedCoursesService {
       if (videoId) {
         return `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
       }
-    } catch (error) {
-      console.warn('Error al extraer video ID de YouTube:', error);
-    }
+    } catch (error) {}
     return '/images/course-placeholder.jpg';
   }
 
@@ -49,10 +47,6 @@ class UnifiedCoursesService {
     if (!base64String) return '/images/course-placeholder.jpg';
 
     if (base64String.startsWith('data:image/')) {
-      // Si es una imagen Base64, la cortamos y usamos placeholder
-      console.warn(
-        '🖼️ Imagen Base64 detectada, usando placeholder para optimización',
-      );
       return '/images/course-placeholder.jpg';
     }
 
@@ -68,13 +62,6 @@ class UnifiedCoursesService {
    */
   async getCourses(): Promise<UnifiedCourse[]> {
     try {
-      console.log('🚀 UnifiedCourses: Cargando desde Supabase...');
-      console.log(
-        '🔧 UnifiedCourses: Supabase URL:',
-        process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321',
-      );
-      console.log('🔧 UnifiedCourses: Usando cliente browser');
-
       // Consulta optimizada con conteo de lecciones
       const { data: coursesData, error: coursesError } = await supabase
         .from('courses')
@@ -103,12 +90,6 @@ class UnifiedCoursesService {
         .eq('is_published', true)
         .order('created_at', { ascending: false });
 
-      console.log('📊 UnifiedCourses: Respuesta de Supabase:', {
-        dataLength: coursesData?.length || 0,
-        hasError: !!coursesError,
-        firstCourse: coursesData?.[0]?.title || 'N/A',
-      });
-
       if (coursesError) {
         // Verificar si el error tiene información útil
         const hasErrorInfo =
@@ -119,7 +100,6 @@ class UnifiedCoursesService {
 
         // Si el error no tiene información útil (objeto vacío), tratarlo como si no hubiera cursos
         if (!hasErrorInfo) {
-          console.log('ℹ️ UnifiedCourses: No hay cursos todavía');
           return [];
         }
 
@@ -130,7 +110,6 @@ class UnifiedCoursesService {
           coursesError?.message?.includes('RLS');
 
         if (isRLSError) {
-          console.log('ℹ️ UnifiedCourses: No hay cursos disponibles (permisos)');
           return [];
         }
 
@@ -160,18 +139,10 @@ class UnifiedCoursesService {
         ].filter(Boolean) as [string, string][];
 
         if (cleanEntries.length === 0) {
-          console.log(
-            'ℹ️ UnifiedCourses: No hay cursos todavía (sin información de error)',
-          );
           return [];
         }
 
         const errorDetails = Object.fromEntries(cleanEntries);
-        // Solo mostrar como advertencia, no como error crítico
-        console.warn(
-          '⚠️ UnifiedCourses: Problema al cargar cursos:',
-          errorDetails,
-        );
         return [];
       }
 
@@ -182,10 +153,6 @@ class UnifiedCoursesService {
         .eq('is_active', true);
 
       if (categoriesError) {
-        console.log(
-          'ℹ️ UnifiedCourses: No se pudieron cargar categorías (puede ser normal):',
-          categoriesError,
-        );
         // Continuar sin categorías si hay error
       }
 
@@ -265,17 +232,8 @@ class UnifiedCoursesService {
         };
       });
 
-      console.log(
-        `✅ UnifiedCourses: ${courses.length} cursos cargados (optimizado)`,
-      );
       return courses;
     } catch (error: any) {
-      // Mostrar el error real para debugging
-      console.error(
-        '❌ UnifiedCourses: ERROR CRÍTICO:',
-        error?.message || error,
-      );
-      console.error('❌ UnifiedCourses: Stack:', error?.stack);
       return [];
     }
   }
@@ -309,7 +267,6 @@ class UnifiedCoursesService {
         .single();
 
       if (error) {
-        console.error('❌ UnifiedCourses: Error al obtener curso:', error);
         return null;
       }
 
@@ -356,10 +313,6 @@ class UnifiedCoursesService {
         created_at: data.created_at,
       };
     } catch (error) {
-      console.error(
-        '❌ UnifiedCourses: Error al obtener curso específico:',
-        error,
-      );
       return null;
     }
   }

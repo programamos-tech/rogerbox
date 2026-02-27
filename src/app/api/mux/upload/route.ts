@@ -30,7 +30,6 @@ export async function POST(request: NextRequest) {
 
     if (!muxResponse.ok) {
       const error = await muxResponse.text();
-      console.error('Mux API error:', error);
       return NextResponse.json(
         { error: 'Failed to upload to Mux' },
         { status: 500 },
@@ -46,7 +45,6 @@ export async function POST(request: NextRequest) {
       status: muxData.data.status,
     });
   } catch (error) {
-    console.error('Upload error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 },

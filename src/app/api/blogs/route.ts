@@ -11,7 +11,6 @@ export async function GET(request: NextRequest) {
       .order('published_at', { ascending: false });
 
     if (error) {
-      console.error('Error fetching blogs:', error);
       return NextResponse.json(
         { error: 'Error al obtener los blogs' },
         { status: 500 },
@@ -20,7 +19,6 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ blogs });
   } catch (error) {
-    console.error('Error in GET /api/blogs:', error);
     return NextResponse.json(
       { error: 'Error interno del servidor' },
       { status: 500 },
@@ -73,7 +71,6 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error('Error creating blog:', error);
       return NextResponse.json(
         { error: 'Error al crear el blog' },
         { status: 500 },
@@ -82,7 +79,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ blog }, { status: 201 });
   } catch (error) {
-    console.error('Error in POST /api/blogs:', error);
     return NextResponse.json(
       { error: 'Error interno del servidor' },
       { status: 500 },

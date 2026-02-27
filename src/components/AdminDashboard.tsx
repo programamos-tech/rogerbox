@@ -286,20 +286,18 @@ export default function AdminDashboard() {
         return (
           <CourseManagement
             courses={[]} // Mock data - would come from store
-            onAddCourse={(course) => console.log('Add course:', course)}
-            onEditCourse={(id, course) =>
-              console.log('Edit course:', id, course)
-            }
-            onDeleteCourse={(id) => console.log('Delete course:', id)}
+            onAddCourse={(course) => {}}
+            onEditCourse={(id, course) => {}}
+            onDeleteCourse={(id) => {}}
           />
         );
       case 'nutritional-plans':
         return (
           <NutritionalPlanManagement
             plans={safeNutritionalPlans}
-            onAddPlan={(plan) => console.log('Add plan:', plan)}
-            onEditPlan={(id, plan) => console.log('Edit plan:', id, plan)}
-            onDeletePlan={(id) => console.log('Delete plan:', id)}
+            onAddPlan={(plan) => {}}
+            onEditPlan={(id, plan) => {}}
+            onDeletePlan={(id) => {}}
           />
         );
       case 'blogs':

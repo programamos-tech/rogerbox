@@ -134,14 +134,12 @@ export default function InsightsSection({
           .eq('is_completed', true);
 
         if (error) {
-          console.warn('Error cargando complementos:', error);
           setCompletedComplementsCount(0);
           return;
         }
 
         setCompletedComplementsCount(data?.length || 0);
       } catch (error) {
-        console.error('Error:', error);
         setCompletedComplementsCount(0);
       }
     };
@@ -228,7 +226,6 @@ export default function InsightsSection({
 
       setShowGoalModal(false);
     } catch (error) {
-      console.error('Error al guardar meta:', error);
       alert('Error al guardar la meta. Por favor intenta de nuevo.');
     } finally {
       setSavingGoal(false);
@@ -333,7 +330,6 @@ export default function InsightsSection({
           .order('created_at', { ascending: true });
 
         if (error) {
-          console.warn('⚠️ Error obteniendo historial de peso:', error.message);
           // Mostrar peso inicial con fecha actual si hay error
           const today = new Date().toISOString();
 
@@ -369,7 +365,6 @@ export default function InsightsSection({
           ]);
         }
       } catch (error) {
-        console.warn('⚠️ Error obteniendo historial de peso:', error);
         // Mostrar peso inicial con fecha actual si hay error
         const today = new Date().toISOString();
 
@@ -414,7 +409,6 @@ export default function InsightsSection({
         const errorData = await response
           .json()
           .catch(() => ({ error: 'Error desconocido' }));
-        console.error('Error guardando registro de peso:', errorData);
         throw new Error(
           errorData.error || 'Error al guardar el registro de peso',
         );
@@ -445,11 +439,6 @@ export default function InsightsSection({
         // No agregar peso inicial del onboarding si ya hay registros
         // Los registros en weight_records ya incluyen el peso inicial del onboarding
         setWeightHistory(history);
-        console.log(
-          '✅ Historial de peso actualizado:',
-          history.length,
-          'registros',
-        );
       } else {
         // Si no hay registros, mostrar al menos el peso inicial con fecha actual
         const initialWeight =
@@ -465,10 +454,7 @@ export default function InsightsSection({
           ]);
         }
       }
-
-      console.log('✅ Peso actualizado exitosamente:', weight, 'kg');
     } catch (error: any) {
-      console.error('Error al actualizar peso:', error);
       // Mostrar mensaje de error más amigable
       const errorMessage =
         error?.message ||

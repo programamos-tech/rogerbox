@@ -60,7 +60,6 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error('Error updating rating:', error);
       return NextResponse.json(
         { error: 'Failed to update rating' },
         { status: 500 },
@@ -72,7 +71,6 @@ export async function POST(request: NextRequest) {
       user_rating: data.user_rating,
     });
   } catch (error) {
-    console.error('Error in POST /api/user-interactions/rating:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 },

@@ -55,7 +55,6 @@ export async function GET(request: NextRequest) {
       const { data, error } = await query.single();
 
       if (error) {
-        console.error('Error fetching gym payment:', error);
         return NextResponse.json(
           { error: 'Error al obtener pago' },
           { status: 500 },
@@ -88,7 +87,6 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query;
 
     if (error) {
-      console.error('Error fetching gym payments:', error);
       return NextResponse.json(
         { error: 'Error al obtener pagos' },
         { status: 500 },
@@ -97,7 +95,6 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ payments: data || [] });
   } catch (error) {
-    console.error('Error in GET /api/admin/gym/payments:', error);
     return NextResponse.json(
       { error: 'Error interno del servidor' },
       { status: 500 },
@@ -286,7 +283,6 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error('Error creating gym payment:', error);
       return NextResponse.json(
         { error: 'Error al registrar pago' },
         { status: 500 },
@@ -331,7 +327,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(data, { status: 201 });
   } catch (error) {
-    console.error('Error in POST /api/admin/gym/payments:', error);
     return NextResponse.json(
       { error: 'Error interno del servidor' },
       { status: 500 },

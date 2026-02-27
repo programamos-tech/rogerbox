@@ -26,14 +26,6 @@ export async function GET() {
     const targetDay = dayOfWeek >= 6 ? 5 : dayOfWeek;
     const isWeekend = dayOfWeek >= 6;
 
-    console.log('🔍 API complements/today:', {
-      currentWeek,
-      currentYear,
-      dayOfWeek,
-      targetDay,
-      isWeekend,
-    });
-
     const { data, error } = await supabaseAdmin
       .from('weekly_complements')
       .select('*')
@@ -44,7 +36,6 @@ export async function GET() {
       .maybeSingle();
 
     if (error) {
-      console.log('❌ Error:', error.message);
       return NextResponse.json({
         complement: null,
         isWeekend,
@@ -68,7 +59,6 @@ export async function GET() {
       dayOfWeek,
     });
   } catch (error) {
-    console.error('Error in complements/today:', error);
     return NextResponse.json(
       { error: 'Error al obtener complemento' },
       { status: 500 },

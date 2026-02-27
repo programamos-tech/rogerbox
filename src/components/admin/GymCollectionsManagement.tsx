@@ -34,7 +34,6 @@ export default function GymCollectionsManagement() {
       const data = await response.json();
       setCollections(data);
     } catch (error) {
-      console.error('Error loading collections:', error);
     } finally {
       setLoading(false);
     }

@@ -49,7 +49,6 @@ export default function ComplementSection() {
           setComplements(data.complements || data);
         }
       } catch (error) {
-        console.error('Error fetching complements:', error);
       } finally {
         setLoading(false);
       }

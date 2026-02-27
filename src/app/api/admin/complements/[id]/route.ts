@@ -32,7 +32,6 @@ export async function PUT(
 
     return NextResponse.json({ complement: data });
   } catch (error) {
-    console.error('Error updating complement:', error);
     return NextResponse.json(
       { error: 'Error al actualizar complemento' },
       { status: 500 },
@@ -64,7 +63,6 @@ export async function PATCH(
 
     return NextResponse.json({ complement: data });
   } catch (error) {
-    console.error('Error updating complement:', error);
     return NextResponse.json(
       { error: 'Error al actualizar complemento' },
       { status: 500 },
@@ -93,7 +91,6 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error deleting complement:', error);
     return NextResponse.json(
       { error: 'Error al eliminar complemento' },
       { status: 500 },

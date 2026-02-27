@@ -75,9 +75,7 @@ function PaymentResultContent() {
               setBuyerDocument(profile.document_id || '');
             }
           }
-        } catch (error) {
-          console.error('Error fetching buyer info:', error);
-        }
+        } catch (error) {}
       }
     };
 
@@ -86,12 +84,6 @@ function PaymentResultContent() {
 
   const loadOrderResult = async () => {
     try {
-      console.log('🔍 Buscando orden con:', {
-        orderId,
-        reference,
-        transactionId,
-      });
-
       let query = supabase.from('orders').select(`
           id,
           status,
@@ -120,12 +112,9 @@ function PaymentResultContent() {
       const { data, error } = await query.single();
 
       if (error) {
-        console.error('❌ Error loading order:', error);
         setError('Error al cargar la información de la orden');
         return;
       }
-
-      console.log('✅ Orden encontrada:', data);
 
       // Transformar los datos para que coincidan con la interfaz
       const courses = data.courses as any;
@@ -142,24 +131,16 @@ function PaymentResultContent() {
       setOrder(transformedData);
       setCourseId(data.course_id);
 
-      console.log('👤 Datos de la orden:', {
-        customer_name: data.customer_name,
-        user_id: data.user_id,
-        current_user_id: user?.id,
-      });
-
       let foundName = data.customer_name || '';
       let foundDocument = '';
 
       // Obtener nombre del cliente desde la orden primero
       if (data.customer_name) {
-        console.log('✅ Nombre obtenido de la orden:', data.customer_name);
         foundName = data.customer_name;
       }
 
       // Obtener información completa del perfil del usuario (nombre y cédula)
       if (data.user_id) {
-        console.log('🔍 Buscando perfil para user_id:', data.user_id);
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('name, document_id')
@@ -173,19 +154,10 @@ function PaymentResultContent() {
             profileError?.code ||
             profileError?.details
           ) {
-            console.error('❌ Error obteniendo perfil:', {
-              message: profileError.message,
-              code: profileError.code,
-              details: profileError.details,
-            });
           }
         }
 
         if (profile) {
-          console.log('✅ Perfil encontrado:', {
-            name: profile.name,
-            document_id: profile.document_id,
-          });
           // Si no hay nombre en la orden, usar el del perfil
           if (!foundName && profile.name) {
             foundName = profile.name;
@@ -195,13 +167,11 @@ function PaymentResultContent() {
             foundDocument = profile.document_id;
           }
         } else {
-          console.log('⚠️ No se encontró perfil para user_id:', data.user_id);
         }
       }
 
       // Si aún no tenemos nombre, intentar obtenerlo del usuario actual
       if (!foundName && user?.id) {
-        console.log('🔍 Buscando perfil del usuario actual:', user.id);
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('name, document_id')
@@ -209,14 +179,9 @@ function PaymentResultContent() {
           .maybeSingle();
 
         if (profileError) {
-          console.error('❌ Error obteniendo perfil de sesión:', profileError);
         }
 
         if (profile) {
-          console.log('✅ Perfil de sesión encontrado:', {
-            name: profile.name,
-            document_id: profile.document_id,
-          });
           if (!foundName && profile.name) {
             foundName = profile.name;
           }
@@ -234,20 +199,8 @@ function PaymentResultContent() {
         setBuyerDocument(foundDocument);
       }
 
-      console.log('📋 Datos finales del comprador:', {
-        buyerName: foundName,
-        buyerDocument: foundDocument,
-      });
-
       // Si el pago está aprobado, verificar si tiene fecha de inicio
       if (data.status === 'approved' && data.course_id) {
-        console.log('🔍 PaymentResult: Buscando compra del curso...', {
-          orderId: data.id,
-          courseId: data.course_id,
-          userId: data.user_id,
-          currentUserId: user?.id,
-        });
-
         // Esperar un momento para asegurar que la compra se haya creado (en modo mock)
         await new Promise((resolve) => setTimeout(resolve, 500));
 
@@ -267,21 +220,12 @@ function PaymentResultContent() {
 
         if (purchaseByOrder) {
           purchase = purchaseByOrder;
-          console.log('✅ PaymentResult: Compra encontrada por order_id');
         } else if (errorByOrder && errorByOrder.code !== 'PGRST116') {
           purchaseError = errorByOrder;
         } else {
           // Si no se encuentra por order_id, intentar buscar por user_id y course_id
           const purchaseUserId = data.user_id || user?.id;
           if (purchaseUserId) {
-            console.log(
-              '🔍 PaymentResult: Buscando compra por user_id y course_id...',
-              {
-                userId: purchaseUserId,
-                courseId: data.course_id,
-              },
-            );
-
             const { data: purchaseByUser, error: errorByUser } = await supabase
               .from('course_purchases')
               .select(
@@ -294,61 +238,20 @@ function PaymentResultContent() {
 
             if (purchaseByUser) {
               purchase = purchaseByUser;
-              console.log(
-                '✅ PaymentResult: Compra encontrada por user_id y course_id',
-              );
             } else if (errorByUser && errorByUser.code !== 'PGRST116') {
               purchaseError = errorByUser;
             }
           }
         }
 
-        console.log('🔍 PaymentResult: Resultado de búsqueda de compra:', {
-          hasPurchase: !!purchase,
-          purchaseError: purchaseError
-            ? {
-                message: purchaseError.message,
-                code: purchaseError.code,
-                details: purchaseError.details,
-                hint: purchaseError.hint,
-              }
-            : null,
-          purchase: purchase
-            ? {
-                id: purchase.id,
-                hasStartDate: !!purchase.start_date,
-                orderId: purchase.order_id,
-                courseId: purchase.course_id,
-                userId: purchase.user_id,
-                isActive: purchase.is_active,
-              }
-            : null,
-          orderId: data.id,
-          courseId: data.course_id,
-          userId: data.user_id,
-          currentUserId: user?.id,
-        });
-
         // Si no hay compra, crearla inmediatamente (no esperar al webhook)
         if (!purchase) {
           if (purchaseError && purchaseError.code !== 'PGRST116') {
-            // Error real, no solo "no encontrado"
-            console.error(
-              '❌ PaymentResult: Error buscando compra:',
-              purchaseError,
-            );
           } else {
-            console.log(
-              '⚠️ PaymentResult: No se encontró compra, creándola ahora...',
-            );
-
             // Intentar crear la compra con el usuario actual si no hay user_id en la orden
             const purchaseUserId = data.user_id || user?.id;
 
             if (!purchaseUserId) {
-              console.error(
-                '❌ PaymentResult: No hay user_id disponible para crear la compra',
-              );
               setError(
                 'No se pudo identificar al usuario para crear la compra',
               );
@@ -369,29 +272,10 @@ function PaymentResultContent() {
               .single();
 
             if (createError) {
-              console.error('❌ PaymentResult: Error creando compra:', {
-                message: createError.message,
-                code: createError.code,
-                details: createError.details,
-                hint: createError.hint,
-              });
               setError(
                 'No se pudo crear la compra del curso. Por favor, contacta al soporte.',
               );
             } else {
-              console.log(
-                '✅ PaymentResult: Compra creada exitosamente:',
-                newPurchase,
-              );
-              console.log(
-                '🔍 PaymentResult: Verificando que la compra sea visible...',
-                {
-                  purchaseId: newPurchase.id,
-                  userId: newPurchase.user_id || purchaseUserId,
-                  currentUserId: user?.id,
-                },
-              );
-
               // Verificar inmediatamente que la compra sea visible
               const { data: verifyPurchase, error: verifyError } =
                 await supabase
@@ -401,16 +285,7 @@ function PaymentResultContent() {
                   .single();
 
               if (verifyError) {
-                console.error(
-                  '❌ PaymentResult: La compra no es visible después de crearla:',
-                  verifyError,
-                );
               } else {
-                console.log('✅ PaymentResult: La compra es visible:', {
-                  purchaseId: verifyPurchase?.id,
-                  userId: verifyPurchase?.user_id,
-                  matchesCurrentUser: verifyPurchase?.user_id === user?.id,
-                });
               }
 
               // Guardar el purchaseId para pasarlo al modal
@@ -419,15 +294,9 @@ function PaymentResultContent() {
               refreshPurchases();
               setTimeout(() => {
                 refreshPurchases();
-                console.log(
-                  '🔄 PaymentResult: Compras refrescadas (intento 1)',
-                );
               }, 500);
               setTimeout(() => {
                 refreshPurchases();
-                console.log(
-                  '🔄 PaymentResult: Compras refrescadas (intento 2)',
-                );
               }, 1500);
               // Verificar si necesita fecha de inicio
               if (!newPurchase.start_date) {
@@ -440,24 +309,12 @@ function PaymentResultContent() {
           }
         } else {
           // Ya existe la compra
-          console.log('✅ PaymentResult: Compra encontrada:', purchase.id);
-          console.log('🔍 PaymentResult: Detalles de la compra encontrada:', {
-            purchaseId: purchase.id,
-            userId: purchase.user_id,
-            courseId: purchase.course_id,
-            isActive: purchase.is_active,
-            hasStartDate: !!purchase.start_date,
-            currentUserId: user?.id,
-            matchesCurrentUser: purchase.user_id === user?.id,
-          });
-
           // Guardar el purchaseId para pasarlo al modal
           setPurchaseId(purchase.id);
           // Refrescar las compras para asegurar que estén actualizadas
           refreshPurchases();
           setTimeout(() => {
             refreshPurchases();
-            console.log('🔄 PaymentResult: Compras refrescadas');
           }, 500);
           if (!purchase.start_date) {
             // No tiene fecha de inicio, mostrar modal
@@ -472,7 +329,6 @@ function PaymentResultContent() {
       // Si el pago está pendiente, verificar estado cada 3 segundos
       if (data.status === 'pending') {
         const intervalId = setInterval(async () => {
-          console.log('🔄 Verificando estado de la orden...');
           const { data: updatedOrder } = await supabase
             .from('orders')
             .select('status')
@@ -480,7 +336,6 @@ function PaymentResultContent() {
             .single();
 
           if (updatedOrder && updatedOrder.status !== 'pending') {
-            console.log('✅ Estado actualizado:', updatedOrder.status);
             setOrder((prev) =>
               prev ? { ...prev, status: updatedOrder.status } : null,
             );
@@ -494,7 +349,6 @@ function PaymentResultContent() {
         return () => clearInterval(intervalId);
       }
     } catch (err) {
-      console.error('❌ Error:', err);
       setError('Error interno del servidor');
     } finally {
       setLoading(false);

@@ -87,11 +87,9 @@ class CoursesService {
   async getCourses(forceRefresh = false): Promise<Course[]> {
     // Verificar caché
     if (!forceRefresh && this.isCacheValid()) {
-      console.log('📦 Usando caché de cursos');
       return this.cache.get(this.CACHE_KEY)!.data;
     }
 
-    console.log('🔄 Cargando cursos desde base de datos...');
     const startTime = performance.now();
 
     try {
@@ -103,11 +101,6 @@ class CoursesService {
         .order('created_at', { ascending: false });
 
       if (coursesError) {
-        console.error('❌ Error fetching courses:', coursesError);
-        console.error(
-          '❌ Error details:',
-          JSON.stringify(coursesError, null, 2),
-        );
         throw new Error(
           `Error fetching courses: ${coursesError.message || 'Unknown error'}`,
         );
@@ -120,7 +113,6 @@ class CoursesService {
         .eq('is_active', true);
 
       if (categoriesError) {
-        console.warn('⚠️ Error fetching categories:', categoriesError);
       }
 
       // Crear mapa de categorías
@@ -153,18 +145,8 @@ class CoursesService {
       });
 
       const endTime = performance.now();
-      console.log(
-        `✅ Cursos cargados en ${(endTime - startTime).toFixed(2)}ms`,
-      );
-
       return sortedCourses;
     } catch (error) {
-      console.error('❌ Error en getCourses:', error);
-      console.error('❌ Error type:', typeof error);
-      console.error(
-        '❌ Error message:',
-        error instanceof Error ? error.message : 'Unknown error',
-      );
       throw error;
     }
   }
@@ -187,7 +169,6 @@ class CoursesService {
       );
 
     if (error) {
-      console.warn('⚠️ Error fetching view counts:', error);
       return {};
     }
 
@@ -287,7 +268,6 @@ class CoursesService {
    */
   clearCache(): void {
     this.cache.clear();
-    console.log('🗑️ Caché de cursos limpiado');
   }
 
   /**

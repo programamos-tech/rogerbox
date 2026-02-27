@@ -122,8 +122,6 @@ function RegisterForm() {
     );
 
     if (error) {
-      console.error('Error en registro:', error);
-
       if (error.message.includes('User already registered')) {
         setErrors({
           general: 'Ya estás registrado con ese correo, inicia sesión.',

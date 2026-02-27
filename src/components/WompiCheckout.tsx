@@ -62,26 +62,15 @@ export default function WompiCheckout({
   useEffect(() => {
     const fetchWompiConfig = async () => {
       try {
-        console.log('🔧 Obteniendo configuración de Wompi...');
         const response = await fetch('/api/payments/config');
         const data = await response.json();
 
-        console.log('📡 Respuesta del servidor:', data);
-
         if (data.publicKey) {
           setWompiPublicKey(data.publicKey);
-          console.log(
-            '✅ Wompi public key cargada:',
-            data.publicKey.substring(0, 20) + '...',
-          );
-          console.log('🌍 Entorno:', data.environment);
         } else {
-          console.error('❌ No se pudo obtener la public key de Wompi');
-          console.error('📦 Data recibida:', data);
           onError?.('Error de configuración del sistema de pagos');
         }
       } catch (error) {
-        console.error('❌ Error obteniendo config de Wompi:', error);
         onError?.('Error al cargar la configuración de pagos');
       }
     };
@@ -97,19 +86,12 @@ export default function WompiCheckout({
     const checkWidget = () => {
       attempts++;
       if (attempts % 10 === 0) {
-        console.log(
-          `🔍 Verificando widget (intento ${attempts}/${maxAttempts})...`,
-        );
       }
 
       if (
         typeof window !== 'undefined' &&
         typeof window.WidgetCheckout === 'function'
       ) {
-        console.log('✅ Widget de Wompi encontrado y listo!');
-        console.log('📦 window.WidgetCheckout:', window.WidgetCheckout);
-        console.log('🔍 Verificando que sea una función constructora...');
-
         // Verificar que se puede instanciar (sin crear realmente una instancia)
         try {
           // Solo verificar que es una función, no crear instancia aún
@@ -117,26 +99,16 @@ export default function WompiCheckout({
             setWidgetReady(true);
             return;
           }
-        } catch (e) {
-          console.warn('⚠️ Error verificando widget:', e);
-        }
+        } catch (e) {}
       }
 
       if (attempts < maxAttempts) {
         setTimeout(checkWidget, 100);
       } else {
-        console.error('❌ Widget de Wompi no se cargó después de 10 segundos');
-        console.error(
-          '💡 Verifica que el script de Wompi se esté cargando desde https://checkout.wompi.co/widget.js',
-        );
         const wompiScripts = Array.from(document.scripts)
           .map((s) => s.src)
           .filter((src) => src.includes('wompi'));
-        console.error('🔍 Scripts cargados:', wompiScripts);
         if (wompiScripts.length === 0) {
-          console.error(
-            '❌ No se encontró el script de Wompi. Intenta recargar la página.',
-          );
           onError?.(
             'El widget de pago no se cargó correctamente. Por favor recarga la página.',
           );
@@ -164,7 +136,6 @@ export default function WompiCheckout({
           .maybeSingle(); // Usar maybeSingle() en lugar de single() para evitar error cuando no existe
 
         if (error) {
-          console.warn('⚠️ Error cargando perfil:', error);
           // Pre-cargar al menos el email del usuario de auth
           setBuyerData((prev) => ({
             ...prev,
@@ -206,7 +177,6 @@ export default function WompiCheckout({
           }));
         }
       } catch (error) {
-        console.error('❌ Error cargando perfil:', error);
         // Pre-cargar al menos el email del usuario de auth
         setBuyerData((prev) => ({
           ...prev,
@@ -232,9 +202,6 @@ export default function WompiCheckout({
   };
 
   const handlePayment = async () => {
-    console.log('🔵 handlePayment iniciado');
-    console.log('📋 Validación de formulario:', isFormValid());
-
     // Verificar si estamos en modo mock (solo en desarrollo local)
     // El modo mock solo está permitido en desarrollo
     const isMockMode =
@@ -242,15 +209,10 @@ export default function WompiCheckout({
       process.env.NEXT_PUBLIC_MOCK_PAYMENTS === 'true';
 
     if (isMockMode) {
-      console.log('🎭 MODO MOCK ACTIVADO - Simulando pago sin Wompi');
     } else {
-      console.log('🎨 Widget listo:', widgetReady);
-      console.log('🔑 Public key disponible:', !!wompiPublicKey);
-      console.log('🪟 window.WidgetCheckout:', typeof window.WidgetCheckout);
     }
 
     if (!isFormValid()) {
-      console.error('❌ Formulario inválido');
       onError?.('Por favor completa todos los campos obligatorios');
       return;
     }
@@ -258,13 +220,11 @@ export default function WompiCheckout({
     // En modo mock, no necesitamos verificar widget ni public key
     if (!isMockMode) {
       if (!widgetReady) {
-        console.error('❌ Widget no está listo');
         onError?.('El widget de pago aún no está listo. Intenta nuevamente.');
         return;
       }
 
       if (!wompiPublicKey) {
-        console.error('❌ Public key no disponible');
         onError?.('Error de configuración. Public key no disponible.');
         return;
       }
@@ -277,7 +237,6 @@ export default function WompiCheckout({
       const fullName = `${buyerData.firstName.trim()} ${buyerData.lastName.trim()}`;
 
       // 1. Crear la orden en el backend (también guarda datos del comprador)
-      console.log('📦 Creando orden...');
       const orderResponse = await fetch('/api/payments/create-order', {
         method: 'POST',
         headers: {
@@ -309,8 +268,6 @@ export default function WompiCheckout({
       }
 
       const orderData = await orderResponse.json();
-      console.log('✅ Orden creada:', orderData);
-
       const { orderId, reference, signature } = orderData;
 
       // Verificar si estamos en modo mock (solo en desarrollo)
@@ -320,19 +277,11 @@ export default function WompiCheckout({
 
       // MODO MOCK: Simular pago exitoso sin llamar a Wompi
       if (isMockMode) {
-        console.log('🎭 Simulando pago exitoso en modo mock...');
-
         // Simular un pequeño delay para que parezca real y dar tiempo a que se complete la actualización en el backend
         await new Promise((resolve) => setTimeout(resolve, 2000));
 
         // Simular respuesta exitosa de Wompi
         const mockTransactionId = `mock-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
-        console.log('✅ Pago simulado exitosamente');
-        console.log('📝 Transaction ID (mock):', mockTransactionId);
-        console.log(
-          '⏳ Esperando a que el backend complete la actualización...',
-        );
 
         // Dar un momento adicional para asegurar que la actualización se haya propagado
         await new Promise((resolve) => setTimeout(resolve, 500));
@@ -351,25 +300,12 @@ export default function WompiCheckout({
       // 2. Configurar el Widget de Wompi
       const amountInCents = Math.round(course.price * 100);
 
-      console.log('🎨 Preparando Widget de Wompi...');
-      console.log('💰 Monto:', amountInCents, 'centavos');
-      console.log('📝 Referencia:', reference);
-      console.log('🔐 Firma:', signature?.substring(0, 20) + '...');
-      console.log('🔑 Public Key:', wompiPublicKey.substring(0, 20) + '...');
-      console.log('👤 Cliente:', buyerData.email, fullName);
-      console.log(
-        '🔗 Redirect URL:',
-        `${window.location.origin}/payment/result?order_id=${orderId}&reference=${reference}`,
-      );
-
       // Verificar que window.WidgetCheckout existe
       if (typeof window.WidgetCheckout !== 'function') {
         throw new Error(
           'El widget de Wompi no está disponible. Por favor recarga la página.',
         );
       }
-
-      console.log('🚀 Creando instancia del widget...');
 
       const widgetConfig = {
         currency: 'COP',
@@ -390,34 +326,16 @@ export default function WompiCheckout({
         };
       }
 
-      console.log(
-        '📦 Configuración del widget:',
-        JSON.stringify(widgetConfig, null, 2),
-      );
-      console.log('🔍 Verificando URL de redirección...');
-
       // Validar que la URL de redirección sea válida
       try {
         const redirectUrlObj = new URL(widgetConfig.redirectUrl);
-        console.log('✅ URL de redirección válida:', redirectUrlObj.href);
       } catch (urlError) {
-        console.error(
-          '❌ URL de redirección inválida:',
-          widgetConfig.redirectUrl,
-        );
         throw new Error('URL de redirección inválida');
       }
 
       const checkout = new window.WidgetCheckout(widgetConfig);
 
-      console.log('✅ Widget instanciado correctamente');
-      console.log('📂 Checkout object:', checkout);
-      console.log('📂 Tipo de checkout.open:', typeof checkout.open);
-      console.log('📂 Métodos disponibles:', Object.keys(checkout));
-
       // 3. Abrir el widget
-      console.log('🎭 Abriendo modal del widget...');
-
       // Esperar un momento para asegurar que el widget esté completamente inicializado
       await new Promise((resolve) => setTimeout(resolve, 200));
 
@@ -432,19 +350,11 @@ export default function WompiCheckout({
               target.getAttribute('src')?.includes('checkout.wompi')));
 
         if (isWompiError) {
-          console.error('🚨 Error relacionado con Wompi:', event);
-          console.error('🚨 Error target:', target);
-          console.error('🚨 Error message:', event.message);
-
           // Si es un error 403, mostrar mensaje útil
           if (
             event.message?.includes('403') ||
             event.message?.includes('Forbidden')
           ) {
-            console.error('❌ Wompi está bloqueando la solicitud (Error 403)');
-            console.error(
-              '💡 Verifica la configuración de Wompi o contacta al soporte',
-            );
             setIsLoading(false);
             onError?.(
               'Error 403: Wompi rechazó la solicitud. Verifica la configuración.',
@@ -466,7 +376,6 @@ export default function WompiCheckout({
             response.status === 403 &&
             args[0]?.toString().includes('wompi')
           ) {
-            console.error('🚨 Error 403 en fetch a Wompi:', args[0]);
             setIsLoading(false);
             onError?.(
               'Error 403: Wompi rechazó la solicitud. Verifica la configuración.',
@@ -487,15 +396,8 @@ export default function WompiCheckout({
           );
         }
 
-        console.log('🔓 Llamando a checkout.open()...');
-
         // Timeout para detectar si el widget no se abre
         const openTimeout = setTimeout(() => {
-          console.warn('⚠️ El widget no se ha abierto después de 5 segundos');
-          console.warn(
-            '💡 Esto puede indicar un problema con la configuración o que Wompi está bloqueando la solicitud',
-          );
-
           // Verificar si hay errores de red relacionados con Wompi
           const wompiErrors = [];
           window.addEventListener(
@@ -506,11 +408,6 @@ export default function WompiCheckout({
               }
             },
             { once: true },
-          );
-
-          console.error('❌ Wompi no está respondiendo correctamente');
-          console.error(
-            '💡 Verifica la configuración de Wompi o contacta al soporte',
           );
 
           setIsLoading(false);
@@ -525,43 +422,32 @@ export default function WompiCheckout({
           // Restaurar fetch original y remover listeners cuando se complete
           window.fetch = originalFetch;
           window.removeEventListener('error', errorListener, true);
-          console.log('📊 Resultado del Widget:', result);
-
           setIsLoading(false);
 
           // Manejar diferentes estados de transacción
           if (result?.transaction?.status === 'APPROVED') {
-            console.log('✅ Pago aprobado inmediatamente!');
             // Llamar callback de éxito si existe
             onSuccess?.();
             // Redirigir a página de resultado que luego redirigirá automáticamente al dashboard
             // Esto asegura que el usuario vea el mensaje de éxito y la compra se registre correctamente
             window.location.href = `${window.location.origin}/payment/result?order_id=${orderId}&reference=${reference}&id=${result.transaction.id}`;
           } else if (result?.transaction?.status === 'PENDING') {
-            console.log('⏳ Pago pendiente de confirmación (PSE/Nequi)');
             // Redirigir a página de resultado para mostrar estado pendiente
             window.location.href = `${window.location.origin}/payment/result?order_id=${orderId}&reference=${reference}&id=${result.transaction.id}`;
           } else if (result?.transaction?.status === 'DECLINED') {
-            console.log('❌ Pago rechazado');
             // Redirigir a página de resultado para mostrar estado rechazado
             window.location.href = `${window.location.origin}/payment/result?order_id=${orderId}&reference=${reference}&id=${result.transaction.id}`;
           } else if (result?.transaction?.status === 'ERROR') {
-            console.log('⚠️ Error en el pago');
             // Redirigir a página de resultado para mostrar error
             window.location.href = `${window.location.origin}/payment/result?order_id=${orderId}&reference=${reference}&id=${result.transaction.id}`;
           } else if (result?.error) {
-            console.error('❌ Error del widget:', result.error);
             setIsLoading(false);
             onError?.(result.error.message || 'Error al procesar el pago');
           } else {
-            console.log('ℹ️ Estado desconocido:', result?.transaction?.status);
             // Por seguridad, redirigir a resultado con el orderId
             window.location.href = `${window.location.origin}/payment/result?order_id=${orderId}&reference=${reference}`;
           }
         });
-
-        console.log('✅ checkout.open() llamado exitosamente');
-        console.log('⏳ Esperando respuesta del widget...');
 
         // Restaurar fetch y remover listeners después de un tiempo si no hay respuesta
         setTimeout(() => {
@@ -572,16 +458,6 @@ export default function WompiCheckout({
         // Restaurar fetch y remover listeners en caso de error
         window.fetch = originalFetch;
         window.removeEventListener('error', errorListener, true);
-        console.error('❌ Error al abrir el widget:', openError);
-        console.error('❌ Error details:', {
-          message:
-            openError instanceof Error ? openError.message : 'Unknown error',
-          stack: openError instanceof Error ? openError.stack : undefined,
-          checkout: checkout,
-          config: widgetConfig,
-          publicKey: wompiPublicKey.substring(0, 20) + '...',
-          redirectUrl: widgetConfig.redirectUrl,
-        });
 
         // Manejar errores
         const errorMessage =
@@ -590,7 +466,6 @@ export default function WompiCheckout({
           errorMessage.includes('403') ||
           errorMessage.includes('Forbidden')
         ) {
-          console.error('🔧 Error 403: Wompi rechazó la solicitud');
           onError?.(
             'Error 403: Wompi rechazó la solicitud. Verifica la configuración.',
           );
@@ -601,11 +476,6 @@ export default function WompiCheckout({
         setIsLoading(false);
       }
     } catch (error) {
-      console.error('❌ Error en el checkout:', error);
-      console.error(
-        '❌ Stack trace:',
-        error instanceof Error ? error.stack : 'No stack trace',
-      );
       setIsLoading(false);
       onError?.(
         error instanceof Error ? error.message : 'Error al procesar el pago',

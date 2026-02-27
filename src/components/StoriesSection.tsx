@@ -62,16 +62,12 @@ export default function StoriesSection({
         const response = await fetch('/api/complements/today');
         const result = await response.json();
 
-        console.log('🔍 API Response:', result);
-
         if (result.complement) {
           setTodayComplement(result.complement);
         } else {
-          console.log('❌ No hay complemento para hoy');
           setTodayComplement(null);
         }
       } catch (error) {
-        console.error('Error loading complement:', error);
         setTodayComplement(null);
       } finally {
         setLoading(false);
@@ -96,9 +92,7 @@ export default function StoriesSection({
           );
           setIsCompleted(completed || false);
         }
-      } catch (error) {
-        console.error('Error loading completion status:', error);
-      }
+      } catch (error) {}
     };
 
     loadCompletionStatus();
@@ -139,7 +133,6 @@ export default function StoriesSection({
         }, 800);
       }
     } catch (error) {
-      console.error('Error completing complement:', error);
     } finally {
       setIsCompleting(false);
     }

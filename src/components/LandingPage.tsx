@@ -74,8 +74,6 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
     setRegisterError('');
 
     try {
-      console.log('Iniciando registro con:', formData.email);
-
       // Registrar usuario en Supabase Auth
       let authData, authError;
       try {
@@ -91,7 +89,6 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
         authData = result.data;
         authError = result.error;
       } catch (error: any) {
-        console.error('Error capturado en signUp:', error);
         // Si es un error de usuario ya registrado, manejarlo
         if (
           error.message &&
@@ -106,11 +103,7 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
         throw error;
       }
 
-      console.log('Respuesta de Supabase Auth:', { authData, authError });
-
       if (authError) {
-        console.error('Error de autenticación:', authError);
-
         // Manejar diferentes tipos de errores de Supabase
         if (
           authError.message === 'User already registered' ||
@@ -185,8 +178,6 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
       }
 
       if (authData.user) {
-        console.log('Usuario creado:', authData.user.id);
-
         // Crear perfil en la tabla profiles
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
@@ -204,8 +195,6 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
           .select();
 
         if (profileError) {
-          console.error('Error creating profile:', profileError);
-
           // Si es error de duplicado, el usuario ya existe
           if (profileError.code === '23505') {
             setRegisterError(
@@ -226,22 +215,18 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
         );
 
         if (loginError) {
-          console.error('Supabase login error:', loginError);
           setRegisterError('Error al iniciar sesión automáticamente');
           return;
         }
 
-        console.log('Registro exitoso, redirigiendo al onboarding');
         router.push('/onboarding');
       } else {
         // Caso donde se requiere confirmación de email
-        console.log('Se requiere confirmación de email');
         setRegisterError(
           'Te hemos enviado un email de confirmación. Por favor revisa tu bandeja de entrada y haz clic en el enlace para activar tu cuenta.',
         );
       }
     } catch (error) {
-      console.error('Registration error:', error);
       setRegisterError(
         `Error inesperado: ${error instanceof Error ? error.message : 'Error desconocido'}`,
       );

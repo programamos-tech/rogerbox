@@ -28,20 +28,13 @@ export const useCourses = (): UseCoursesReturn => {
       setLoading(true);
       setError(null);
 
-      console.log('🔄 useCourses: Cargando cursos...');
       const startTime = performance.now();
 
       const coursesData = await coursesService.getCourses(forceRefresh);
 
       const endTime = performance.now();
-      console.log(
-        `✅ useCourses: Cursos cargados en ${(endTime - startTime).toFixed(2)}ms`,
-      );
-      console.log(`📊 useCourses: ${coursesData.length} cursos obtenidos`);
-
       setCourses(coursesData);
     } catch (err) {
-      console.error('❌ useCourses: Error cargando cursos:', err);
       setError(err instanceof Error ? err.message : 'Error desconocido');
     } finally {
       setLoading(false);
@@ -52,7 +45,6 @@ export const useCourses = (): UseCoursesReturn => {
    * Refresca los cursos (fuerza recarga)
    */
   const refresh = useCallback(async () => {
-    console.log('🔄 useCourses: Refrescando cursos...');
     await loadCourses(true);
   }, [loadCourses]);
 

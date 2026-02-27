@@ -75,7 +75,6 @@ export default function RogerBoxVideoPlayer({
       document.head.appendChild(script);
 
       window.onYouTubeIframeAPIReady = () => {
-        console.log('✅ YouTube API cargada');
         initializePlayer();
       };
     } else {
@@ -120,7 +119,6 @@ export default function RogerBoxVideoPlayer({
         },
         events: {
           onReady: (event: any) => {
-            console.log('✅ Reproductor RogerBox listo');
             setYoutubePlayer(event.target);
             setIsLoading(false);
 
@@ -128,10 +126,7 @@ export default function RogerBoxVideoPlayer({
             const forceHD = () => {
               try {
                 event.target.setPlaybackQuality('hd1080');
-                console.log('🎬 Forzando calidad HD');
-              } catch (error) {
-                console.warn('⚠️ Error al forzar HD:', error);
-              }
+              } catch (error) {}
             };
 
             forceHD();
@@ -148,7 +143,6 @@ export default function RogerBoxVideoPlayer({
             setIsPlaying(isPlaying);
           },
           onError: (event: any) => {
-            console.error('❌ Error en el reproductor:', event.data);
             setIsLoading(false);
           },
         },
@@ -166,9 +160,7 @@ export default function RogerBoxVideoPlayer({
           setCurrentTime(current);
           setDuration(total);
           setProgress((current / total) * 100);
-        } catch (error) {
-          console.warn('Error al obtener tiempo del video:', error);
-        }
+        } catch (error) {}
       }, 1000);
 
       return () => clearInterval(interval);
@@ -176,23 +168,14 @@ export default function RogerBoxVideoPlayer({
   }, [youtubePlayer, isPlaying]);
 
   const togglePlayPause = () => {
-    console.log(
-      '🎮 togglePlayPause llamado, youtubePlayer:',
-      !!youtubePlayer,
-      'isPlaying:',
-      isPlaying,
-    );
-
     if (youtubePlayer) {
       if (isPlaying) {
         // Guardar el tiempo actual antes de pausar
         try {
           const time = youtubePlayer.getCurrentTime();
           setCurrentTime(time);
-          console.log('⏸️ Tiempo guardado:', time);
           youtubePlayer.pauseVideo();
         } catch (error) {
-          console.warn('⚠️ Error al pausar:', error);
           setIsPlaying(false);
         }
       } else {
@@ -200,14 +183,11 @@ export default function RogerBoxVideoPlayer({
           youtubePlayer.playVideo();
           // Forzar HD al reanudar
           youtubePlayer.setPlaybackQuality('hd1080');
-          console.log('🎬 Calidad HD forzada al reanudar');
         } catch (error) {
-          console.warn('⚠️ Error al reproducir:', error);
           setIsPlaying(true);
         }
       }
     } else {
-      console.warn('⚠️ Reproductor no disponible, cambiando estado manualmente');
       setIsPlaying(!isPlaying);
     }
   };
@@ -241,9 +221,7 @@ export default function RogerBoxVideoPlayer({
           (document as any).msExitFullscreen();
         }
       }
-    } catch (error) {
-      console.warn('⚠️ Error al cambiar pantalla completa:', error);
-    }
+    } catch (error) {}
   };
 
   // Escuchar cambios de pantalla completa

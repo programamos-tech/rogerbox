@@ -23,7 +23,6 @@ export async function GET(
       .single();
 
     if (error) {
-      console.error('Error fetching complement:', error);
       return NextResponse.json(
         { error: 'Complement not found' },
         { status: 404 },
@@ -32,7 +31,6 @@ export async function GET(
 
     return NextResponse.json({ complement: data });
   } catch (error) {
-    console.error('Error in GET /api/complements/[id]:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 },
@@ -78,7 +76,6 @@ export async function PUT(
       .single();
 
     if (error) {
-      console.error('Error updating complement:', error);
       return NextResponse.json(
         { error: 'Failed to update complement' },
         { status: 500 },
@@ -87,7 +84,6 @@ export async function PUT(
 
     return NextResponse.json({ complement: data });
   } catch (error) {
-    console.error('Error in PUT /api/complements/[id]:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 },
@@ -107,7 +103,6 @@ export async function DELETE(
       .eq('id', id);
 
     if (error) {
-      console.error('Error deleting complement:', error);
       return NextResponse.json(
         { error: 'Failed to delete complement' },
         { status: 500 },
@@ -116,7 +111,6 @@ export async function DELETE(
 
     return NextResponse.json({ message: 'Complement deleted successfully' });
   } catch (error) {
-    console.error('Error in DELETE /api/complements/[id]:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 },

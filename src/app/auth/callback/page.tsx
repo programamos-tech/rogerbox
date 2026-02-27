@@ -26,7 +26,6 @@ export default function AuthCallbackPage() {
           });
 
           if (error) {
-            console.error('Error setting session:', error);
             router.push('/login?error=callback_error');
             return;
           }
@@ -51,7 +50,6 @@ export default function AuthCallbackPage() {
           router.push('/login');
         }
       } catch (error) {
-        console.error('Error in auth callback:', error);
         router.push('/login?error=callback_error');
       }
     };

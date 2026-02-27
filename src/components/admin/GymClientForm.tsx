@@ -81,7 +81,6 @@ export default function GymClientForm({
 
       if (!response.ok) {
         const errorMessage = data.error || 'Error al guardar cliente';
-        console.error('Error guardando cliente:', errorMessage, data);
         throw new Error(errorMessage);
       }
 

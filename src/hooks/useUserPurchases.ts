@@ -54,41 +54,17 @@ export const useUserPurchases = (): UseUserPurchasesReturn => {
       setLoading(true);
       setError(null);
 
-      console.log('🔄 useUserPurchases: Cargando compras del usuario...');
-
       // Obtener el user_id del usuario autenticado
       const userId = user.id;
 
-      console.log('🔍 useUserPurchases: User data:', {
-        email: user.email,
-        userId: userId,
-        hasUserId: !!userId,
-      });
-
       if (!userId) {
-        console.warn('⚠️ useUserPurchases: No se pudo obtener el user_id');
-        console.warn('⚠️ useUserPurchases: User object:', user);
         setError('No se pudo obtener el ID del usuario');
         setLoading(false);
         return;
       }
 
-      console.log(
-        '🔍 useUserPurchases: Buscando compras para user_id:',
-        userId,
-      );
-      console.log('🔍 useUserPurchases: Usuario actual:', {
-        email: user.email,
-        id: userId,
-        hasId: !!userId,
-        fullUser: user,
-      });
-
       // Verificar que el usuario tiene un ID válido
       if (!userId) {
-        console.error(
-          '❌ useUserPurchases: No se pudo obtener user_id del usuario',
-        );
         setPurchases([]);
         setLoading(false);
         setError('No se pudo identificar al usuario');
@@ -105,20 +81,6 @@ export const useUserPurchases = (): UseUserPurchasesReturn => {
         .select('id, user_id, course_id, is_active, created_at')
         .eq('user_id', userId);
 
-      console.log(
-        '🔍 useUserPurchases: Debug - Todas las compras del usuario (sin filtro is_active):',
-        {
-          count: allPurchasesDebug?.length || 0,
-          purchases: allPurchasesDebug,
-          error: debugError
-            ? {
-                message: debugError.message,
-                code: debugError.code,
-              }
-            : null,
-        },
-      );
-
       // Ahora buscar solo las activas
       const { data: purchasesData, error: fetchError } = await supabase
         .from('course_purchases')
@@ -128,29 +90,6 @@ export const useUserPurchases = (): UseUserPurchasesReturn => {
         .eq('user_id', userId)
         .eq('is_active', true)
         .order('created_at', { ascending: false });
-
-      console.log('🔍 useUserPurchases: Resultado de la consulta:', {
-        hasData: !!purchasesData,
-        dataLength: purchasesData?.length || 0,
-        hasError: !!fetchError,
-        error: fetchError
-          ? {
-              message: fetchError.message,
-              code: fetchError.code,
-              details: fetchError.details,
-              hint: fetchError.hint,
-            }
-          : null,
-        purchases:
-          purchasesData?.map((p) => ({
-            id: p.id,
-            course_id: p.course_id,
-            order_id: p.order_id,
-            user_id: p.user_id,
-            is_active: p.is_active,
-            has_start_date: !!p.start_date,
-          })) || [],
-      });
 
       // Si hay error, manejarlo apropiadamente
       if (fetchError) {
@@ -163,7 +102,6 @@ export const useUserPurchases = (): UseUserPurchasesReturn => {
 
         // Si el error no tiene información útil (objeto vacío), tratarlo como si no hubiera compras
         if (!hasErrorInfo) {
-          console.log('ℹ️ useUserPurchases: No hay compras todavía');
           setPurchases([]);
           setError(null);
           setLoading(false);
@@ -180,7 +118,6 @@ export const useUserPurchases = (): UseUserPurchasesReturn => {
         if (isRLSError) {
           // Si es un error de RLS, probablemente no hay compras o el usuario no tiene permisos
           // Tratar como si no hubiera compras en lugar de mostrar error
-          console.log('ℹ️ useUserPurchases: No hay compras todavía');
           setPurchases([]);
           setError(null);
           setLoading(false);
@@ -204,7 +141,6 @@ export const useUserPurchases = (): UseUserPurchasesReturn => {
 
         // Si no hay información útil, tratar como si no hubiera compras
         if (cleanEntries.length === 0) {
-          console.log('ℹ️ useUserPurchases: No hay compras todavía');
           setPurchases([]);
           setError(null);
           setLoading(false);
@@ -213,10 +149,6 @@ export const useUserPurchases = (): UseUserPurchasesReturn => {
 
         // Mostrar como advertencia, no como error crítico
         const errorDetails = Object.fromEntries(cleanEntries);
-        console.warn(
-          '⚠️ useUserPurchases: Problema al obtener compras:',
-          errorDetails,
-        );
         // No establecer error para no mostrar mensaje de error en la UI
         setPurchases([]);
 
@@ -224,38 +156,14 @@ export const useUserPurchases = (): UseUserPurchasesReturn => {
         return;
       }
 
-      console.log('🔍 useUserPurchases: Compras encontradas:', {
-        count: purchasesData?.length || 0,
-        purchases: purchasesData,
-      });
-
       // Si no hay compras, terminar
       if (!purchasesData || purchasesData.length === 0) {
-        console.log('ℹ️ useUserPurchases: No se encontraron compras activas');
-        console.log(
-          '🔍 useUserPurchases: Verificando si hay compras sin filtro is_active...',
-        );
-
         // Intentar buscar sin el filtro is_active para ver si hay compras inactivas
         const { data: allPurchases } = await supabase
           .from('course_purchases')
           .select('id, course_id, is_active, user_id')
           .eq('user_id', userId)
           .order('created_at', { ascending: false });
-
-        console.log(
-          '🔍 useUserPurchases: Todas las compras (incluyendo inactivas):',
-          {
-            count: allPurchases?.length || 0,
-            purchases:
-              allPurchases?.map((p) => ({
-                id: p.id,
-                course_id: p.course_id,
-                is_active: p.is_active,
-                user_id: p.user_id,
-              })) || [],
-          },
-        );
 
         setPurchases([]);
         setLoading(false);
@@ -266,8 +174,6 @@ export const useUserPurchases = (): UseUserPurchasesReturn => {
       const courseIds = purchasesData.map((p) => p.course_id).filter(Boolean);
 
       if (courseIds.length > 0) {
-        console.log('🔍 useUserPurchases: Obteniendo cursos para:', courseIds);
-
         // Obtener cursos con sus lecciones
         const { data: coursesData, error: coursesError } = await supabase
           .from('courses')
@@ -283,28 +189,8 @@ export const useUserPurchases = (): UseUserPurchasesReturn => {
           .select('lesson_id, course_id, completed_at')
           .eq('user_id', userId);
 
-        console.log('🔍 useUserPurchases: Cursos obtenidos:', {
-          count: coursesData?.length || 0,
-          courses: coursesData,
-          error: coursesError,
-        });
-
-        console.log('🔍 useUserPurchases: Completaciones obtenidas:', {
-          count: completionsData?.length || 0,
-        });
-
         // Combinar compras con cursos y completaciones
         const purchasesWithCourses = purchasesData.map((purchase: any) => {
-          console.log('🔍 useUserPurchases: Mapeando purchase:', {
-            purchase_id: purchase.id,
-            course_id: purchase.course_id,
-            course_id_type: typeof purchase.course_id,
-            available_course_ids: coursesData?.map((c: any) => ({
-              id: c.id,
-              id_type: typeof c.id,
-            })),
-          });
-
           const course =
             coursesData?.find((c: any) => {
               const match = c.id === purchase.course_id;
@@ -327,22 +213,7 @@ export const useUserPurchases = (): UseUserPurchasesReturn => {
           );
 
           if (!course) {
-            console.warn(
-              '⚠️ useUserPurchases: No se encontró curso para purchase:',
-              {
-                purchase_id: purchase.id,
-                course_id: purchase.course_id,
-                available_courses: coursesData?.map((c: any) => c.id),
-              },
-            );
           } else {
-            console.log('✅ useUserPurchases: Curso encontrado:', {
-              purchase_id: purchase.id,
-              course_id: purchase.course_id,
-              course_title: course.title,
-              lessons_count: course.lessons?.length || 0,
-              completed_count: completedLessonIds.length,
-            });
           }
 
           return {
@@ -358,27 +229,9 @@ export const useUserPurchases = (): UseUserPurchasesReturn => {
           };
         });
 
-        console.log(
-          '✅ useUserPurchases: Compras procesadas:',
-          purchasesWithCourses.length,
-        );
-        console.log(
-          '✅ useUserPurchases: Datos finales:',
-          purchasesWithCourses.map((p) => ({
-            id: p.id,
-            course_id: p.course_id,
-            has_course: !!p.course,
-            course_title: p.course?.title || 'NO COURSE',
-            course_preview_image: p.course?.preview_image
-              ? p.course.preview_image.substring(0, 50) + '...'
-              : 'NO IMAGE',
-          })),
-        );
         setPurchases(purchasesWithCourses);
         setLoading(false);
       } else {
-        // Si no hay courseIds, crear compras sin curso
-        console.warn('⚠️ useUserPurchases: No hay course IDs válidos');
         const purchasesWithoutCourses = purchasesData.map((purchase: any) => ({
           id: purchase.id,
           course_id: purchase.course_id,
@@ -389,18 +242,11 @@ export const useUserPurchases = (): UseUserPurchasesReturn => {
           completed_lessons: [],
           course: null,
         }));
-        console.log(
-          '✅ useUserPurchases: Compras sin cursos:',
-          purchasesWithoutCourses.length,
-        );
         setPurchases(purchasesWithoutCourses);
         setLoading(false);
       }
     } catch (err) {
       // No mostrar como error crítico, puede ser normal si no hay sesión
-      console.log(
-        'ℹ️ useUserPurchases: No se pudieron cargar compras (puede ser normal)',
-      );
       setPurchases([]);
     } finally {
       setLoading(false);

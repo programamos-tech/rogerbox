@@ -68,12 +68,6 @@ if (
       process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY
     )
   ) {
-    console.warn(
-      '⚠️ Missing Supabase environment variables. Using local fallbacks for development.',
-    );
-    console.warn(
-      'Set NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY (o NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY)',
-    );
   }
 }
 
@@ -90,13 +84,6 @@ export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
 
 // Log para debugging en desarrollo
 if (process.env.NODE_ENV === 'development') {
-  console.log('🔧 Supabase Admin configurado:', {
-    url: supabaseUrl,
-    hasServiceKey: supabaseServiceKey !== 'service-key-placeholder',
-    serviceKeyLength: supabaseServiceKey?.length || 0,
-    isLocal:
-      supabaseUrl.includes('127.0.0.1') || supabaseUrl.includes('localhost'),
-  });
 }
 
 // Tipos para TypeScript

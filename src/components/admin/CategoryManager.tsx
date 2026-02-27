@@ -97,7 +97,6 @@ export default function CategoryManager({
         throw new Error(data.error || 'No se pudieron cargar categorías');
       setCategories(data.categories || []);
     } catch (error) {
-      console.error('Error fetching categories:', error);
     } finally {
       setLoading(false);
     }
@@ -142,7 +141,6 @@ export default function CategoryManager({
       setFormData({ name: '', description: '', icon: '🔥', color: '#85ea10' });
       fetchCategories();
     } catch (error) {
-      console.error('Error saving category:', error);
       alert('Error al guardar la categoría');
     }
   };
@@ -170,7 +168,6 @@ export default function CategoryManager({
       if (!res.ok) throw new Error(data.error || 'No se pudo eliminar');
       fetchCategories();
     } catch (error) {
-      console.error('Error deleting category:', error);
       alert('Error al eliminar la categoría');
     }
   };
@@ -188,9 +185,7 @@ export default function CategoryManager({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'No se pudo actualizar');
       fetchCategories();
-    } catch (error) {
-      console.error('Error toggling category:', error);
-    }
+    } catch (error) {}
   };
 
   const handleSelectCategory = (category: Category) => {

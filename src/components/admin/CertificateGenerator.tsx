@@ -36,7 +36,6 @@ export default function CertificateGenerator({
     // Simular generación del certificado
     setTimeout(() => {
       // Aquí iría la lógica real para generar el PDF
-      console.log('Generando certificado...');
       setIsGenerating(false);
     }, 2000);
   };

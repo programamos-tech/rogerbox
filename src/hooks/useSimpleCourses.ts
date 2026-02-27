@@ -29,15 +29,10 @@ export const useSimpleCourses = (): UseSimpleCoursesReturn => {
       setLoading(true);
       setError(null);
 
-      console.log('🔄 useSimpleCourses: Cargando cursos...');
-
       const coursesData = await simpleCoursesService.getCourses();
 
-      console.log(`✅ useSimpleCourses: ${coursesData.length} cursos cargados`);
-      console.log('📊 useSimpleCourses: Primer curso:', coursesData[0]);
       setCourses(coursesData);
     } catch (err) {
-      console.error('❌ useSimpleCourses: Error:', err);
       setError(err instanceof Error ? err.message : 'Error al cargar cursos');
     } finally {
       setLoading(false);
@@ -48,7 +43,6 @@ export const useSimpleCourses = (): UseSimpleCoursesReturn => {
    * Refresca los cursos
    */
   const refresh = useCallback(async () => {
-    console.log('🔄 useSimpleCourses: Refrescando...');
     await loadCourses();
   }, [loadCourses]);
 

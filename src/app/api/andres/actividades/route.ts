@@ -45,7 +45,6 @@ export async function GET(request: NextRequest) {
     const { data: logs, error: logsError } = await logsQuery;
 
     if (logsError) {
-      console.error('[andres/actividades]', logsError);
       return NextResponse.json(
         { error: 'Error fetching activities' },
         { status: 500 },
@@ -98,7 +97,6 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ activities }, { status: 200 });
   } catch (error) {
-    console.error('[andres/actividades]', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 },

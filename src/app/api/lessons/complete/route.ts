@@ -37,13 +37,11 @@ export async function POST(request: Request) {
       .single();
 
     if (error) {
-      console.error('Error marking lesson complete:', error);
       throw error;
     }
 
     return NextResponse.json({ success: true, data });
   } catch (error) {
-    console.error('Error in lesson complete API:', error);
     return NextResponse.json(
       { error: 'Error al marcar lección como completada' },
       { status: 500 },
@@ -75,13 +73,11 @@ export async function GET(request: Request) {
     });
 
     if (error) {
-      console.error('Error fetching completions:', error);
       throw error;
     }
 
     return NextResponse.json({ completions: data || [] });
   } catch (error) {
-    console.error('Error in lesson completions API:', error);
     return NextResponse.json(
       { error: 'Error al obtener completaciones' },
       { status: 500 },

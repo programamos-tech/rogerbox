@@ -4,8 +4,6 @@ import { supabase } from '@/lib/supabase';
 // POST - Crear la tabla de blogs si no existe
 export async function POST(request: NextRequest) {
   try {
-    console.log('🔧 Setting up nutritional_blogs table...');
-
     // Verificar si la tabla existe
     const { data: tables, error: tablesError } = await supabase
       .from('information_schema.tables')
@@ -14,7 +12,6 @@ export async function POST(request: NextRequest) {
       .eq('table_name', 'nutritional_blogs');
 
     if (tablesError) {
-      console.error('Error checking tables:', tablesError);
       return NextResponse.json(
         {
           error: 'Error checking database tables',
@@ -25,7 +22,6 @@ export async function POST(request: NextRequest) {
     }
 
     if (tables && tables.length > 0) {
-      console.log('✅ Table nutritional_blogs already exists');
       return NextResponse.json({
         message: 'Table nutritional_blogs already exists',
         exists: true,
@@ -55,8 +51,6 @@ export async function POST(request: NextRequest) {
     });
 
     if (createError) {
-      console.error('Error creating table:', createError);
-
       // Intentar con un enfoque diferente
       const { error: directError } = await supabase
         .from('nutritional_blogs')
@@ -92,15 +86,12 @@ export async function POST(request: NextRequest) {
 
     await supabase.rpc('exec_sql', { sql: createIndexSQL });
 
-    console.log('✅ Table nutritional_blogs created successfully');
-
     return NextResponse.json({
       message: 'Table nutritional_blogs created successfully',
       exists: false,
       created: true,
     });
   } catch (error) {
-    console.error('Error in setup:', error);
     return NextResponse.json(
       {
         error: 'Error setting up table',

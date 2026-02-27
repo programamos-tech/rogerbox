@@ -27,7 +27,6 @@ export default function WeeklyWeightReminder({
       await onWeightSubmit(Number(weight));
       onClose();
     } catch (error) {
-      console.error('Error al guardar peso:', error);
     } finally {
       setIsSubmitting(false);
     }
