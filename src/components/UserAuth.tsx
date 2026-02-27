@@ -1,9 +1,16 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import {
+  Calendar,
+  Settings,
+  UserPlus,
+  Users,
+  Video,
+  Weight,
+} from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { appStore } from '@/lib/store';
-import { User } from '@/types';
-import { UserPlus, Users, Weight, Calendar, Video, Settings } from 'lucide-react';
+import type { User } from '@/types';
 import StudentDashboard from './StudentDashboard';
 
 export default function UserAuth() {
@@ -64,9 +71,9 @@ export default function UserAuth() {
 
   if (currentUser) {
     return (
-      <StudentDashboard 
-        user={currentUser} 
-        onBack={() => appStore.selectUser('')} 
+      <StudentDashboard
+        user={currentUser}
+        onBack={() => appStore.selectUser('')}
       />
     );
   }
@@ -80,14 +87,16 @@ export default function UserAuth() {
             <h1 className="text-5xl font-bold text-white mb-2">
               ROGER<span className="text-[#85ea10]">BOX</span>
             </h1>
-            <p className="text-white text-lg font-semibold">Tu plataforma de fitness personalizada</p>
+            <p className="text-white text-lg font-semibold">
+              Tu plataforma de fitness personalizada
+            </p>
           </div>
 
           <div className="bg-black/40 backdrop-blur-md rounded-2xl p-8 border border-white/20 shadow-xl">
             <h2 className="text-2xl font-black text-white mb-6 text-center">
               CREAR CUENTA
             </h2>
-            
+
             <form onSubmit={handleRegister} className="space-y-6">
               <div>
                 <label className="block text-white font-bold text-sm mb-2">
@@ -102,7 +111,7 @@ export default function UserAuth() {
                   required
                 />
               </div>
-              
+
               <div>
                 <label className="block text-white font-bold text-sm mb-2">
                   PESO (KG)
@@ -118,7 +127,7 @@ export default function UserAuth() {
                   required
                 />
               </div>
-              
+
               <button
                 type="submit"
                 className="w-full bg-[#85ea10] hover:bg-[#7dd30f] text-black font-black py-4 rounded-xl transition-all duration-300 transform hover:scale-105"

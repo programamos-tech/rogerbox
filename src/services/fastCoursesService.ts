@@ -100,25 +100,30 @@ class FastCoursesService {
       // Crear mapa de categorías
       const categoryMap: { [key: string]: string } = {};
       if (categoriesData) {
-        categoriesData.forEach(cat => {
+        categoriesData.forEach((cat) => {
           categoryMap[cat.id] = cat.name;
         });
       }
 
       // Transformación ULTRA RÁPIDA
       const twoWeeksAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
-      const courses = (data || []).map(course => {
+      const courses = (data || []).map((course) => {
         const isNew = new Date(course.created_at) > twoWeeksAgo;
-        
+
         return {
           id: course.id,
           title: course.title,
           description: course.description || '',
           short_description: course.short_description || '',
-          thumbnail: course.intro_video_url ? this.getYouTubeThumbnail(course.intro_video_url) : '/images/course-placeholder.jpg',
-          preview_image: course.intro_video_url ? this.getYouTubeThumbnail(course.intro_video_url) : '/images/course-placeholder.jpg',
+          thumbnail: course.intro_video_url
+            ? this.getYouTubeThumbnail(course.intro_video_url)
+            : '/images/course-placeholder.jpg',
+          preview_image: course.intro_video_url
+            ? this.getYouTubeThumbnail(course.intro_video_url)
+            : '/images/course-placeholder.jpg',
           price: course.price || 0,
-          original_price: course.discount_percentage > 0 ? course.price : undefined,
+          original_price:
+            course.discount_percentage > 0 ? course.price : undefined,
           discount_percentage: course.discount_percentage || 0,
           category_name: categoryMap[course.category] || 'Sin categoría',
           rating: course.rating || 4.8,
@@ -128,7 +133,7 @@ class FastCoursesService {
           level: 'Intermedio', // Valor por defecto
           isNew,
           isPopular: false, // Simplificado por velocidad
-          created_at: course.created_at
+          created_at: course.created_at,
         };
       });
 
@@ -138,20 +143,21 @@ class FastCoursesService {
       this.loading = false;
 
       const endTime = performance.now();
-      console.log(`⚡ FastCourses: Cargados en ${(endTime - startTime).toFixed(2)}ms`);
+      console.log(
+        `⚡ FastCourses: Cargados en ${(endTime - startTime).toFixed(2)}ms`,
+      );
 
       return courses;
-
     } catch (error) {
       console.error('❌ FastCourses: Error:', error);
       this.loading = false;
-      
+
       // Devolver caché anterior si existe
       if (this.cache) {
         console.log('🔄 FastCourses: Usando caché anterior por error');
         return this.cache;
       }
-      
+
       throw error;
     }
   }
@@ -193,7 +199,7 @@ class FastCoursesService {
    */
   async getCourseById(id: string): Promise<FastCourse | null> {
     const courses = await this.getCourses();
-    return courses.find(course => course.id === id) || null;
+    return courses.find((course) => course.id === id) || null;
   }
 }
 

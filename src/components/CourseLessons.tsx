@@ -1,8 +1,24 @@
 'use client';
 
-import { useState } from 'react';
+import {
+  ArrowLeft,
+  Award,
+  CheckCircle,
+  Clock,
+  Flame,
+  Heart,
+  Lock,
+  MessageCircle,
+  Play,
+  Star,
+  Target,
+  ThumbsUp,
+  TrendingUp,
+  Users,
+  Zap,
+} from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { Play, Clock, CheckCircle, Lock, ArrowLeft, Star, Users, Target, Zap, MessageCircle, ThumbsUp, Heart, Award, TrendingUp, Flame } from 'lucide-react';
+import { useState } from 'react';
 import LessonCompletionModal from './LessonCompletionModal';
 
 interface Lesson {
@@ -51,13 +67,15 @@ export default function CourseLessons({
   courseStudents,
   courseDuration,
   courseLevel,
-  lessons
+  lessons,
 }: CourseLessonsProps) {
   const router = useRouter();
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
   const [showCompletionModal, setShowCompletionModal] = useState(false);
 
-  const completedLessons = lessons.filter(lesson => lesson.isCompleted).length;
+  const completedLessons = lessons.filter(
+    (lesson) => lesson.isCompleted,
+  ).length;
   const progressPercentage = (completedLessons / lessons.length) * 100;
 
   const handleLessonClick = (lesson: Lesson) => {
@@ -67,7 +85,7 @@ export default function CourseLessons({
   };
 
   const handleStartCourse = () => {
-    const firstUnlockedLesson = lessons.find(lesson => !lesson.isLocked);
+    const firstUnlockedLesson = lessons.find((lesson) => !lesson.isLocked);
     if (firstUnlockedLesson) {
       setSelectedLesson(firstUnlockedLesson);
     }
@@ -75,7 +93,7 @@ export default function CourseLessons({
 
   const handleNextLesson = () => {
     if (selectedLesson) {
-      const currentIndex = lessons.findIndex(l => l.id === selectedLesson.id);
+      const currentIndex = lessons.findIndex((l) => l.id === selectedLesson.id);
       const nextLesson = lessons[currentIndex + 1];
       if (nextLesson && !nextLesson.isLocked) {
         setSelectedLesson(nextLesson);
@@ -85,25 +103,29 @@ export default function CourseLessons({
 
   if (selectedLesson) {
     return (
-      <IndividualLesson 
+      <IndividualLesson
         lesson={selectedLesson}
         courseTitle={courseTitle}
         onBack={() => setSelectedLesson(null)}
         onNext={() => {
-          const currentIndex = lessons.findIndex(l => l.id === selectedLesson.id);
+          const currentIndex = lessons.findIndex(
+            (l) => l.id === selectedLesson.id,
+          );
           const nextLesson = lessons[currentIndex + 1];
           if (nextLesson && !nextLesson.isLocked) {
             setSelectedLesson(nextLesson);
           }
         }}
         onPrevious={() => {
-          const currentIndex = lessons.findIndex(l => l.id === selectedLesson.id);
+          const currentIndex = lessons.findIndex(
+            (l) => l.id === selectedLesson.id,
+          );
           const prevLesson = lessons[currentIndex - 1];
           if (prevLesson) {
             setSelectedLesson(prevLesson);
           }
         }}
-        currentIndex={lessons.findIndex(l => l.id === selectedLesson.id)}
+        currentIndex={lessons.findIndex((l) => l.id === selectedLesson.id)}
         totalLessons={lessons.length}
         showCompletionModal={showCompletionModal}
         setShowCompletionModal={setShowCompletionModal}
@@ -116,7 +138,7 @@ export default function CourseLessons({
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black">
       {/* Background Overlay */}
       <div className="fixed inset-0 bg-gradient-to-r from-[#164151]/80 via-[#29839c]/70 to-[#164151]/60 backdrop-blur-sm z-0"></div>
-      
+
       {/* Content */}
       <div className="relative z-10">
         {/* Header */}
@@ -131,18 +153,20 @@ export default function CourseLessons({
                 <ArrowLeft className="w-5 h-5" />
                 <span>Volver</span>
               </button>
-              
+
               {/* Logo */}
               <div className="flex items-center space-x-3">
                 <h1 className="text-3xl font-bold text-white">
                   ROGER<span className="text-[#85ea10]">BOX</span>
                 </h1>
               </div>
-              
+
               {/* Progress */}
               <div className="text-right text-white">
                 <div className="text-sm text-white/60">Progreso</div>
-                <div className="font-semibold">{completedLessons}/{lessons.length} clases</div>
+                <div className="font-semibold">
+                  {completedLessons}/{lessons.length} clases
+                </div>
               </div>
             </div>
           </div>
@@ -165,9 +189,13 @@ export default function CourseLessons({
                 </div>
 
                 {/* Course Details */}
-                <h2 className="text-2xl font-bold text-white mb-2">{courseTitle}</h2>
+                <h2 className="text-2xl font-bold text-white mb-2">
+                  {courseTitle}
+                </h2>
                 <p className="text-white/60 mb-4">por {courseInstructor}</p>
-                <p className="text-white/80 text-sm mb-6">{courseDescription}</p>
+                <p className="text-white/80 text-sm mb-6">
+                  {courseDescription}
+                </p>
 
                 {/* Course Stats */}
                 <div className="space-y-3 mb-6">
@@ -183,7 +211,9 @@ export default function CourseLessons({
                       <Users className="w-4 h-4 text-[#85ea10]" />
                       <span>Estudiantes</span>
                     </div>
-                    <span className="font-semibold">{courseStudents.toLocaleString()}</span>
+                    <span className="font-semibold">
+                      {courseStudents.toLocaleString()}
+                    </span>
                   </div>
                   <div className="flex items-center justify-between text-white/80">
                     <div className="flex items-center space-x-2">
@@ -201,7 +231,7 @@ export default function CourseLessons({
                     <span>{Math.round(progressPercentage)}%</span>
                   </div>
                   <div className="w-full bg-white/20 rounded-full h-2">
-                    <div 
+                    <div
                       className="bg-[#85ea10] h-2 rounded-full transition-all duration-500"
                       style={{ width: `${progressPercentage}%` }}
                     ></div>
@@ -222,8 +252,12 @@ export default function CourseLessons({
             {/* Lessons List */}
             <div className="lg:col-span-2">
               <div className="mb-6">
-                <h3 className="text-2xl font-bold text-white mb-2">Contenido del Curso</h3>
-                <p className="text-white/60">{lessons.length} clases • {courseDuration}</p>
+                <h3 className="text-2xl font-bold text-white mb-2">
+                  Contenido del Curso
+                </h3>
+                <p className="text-white/60">
+                  {lessons.length} clases • {courseDuration}
+                </p>
               </div>
 
               <div className="space-y-4">
@@ -235,8 +269,8 @@ export default function CourseLessons({
                       lesson.isLocked
                         ? 'border-white/10 opacity-50 cursor-not-allowed'
                         : lesson.isCompleted
-                        ? 'border-[#85ea10] hover:border-[#85ea10]/80'
-                        : 'border-white/20 hover:border-[#85ea10]'
+                          ? 'border-[#85ea10] hover:border-[#85ea10]/80'
+                          : 'border-white/20 hover:border-[#85ea10]'
                     }`}
                   >
                     <div className="p-6">
@@ -253,7 +287,9 @@ export default function CourseLessons({
                             </div>
                           ) : (
                             <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-                              <span className="text-white font-bold">{index + 1}</span>
+                              <span className="text-white font-bold">
+                                {index + 1}
+                              </span>
                             </div>
                           )}
                         </div>
@@ -268,7 +304,7 @@ export default function CourseLessons({
                               <p className="text-white/70 text-sm mb-3 line-clamp-2">
                                 {lesson.description}
                               </p>
-                              
+
                               {/* Lesson Meta */}
                               <div className="flex items-center space-x-4 text-white/60 text-sm">
                                 <div className="flex items-center space-x-1">
@@ -281,7 +317,9 @@ export default function CourseLessons({
                                 </div>
                                 <div className="flex items-center space-x-1">
                                   <Zap className="w-4 h-4" />
-                                  <span>{lesson.exercises.length} ejercicios</span>
+                                  <span>
+                                    {lesson.exercises.length} ejercicios
+                                  </span>
                                 </div>
                               </div>
                             </div>
@@ -309,17 +347,17 @@ export default function CourseLessons({
   );
 }
 
-function IndividualLesson({ 
-  lesson, 
-  courseTitle, 
-  onBack, 
-  onNext, 
-  onPrevious, 
-  currentIndex, 
+function IndividualLesson({
+  lesson,
+  courseTitle,
+  onBack,
+  onNext,
+  onPrevious,
+  currentIndex,
   totalLessons,
   showCompletionModal,
   setShowCompletionModal,
-  onNextLesson
+  onNextLesson,
 }: {
   lesson: Lesson;
   courseTitle: string;
@@ -334,17 +372,22 @@ function IndividualLesson({
 }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [completedExercises, setCompletedExercises] = useState<string[]>([]);
-  const [activeTab, setActiveTab] = useState<'exercises' | 'comments' | 'reviews'>('exercises');
+  const [activeTab, setActiveTab] = useState<
+    'exercises' | 'comments' | 'reviews'
+  >('exercises');
 
   const handleExerciseComplete = (exerciseId: string) => {
     if (completedExercises.includes(exerciseId)) {
-      setCompletedExercises(completedExercises.filter(id => id !== exerciseId));
+      setCompletedExercises(
+        completedExercises.filter((id) => id !== exerciseId),
+      );
     } else {
       setCompletedExercises([...completedExercises, exerciseId]);
     }
   };
 
-  const exerciseProgress = (completedExercises.length / lesson.exercises.length) * 100;
+  const exerciseProgress =
+    (completedExercises.length / lesson.exercises.length) * 100;
 
   // Simular datos de comentarios y evaluaciones
   const comments = [
@@ -355,7 +398,7 @@ function IndividualLesson({
       time: '2 horas',
       text: 'Excelente clase! Me encantó la explicación de los fundamentos del HIIT.',
       likes: 12,
-      isLiked: false
+      isLiked: false,
     },
     {
       id: 2,
@@ -364,7 +407,7 @@ function IndividualLesson({
       time: '1 día',
       text: 'Perfecto para principiantes. Roger explica muy bien cada ejercicio.',
       likes: 8,
-      isLiked: true
+      isLiked: true,
     },
     {
       id: 3,
@@ -373,8 +416,8 @@ function IndividualLesson({
       time: '3 días',
       text: 'Ya completé esta clase 3 veces. Cada vez me siento más fuerte!',
       likes: 15,
-      isLiked: false
-    }
+      isLiked: false,
+    },
   ];
 
   const reviews = [
@@ -383,22 +426,22 @@ function IndividualLesson({
       user: 'Luis Pérez',
       rating: 5,
       text: 'Increíble curso! Roger es un excelente instructor.',
-      date: 'Hace 1 semana'
+      date: 'Hace 1 semana',
     },
     {
       id: 2,
       user: 'Sofia Herrera',
       rating: 5,
       text: 'Perfecto para empezar con HIIT. Muy bien explicado.',
-      date: 'Hace 2 semanas'
+      date: 'Hace 2 semanas',
     },
     {
       id: 3,
       user: 'Diego Morales',
       rating: 4,
       text: 'Buen curso, aunque me gustaría más intensidad.',
-      date: 'Hace 3 semanas'
-    }
+      date: 'Hace 3 semanas',
+    },
   ];
 
   const handleLessonComplete = () => {
@@ -411,7 +454,7 @@ function IndividualLesson({
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black">
       {/* Background Overlay */}
       <div className="fixed inset-0 bg-gradient-to-r from-[#164151]/80 via-[#29839c]/70 to-[#164151]/60 backdrop-blur-sm z-0"></div>
-      
+
       {/* Content */}
       <div className="relative z-10">
         {/* Header */}
@@ -426,13 +469,15 @@ function IndividualLesson({
                 <ArrowLeft className="w-5 h-5" />
                 <span>Volver al curso</span>
               </button>
-              
+
               {/* Lesson Progress */}
               <div className="text-center text-white">
-                <div className="text-sm text-white/60">Clase {currentIndex + 1} de {totalLessons}</div>
+                <div className="text-sm text-white/60">
+                  Clase {currentIndex + 1} de {totalLessons}
+                </div>
                 <div className="font-semibold">{lesson.title}</div>
               </div>
-              
+
               {/* Course Title */}
               <div className="text-right text-white/60 text-sm max-w-xs">
                 <div className="truncate">{courseTitle}</div>
@@ -460,7 +505,10 @@ function IndividualLesson({
                   <div className="absolute bottom-4 left-4 right-4">
                     <div className="bg-black/60 rounded-lg p-3">
                       <div className="w-full bg-white/20 rounded-full h-1 mb-2">
-                        <div className="bg-[#85ea10] h-1 rounded-full" style={{ width: '30%' }}></div>
+                        <div
+                          className="bg-[#85ea10] h-1 rounded-full"
+                          style={{ width: '30%' }}
+                        ></div>
                       </div>
                       <div className="flex justify-between text-white text-sm">
                         <span>5:30</span>
@@ -472,9 +520,11 @@ function IndividualLesson({
 
                 {/* Video Info */}
                 <div className="p-6">
-                  <h2 className="text-2xl font-bold text-white mb-2">{lesson.title}</h2>
+                  <h2 className="text-2xl font-bold text-white mb-2">
+                    {lesson.title}
+                  </h2>
                   <p className="text-white/80 mb-4">{lesson.description}</p>
-                  
+
                   {/* Lesson Meta */}
                   <div className="flex items-center space-x-6 text-white/60 text-sm">
                     <div className="flex items-center space-x-1">
@@ -502,7 +552,7 @@ function IndividualLesson({
                 >
                   ← Anterior
                 </button>
-                
+
                 <button
                   onClick={onNext}
                   disabled={currentIndex === totalLessons - 1}
@@ -556,16 +606,21 @@ function IndividualLesson({
                 <div className="bg-black/40 rounded-2xl p-6 border border-white/20 sticky top-8">
                   {activeTab === 'exercises' && (
                     <>
-                      <h3 className="text-xl font-bold text-white mb-4">Ejercicios</h3>
-                      
+                      <h3 className="text-xl font-bold text-white mb-4">
+                        Ejercicios
+                      </h3>
+
                       {/* Progress */}
                       <div className="mb-6">
                         <div className="flex justify-between text-white/60 text-sm mb-2">
                           <span>Progreso</span>
-                          <span>{completedExercises.length}/{lesson.exercises.length}</span>
+                          <span>
+                            {completedExercises.length}/
+                            {lesson.exercises.length}
+                          </span>
                         </div>
                         <div className="w-full bg-white/20 rounded-full h-2">
-                          <div 
+                          <div
                             className="bg-[#85ea10] h-2 rounded-full transition-all duration-500"
                             style={{ width: `${exerciseProgress}%` }}
                           ></div>
@@ -592,11 +647,13 @@ function IndividualLesson({
                                   </div>
                                 ) : (
                                   <div className="w-6 h-6 bg-white/20 rounded-full flex items-center justify-center">
-                                    <span className="text-white text-xs font-bold">{index + 1}</span>
+                                    <span className="text-white text-xs font-bold">
+                                      {index + 1}
+                                    </span>
                                   </div>
                                 )}
                               </div>
-                              
+
                               <div className="flex-1 min-w-0">
                                 <h4 className="text-white font-semibold text-sm mb-1">
                                   {exercise.name}
@@ -627,23 +684,38 @@ function IndividualLesson({
 
                   {activeTab === 'comments' && (
                     <>
-                      <h3 className="text-xl font-bold text-white mb-4">Comentarios</h3>
+                      <h3 className="text-xl font-bold text-white mb-4">
+                        Comentarios
+                      </h3>
                       <div className="space-y-4">
                         {comments.map((comment) => (
-                          <div key={comment.id} className="border-b border-white/10 pb-4 last:border-b-0">
+                          <div
+                            key={comment.id}
+                            className="border-b border-white/10 pb-4 last:border-b-0"
+                          >
                             <div className="flex items-start space-x-3">
                               <div className="w-8 h-8 bg-[#85ea10] rounded-full flex items-center justify-center">
-                                <span className="text-black font-bold text-sm">{comment.avatar}</span>
+                                <span className="text-black font-bold text-sm">
+                                  {comment.avatar}
+                                </span>
                               </div>
                               <div className="flex-1">
                                 <div className="flex items-center space-x-2 mb-1">
-                                  <span className="text-white font-semibold text-sm">{comment.user}</span>
-                                  <span className="text-white/60 text-xs">{comment.time}</span>
+                                  <span className="text-white font-semibold text-sm">
+                                    {comment.user}
+                                  </span>
+                                  <span className="text-white/60 text-xs">
+                                    {comment.time}
+                                  </span>
                                 </div>
-                                <p className="text-white/80 text-sm mb-2">{comment.text}</p>
+                                <p className="text-white/80 text-sm mb-2">
+                                  {comment.text}
+                                </p>
                                 <button className="flex items-center space-x-1 text-white/60 hover:text-[#85ea10] transition-colors">
                                   <ThumbsUp className="w-4 h-4" />
-                                  <span className="text-xs">{comment.likes}</span>
+                                  <span className="text-xs">
+                                    {comment.likes}
+                                  </span>
                                 </button>
                               </div>
                             </div>
@@ -655,30 +727,45 @@ function IndividualLesson({
 
                   {activeTab === 'reviews' && (
                     <>
-                      <h3 className="text-xl font-bold text-white mb-4">Evaluaciones</h3>
+                      <h3 className="text-xl font-bold text-white mb-4">
+                        Evaluaciones
+                      </h3>
                       <div className="space-y-4">
                         {reviews.map((review) => (
-                          <div key={review.id} className="border-b border-white/10 pb-4 last:border-b-0">
+                          <div
+                            key={review.id}
+                            className="border-b border-white/10 pb-4 last:border-b-0"
+                          >
                             <div className="flex items-start space-x-3">
                               <div className="w-8 h-8 bg-[#85ea10] rounded-full flex items-center justify-center">
-                                <span className="text-black font-bold text-sm">{review.user[0]}</span>
+                                <span className="text-black font-bold text-sm">
+                                  {review.user[0]}
+                                </span>
                               </div>
                               <div className="flex-1">
                                 <div className="flex items-center space-x-2 mb-1">
-                                  <span className="text-white font-semibold text-sm">{review.user}</span>
+                                  <span className="text-white font-semibold text-sm">
+                                    {review.user}
+                                  </span>
                                   <div className="flex items-center space-x-1">
                                     {[...Array(5)].map((_, i) => (
                                       <Star
                                         key={i}
                                         className={`w-4 h-4 ${
-                                          i < review.rating ? 'text-yellow-400 fill-current' : 'text-white/30'
+                                          i < review.rating
+                                            ? 'text-yellow-400 fill-current'
+                                            : 'text-white/30'
                                         }`}
                                       />
                                     ))}
                                   </div>
                                 </div>
-                                <p className="text-white/80 text-sm mb-1">{review.text}</p>
-                                <span className="text-white/60 text-xs">{review.date}</span>
+                                <p className="text-white/80 text-sm mb-1">
+                                  {review.text}
+                                </p>
+                                <span className="text-white/60 text-xs">
+                                  {review.date}
+                                </span>
                               </div>
                             </div>
                           </div>

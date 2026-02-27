@@ -1,7 +1,7 @@
 'use client';
 
+import { AlertCircle, CheckCircle, Info, X, XCircle } from 'lucide-react';
 import { useEffect } from 'react';
-import { CheckCircle, AlertCircle, Info, XCircle, X } from 'lucide-react';
 
 interface RogerAlertProps {
   isOpen: boolean;
@@ -22,7 +22,7 @@ export default function RogerAlert({
   type = 'success',
   confirmText = 'Entendido',
   showConfirmButton = true,
-  onConfirm
+  onConfirm,
 }: RogerAlertProps) {
   useEffect(() => {
     if (isOpen) {
@@ -102,9 +102,7 @@ export default function RogerAlert({
                 {getIcon()}
               </div>
               <div>
-                <h3 className="text-lg font-bold text-white">
-                  {title}
-                </h3>
+                <h3 className="text-lg font-bold text-white">{title}</h3>
               </div>
             </div>
             <button

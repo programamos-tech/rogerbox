@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
 import { setRecoverySession } from '@auth/resetPassword/services/recovery-session.service.';
+import { useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 export function useRecoverySession() {
   const params = useSearchParams();

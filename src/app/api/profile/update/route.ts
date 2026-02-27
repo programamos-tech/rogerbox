@@ -1,36 +1,39 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 
 export async function POST(request: NextRequest) {
   try {
     // Obtener el token de autorización del header
     const authHeader = request.headers.get('authorization');
-    
+
     console.log('=== DEBUG API PROFILE UPDATE ===');
     console.log('Auth header:', authHeader ? 'present' : 'missing');
-    
+
     if (!authHeader?.startsWith('Bearer ')) {
       console.error('No authorization header found');
       return NextResponse.json(
         { error: 'No autorizado - falta token' },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
     const token = authHeader.replace('Bearer ', '');
-    
+
     // Verificar el token con supabaseAdmin
-    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
-    
+    const {
+      data: { user },
+      error: userError,
+    } = await supabaseAdmin.auth.getUser(token);
+
     console.log('User from token:', user ? user.id : 'null');
     console.log('User error:', userError);
     console.log('================================');
-    
+
     if (userError || !user?.id) {
       console.error('Invalid token or user not found:', userError);
       return NextResponse.json(
         { error: 'No autorizado - token inválido' },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -40,7 +43,7 @@ export async function POST(request: NextRequest) {
     if (!profile) {
       return NextResponse.json(
         { error: 'Datos del perfil requeridos' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -58,7 +61,7 @@ export async function POST(request: NextRequest) {
       console.error('Error verificando perfil existente:', selectError);
       return NextResponse.json(
         { error: 'Error al verificar el perfil' },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -72,8 +75,10 @@ export async function POST(request: NextRequest) {
         weight: profile.weight,
         gender: profile.gender,
         // Convertir goals array a JSON string si es necesario
-        goals: Array.isArray(profile.goals) ? JSON.stringify(profile.goals) : (profile.goals || '[]'),
-        updated_at: new Date().toISOString()
+        goals: Array.isArray(profile.goals)
+          ? JSON.stringify(profile.goals)
+          : profile.goals || '[]',
+        updated_at: new Date().toISOString(),
       };
 
       // Solo agregar campos si existen y están definidos en la tabla
@@ -100,7 +105,7 @@ export async function POST(request: NextRequest) {
         console.error('Error actualizando perfil:', error);
         return NextResponse.json(
           { error: error.message || 'Error al actualizar el perfil' },
-          { status: 500 }
+          { status: 500 },
         );
       }
 
@@ -109,8 +114,11 @@ export async function POST(request: NextRequest) {
       // VINCULACIÓN AUTOMÁTICA: Si se actualizó document_id, buscar cliente físico y vincular
       if (profile.document_id) {
         try {
-          console.log('🔗 Buscando cliente físico con cédula:', profile.document_id);
-          
+          console.log(
+            '🔗 Buscando cliente físico con cédula:',
+            profile.document_id,
+          );
+
           // Buscar cliente físico por cédula
           const { data: gymClient, error: clientError } = await supabaseAdmin
             .from('gym_client_info')
@@ -123,7 +131,7 @@ export async function POST(request: NextRequest) {
           } else if (gymClient && !gymClient.user_id) {
             // Cliente físico encontrado y no está vinculado
             console.log('✅ Cliente físico encontrado, vinculando...');
-            
+
             // Vincular user_id en gym_client_info
             const { error: linkError } = await supabaseAdmin
               .from('gym_client_info')
@@ -134,18 +142,24 @@ export async function POST(request: NextRequest) {
               console.error('Error vinculando cliente físico:', linkError);
             } else {
               console.log('✅ Cliente físico vinculado exitosamente');
-              
+
               // Actualizar user_id en membresías relacionadas
               await supabaseAdmin
                 .from('gym_memberships')
-                .update({ user_id: userId, updated_at: new Date().toISOString() })
+                .update({
+                  user_id: userId,
+                  updated_at: new Date().toISOString(),
+                })
                 .eq('client_info_id', gymClient.id)
                 .is('user_id', null);
 
               // Actualizar user_id en pagos relacionados
               await supabaseAdmin
                 .from('gym_payments')
-                .update({ user_id: userId, updated_at: new Date().toISOString() })
+                .update({
+                  user_id: userId,
+                  updated_at: new Date().toISOString(),
+                })
                 .eq('client_info_id', gymClient.id)
                 .is('user_id', null);
 
@@ -158,7 +172,10 @@ export async function POST(request: NextRequest) {
           }
         } catch (linkError) {
           // Error no crítico - solo loguear
-          console.warn('⚠️ Error en vinculación automática (no crítico):', linkError);
+          console.warn(
+            '⚠️ Error en vinculación automática (no crítico):',
+            linkError,
+          );
         }
       }
     } else {
@@ -172,10 +189,12 @@ export async function POST(request: NextRequest) {
         weight: profile.weight,
         gender: profile.gender,
         // Convertir goals array a JSON string si es necesario
-        goals: Array.isArray(profile.goals) ? JSON.stringify(profile.goals) : (profile.goals || '[]'),
+        goals: Array.isArray(profile.goals)
+          ? JSON.stringify(profile.goals)
+          : profile.goals || '[]',
         membership_status: 'inactive',
         created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       };
 
       // Solo agregar campos si existen y están definidos en la tabla
@@ -199,7 +218,7 @@ export async function POST(request: NextRequest) {
         console.error('Error creando perfil:', error);
         return NextResponse.json(
           { error: error.message || 'Error al crear el perfil' },
-          { status: 500 }
+          { status: 500 },
         );
       }
 
@@ -208,8 +227,11 @@ export async function POST(request: NextRequest) {
       // VINCULACIÓN AUTOMÁTICA: Si se creó perfil con document_id, buscar cliente físico y vincular
       if (profile.document_id) {
         try {
-          console.log('🔗 Buscando cliente físico con cédula:', profile.document_id);
-          
+          console.log(
+            '🔗 Buscando cliente físico con cédula:',
+            profile.document_id,
+          );
+
           // Buscar cliente físico por cédula
           const { data: gymClient, error: clientError } = await supabaseAdmin
             .from('gym_client_info')
@@ -222,7 +244,7 @@ export async function POST(request: NextRequest) {
           } else if (gymClient && !gymClient.user_id) {
             // Cliente físico encontrado y no está vinculado
             console.log('✅ Cliente físico encontrado, vinculando...');
-            
+
             // Vincular user_id en gym_client_info
             const { error: linkError } = await supabaseAdmin
               .from('gym_client_info')
@@ -233,18 +255,24 @@ export async function POST(request: NextRequest) {
               console.error('Error vinculando cliente físico:', linkError);
             } else {
               console.log('✅ Cliente físico vinculado exitosamente');
-              
+
               // Actualizar user_id en membresías relacionadas
               await supabaseAdmin
                 .from('gym_memberships')
-                .update({ user_id: userId, updated_at: new Date().toISOString() })
+                .update({
+                  user_id: userId,
+                  updated_at: new Date().toISOString(),
+                })
                 .eq('client_info_id', gymClient.id)
                 .is('user_id', null);
 
               // Actualizar user_id en pagos relacionados
               await supabaseAdmin
                 .from('gym_payments')
-                .update({ user_id: userId, updated_at: new Date().toISOString() })
+                .update({
+                  user_id: userId,
+                  updated_at: new Date().toISOString(),
+                })
                 .eq('client_info_id', gymClient.id)
                 .is('user_id', null);
 
@@ -257,7 +285,10 @@ export async function POST(request: NextRequest) {
           }
         } catch (linkError) {
           // Error no crítico - solo loguear
-          console.warn('⚠️ Error en vinculación automática (no crítico):', linkError);
+          console.warn(
+            '⚠️ Error en vinculación automática (no crítico):',
+            linkError,
+          );
         }
       }
     }
@@ -265,32 +296,31 @@ export async function POST(request: NextRequest) {
     // Intentar crear registro inicial de peso (opcional, no crítico)
     try {
       const today = new Date().toISOString().split('T')[0];
-      await supabaseAdmin
-        .from('weight_records')
-        .insert({
-          user_id: userId,
-          weight: profile.weight,
-          record_date: today,
-          notes: 'Peso inicial del onboarding'
-        });
+      await supabaseAdmin.from('weight_records').insert({
+        user_id: userId,
+        weight: profile.weight,
+        record_date: today,
+        notes: 'Peso inicial del onboarding',
+      });
     } catch (weightError: any) {
       // Error silencioso - no crítico
       if (process.env.NODE_ENV === 'development') {
-        console.warn('⚠️ Error al guardar registro de peso (no crítico):', weightError?.message);
+        console.warn(
+          '⚠️ Error al guardar registro de peso (no crítico):',
+          weightError?.message,
+        );
       }
     }
 
     return NextResponse.json({
       success: true,
-      data: result
+      data: result,
     });
-
   } catch (error) {
     console.error('❌ Error inesperado actualizando perfil:', error);
     return NextResponse.json(
       { error: 'Error inesperado al actualizar el perfil' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
-

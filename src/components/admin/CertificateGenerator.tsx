@@ -1,7 +1,15 @@
 'use client';
 
+import {
+  Download,
+  Facebook,
+  Instagram,
+  Linkedin,
+  Share2,
+  Twitter,
+  X,
+} from 'lucide-react';
 import { useState } from 'react';
-import { Download, Share2, Twitter, Facebook, Instagram, Linkedin, X } from 'lucide-react';
 
 interface CertificateData {
   courseName: string;
@@ -17,7 +25,10 @@ interface CertificateGeneratorProps {
   onClose: () => void;
 }
 
-export default function CertificateGenerator({ certificateData, onClose }: CertificateGeneratorProps) {
+export default function CertificateGenerator({
+  certificateData,
+  onClose,
+}: CertificateGeneratorProps) {
   const [isGenerating, setIsGenerating] = useState(false);
 
   const handleDownload = () => {
@@ -33,7 +44,7 @@ export default function CertificateGenerator({ certificateData, onClose }: Certi
   const handleShare = (platform: string) => {
     const text = `¡Acabé de completar el curso "${certificateData.courseName}" en RogerBox! 🎉`;
     const url = `https://rogerbox.com/certificate/${certificateData.shareableCode}`;
-    
+
     let shareUrl = '';
     switch (platform) {
       case 'twitter':
@@ -50,7 +61,7 @@ export default function CertificateGenerator({ certificateData, onClose }: Certi
         shareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`;
         break;
     }
-    
+
     if (shareUrl) {
       window.open(shareUrl, '_blank', 'width=600,height=400');
     }
@@ -143,7 +154,8 @@ export default function CertificateGenerator({ certificateData, onClose }: Certi
                     RogerBox
                   </div>
                   <div className="text-lg font-bold text-[#85ea10]">
-                    ROGER<span className="text-gray-900 dark:text-white">BOX</span>
+                    ROGER
+                    <span className="text-gray-900 dark:text-white">BOX</span>
                   </div>
                 </div>
               </div>
@@ -220,7 +232,9 @@ export default function CertificateGenerator({ certificateData, onClose }: Certi
               />
               <button
                 onClick={() => {
-                  navigator.clipboard.writeText(`https://rogerbox.com/certificate/${certificateData.shareableCode}`);
+                  navigator.clipboard.writeText(
+                    `https://rogerbox.com/certificate/${certificateData.shareableCode}`,
+                  );
                   alert('Enlace copiado al portapapeles');
                 }}
                 className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-r-lg transition-colors"

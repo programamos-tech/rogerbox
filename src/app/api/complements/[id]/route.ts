@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
@@ -24,24 +24,40 @@ export async function GET(
 
     if (error) {
       console.error('Error fetching complement:', error);
-      return NextResponse.json({ error: 'Complement not found' }, { status: 404 });
+      return NextResponse.json(
+        { error: 'Complement not found' },
+        { status: 404 },
+      );
     }
 
     return NextResponse.json({ complement: data });
   } catch (error) {
     console.error('Error in GET /api/complements/[id]:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 },
+    );
   }
 }
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
     const body = await request.json();
-    const { title, description, video_url, thumbnail_url, duration, category, difficulty, is_new, recommended_for } = body;
+    const {
+      title,
+      description,
+      video_url,
+      thumbnail_url,
+      duration,
+      category,
+      difficulty,
+      is_new,
+      recommended_for,
+    } = body;
 
     const { data, error } = await supabase
       .from('complements')
@@ -55,7 +71,7 @@ export async function PUT(
         difficulty,
         is_new: is_new || false,
         recommended_for: recommended_for || [],
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       })
       .eq('id', id)
       .select()
@@ -63,19 +79,25 @@ export async function PUT(
 
     if (error) {
       console.error('Error updating complement:', error);
-      return NextResponse.json({ error: 'Failed to update complement' }, { status: 500 });
+      return NextResponse.json(
+        { error: 'Failed to update complement' },
+        { status: 500 },
+      );
     }
 
     return NextResponse.json({ complement: data });
   } catch (error) {
     console.error('Error in PUT /api/complements/[id]:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 },
+    );
   }
 }
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
@@ -86,12 +108,18 @@ export async function DELETE(
 
     if (error) {
       console.error('Error deleting complement:', error);
-      return NextResponse.json({ error: 'Failed to delete complement' }, { status: 500 });
+      return NextResponse.json(
+        { error: 'Failed to delete complement' },
+        { status: 500 },
+      );
     }
 
     return NextResponse.json({ message: 'Complement deleted successfully' });
   } catch (error) {
     console.error('Error in DELETE /api/complements/[id]:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 },
+    );
   }
 }

@@ -1,16 +1,20 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getUser, createClient } from '@/lib/supabase-server';
-import { supabaseAdmin } from '@/lib/supabase';
 import { cookies } from 'next/headers';
+import { type NextRequest, NextResponse } from 'next/server';
+import { supabaseAdmin } from '@/lib/supabase';
+import { createClient, getUser } from '@/lib/supabase-server';
 
 function normalizeEmail(val?: string | null) {
   return (val || '').trim().toLowerCase();
 }
 
-function isAdminUser(user: { id?: string; email?: string; user_metadata?: any } | null) {
+function isAdminUser(
+  user: { id?: string; email?: string; user_metadata?: any } | null,
+) {
   if (!user) return false;
   const envId = (process.env.NEXT_PUBLIC_ADMIN_USER_ID || '').trim();
-  const envEmail = normalizeEmail(process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'rogerbox@admin.com');
+  const envEmail = normalizeEmail(
+    process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'rogerbox@admin.com',
+  );
   const matchId = !!envId && user.id === envId;
   const matchEmail = normalizeEmail(user.email) === envEmail;
   const matchRole = user.user_metadata?.role === 'admin';
@@ -21,7 +25,7 @@ async function extractAccessTokenFromCookies(): Promise<string | null> {
   try {
     const cookieStore = await cookies();
     const all = cookieStore.getAll();
-    
+
     // Buscar todas las cookies que puedan contener el token de auth
     for (const cookie of all) {
       if (cookie.name.includes('auth-token') || cookie.name.includes('sb-')) {
@@ -51,18 +55,21 @@ async function getSessionUser() {
     if (!userError && user) {
       return user;
     }
-    
+
     console.error('getUser() error:', userError);
-    
+
     // Fallback: intentar con getSession()
     const supabase = await createClient();
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    const {
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession();
     if (!sessionError && session?.user) {
       return session.user;
     }
-    
+
     console.error('getSession() error:', sessionError);
-    
+
     // Último fallback: extraer token manualmente de cookies
     const token = await extractAccessTokenFromCookies();
     if (token) {
@@ -82,22 +89,25 @@ async function getSessionUser() {
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
-    
+
     // Debug: Log cookies recibidas
     const cookieStore = await cookies();
     const allCookies = cookieStore.getAll();
     const authCookies = allCookies.filter((c) => c.name.includes('auth'));
     console.log('🔍 DELETE Courses - Cookies recibidas:', {
       totalCookies: allCookies.length,
-      authCookies: authCookies.map((c) => ({ name: c.name, hasValue: !!c.value })),
+      authCookies: authCookies.map((c) => ({
+        name: c.name,
+        hasValue: !!c.value,
+      })),
     });
-    
+
     const user = await getSessionUser();
-    
+
     console.log('🔍 DELETE Courses - Usuario obtenido:', {
       hasUser: !!user,
       userId: user?.id,
@@ -113,7 +123,9 @@ export async function DELETE(
       const nodeEnv = String(process.env.NODE_ENV || 'development');
       const isNotProduction = nodeEnv !== 'production' && nodeEnv !== 'prod';
       if (isNotProduction && process.env.SUPABASE_SERVICE_ROLE_KEY && !user) {
-        console.warn('⚠️ Bypassing admin check in dev for courses DELETE (no user found)');
+        console.warn(
+          '⚠️ Bypassing admin check in dev for courses DELETE (no user found)',
+        );
         // Continuar con la eliminación usando supabaseAdmin
       } else {
         console.error('❌ Courses DELETE unauthorized', {
@@ -142,7 +154,7 @@ export async function DELETE(
       console.error('❌ Error eliminando lecciones:', lessonsError);
       return NextResponse.json(
         { error: `Error al eliminar lecciones: ${lessonsError.message}` },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -157,29 +169,28 @@ export async function DELETE(
       console.error('❌ Error eliminando curso:', courseError);
       return NextResponse.json(
         { error: `Error al eliminar curso: ${courseError.message}` },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
     if (!deletedData || deletedData.length === 0) {
       return NextResponse.json(
         { error: 'El curso no se pudo eliminar o ya no existe' },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
     console.log('✅ Curso eliminado exitosamente:', deletedData);
 
-    return NextResponse.json({ 
-      success: true, 
-      deleted: deletedData 
+    return NextResponse.json({
+      success: true,
+      deleted: deletedData,
     });
   } catch (error) {
     console.error('❌ Error inesperado:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Error desconocido' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
-

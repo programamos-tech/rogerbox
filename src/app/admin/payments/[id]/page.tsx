@@ -1,68 +1,119 @@
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useState, useMemo } from 'react';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 import {
+  AlertCircle,
   ArrowLeft,
-  CreditCard,
-  User,
-  DollarSign,
-  Calendar,
-  FileText,
-  Download,
-  Phone,
-  Mail,
-  MapPin,
   BarChart3,
   Bell,
+  BookOpen,
+  Calendar,
   ChevronLeft,
+  CreditCard,
+  DollarSign,
+  Download,
+  Dumbbell,
+  FileText,
+  Globe,
   Home,
+  Image,
+  Mail,
+  MapPin,
   Menu,
+  Phone,
+  Play,
   Settings,
   ShoppingCart,
+  User,
   Users,
-  Dumbbell,
-  AlertCircle,
-  BookOpen,
-  Play,
-  Image,
-  Globe,
 } from 'lucide-react';
+import { useParams, useRouter } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
 import QuickLoading from '@/components/QuickLoading';
-import { GymPayment } from '@/types/gym';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import type { GymPayment } from '@/types/gym';
 
 // Definición de las secciones del sidebar (mismo que en admin/page.tsx)
 const menuSections = [
   {
     title: 'Principal',
-    items: [{ id: 'overview', label: 'Dashboard', icon: BarChart3, description: 'Resumen general' }],
+    items: [
+      {
+        id: 'overview',
+        label: 'Dashboard',
+        icon: BarChart3,
+        description: 'Resumen general',
+      },
+    ],
   },
   {
     title: 'Sede Física',
     items: [
-      { id: 'users', label: 'Usuarios', icon: Users, description: 'Gestiona usuarios y clientes físicos' },
-      { id: 'gym-plans', label: 'Planes', icon: Dumbbell, description: 'Gestionar planes del gimnasio' },
-      { id: 'gym-payments', label: 'Pagos', icon: CreditCard, description: 'Facturar planes a clientes físicos' },
-
+      {
+        id: 'users',
+        label: 'Usuarios',
+        icon: Users,
+        description: 'Gestiona usuarios y clientes físicos',
+      },
+      {
+        id: 'gym-plans',
+        label: 'Planes',
+        icon: Dumbbell,
+        description: 'Gestionar planes del gimnasio',
+      },
+      {
+        id: 'gym-payments',
+        label: 'Pagos',
+        icon: CreditCard,
+        description: 'Facturar planes a clientes físicos',
+      },
     ],
   },
   {
     title: 'Sede en Línea',
     items: [
-      { id: 'sales', label: 'Ventas', icon: ShoppingCart, description: 'Historial de compras' },
-      { id: 'courses', label: 'Cursos', icon: BookOpen, description: 'Gestionar cursos' },
-      { id: 'complements', label: 'Complementos', icon: Play, description: 'Videos semanales' },
-      { id: 'banners', label: 'Banners', icon: Image, description: 'Banners del dashboard' },
-      { id: 'blogs', label: 'Blogs', icon: FileText, description: 'Artículos nutricionales' },
+      {
+        id: 'sales',
+        label: 'Ventas',
+        icon: ShoppingCart,
+        description: 'Historial de compras',
+      },
+      {
+        id: 'courses',
+        label: 'Cursos',
+        icon: BookOpen,
+        description: 'Gestionar cursos',
+      },
+      {
+        id: 'complements',
+        label: 'Complementos',
+        icon: Play,
+        description: 'Videos semanales',
+      },
+      {
+        id: 'banners',
+        label: 'Banners',
+        icon: Image,
+        description: 'Banners del dashboard',
+      },
+      {
+        id: 'blogs',
+        label: 'Blogs',
+        icon: FileText,
+        description: 'Artículos nutricionales',
+      },
     ],
   },
   {
     title: 'Sistema',
     items: [
-      { id: 'settings', label: 'Configuración', icon: Settings, description: 'Ajustes de la plataforma' },
+      {
+        id: 'settings',
+        label: 'Configuración',
+        icon: Settings,
+        description: 'Ajustes de la plataforma',
+      },
     ],
   },
 ];
@@ -79,14 +130,16 @@ export default function PaymentDetailPage() {
   const paymentId = params?.id as string;
 
   // Encontrar el item activo (Pagos)
-  const activeItem = menuSections
-    .flatMap((section) => section.items)
-    .find((item) => item.id === 'gym-payments') || menuSections[0].items[0];
+  const activeItem =
+    menuSections
+      .flatMap((section) => section.items)
+      .find((item) => item.id === 'gym-payments') || menuSections[0].items[0];
 
   const isAdmin = useMemo(() => {
     if (!authUser) return false;
     const envId = process.env.NEXT_PUBLIC_ADMIN_USER_ID;
-    const envEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'rogerbox@admin.com';
+    const envEmail =
+      process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'rogerbox@admin.com';
     const matchId = envId && authUser.id === envId;
     const matchEmail = envEmail && authUser.email === envEmail;
     const matchRole = authUser.user_metadata?.role === 'admin';
@@ -112,7 +165,9 @@ export default function PaymentDetailPage() {
   const loadPaymentData = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/admin/gym/payments?payment_id=${paymentId}`);
+      const response = await fetch(
+        `/api/admin/gym/payments?payment_id=${paymentId}`,
+      );
       const data = await response.json();
 
       if (!response.ok) {
@@ -184,12 +239,16 @@ export default function PaymentDetailPage() {
           <p style="margin: 5px 0; color: #666; font-size: 14px;"><strong>Período:</strong> ${new Date(payment.period_start).toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })} - ${new Date(payment.period_end).toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
         </div>
         
-        ${payment.notes ? `
+        ${
+          payment.notes
+            ? `
         <div style="margin-bottom: 30px;">
           <h2 style="color: #164151; font-size: 18px; margin-bottom: 15px; border-bottom: 1px solid #ddd; padding-bottom: 10px;">Notas</h2>
           <p style="margin: 5px 0; color: #666; font-size: 14px;">${payment.notes}</p>
         </div>
-        ` : ''}
+        `
+            : ''
+        }
         
         <div style="margin-top: 40px; padding-top: 20px; border-top: 2px solid #164151; text-align: center;">
           <p style="color: #666; font-size: 12px; margin: 5px 0;">Gracias por su pago</p>
@@ -244,7 +303,9 @@ export default function PaymentDetailPage() {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-lg text-gray-600 dark:text-white/60">Factura no encontrada</p>
+          <p className="text-lg text-gray-600 dark:text-white/60">
+            Factura no encontrada
+          </p>
           <button
             onClick={() => router.push('/admin?tab=gym-payments')}
             className="mt-4 px-4 py-2 bg-[#164151] text-white rounded-lg hover:bg-[#1a4d5f] transition-colors"
@@ -304,14 +365,18 @@ export default function PaymentDetailPage() {
           )}
           {sidebarCollapsed && (
             <div className="w-10 h-10 bg-gray-200 dark:bg-white/10 rounded-lg flex items-center justify-center">
-              <span className="text-[#164151] dark:text-white font-bold text-sm">R</span>
+              <span className="text-[#164151] dark:text-white font-bold text-sm">
+                R
+              </span>
             </div>
           )}
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
             className="hidden md:flex w-8 h-8 items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-gray-500 dark:text-white/60 hover:text-[#164151] dark:hover:text-white transition-colors"
           >
-            <ChevronLeft className={`w-4 h-4 transition-transform ${sidebarCollapsed ? 'rotate-180' : ''}`} />
+            <ChevronLeft
+              className={`w-4 h-4 transition-transform ${sidebarCollapsed ? 'rotate-180' : ''}`}
+            />
           </button>
         </div>
 
@@ -344,9 +409,10 @@ export default function PaymentDetailPage() {
                       className={`
                         w-full flex items-center gap-3 px-4 py-2.5 rounded-lg
                         transition-all duration-200 group
-                        ${isActive
-                          ? 'bg-[#85ea10]/20 dark:bg-[#85ea10]/20 text-[#164151] dark:text-white'
-                          : 'text-[#164151]/80 dark:text-white/60 hover:text-[#164151] dark:hover:text-white hover:bg-gray-50 dark:hover:bg-white/5'
+                        ${
+                          isActive
+                            ? 'bg-[#85ea10]/20 dark:bg-[#85ea10]/20 text-[#164151] dark:text-white'
+                            : 'text-[#164151]/80 dark:text-white/60 hover:text-[#164151] dark:hover:text-white hover:bg-gray-50 dark:hover:bg-white/5'
                         }
                         ${sidebarCollapsed ? 'justify-center' : ''}
                       `}
@@ -389,7 +455,9 @@ export default function PaymentDetailPage() {
                 <p className="text-xs font-semibold text-[#164151] dark:text-white truncate">
                   {authUser?.user_metadata?.name || profile?.name || 'Admin'}
                 </p>
-                <p className="text-[10px] font-medium text-gray-500 dark:text-white/50 truncate">Admin</p>
+                <p className="text-[10px] font-medium text-gray-500 dark:text-white/50 truncate">
+                  Admin
+                </p>
               </div>
               <button
                 onClick={() => router.push('/dashboard')}
@@ -423,8 +491,14 @@ export default function PaymentDetailPage() {
               <Menu className="w-5 h-5" />
             </button>
             <div>
-              <h1 className="text-xl font-black text-[#164151] dark:text-white">DETALLE DE FACTURA</h1>
-              <p className="text-xs text-gray-500 dark:text-white/40">Factura #{payment.invoice_number || payment.id.substring(0, 8).toUpperCase()}</p>
+              <h1 className="text-xl font-black text-[#164151] dark:text-white">
+                DETALLE DE FACTURA
+              </h1>
+              <p className="text-xs text-gray-500 dark:text-white/40">
+                Factura #
+                {payment.invoice_number ||
+                  payment.id.substring(0, 8).toUpperCase()}
+              </p>
             </div>
           </div>
           <button
@@ -448,42 +522,58 @@ export default function PaymentDetailPage() {
                 <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
                   <FileText className="w-5 h-5 text-gray-400" />
                   <div>
-                    <p className="text-xs text-gray-500 dark:text-white/40">Número de Factura</p>
+                    <p className="text-xs text-gray-500 dark:text-white/40">
+                      Número de Factura
+                    </p>
                     <p className="text-sm font-medium text-[#164151] dark:text-white">
-                      #{payment.invoice_number || payment.id.substring(0, 8).toUpperCase()}
+                      #
+                      {payment.invoice_number ||
+                        payment.id.substring(0, 8).toUpperCase()}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
                   <Calendar className="w-5 h-5 text-gray-400" />
                   <div>
-                    <p className="text-xs text-gray-500 dark:text-white/40">Fecha de Emisión</p>
+                    <p className="text-xs text-gray-500 dark:text-white/40">
+                      Fecha de Emisión
+                    </p>
                     <p className="text-sm font-medium text-[#164151] dark:text-white">
-                      {new Date(payment.created_at).toLocaleDateString('es-ES', {
-                        day: '2-digit',
-                        month: 'long',
-                        year: 'numeric',
-                      })}
+                      {new Date(payment.created_at).toLocaleDateString(
+                        'es-ES',
+                        {
+                          day: '2-digit',
+                          month: 'long',
+                          year: 'numeric',
+                        },
+                      )}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
                   <Calendar className="w-5 h-5 text-gray-400" />
                   <div>
-                    <p className="text-xs text-gray-500 dark:text-white/40">Fecha de Pago</p>
+                    <p className="text-xs text-gray-500 dark:text-white/40">
+                      Fecha de Pago
+                    </p>
                     <p className="text-sm font-medium text-[#164151] dark:text-white">
-                      {new Date(payment.payment_date).toLocaleDateString('es-ES', {
-                        day: '2-digit',
-                        month: 'long',
-                        year: 'numeric',
-                      })}
+                      {new Date(payment.payment_date).toLocaleDateString(
+                        'es-ES',
+                        {
+                          day: '2-digit',
+                          month: 'long',
+                          year: 'numeric',
+                        },
+                      )}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
                   <DollarSign className="w-5 h-5 text-gray-400" />
                   <div>
-                    <p className="text-xs text-gray-500 dark:text-white/40">Monto</p>
+                    <p className="text-xs text-gray-500 dark:text-white/40">
+                      Monto
+                    </p>
                     <p className="text-sm font-medium text-[#164151] dark:text-white">
                       ${payment.amount.toLocaleString('es-CO')}
                     </p>
@@ -501,7 +591,9 @@ export default function PaymentDetailPage() {
                 <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
                   <User className="w-5 h-5 text-gray-400" />
                   <div>
-                    <p className="text-xs text-gray-500 dark:text-white/40">Nombre</p>
+                    <p className="text-xs text-gray-500 dark:text-white/40">
+                      Nombre
+                    </p>
                     <p className="text-sm font-medium text-[#164151] dark:text-white">
                       {payment.client_info?.name || 'No especificado'}
                     </p>
@@ -510,7 +602,9 @@ export default function PaymentDetailPage() {
                 <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
                   <CreditCard className="w-5 h-5 text-gray-400" />
                   <div>
-                    <p className="text-xs text-gray-500 dark:text-white/40">Documento</p>
+                    <p className="text-xs text-gray-500 dark:text-white/40">
+                      Documento
+                    </p>
                     <p className="text-sm font-medium text-[#164151] dark:text-white">
                       {payment.client_info?.document_id || 'No especificado'}
                     </p>
@@ -520,7 +614,9 @@ export default function PaymentDetailPage() {
                   <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
                     <Mail className="w-5 h-5 text-gray-400" />
                     <div>
-                      <p className="text-xs text-gray-500 dark:text-white/40">Email</p>
+                      <p className="text-xs text-gray-500 dark:text-white/40">
+                        Email
+                      </p>
                       <p className="text-sm font-medium text-[#164151] dark:text-white">
                         {payment.client_info.email}
                       </p>
@@ -531,7 +627,9 @@ export default function PaymentDetailPage() {
                   <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
                     <Phone className="w-5 h-5 text-gray-400" />
                     <div>
-                      <p className="text-xs text-gray-500 dark:text-white/40">WhatsApp</p>
+                      <p className="text-xs text-gray-500 dark:text-white/40">
+                        WhatsApp
+                      </p>
                       <p className="text-sm font-medium text-[#164151] dark:text-white">
                         {payment.client_info.whatsapp}
                       </p>
@@ -550,7 +648,9 @@ export default function PaymentDetailPage() {
                 <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
                   <Dumbbell className="w-5 h-5 text-gray-400" />
                   <div>
-                    <p className="text-xs text-gray-500 dark:text-white/40">Plan</p>
+                    <p className="text-xs text-gray-500 dark:text-white/40">
+                      Plan
+                    </p>
                     <p className="text-sm font-medium text-[#164151] dark:text-white">
                       {payment.plan?.name || 'No especificado'}
                     </p>
@@ -559,28 +659,39 @@ export default function PaymentDetailPage() {
                 <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
                   <CreditCard className="w-5 h-5 text-gray-400" />
                   <div>
-                    <p className="text-xs text-gray-500 dark:text-white/40">Método de Pago</p>
+                    <p className="text-xs text-gray-500 dark:text-white/40">
+                      Método de Pago
+                    </p>
                     <p className="text-sm font-medium text-[#164151] dark:text-white">
-                      {paymentMethodText[payment.payment_method] || payment.payment_method}
+                      {paymentMethodText[payment.payment_method] ||
+                        payment.payment_method}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl md:col-span-2">
                   <Calendar className="w-5 h-5 text-gray-400" />
                   <div>
-                    <p className="text-xs text-gray-500 dark:text-white/40">Período</p>
+                    <p className="text-xs text-gray-500 dark:text-white/40">
+                      Período
+                    </p>
                     <p className="text-sm font-medium text-[#164151] dark:text-white">
-                      {new Date(payment.period_start).toLocaleDateString('es-ES', {
-                        day: '2-digit',
-                        month: 'long',
-                        year: 'numeric',
-                      })}{' '}
+                      {new Date(payment.period_start).toLocaleDateString(
+                        'es-ES',
+                        {
+                          day: '2-digit',
+                          month: 'long',
+                          year: 'numeric',
+                        },
+                      )}{' '}
                       -{' '}
-                      {new Date(payment.period_end).toLocaleDateString('es-ES', {
-                        day: '2-digit',
-                        month: 'long',
-                        year: 'numeric',
-                      })}
+                      {new Date(payment.period_end).toLocaleDateString(
+                        'es-ES',
+                        {
+                          day: '2-digit',
+                          month: 'long',
+                          year: 'numeric',
+                        },
+                      )}
                     </p>
                   </div>
                 </div>
@@ -593,7 +704,9 @@ export default function PaymentDetailPage() {
                 <h2 className="text-sm font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider mb-4">
                   Notas
                 </h2>
-                <p className="text-sm text-[#164151] dark:text-white">{payment.notes}</p>
+                <p className="text-sm text-[#164151] dark:text-white">
+                  {payment.notes}
+                </p>
               </div>
             )}
           </div>

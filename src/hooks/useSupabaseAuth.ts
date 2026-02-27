@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { User, Session, AuthError } from '@supabase/supabase-js';
-import { supabase } from '@/lib/supabase-browser';
+import { AuthError, type Session, type User } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabase-browser';
 
 interface UserProfile {
   id: string;
@@ -31,28 +31,32 @@ export function useSupabaseAuth() {
     const fallbackTimer = setTimeout(() => {
       if (cancelled) return;
       setLoading((prev) => {
-        if (prev) console.warn('Auth: timeout esperando sesión (¿Supabase accesible?)');
+        if (prev)
+          console.warn('Auth: timeout esperando sesión (¿Supabase accesible?)');
         return false;
       });
     }, 3000);
 
     // Obtener sesión inicial
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (cancelled) return;
-      clearTimeout(fallbackTimer);
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        loadProfile(session.user.id);
-      } else {
+    supabase.auth
+      .getSession()
+      .then(({ data: { session } }) => {
+        if (cancelled) return;
+        clearTimeout(fallbackTimer);
+        setSession(session);
+        setUser(session?.user ?? null);
+        if (session?.user) {
+          loadProfile(session.user.id);
+        } else {
+          setLoading(false);
+        }
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        clearTimeout(fallbackTimer);
+        console.error('Auth getSession error:', err);
         setLoading(false);
-      }
-    }).catch((err) => {
-      if (cancelled) return;
-      clearTimeout(fallbackTimer);
-      console.error('Auth getSession error:', err);
-      setLoading(false);
-    });
+      });
 
     // Escuchar cambios de autenticación
     const {
@@ -100,7 +104,7 @@ export function useSupabaseAuth() {
 
         setProfile({
           ...data,
-          goals: goals || []
+          goals: goals || [],
         });
       }
     } catch (error) {
@@ -139,28 +143,38 @@ export function useSupabaseAuth() {
         console.error('❌ Error de Supabase Auth:', {
           message: error.message,
           status: error.status,
-          name: error.name
+          name: error.name,
         });
         setLoading(false);
         return { error };
       }
 
-      console.log('✅ Login exitoso:', { userId: data.user?.id, email: data.user?.email });
+      console.log('✅ Login exitoso:', {
+        userId: data.user?.id,
+        email: data.user?.email,
+      });
       setLoading(false);
       return { data, error: null };
     } catch (err) {
       console.error('❌ Error inesperado en login:', err);
       setLoading(false);
-      return { 
-        error: { 
-          message: err instanceof Error ? err.message : 'Error desconocido al iniciar sesión',
-          name: 'AuthError'
-        } 
+      return {
+        error: {
+          message:
+            err instanceof Error
+              ? err.message
+              : 'Error desconocido al iniciar sesión',
+          name: 'AuthError',
+        },
       };
     }
   };
 
-  const signUpWithEmail = async (email: string, password: string, name: string) => {
+  const signUpWithEmail = async (
+    email: string,
+    password: string,
+    name: string,
+  ) => {
     setLoading(true);
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -187,12 +201,12 @@ export function useSupabaseAuth() {
       console.error('Error signing out:', error);
       return { error };
     }
-    
+
     setUser(null);
     setProfile(null);
     setSession(null);
     router.push('/');
-    
+
     return { error: null };
   };
 

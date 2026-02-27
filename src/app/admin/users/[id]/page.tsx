@@ -1,45 +1,45 @@
 'use client';
 
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useState, useMemo } from 'react';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import {
-  ArrowLeft,
-  User,
-  Mail,
-  Phone,
-  CreditCard,
-  MapPin,
-  Calendar,
-  Scale,
-  Ruler,
-  Target,
-  BookOpen,
-  Dumbbell,
-  CheckCircle,
   AlertCircle,
   AlertTriangle,
-  TrendingUp,
-  X,
-  Edit,
-  Save,
-  FileText,
+  ArrowLeft,
+  Ban,
   BarChart3,
   Bell,
+  BookOpen,
+  Calendar,
+  CheckCircle,
   ChevronLeft,
+  CreditCard,
+  Dumbbell,
+  Edit,
+  FileText,
+  Globe,
   Home,
   Image,
+  Mail,
+  MapPin,
   Menu,
+  MessageSquare,
+  Phone,
   Play,
+  Ruler,
+  Save,
+  Scale,
   Settings,
   ShoppingCart,
-  Users,
-  Globe,
-  MessageSquare,
-  Ban,
-  UserX,
+  Target,
   Trash2,
+  TrendingUp,
+  User,
+  Users,
+  UserX,
+  X,
 } from 'lucide-react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
+import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { supabaseAdmin } from '@/lib/supabase';
 
 // Función para traducir los goals a español
@@ -93,31 +93,82 @@ const formatGoals = (goals: string | string[] | null | undefined): string => {
 const menuSections = [
   {
     title: 'Principal',
-    items: [{ id: 'overview', label: 'Dashboard', icon: BarChart3, description: 'Resumen general' }],
+    items: [
+      {
+        id: 'overview',
+        label: 'Dashboard',
+        icon: BarChart3,
+        description: 'Resumen general',
+      },
+    ],
   },
   {
     title: 'Sede Física',
     items: [
-      { id: 'users', label: 'Usuarios', icon: Users, description: 'Gestiona usuarios y clientes físicos' },
-      { id: 'gym-plans', label: 'Planes', icon: Dumbbell, description: 'Gestionar planes del gimnasio' },
-      { id: 'gym-payments', label: 'Pagos', icon: CreditCard, description: 'Facturar planes a clientes físicos' },
-
+      {
+        id: 'users',
+        label: 'Usuarios',
+        icon: Users,
+        description: 'Gestiona usuarios y clientes físicos',
+      },
+      {
+        id: 'gym-plans',
+        label: 'Planes',
+        icon: Dumbbell,
+        description: 'Gestionar planes del gimnasio',
+      },
+      {
+        id: 'gym-payments',
+        label: 'Pagos',
+        icon: CreditCard,
+        description: 'Facturar planes a clientes físicos',
+      },
     ],
   },
   {
     title: 'Sede en Línea',
     items: [
-      { id: 'sales', label: 'Ventas', icon: ShoppingCart, description: 'Historial de compras' },
-      { id: 'courses', label: 'Cursos', icon: BookOpen, description: 'Gestionar cursos' },
-      { id: 'complements', label: 'Complementos', icon: Play, description: 'Videos semanales' },
-      { id: 'banners', label: 'Banners', icon: Image, description: 'Banners del dashboard' },
-      { id: 'blogs', label: 'Blogs', icon: FileText, description: 'Artículos nutricionales' },
+      {
+        id: 'sales',
+        label: 'Ventas',
+        icon: ShoppingCart,
+        description: 'Historial de compras',
+      },
+      {
+        id: 'courses',
+        label: 'Cursos',
+        icon: BookOpen,
+        description: 'Gestionar cursos',
+      },
+      {
+        id: 'complements',
+        label: 'Complementos',
+        icon: Play,
+        description: 'Videos semanales',
+      },
+      {
+        id: 'banners',
+        label: 'Banners',
+        icon: Image,
+        description: 'Banners del dashboard',
+      },
+      {
+        id: 'blogs',
+        label: 'Blogs',
+        icon: FileText,
+        description: 'Artículos nutricionales',
+      },
     ],
   },
   {
     title: 'Sistema',
     items: [
-      { id: 'settings', label: 'Configuración', icon: Settings, description: 'Ajustes de la plataforma' },
+      {
+        id: 'settings',
+        label: 'Configuración',
+        icon: Settings,
+        description: 'Ajustes de la plataforma',
+      },
     ],
   },
 ];
@@ -140,10 +191,14 @@ export default function UserDetailPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
-  const [cancellingMembershipId, setCancellingMembershipId] = useState<string | null>(null);
-  const [showCancelMembershipModal, setShowCancelMembershipModal] = useState(false);
+  const [cancellingMembershipId, setCancellingMembershipId] = useState<
+    string | null
+  >(null);
+  const [showCancelMembershipModal, setShowCancelMembershipModal] =
+    useState(false);
   const [membershipToCancel, setMembershipToCancel] = useState<any>(null);
-  const [editingStartDateMembershipId, setEditingStartDateMembershipId] = useState<string | null>(null);
+  const [editingStartDateMembershipId, setEditingStartDateMembershipId] =
+    useState<string | null>(null);
   const [newStartDate, setNewStartDate] = useState('');
   const [isUpdatingStartDate, setIsUpdatingStartDate] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -151,14 +206,16 @@ export default function UserDetailPage() {
   const userId = params?.id as string;
 
   // Encontrar el item activo (Usuarios)
-  const activeItem = menuSections
-    .flatMap((section) => section.items)
-    .find((item) => item.id === 'users') || menuSections[0].items[0];
+  const activeItem =
+    menuSections
+      .flatMap((section) => section.items)
+      .find((item) => item.id === 'users') || menuSections[0].items[0];
 
   const isAdmin = useMemo(() => {
     if (!authUser) return false;
     const envId = process.env.NEXT_PUBLIC_ADMIN_USER_ID;
-    const envEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'rogerbox@admin.com';
+    const envEmail =
+      process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'rogerbox@admin.com';
     const matchId = envId && authUser.id === envId;
     const matchEmail = envEmail && authUser.email === envEmail;
     const matchRole = authUser.user_metadata?.role === 'admin';
@@ -189,7 +246,9 @@ export default function UserDetailPage() {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 12000);
 
-      const response = await fetch(`/api/admin/users/${userId}`, { signal: controller.signal });
+      const response = await fetch(`/api/admin/users/${userId}`, {
+        signal: controller.signal,
+      });
       clearTimeout(timeoutId);
       const data = await response.json();
 
@@ -209,19 +268,25 @@ export default function UserDetailPage() {
           current_weight: user.current_weight || user.weight || '',
           gender: user.gender || '',
           target_weight: user.target_weight || '',
-          goals: Array.isArray(user.goals) ? user.goals : (user.goals ? (typeof user.goals === 'string' ? JSON.parse(user.goals) : user.goals) : []),
+          goals: Array.isArray(user.goals)
+            ? user.goals
+            : user.goals
+              ? typeof user.goals === 'string'
+                ? JSON.parse(user.goals)
+                : user.goals
+              : [],
           address: user.address || '',
           city: user.city || '',
           birth_date: user.birth_date || '',
           birth_year: user.birth_year || '',
           medical_restrictions: user.medical_restrictions || '',
         });
-        
+
         // Activar modo edición si viene con query param edit=true
         if (searchParams.get('edit') === 'true') {
           setIsEditing(true);
         }
-        
+
         // Cargar registros de peso si el usuario tiene user_id
         if (user.id && !user.isUnregisteredClient) {
           loadWeightRecords(user.id);
@@ -231,7 +296,9 @@ export default function UserDetailPage() {
       }
     } catch (error: any) {
       if (error?.name === 'AbortError') {
-        setLoadError('Tiempo de espera agotado. Comprueba la conexión o intenta de nuevo.');
+        setLoadError(
+          'Tiempo de espera agotado. Comprueba la conexión o intenta de nuevo.',
+        );
       } else {
         console.error('Error loading user data:', error);
         setLoadError('No se pudo cargar el usuario. Intenta de nuevo.');
@@ -294,9 +361,10 @@ export default function UserDetailPage() {
 
     try {
       // Determinar si es un cliente de gym o un usuario registrado
-      const endpoint = userData.isUnregisteredClient || userData.gym_client_id
-        ? `/api/admin/gym/clients/${userData.gym_client_id || userData.id}`
-        : `/api/admin/users/${userId}`;
+      const endpoint =
+        userData.isUnregisteredClient || userData.gym_client_id
+          ? `/api/admin/gym/clients/${userData.gym_client_id || userData.id}`
+          : `/api/admin/users/${userId}`;
 
       const response = await fetch(endpoint, {
         method: 'DELETE',
@@ -328,9 +396,12 @@ export default function UserDetailPage() {
     setCancellingMembershipId(membershipToCancel.id);
 
     try {
-      const response = await fetch(`/api/admin/gym/memberships/${membershipToCancel.id}`, {
-        method: 'DELETE',
-      });
+      const response = await fetch(
+        `/api/admin/gym/memberships/${membershipToCancel.id}`,
+        {
+          method: 'DELETE',
+        },
+      );
 
       const data = await response.json();
 
@@ -370,15 +441,18 @@ export default function UserDetailPage() {
     setIsUpdatingStartDate(true);
 
     try {
-      const response = await fetch(`/api/admin/gym/memberships/${membershipId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await fetch(
+        `/api/admin/gym/memberships/${membershipId}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            start_date: newStartDate,
+          }),
         },
-        body: JSON.stringify({
-          start_date: newStartDate,
-        }),
-      });
+      );
 
       const data = await response.json();
 
@@ -402,7 +476,9 @@ export default function UserDetailPage() {
       <div className="min-h-screen bg-gray-50 dark:bg-[#0a1628] flex items-center justify-center">
         <div className="flex items-center gap-3">
           <div className="w-5 h-5 border-2 border-[#85ea10] border-t-transparent rounded-full animate-spin" />
-          <span className="text-sm text-gray-500 dark:text-white/50">Cargando cliente...</span>
+          <span className="text-sm text-gray-500 dark:text-white/50">
+            Cargando cliente...
+          </span>
         </div>
       </div>
     );
@@ -412,11 +488,18 @@ export default function UserDetailPage() {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center max-w-md px-4">
-          <h1 className="text-2xl font-bold text-[#164151] dark:text-white mb-4">Error al cargar</h1>
-          <p className="text-[#164151]/80 dark:text-gray-400 mb-6">{loadError}</p>
+          <h1 className="text-2xl font-bold text-[#164151] dark:text-white mb-4">
+            Error al cargar
+          </h1>
+          <p className="text-[#164151]/80 dark:text-gray-400 mb-6">
+            {loadError}
+          </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <button
-              onClick={() => { setLoadError(null); loadUserData(); }}
+              onClick={() => {
+                setLoadError(null);
+                loadUserData();
+              }}
               className="bg-[#85ea10] hover:bg-[#7dd30f] text-black font-semibold px-6 py-2.5 rounded-lg transition-all"
             >
               Reintentar
@@ -437,8 +520,12 @@ export default function UserDetailPage() {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-[#164151] dark:text-white mb-4">Cliente no encontrado</h1>
-          <p className="text-[#164151]/80 dark:text-gray-400 mb-4">No se pudo cargar la información del cliente.</p>
+          <h1 className="text-2xl font-bold text-[#164151] dark:text-white mb-4">
+            Cliente no encontrado
+          </h1>
+          <p className="text-[#164151]/80 dark:text-gray-400 mb-4">
+            No se pudo cargar la información del cliente.
+          </p>
           <button
             onClick={() => router.push('/admin?tab=users')}
             className="bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-white/90 font-semibold px-6 py-2.5 rounded-lg transition-all"
@@ -492,14 +579,18 @@ export default function UserDetailPage() {
           )}
           {sidebarCollapsed && (
             <div className="w-10 h-10 bg-gray-200 dark:bg-white/10 rounded-lg flex items-center justify-center">
-              <span className="text-[#164151] dark:text-white font-bold text-sm">R</span>
+              <span className="text-[#164151] dark:text-white font-bold text-sm">
+                R
+              </span>
             </div>
           )}
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
             className="hidden md:flex w-8 h-8 items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-gray-500 dark:text-white/60 hover:text-[#164151] dark:hover:text-white transition-colors"
           >
-            <ChevronLeft className={`w-4 h-4 transition-transform ${sidebarCollapsed ? 'rotate-180' : ''}`} />
+            <ChevronLeft
+              className={`w-4 h-4 transition-transform ${sidebarCollapsed ? 'rotate-180' : ''}`}
+            />
           </button>
         </div>
 
@@ -532,9 +623,10 @@ export default function UserDetailPage() {
                       className={`
                         w-full flex items-center gap-3 px-4 py-2.5 rounded-lg
                         transition-all duration-200 group
-                        ${isActive
-                          ? 'bg-[#85ea10]/20 dark:bg-[#85ea10]/20 text-[#164151] dark:text-white'
-                          : 'text-[#164151]/80 dark:text-white/60 hover:text-[#164151] dark:hover:text-white hover:bg-gray-50 dark:hover:bg-white/5'
+                        ${
+                          isActive
+                            ? 'bg-[#85ea10]/20 dark:bg-[#85ea10]/20 text-[#164151] dark:text-white'
+                            : 'text-[#164151]/80 dark:text-white/60 hover:text-[#164151] dark:hover:text-white hover:bg-gray-50 dark:hover:bg-white/5'
                         }
                         ${sidebarCollapsed ? 'justify-center' : ''}
                       `}
@@ -572,7 +664,9 @@ export default function UserDetailPage() {
                 <p className="text-xs font-semibold text-[#164151] dark:text-white truncate">
                   {authUser?.user_metadata?.name || profile?.name || 'Admin'}
                 </p>
-                <p className="text-[10px] font-medium text-gray-500 dark:text-white/50 truncate">Admin</p>
+                <p className="text-[10px] font-medium text-gray-500 dark:text-white/50 truncate">
+                  Admin
+                </p>
               </div>
               <button
                 onClick={() => router.push('/dashboard')}
@@ -608,7 +702,9 @@ export default function UserDetailPage() {
             </button>
 
             <div>
-              <h1 className="text-xl font-black text-[#164151] dark:text-white uppercase tracking-tight">{activeItem.label}</h1>
+              <h1 className="text-xl font-black text-[#164151] dark:text-white uppercase tracking-tight">
+                {activeItem.label}
+              </h1>
               <p className="text-xs text-[#164151]/80 dark:text-white/60 hidden sm:block font-medium">
                 {activeItem.description}
               </p>
@@ -622,7 +718,9 @@ export default function UserDetailPage() {
               title="Volver a usuarios"
             >
               <ArrowLeft className="w-5 h-5 sm:w-4 sm:h-4" />
-              <span className="hidden sm:inline text-sm font-medium">Volver a usuarios</span>
+              <span className="hidden sm:inline text-sm font-medium">
+                Volver a usuarios
+              </span>
             </button>
             {isEditing ? (
               <>
@@ -645,7 +743,9 @@ export default function UserDetailPage() {
                   title={isSaving ? 'Guardando...' : 'Guardar'}
                 >
                   <Save className="w-5 h-5 sm:w-4 sm:h-4" />
-                  <span className="hidden sm:inline">{isSaving ? 'Guardando...' : 'Guardar'}</span>
+                  <span className="hidden sm:inline">
+                    {isSaving ? 'Guardando...' : 'Guardar'}
+                  </span>
                 </button>
               </>
             ) : (
@@ -677,36 +777,63 @@ export default function UserDetailPage() {
             {/* Client Stats Dashboard */}
             {(() => {
               const memberships = userData.gym_memberships || [];
-              const totalMemberships = memberships.filter((m: any) => m.status !== 'cancelled').length;
+              const totalMemberships = memberships.filter(
+                (m: any) => m.status !== 'cancelled',
+              ).length;
               const totalPaid = memberships.reduce((sum: number, m: any) => {
                 return sum + (m.payment?.amount || 0);
               }, 0);
               const lastPayment = memberships
                 .filter((m: any) => m.payment?.payment_date)
-                .sort((a: any, b: any) => new Date(b.payment.payment_date).getTime() - new Date(a.payment.payment_date).getTime())[0];
-              const averageTicket = totalMemberships > 0 ? Math.round(totalPaid / totalMemberships) : 0;
-              
+                .sort(
+                  (a: any, b: any) =>
+                    new Date(b.payment.payment_date).getTime() -
+                    new Date(a.payment.payment_date).getTime(),
+                )[0];
+              const averageTicket =
+                totalMemberships > 0
+                  ? Math.round(totalPaid / totalMemberships)
+                  : 0;
+
               // Calcular meses entrenando (desde primera hasta última membresía)
               const sortedByStart = [...memberships]
                 .filter((m: any) => m.start_date)
-                .sort((a: any, b: any) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime());
-              
+                .sort(
+                  (a: any, b: any) =>
+                    new Date(a.start_date).getTime() -
+                    new Date(b.start_date).getTime(),
+                );
+
               let monthsTraining = 0;
               if (sortedByStart.length > 0) {
                 const firstDate = new Date(sortedByStart[0].start_date);
-                const lastDate = sortedByStart.length > 1 
-                  ? new Date(sortedByStart[sortedByStart.length - 1].end_date)
-                  : new Date(sortedByStart[0].end_date);
-                const diffTime = Math.abs(lastDate.getTime() - firstDate.getTime());
-                monthsTraining = Math.ceil(diffTime / (1000 * 60 * 60 * 24 * 30));
+                const lastDate =
+                  sortedByStart.length > 1
+                    ? new Date(sortedByStart[sortedByStart.length - 1].end_date)
+                    : new Date(sortedByStart[0].end_date);
+                const diffTime = Math.abs(
+                  lastDate.getTime() - firstDate.getTime(),
+                );
+                monthsTraining = Math.ceil(
+                  diffTime / (1000 * 60 * 60 * 24 * 30),
+                );
               }
 
               // Preparar datos para la gráfica de pagos
               const chartData = memberships
-                .filter((m: any) => m.payment?.payment_date && m.payment?.amount)
-                .sort((a: any, b: any) => new Date(a.payment.payment_date).getTime() - new Date(b.payment.payment_date).getTime())
+                .filter(
+                  (m: any) => m.payment?.payment_date && m.payment?.amount,
+                )
+                .sort(
+                  (a: any, b: any) =>
+                    new Date(a.payment.payment_date).getTime() -
+                    new Date(b.payment.payment_date).getTime(),
+                )
                 .map((m: any) => ({
-                  date: new Date(m.payment.payment_date).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' }),
+                  date: new Date(m.payment.payment_date).toLocaleDateString(
+                    'es-CO',
+                    { day: 'numeric', month: 'short' },
+                  ),
                   amount: m.payment.amount,
                   plan: m.plan?.name || 'Plan',
                 }));
@@ -716,13 +843,17 @@ export default function UserDetailPage() {
                   {/* Stats Cards */}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <div className="bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-xl border border-gray-200 dark:border-white/10 p-4 text-center">
-                      <div className="text-2xl font-bold text-[#164151] dark:text-white">{totalMemberships}</div>
+                      <div className="text-2xl font-bold text-[#164151] dark:text-white">
+                        {totalMemberships}
+                      </div>
                       <div className="text-xs text-gray-500 dark:text-white/50 flex items-center justify-center gap-1">
                         <CreditCard className="w-3 h-3" /> Membresías
                       </div>
                     </div>
                     <div className="bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-xl border border-gray-200 dark:border-white/10 p-4 text-center">
-                      <div className={`text-2xl font-bold ${totalPaid > 0 ? 'text-[#85ea10]' : 'text-[#164151] dark:text-white'}`}>
+                      <div
+                        className={`text-2xl font-bold ${totalPaid > 0 ? 'text-[#85ea10]' : 'text-[#164151] dark:text-white'}`}
+                      >
                         ${totalPaid.toLocaleString('es-CO')}
                       </div>
                       <div className="text-xs text-gray-500 dark:text-white/50 flex items-center justify-center gap-1">
@@ -730,15 +861,22 @@ export default function UserDetailPage() {
                       </div>
                     </div>
                     <div className="bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-xl border border-gray-200 dark:border-white/10 p-4 text-center">
-                      <div className="text-2xl font-bold text-[#164151] dark:text-white">{monthsTraining}</div>
+                      <div className="text-2xl font-bold text-[#164151] dark:text-white">
+                        {monthsTraining}
+                      </div>
                       <div className="text-xs text-gray-500 dark:text-white/50 flex items-center justify-center gap-1">
                         <Dumbbell className="w-3 h-3" /> Meses en RogerBox
                       </div>
                     </div>
                     <div className="bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-xl border border-gray-200 dark:border-white/10 p-4 text-center">
                       <div className="text-2xl font-bold text-[#164151] dark:text-white">
-                        {lastPayment?.payment?.payment_date 
-                          ? new Date(lastPayment.payment.payment_date).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })
+                        {lastPayment?.payment?.payment_date
+                          ? new Date(
+                              lastPayment.payment.payment_date,
+                            ).toLocaleDateString('es-CO', {
+                              day: 'numeric',
+                              month: 'short',
+                            })
                           : '-'}
                       </div>
                       <div className="text-xs text-gray-500 dark:text-white/50 flex items-center justify-center gap-1">
@@ -748,41 +886,58 @@ export default function UserDetailPage() {
                   </div>
 
                   {/* Historial de pagos - barras simples (sin recharts para evitar error de build d3-array) */}
-                  {chartData.length > 0 && (() => {
-                    const maxAmount = Math.max(...chartData.map((d: { amount: number }) => d.amount), 1);
-                    return (
-                      <div className="bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-xl border border-gray-200 dark:border-white/10 p-4">
-                        <div className="flex items-center justify-between mb-4">
-                          <h3 className="text-sm font-semibold text-gray-500 dark:text-white/50 flex items-center gap-2">
-                            <TrendingUp className="w-4 h-4" /> Historial de Pagos
-                          </h3>
+                  {chartData.length > 0 &&
+                    (() => {
+                      const maxAmount = Math.max(
+                        ...chartData.map((d: { amount: number }) => d.amount),
+                        1,
+                      );
+                      return (
+                        <div className="bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-xl border border-gray-200 dark:border-white/10 p-4">
+                          <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-sm font-semibold text-gray-500 dark:text-white/50 flex items-center gap-2">
+                              <TrendingUp className="w-4 h-4" /> Historial de
+                              Pagos
+                            </h3>
+                          </div>
+                          <div className="h-40 flex items-end gap-1">
+                            {chartData.map(
+                              (
+                                d: { date: string; amount: number },
+                                i: number,
+                              ) => (
+                                <div
+                                  key={i}
+                                  className="flex-1 flex flex-col items-center gap-1 group relative"
+                                >
+                                  <div
+                                    className="w-full min-h-[4px] rounded-t bg-[#85ea10]/30 hover:bg-[#85ea10]/50 transition-colors"
+                                    style={{
+                                      height: `${Math.max((d.amount / maxAmount) * 100, 8)}%`,
+                                    }}
+                                    title={`${d.date}: $${d.amount.toLocaleString('es-CO')}`}
+                                  />
+                                  <span className="text-[9px] text-gray-500 dark:text-white/50 truncate max-w-full">
+                                    {d.date.slice(5)}
+                                  </span>
+                                </div>
+                              ),
+                            )}
+                          </div>
+                          <div className="flex justify-between mt-1 text-[10px] text-gray-500 dark:text-white/50">
+                            <span>${(0).toLocaleString('es-CO')}</span>
+                            <span>${(maxAmount / 1000).toFixed(0)}k</span>
+                          </div>
                         </div>
-                        <div className="h-40 flex items-end gap-1">
-                          {chartData.map((d: { date: string; amount: number }, i: number) => (
-                            <div key={i} className="flex-1 flex flex-col items-center gap-1 group relative">
-                              <div
-                                className="w-full min-h-[4px] rounded-t bg-[#85ea10]/30 hover:bg-[#85ea10]/50 transition-colors"
-                                style={{ height: `${Math.max((d.amount / maxAmount) * 100, 8)}%` }}
-                                title={`${d.date}: $${d.amount.toLocaleString('es-CO')}`}
-                              />
-                              <span className="text-[9px] text-gray-500 dark:text-white/50 truncate max-w-full">
-                                {d.date.slice(5)}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                        <div className="flex justify-between mt-1 text-[10px] text-gray-500 dark:text-white/50">
-                          <span>${(0).toLocaleString('es-CO')}</span>
-                          <span>${(maxAmount / 1000).toFixed(0)}k</span>
-                        </div>
-                      </div>
-                    );
-                  })()}
+                      );
+                    })()}
                 </div>
               );
             })()}
 
-            <div className={`grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 ${userData.is_inactive ? 'opacity-75' : ''}`}>
+            <div
+              className={`grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 ${userData.is_inactive ? 'opacity-75' : ''}`}
+            >
               {/* Left Column - Información Personal y Fitness */}
               <div className="lg:col-span-2 space-y-4 md:space-y-6">
                 {/* Estado y Tipo */}
@@ -792,11 +947,16 @@ export default function UserDetailPage() {
                   </h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <p className="text-xs text-gray-500 dark:text-white/40 mb-1">Estado</p>
+                      <p className="text-xs text-gray-500 dark:text-white/40 mb-1">
+                        Estado
+                      </p>
                       <div>
                         {(() => {
                           // Si tiene membresía vencida, mostrar estado apropiado
-                          if (userData.hasGymMembership && !userData.hasActiveGymMembership) {
+                          if (
+                            userData.hasGymMembership &&
+                            !userData.hasActiveGymMembership
+                          ) {
                             // Si está marcado como inactivo en la BD, mostrar "Inactivo"
                             if (userData.is_inactive) {
                               return (
@@ -820,7 +980,10 @@ export default function UserDetailPage() {
                             );
                           }
 
-                          if (userData.hasActiveGymMembership || userData.hasOnlinePurchase) {
+                          if (
+                            userData.hasActiveGymMembership ||
+                            userData.hasOnlinePurchase
+                          ) {
                             return (
                               <p className="text-sm font-medium text-[#164151] dark:text-white">
                                 <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#85ea10]/20 text-[#164151] dark:bg-[#85ea10]/30 dark:text-[#85ea10]">
@@ -857,7 +1020,9 @@ export default function UserDetailPage() {
                     </div>
 
                     <div>
-                      <p className="text-xs text-gray-500 dark:text-white/40 mb-1">Tipo de Cliente</p>
+                      <p className="text-xs text-gray-500 dark:text-white/40 mb-1">
+                        Tipo de Cliente
+                      </p>
                       {userData.userType === 'both' && (
                         <p className="text-sm font-medium text-[#164151] dark:text-white">
                           <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-400">
@@ -882,7 +1047,9 @@ export default function UserDetailPage() {
                         </p>
                       )}
                       {userData.userType === 'none' && (
-                        <p className="text-sm font-medium text-gray-400 dark:text-white/40">-</p>
+                        <p className="text-sm font-medium text-gray-400 dark:text-white/40">
+                          -
+                        </p>
                       )}
                     </div>
                   </div>
@@ -892,7 +1059,9 @@ export default function UserDetailPage() {
                     {(() => {
                       const clientInfoId = userData.isUnregisteredClient
                         ? userData.id
-                        : (userData.client_info_id || userData.gym_memberships?.[0]?.client_info_id || null);
+                        : userData.client_info_id ||
+                          userData.gym_memberships?.[0]?.client_info_id ||
+                          null;
 
                       if (!clientInfoId) return null;
 
@@ -902,43 +1071,67 @@ export default function UserDetailPage() {
                       const today = new Date();
                       today.setHours(0, 0, 0, 0);
                       const allMemberships = userData.gym_memberships || [];
-                      const activeMemberships = allMemberships.filter((m: any) => {
-                        const endDate = new Date(m.end_date);
-                        endDate.setHours(0, 0, 0, 0);
-                        return endDate >= today && m.status !== 'cancelled';
-                      });
-                      const expiredMemberships = allMemberships.filter((m: any) => {
-                        const endDate = new Date(m.end_date);
-                        endDate.setHours(0, 0, 0, 0);
-                        return endDate < today && m.status !== 'cancelled';
-                      });
+                      const activeMemberships = allMemberships.filter(
+                        (m: any) => {
+                          const endDate = new Date(m.end_date);
+                          endDate.setHours(0, 0, 0, 0);
+                          return endDate >= today && m.status !== 'cancelled';
+                        },
+                      );
+                      const expiredMemberships = allMemberships.filter(
+                        (m: any) => {
+                          const endDate = new Date(m.end_date);
+                          endDate.setHours(0, 0, 0, 0);
+                          return endDate < today && m.status !== 'cancelled';
+                        },
+                      );
 
                       // Solo puede inactivarse si tiene estado "Renovar" (todos vencidos, sin activos, excluyendo cancelados)
-                      const hasOnlyExpiredMemberships = expiredMemberships.length > 0 && activeMemberships.length === 0;
+                      const hasOnlyExpiredMemberships =
+                        expiredMemberships.length > 0 &&
+                        activeMemberships.length === 0;
 
-                      const latestExpired = expiredMemberships.length > 0
-                        ? expiredMemberships.sort((a: any, b: any) =>
-                          new Date(b.end_date).getTime() - new Date(a.end_date).getTime()
-                        )[0]
-                        : null;
+                      const latestExpired =
+                        expiredMemberships.length > 0
+                          ? expiredMemberships.sort(
+                              (a: any, b: any) =>
+                                new Date(b.end_date).getTime() -
+                                new Date(a.end_date).getTime(),
+                            )[0]
+                          : null;
                       const daysSinceExpired = latestExpired
-                        ? Math.floor((today.getTime() - new Date(latestExpired.end_date).getTime()) / (1000 * 60 * 60 * 24))
+                        ? Math.floor(
+                            (today.getTime() -
+                              new Date(latestExpired.end_date).getTime()) /
+                              (1000 * 60 * 60 * 24),
+                          )
                         : 0;
                       const hasExpiredMoreThan30Days = daysSinceExpired > 30;
 
                       // Botón Inactivar - solo si tiene estado "Renovar" (todos vencidos) y más de 30 días PERO NO está inactivo
-                      if (hasOnlyExpiredMemberships && hasExpiredMoreThan30Days && !isInactive) {
+                      if (
+                        hasOnlyExpiredMemberships &&
+                        hasExpiredMoreThan30Days &&
+                        !isInactive
+                      ) {
                         const handleInactivate = async () => {
-                          if (!confirm(`¿Estás seguro de inactivar a ${userData.name || userData.full_name || 'este usuario'}?`)) {
+                          if (
+                            !confirm(
+                              `¿Estás seguro de inactivar a ${userData.name || userData.full_name || 'este usuario'}?`,
+                            )
+                          ) {
                             return;
                           }
 
                           try {
-                            const response = await fetch(`/api/admin/gym/clients/${clientInfoId}/toggle-inactive`, {
-                              method: 'PATCH',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ is_inactive: true }),
-                            });
+                            const response = await fetch(
+                              `/api/admin/gym/clients/${clientInfoId}/toggle-inactive`,
+                              {
+                                method: 'PATCH',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ is_inactive: true }),
+                              },
+                            );
 
                             if (!response.ok) {
                               throw new Error('Error al actualizar estado');
@@ -968,11 +1161,14 @@ export default function UserDetailPage() {
                       if (isInactive) {
                         const handleActivate = async () => {
                           try {
-                            const response = await fetch(`/api/admin/gym/clients/${clientInfoId}/toggle-inactive`, {
-                              method: 'PATCH',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ is_inactive: false }),
-                            });
+                            const response = await fetch(
+                              `/api/admin/gym/clients/${clientInfoId}/toggle-inactive`,
+                              {
+                                method: 'PATCH',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ is_inactive: false }),
+                              },
+                            );
 
                             if (!response.ok) {
                               throw new Error('Error al actualizar estado');
@@ -1010,26 +1206,34 @@ export default function UserDetailPage() {
                   </h2>
                   {saveError && (
                     <div className="mb-4 p-3 bg-red-50 dark:bg-red-500/20 border border-red-200 dark:border-red-500/30 rounded-lg">
-                      <p className="text-sm text-red-600 dark:text-red-400">{saveError}</p>
+                      <p className="text-sm text-red-600 dark:text-red-400">
+                        {saveError}
+                      </p>
                     </div>
                   )}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
                       <User className="w-5 h-5 text-gray-400" />
                       <div className="flex-1">
-                        <p className="text-xs text-gray-500 dark:text-white/40 mb-1">Nombre completo</p>
+                        <p className="text-xs text-gray-500 dark:text-white/40 mb-1">
+                          Nombre completo
+                        </p>
                         {isEditing ? (
                           <input
                             type="text"
                             value={editForm.name || ''}
-                            onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                            onChange={(e) =>
+                              setEditForm({ ...editForm, name: e.target.value })
+                            }
                             className="w-full px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded-lg text-sm text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50"
                           />
                         ) : (
                           <p className="text-sm font-medium text-[#164151] dark:text-white">
                             {userData.first_name && userData.last_name
                               ? `${userData.first_name} ${userData.last_name}`
-                              : userData.name || userData.full_name || 'No especificado'}
+                              : userData.name ||
+                                userData.full_name ||
+                                'No especificado'}
                           </p>
                         )}
                       </div>
@@ -1038,12 +1242,19 @@ export default function UserDetailPage() {
                     <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
                       <Mail className="w-5 h-5 text-gray-400" />
                       <div className="flex-1">
-                        <p className="text-xs text-gray-500 dark:text-white/40 mb-1">Email</p>
+                        <p className="text-xs text-gray-500 dark:text-white/40 mb-1">
+                          Email
+                        </p>
                         {isEditing ? (
                           <input
                             type="email"
                             value={editForm.email || ''}
-                            onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                            onChange={(e) =>
+                              setEditForm({
+                                ...editForm,
+                                email: e.target.value,
+                              })
+                            }
                             className="w-full px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded-lg text-sm text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50"
                           />
                         ) : (
@@ -1057,17 +1268,27 @@ export default function UserDetailPage() {
                     <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
                       <Phone className="w-5 h-5 text-gray-400" />
                       <div className="flex-1">
-                        <p className="text-xs text-gray-500 dark:text-white/40 mb-1">Teléfono / WhatsApp</p>
+                        <p className="text-xs text-gray-500 dark:text-white/40 mb-1">
+                          Teléfono / WhatsApp
+                        </p>
                         {isEditing ? (
                           <input
                             type="text"
                             value={editForm.phone || editForm.whatsapp || ''}
-                            onChange={(e) => setEditForm({ ...editForm, phone: e.target.value, whatsapp: e.target.value })}
+                            onChange={(e) =>
+                              setEditForm({
+                                ...editForm,
+                                phone: e.target.value,
+                                whatsapp: e.target.value,
+                              })
+                            }
                             className="w-full px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded-lg text-sm text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50"
                           />
                         ) : (
                           <p className="text-sm font-medium text-[#164151] dark:text-white">
-                            {userData.phone || userData.whatsapp || 'No especificado'}
+                            {userData.phone ||
+                              userData.whatsapp ||
+                              'No especificado'}
                           </p>
                         )}
                       </div>
@@ -1076,12 +1297,19 @@ export default function UserDetailPage() {
                     <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
                       <CreditCard className="w-5 h-5 text-gray-400" />
                       <div className="flex-1">
-                        <p className="text-xs text-gray-500 dark:text-white/40 mb-1">Documento</p>
+                        <p className="text-xs text-gray-500 dark:text-white/40 mb-1">
+                          Documento
+                        </p>
                         {isEditing ? (
                           <div className="flex gap-2">
                             <select
                               value={editForm.document_type || 'CC'}
-                              onChange={(e) => setEditForm({ ...editForm, document_type: e.target.value })}
+                              onChange={(e) =>
+                                setEditForm({
+                                  ...editForm,
+                                  document_type: e.target.value,
+                                })
+                              }
                               className="px-2 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded-lg text-sm text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50"
                             >
                               <option value="CC">CC</option>
@@ -1092,7 +1320,12 @@ export default function UserDetailPage() {
                             <input
                               type="text"
                               value={editForm.document_id || ''}
-                              onChange={(e) => setEditForm({ ...editForm, document_id: e.target.value })}
+                              onChange={(e) =>
+                                setEditForm({
+                                  ...editForm,
+                                  document_id: e.target.value,
+                                })
+                              }
                               disabled={userData.isUnregisteredClient}
                               className="flex-1 px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded-lg text-sm text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed"
                             />
@@ -1111,11 +1344,18 @@ export default function UserDetailPage() {
                     <div className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl md:col-span-2">
                       <FileText className="w-5 h-5 text-gray-400 mt-0.5" />
                       <div className="flex-1">
-                        <p className="text-xs text-gray-500 dark:text-white/40 mb-1">Historial Clínico / Restricciones Médicas</p>
+                        <p className="text-xs text-gray-500 dark:text-white/40 mb-1">
+                          Historial Clínico / Restricciones Médicas
+                        </p>
                         {isEditing ? (
                           <textarea
                             value={editForm.medical_restrictions || ''}
-                            onChange={(e) => setEditForm({ ...editForm, medical_restrictions: e.target.value })}
+                            onChange={(e) =>
+                              setEditForm({
+                                ...editForm,
+                                medical_restrictions: e.target.value,
+                              })
+                            }
                             rows={3}
                             className="w-full px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded-lg text-sm text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 resize-none"
                             placeholder="Restricciones médicas o historial clínico..."
@@ -1132,7 +1372,9 @@ export default function UserDetailPage() {
                       <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
                         <MapPin className="w-5 h-5 text-gray-400" />
                         <div>
-                          <p className="text-xs text-gray-500 dark:text-white/40">Dirección</p>
+                          <p className="text-xs text-gray-500 dark:text-white/40">
+                            Dirección
+                          </p>
                           <p className="text-sm font-medium text-[#164151] dark:text-white">
                             {userData.address}
                             {userData.city ? `, ${userData.city}` : ''}
@@ -1146,11 +1388,18 @@ export default function UserDetailPage() {
                         <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
                           <MapPin className="w-5 h-5 text-gray-400" />
                           <div className="flex-1">
-                            <p className="text-xs text-gray-500 dark:text-white/40 mb-1">Dirección</p>
+                            <p className="text-xs text-gray-500 dark:text-white/40 mb-1">
+                              Dirección
+                            </p>
                             <input
                               type="text"
                               value={editForm.address || ''}
-                              onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
+                              onChange={(e) =>
+                                setEditForm({
+                                  ...editForm,
+                                  address: e.target.value,
+                                })
+                              }
                               className="w-full px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded-lg text-sm text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50"
                             />
                           </div>
@@ -1158,11 +1407,18 @@ export default function UserDetailPage() {
                         <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
                           <MapPin className="w-5 h-5 text-gray-400" />
                           <div className="flex-1">
-                            <p className="text-xs text-gray-500 dark:text-white/40 mb-1">Ciudad</p>
+                            <p className="text-xs text-gray-500 dark:text-white/40 mb-1">
+                              Ciudad
+                            </p>
                             <input
                               type="text"
                               value={editForm.city || ''}
-                              onChange={(e) => setEditForm({ ...editForm, city: e.target.value })}
+                              onChange={(e) =>
+                                setEditForm({
+                                  ...editForm,
+                                  city: e.target.value,
+                                })
+                              }
                               className="w-full px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded-lg text-sm text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50"
                             />
                           </div>
@@ -1170,43 +1426,66 @@ export default function UserDetailPage() {
                       </>
                     )}
 
-                    {!isEditing && (userData.birth_date || userData.birth_year) && (
-                      <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
-                        <Calendar className="w-5 h-5 text-gray-400" />
-                        <div>
-                          <p className="text-xs text-gray-500 dark:text-white/40">Fecha de nacimiento</p>
-                          <p className="text-sm font-medium text-[#164151] dark:text-white">
-                            {userData.birth_date ? (
-                              (() => {
-                                const birthDate = new Date(userData.birth_date);
-                                const today = new Date();
-                                const age = today.getFullYear() - birthDate.getFullYear();
-                                const monthDiff = today.getMonth() - birthDate.getMonth();
-                                const dayDiff = today.getDate() - birthDate.getDate();
-                                const finalAge = (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) ? age - 1 : age;
-                                return `${birthDate.toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })} (${finalAge} años)`;
-                              })()
-                            ) : userData.birth_year ? (
-                              `${userData.birth_year} (${new Date().getFullYear() - userData.birth_year} años)`
-                            ) : (
-                              'No especificado'
-                            )}
-                          </p>
+                    {!isEditing &&
+                      (userData.birth_date || userData.birth_year) && (
+                        <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
+                          <Calendar className="w-5 h-5 text-gray-400" />
+                          <div>
+                            <p className="text-xs text-gray-500 dark:text-white/40">
+                              Fecha de nacimiento
+                            </p>
+                            <p className="text-sm font-medium text-[#164151] dark:text-white">
+                              {userData.birth_date
+                                ? (() => {
+                                    const birthDate = new Date(
+                                      userData.birth_date,
+                                    );
+                                    const today = new Date();
+                                    const age =
+                                      today.getFullYear() -
+                                      birthDate.getFullYear();
+                                    const monthDiff =
+                                      today.getMonth() - birthDate.getMonth();
+                                    const dayDiff =
+                                      today.getDate() - birthDate.getDate();
+                                    const finalAge =
+                                      monthDiff < 0 ||
+                                      (monthDiff === 0 && dayDiff < 0)
+                                        ? age - 1
+                                        : age;
+                                    return `${birthDate.toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })} (${finalAge} años)`;
+                                  })()
+                                : userData.birth_year
+                                  ? `${userData.birth_year} (${new Date().getFullYear() - userData.birth_year} años)`
+                                  : 'No especificado'}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
 
                     {isEditing && (
                       <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
                         <Calendar className="w-5 h-5 text-gray-400" />
                         <div className="flex-1">
-                          <p className="text-xs text-gray-500 dark:text-white/40 mb-1">Fecha de nacimiento</p>
+                          <p className="text-xs text-gray-500 dark:text-white/40 mb-1">
+                            Fecha de nacimiento
+                          </p>
                           <input
                             type="date"
-                            value={editForm.birth_date || editForm.birth_year ? `${editForm.birth_year || new Date().getFullYear()}-01-01` : ''}
+                            value={
+                              editForm.birth_date || editForm.birth_year
+                                ? `${editForm.birth_year || new Date().getFullYear()}-01-01`
+                                : ''
+                            }
                             onChange={(e) => {
-                              const year = e.target.value ? new Date(e.target.value).getFullYear() : '';
-                              setEditForm({ ...editForm, birth_date: e.target.value, birth_year: year });
+                              const year = e.target.value
+                                ? new Date(e.target.value).getFullYear()
+                                : '';
+                              setEditForm({
+                                ...editForm,
+                                birth_date: e.target.value,
+                                birth_year: year,
+                              });
                             }}
                             className="w-full px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded-lg text-sm text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50"
                           />
@@ -1217,15 +1496,20 @@ export default function UserDetailPage() {
                     <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
                       <Calendar className="w-5 h-5 text-gray-400" />
                       <div>
-                        <p className="text-xs text-gray-500 dark:text-white/40">Fecha de registro</p>
+                        <p className="text-xs text-gray-500 dark:text-white/40">
+                          Fecha de registro
+                        </p>
                         <p className="text-sm font-medium text-[#164151] dark:text-white">
-                          {new Date(userData.created_at).toLocaleDateString('es-ES', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
+                          {new Date(userData.created_at).toLocaleDateString(
+                            'es-ES',
+                            {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            },
+                          )}
                         </p>
                       </div>
                     </div>
@@ -1241,13 +1525,27 @@ export default function UserDetailPage() {
                     <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
                       <Scale className="w-5 h-5 text-gray-400" />
                       <div className="flex-1">
-                        <p className="text-xs text-gray-500 dark:text-white/40 mb-1">Peso actual</p>
+                        <p className="text-xs text-gray-500 dark:text-white/40 mb-1">
+                          Peso actual
+                        </p>
                         {isEditing ? (
                           <input
                             type="number"
                             step="0.1"
-                            value={editForm.current_weight || editForm.weight || ''}
-                            onChange={(e) => setEditForm({ ...editForm, current_weight: e.target.value ? parseFloat(e.target.value) : '', weight: e.target.value ? parseFloat(e.target.value) : '' })}
+                            value={
+                              editForm.current_weight || editForm.weight || ''
+                            }
+                            onChange={(e) =>
+                              setEditForm({
+                                ...editForm,
+                                current_weight: e.target.value
+                                  ? parseFloat(e.target.value)
+                                  : '',
+                                weight: e.target.value
+                                  ? parseFloat(e.target.value)
+                                  : '',
+                              })
+                            }
                             className="w-full px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded-lg text-sm text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50"
                             placeholder="kg"
                           />
@@ -1264,19 +1562,30 @@ export default function UserDetailPage() {
                     <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
                       <Target className="w-5 h-5 text-gray-400" />
                       <div className="flex-1">
-                        <p className="text-xs text-gray-500 dark:text-white/40 mb-1">Peso objetivo</p>
+                        <p className="text-xs text-gray-500 dark:text-white/40 mb-1">
+                          Peso objetivo
+                        </p>
                         {isEditing ? (
                           <input
                             type="number"
                             step="0.1"
                             value={editForm.target_weight || ''}
-                            onChange={(e) => setEditForm({ ...editForm, target_weight: e.target.value ? parseFloat(e.target.value) : null })}
+                            onChange={(e) =>
+                              setEditForm({
+                                ...editForm,
+                                target_weight: e.target.value
+                                  ? parseFloat(e.target.value)
+                                  : null,
+                              })
+                            }
                             className="w-full px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded-lg text-sm text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50"
                             placeholder="kg"
                           />
                         ) : (
                           <p className="text-sm font-medium text-[#164151] dark:text-white">
-                            {userData.target_weight ? `${userData.target_weight} kg` : 'No especificado'}
+                            {userData.target_weight
+                              ? `${userData.target_weight} kg`
+                              : 'No especificado'}
                           </p>
                         )}
                       </div>
@@ -1285,18 +1594,29 @@ export default function UserDetailPage() {
                     <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
                       <Ruler className="w-5 h-5 text-gray-400" />
                       <div className="flex-1">
-                        <p className="text-xs text-gray-500 dark:text-white/40 mb-1">Altura</p>
+                        <p className="text-xs text-gray-500 dark:text-white/40 mb-1">
+                          Altura
+                        </p>
                         {isEditing ? (
                           <input
                             type="number"
                             value={editForm.height || ''}
-                            onChange={(e) => setEditForm({ ...editForm, height: e.target.value ? parseInt(e.target.value) : null })}
+                            onChange={(e) =>
+                              setEditForm({
+                                ...editForm,
+                                height: e.target.value
+                                  ? parseInt(e.target.value)
+                                  : null,
+                              })
+                            }
                             className="w-full px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded-lg text-sm text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50"
                             placeholder="cm"
                           />
                         ) : (
                           <p className="text-sm font-medium text-[#164151] dark:text-white">
-                            {userData.height ? `${userData.height} cm` : 'No especificada'}
+                            {userData.height
+                              ? `${userData.height} cm`
+                              : 'No especificada'}
                           </p>
                         )}
                       </div>
@@ -1305,11 +1625,18 @@ export default function UserDetailPage() {
                     <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
                       <User className="w-5 h-5 text-gray-400" />
                       <div className="flex-1">
-                        <p className="text-xs text-gray-500 dark:text-white/40 mb-1">Género</p>
+                        <p className="text-xs text-gray-500 dark:text-white/40 mb-1">
+                          Género
+                        </p>
                         {isEditing ? (
                           <select
                             value={editForm.gender || ''}
-                            onChange={(e) => setEditForm({ ...editForm, gender: e.target.value })}
+                            onChange={(e) =>
+                              setEditForm({
+                                ...editForm,
+                                gender: e.target.value,
+                              })
+                            }
                             className="w-full px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded-lg text-sm text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50"
                           >
                             <option value="">Seleccionar</option>
@@ -1334,25 +1661,56 @@ export default function UserDetailPage() {
                     <div className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl md:col-span-2">
                       <Target className="w-5 h-5 text-gray-400 mt-0.5" />
                       <div className="flex-1">
-                        <p className="text-xs text-gray-500 dark:text-white/40 mb-1">Metas</p>
+                        <p className="text-xs text-gray-500 dark:text-white/40 mb-1">
+                          Metas
+                        </p>
                         {isEditing ? (
                           <div className="flex flex-wrap gap-2">
-                            {['lose_weight', 'gain_muscle', 'improve_health', 'maintain_weight', 'increase_endurance', 'flexibility', 'tone', 'endurance'].map((goal) => (
-                              <label key={goal} className="flex items-center gap-2 cursor-pointer">
+                            {[
+                              'lose_weight',
+                              'gain_muscle',
+                              'improve_health',
+                              'maintain_weight',
+                              'increase_endurance',
+                              'flexibility',
+                              'tone',
+                              'endurance',
+                            ].map((goal) => (
+                              <label
+                                key={goal}
+                                className="flex items-center gap-2 cursor-pointer"
+                              >
                                 <input
                                   type="checkbox"
-                                  checked={Array.isArray(editForm.goals) && editForm.goals.includes(goal)}
+                                  checked={
+                                    Array.isArray(editForm.goals) &&
+                                    editForm.goals.includes(goal)
+                                  }
                                   onChange={(e) => {
-                                    const currentGoals = Array.isArray(editForm.goals) ? editForm.goals : [];
+                                    const currentGoals = Array.isArray(
+                                      editForm.goals,
+                                    )
+                                      ? editForm.goals
+                                      : [];
                                     if (e.target.checked) {
-                                      setEditForm({ ...editForm, goals: [...currentGoals, goal] });
+                                      setEditForm({
+                                        ...editForm,
+                                        goals: [...currentGoals, goal],
+                                      });
                                     } else {
-                                      setEditForm({ ...editForm, goals: currentGoals.filter((g: string) => g !== goal) });
+                                      setEditForm({
+                                        ...editForm,
+                                        goals: currentGoals.filter(
+                                          (g: string) => g !== goal,
+                                        ),
+                                      });
                                     }
                                   }}
                                   className="rounded border-gray-300 text-[#85ea10] focus:ring-[#85ea10]"
                                 />
-                                <span className="text-xs text-[#164151] dark:text-white">{translateGoal(goal)}</span>
+                                <span className="text-xs text-[#164151] dark:text-white">
+                                  {translateGoal(goal)}
+                                </span>
                               </label>
                             ))}
                           </div>
@@ -1364,17 +1722,21 @@ export default function UserDetailPage() {
                       </div>
                     </div>
 
-                    {userData.dietary_habits && userData.dietary_habits.length > 0 && !isEditing && (
-                      <div className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl md:col-span-2">
-                        <BookOpen className="w-5 h-5 text-gray-400 mt-0.5" />
-                        <div>
-                          <p className="text-xs text-gray-500 dark:text-white/40">Hábitos alimenticios</p>
-                          <p className="text-sm font-medium text-[#164151] dark:text-white">
-                            {userData.dietary_habits.join(', ')}
-                          </p>
+                    {userData.dietary_habits &&
+                      userData.dietary_habits.length > 0 &&
+                      !isEditing && (
+                        <div className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl md:col-span-2">
+                          <BookOpen className="w-5 h-5 text-gray-400 mt-0.5" />
+                          <div>
+                            <p className="text-xs text-gray-500 dark:text-white/40">
+                              Hábitos alimenticios
+                            </p>
+                            <p className="text-sm font-medium text-[#164151] dark:text-white">
+                              {userData.dietary_habits.join(', ')}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
 
                     {/* Estadísticas de actividad */}
                     {!isEditing && (
@@ -1383,13 +1745,17 @@ export default function UserDetailPage() {
                           <p className="text-2xl font-bold text-[#164151] dark:text-white">
                             {userData.streak_days || 0}
                           </p>
-                          <p className="text-xs text-gray-500 dark:text-white/40">Días de racha</p>
+                          <p className="text-xs text-gray-500 dark:text-white/40">
+                            Días de racha
+                          </p>
                         </div>
                         <div className="p-4 bg-blue-500/10 rounded-xl text-center">
                           <p className="text-2xl font-bold text-blue-500">
                             {userData.weight_progress_percentage || 0}%
                           </p>
-                          <p className="text-xs text-gray-500 dark:text-white/40">Progreso peso</p>
+                          <p className="text-xs text-gray-500 dark:text-white/40">
+                            Progreso peso
+                          </p>
                         </div>
                       </div>
                     )}
@@ -1409,17 +1775,24 @@ export default function UserDetailPage() {
                     ) : weightRecords.length > 0 ? (
                       <div className="space-y-2 max-h-64 overflow-y-auto">
                         {weightRecords.map((record: any, index: number) => (
-                          <div key={index} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
+                          <div
+                            key={index}
+                            className="flex items-center justify-between p-3 bg-gray-50 dark:bg-white/5 rounded-xl"
+                          >
                             <div>
                               <p className="text-sm font-medium text-[#164151] dark:text-white">
-                                {new Date(record.record_date).toLocaleDateString('es-ES', {
+                                {new Date(
+                                  record.record_date,
+                                ).toLocaleDateString('es-ES', {
                                   day: '2-digit',
                                   month: 'long',
                                   year: 'numeric',
                                 })}
                               </p>
                               {record.notes && (
-                                <p className="text-xs text-gray-500 dark:text-white/50 mt-1">{record.notes}</p>
+                                <p className="text-xs text-gray-500 dark:text-white/50 mt-1">
+                                  {record.notes}
+                                </p>
                               )}
                             </div>
                             <div className="text-right">
@@ -1447,18 +1820,25 @@ export default function UserDetailPage() {
                   today.setHours(0, 0, 0, 0);
 
                   // Filtrar membresías activas (vigentes o programadas/futuras)
-                  const activeMemberships = (userData.gym_memberships || []).filter((membership: any) => {
+                  const activeMemberships = (
+                    userData.gym_memberships || []
+                  ).filter((membership: any) => {
                     const endDate = parseLocalDate(membership.end_date);
                     // Incluir si: no está cancelada Y (fecha fin >= hoy O es membresía futura)
-                    return membership.status !== 'cancelled' && endDate >= today;
+                    return (
+                      membership.status !== 'cancelled' && endDate >= today
+                    );
                   });
 
                   // Verificar si tiene cursos activos
-                  const hasActiveCourses = userData.activeCoursePurchases && userData.activeCoursePurchases.length > 0;
+                  const hasActiveCourses =
+                    userData.activeCoursePurchases &&
+                    userData.activeCoursePurchases.length > 0;
 
                   // Solo mostrar si tiene productos activos (membresías o cursos)
                   // No mostrar si está inactivo o si todos los planes están vencidos
-                  const hasActiveProducts = activeMemberships.length > 0 || hasActiveCourses;
+                  const hasActiveProducts =
+                    activeMemberships.length > 0 || hasActiveCourses;
                   const isInactive = userData.is_inactive || false;
 
                   // No mostrar si está inactivo o no tiene productos activos
@@ -1474,23 +1854,42 @@ export default function UserDetailPage() {
                       <div className="space-y-3">
                         {/* Membresías activas y programadas */}
                         {activeMemberships
-                          .sort((a: any, b: any) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime())
+                          .sort(
+                            (a: any, b: any) =>
+                              new Date(a.start_date).getTime() -
+                              new Date(b.start_date).getTime(),
+                          )
                           .map((membership: any) => {
                             // Determinar si es membresía actual o programada (pago anticipado)
-                            const startDate = parseLocalDate(membership.start_date);
+                            const startDate = parseLocalDate(
+                              membership.start_date,
+                            );
                             const isScheduled = startDate > today;
-                            
+
                             return (
-                              <div key={membership.id} className={`p-4 rounded-xl border ${isScheduled 
-                                ? 'bg-cyan-50 dark:bg-cyan-500/10 border-cyan-200 dark:border-cyan-500/20' 
-                                : 'bg-gray-50 dark:bg-white/5 border-gray-200 dark:border-white/10'}`}>
+                              <div
+                                key={membership.id}
+                                className={`p-4 rounded-xl border ${
+                                  isScheduled
+                                    ? 'bg-cyan-50 dark:bg-cyan-500/10 border-cyan-200 dark:border-cyan-500/20'
+                                    : 'bg-gray-50 dark:bg-white/5 border-gray-200 dark:border-white/10'
+                                }`}
+                              >
                                 <div className="flex items-center gap-3 mb-3">
-                                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isScheduled 
-                                    ? 'bg-cyan-100 dark:bg-cyan-500/20' 
-                                    : 'bg-[#85ea10]/30 dark:bg-[#85ea10]/40'}`}>
-                                    <Dumbbell className={`w-5 h-5 ${isScheduled 
-                                      ? 'text-cyan-600 dark:text-cyan-400' 
-                                      : 'text-[#164151] dark:text-[#85ea10]'}`} />
+                                  <div
+                                    className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                                      isScheduled
+                                        ? 'bg-cyan-100 dark:bg-cyan-500/20'
+                                        : 'bg-[#85ea10]/30 dark:bg-[#85ea10]/40'
+                                    }`}
+                                  >
+                                    <Dumbbell
+                                      className={`w-5 h-5 ${
+                                        isScheduled
+                                          ? 'text-cyan-600 dark:text-cyan-400'
+                                          : 'text-[#164151] dark:text-[#85ea10]'
+                                      }`}
+                                    />
                                   </div>
                                   <div className="flex-1">
                                     <div className="flex items-center justify-between mb-1">
@@ -1498,18 +1897,30 @@ export default function UserDetailPage() {
                                         {membership.plan?.name || 'Plan'}
                                       </p>
                                       <div className="flex items-center gap-2">
-                                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${isScheduled 
-                                          ? 'bg-cyan-100 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-400' 
-                                          : 'bg-[#85ea10]/30 text-[#164151] dark:bg-[#85ea10]/30 dark:text-[#85ea10]'}`}>
+                                        <span
+                                          className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                                            isScheduled
+                                              ? 'bg-cyan-100 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-400'
+                                              : 'bg-[#85ea10]/30 text-[#164151] dark:bg-[#85ea10]/30 dark:text-[#85ea10]'
+                                          }`}
+                                        >
                                           {isScheduled ? 'Próximo' : 'Al día'}
                                         </span>
                                         <button
-                                          onClick={() => openCancelMembershipModal(membership)}
-                                          disabled={cancellingMembershipId === membership.id}
+                                          onClick={() =>
+                                            openCancelMembershipModal(
+                                              membership,
+                                            )
+                                          }
+                                          disabled={
+                                            cancellingMembershipId ===
+                                            membership.id
+                                          }
                                           className="p-1 rounded-lg text-red-500 hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors disabled:opacity-50"
                                           title="Cancelar membresía"
                                         >
-                                          {cancellingMembershipId === membership.id ? (
+                                          {cancellingMembershipId ===
+                                          membership.id ? (
                                             <div className="w-4 h-4 border-2 border-red-300 border-t-red-500 rounded-full animate-spin" />
                                           ) : (
                                             <X className="w-4 h-4" />
@@ -1519,26 +1930,39 @@ export default function UserDetailPage() {
                                     </div>
                                     <div className="space-y-1">
                                       <div className="flex items-center gap-2">
-                                        {editingStartDateMembershipId === membership.id ? (
+                                        {editingStartDateMembershipId ===
+                                        membership.id ? (
                                           <div className="flex items-center gap-2 flex-1">
-                                            <span className="text-xs text-gray-500 dark:text-white/50">Inicia:</span>
+                                            <span className="text-xs text-gray-500 dark:text-white/50">
+                                              Inicia:
+                                            </span>
                                             <input
                                               type="date"
                                               value={newStartDate}
-                                              onChange={(e) => setNewStartDate(e.target.value)}
+                                              onChange={(e) =>
+                                                setNewStartDate(e.target.value)
+                                              }
                                               className="px-2 py-1 text-xs rounded-lg border border-gray-300 dark:border-white/20 bg-white dark:bg-gray-800 text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#164151]/50"
                                               disabled={isUpdatingStartDate}
                                             />
                                             <button
-                                              onClick={() => handleSaveStartDate(membership.id)}
+                                              onClick={() =>
+                                                handleSaveStartDate(
+                                                  membership.id,
+                                                )
+                                              }
                                               disabled={isUpdatingStartDate}
                                               className="px-2 py-1 text-xs bg-[#85ea10] text-[#164151] rounded-lg hover:bg-[#85ea10]/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                               title="Guardar fecha"
                                             >
-                                              {isUpdatingStartDate ? '...' : '✓'}
+                                              {isUpdatingStartDate
+                                                ? '...'
+                                                : '✓'}
                                             </button>
                                             <button
-                                              onClick={handleCancelEditStartDate}
+                                              onClick={
+                                                handleCancelEditStartDate
+                                              }
                                               disabled={isUpdatingStartDate}
                                               className="px-2 py-1 text-xs bg-gray-200 dark:bg-white/10 text-gray-700 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-white/20 transition-colors disabled:opacity-50"
                                               title="Cancelar"
@@ -1549,14 +1973,21 @@ export default function UserDetailPage() {
                                         ) : (
                                           <>
                                             <p className="text-xs text-gray-500 dark:text-white/50">
-                                              Inicia: {parseLocalDate(membership.start_date).toLocaleDateString('es-ES', {
+                                              Inicia:{' '}
+                                              {parseLocalDate(
+                                                membership.start_date,
+                                              ).toLocaleDateString('es-ES', {
                                                 day: '2-digit',
                                                 month: 'long',
                                                 year: 'numeric',
                                               })}
                                             </p>
                                             <button
-                                              onClick={() => handleStartEditStartDate(membership)}
+                                              onClick={() =>
+                                                handleStartEditStartDate(
+                                                  membership,
+                                                )
+                                              }
                                               className="p-1.5 rounded-lg text-[#164151] dark:text-white hover:bg-[#164151]/10 dark:hover:bg-white/10 transition-colors border border-transparent hover:border-[#164151]/20 dark:hover:border-white/20"
                                               title="Editar fecha de inicio"
                                             >
@@ -1565,8 +1996,13 @@ export default function UserDetailPage() {
                                           </>
                                         )}
                                       </div>
-                                      <p className={`text-xs ${isScheduled ? 'text-cyan-600 dark:text-cyan-400' : 'text-gray-500 dark:text-white/50'}`}>
-                                        Vence: {parseLocalDate(membership.end_date).toLocaleDateString('es-ES', {
+                                      <p
+                                        className={`text-xs ${isScheduled ? 'text-cyan-600 dark:text-cyan-400' : 'text-gray-500 dark:text-white/50'}`}
+                                      >
+                                        Vence:{' '}
+                                        {parseLocalDate(
+                                          membership.end_date,
+                                        ).toLocaleDateString('es-ES', {
                                           day: '2-digit',
                                           month: 'long',
                                           year: 'numeric',
@@ -1575,7 +2011,8 @@ export default function UserDetailPage() {
                                     </div>
                                     {membership.payment?.invoice_number && (
                                       <p className="text-xs font-medium text-[#164151] dark:text-white mt-1">
-                                        Factura: #{membership.payment.invoice_number}
+                                        Factura: #
+                                        {membership.payment.invoice_number}
                                       </p>
                                     )}
                                   </div>
@@ -1593,7 +2030,9 @@ export default function UserDetailPage() {
                             <div className="flex-1">
                               <p className="text-sm font-medium text-[#164151] dark:text-white">
                                 {userData.activeCoursePurchases.length}{' '}
-                                {userData.activeCoursePurchases.length === 1 ? 'curso activo' : 'cursos activos'}
+                                {userData.activeCoursePurchases.length === 1
+                                  ? 'curso activo'
+                                  : 'cursos activos'}
                               </p>
                               <p className="text-xs text-gray-500 dark:text-white/50">
                                 {userData.activeCoursePurchases
@@ -1615,7 +2054,9 @@ export default function UserDetailPage() {
                   today.setHours(0, 0, 0, 0);
 
                   // Filtrar membresías vencidas (excluir canceladas)
-                  const expiredMemberships = (userData.gym_memberships || []).filter((membership: any) => {
+                  const expiredMemberships = (
+                    userData.gym_memberships || []
+                  ).filter((membership: any) => {
                     const endDate = parseLocalDate(membership.end_date);
                     return endDate < today && membership.status !== 'cancelled';
                   });
@@ -1631,12 +2072,19 @@ export default function UserDetailPage() {
                       </h2>
                       <div className="space-y-3">
                         {expiredMemberships
-                          .sort((a: any, b: any) => new Date(b.end_date).getTime() - new Date(a.end_date).getTime())
+                          .sort(
+                            (a: any, b: any) =>
+                              new Date(b.end_date).getTime() -
+                              new Date(a.end_date).getTime(),
+                          )
                           .map((membership: any) => {
                             const endDate = parseLocalDate(membership.end_date);
 
                             return (
-                              <div key={membership.id} className="p-4 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-200 dark:border-white/10">
+                              <div
+                                key={membership.id}
+                                className="p-4 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-200 dark:border-white/10"
+                              >
                                 <div className="flex items-center gap-3 mb-3">
                                   <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-slate-100 dark:bg-slate-500/20">
                                     <Dumbbell className="w-5 h-5 text-slate-600 dark:text-slate-400" />
@@ -1666,12 +2114,20 @@ export default function UserDetailPage() {
                                         })()}
                                         {membership.status !== 'cancelled' && (
                                           <button
-                                            onClick={() => openCancelMembershipModal(membership)}
-                                            disabled={cancellingMembershipId === membership.id}
+                                            onClick={() =>
+                                              openCancelMembershipModal(
+                                                membership,
+                                              )
+                                            }
+                                            disabled={
+                                              cancellingMembershipId ===
+                                              membership.id
+                                            }
                                             className="p-1 rounded-lg text-red-500 hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors disabled:opacity-50"
                                             title="Cancelar membresía"
                                           >
-                                            {cancellingMembershipId === membership.id ? (
+                                            {cancellingMembershipId ===
+                                            membership.id ? (
                                               <div className="w-4 h-4 border-2 border-red-300 border-t-red-500 rounded-full animate-spin" />
                                             ) : (
                                               <X className="w-4 h-4" />
@@ -1681,7 +2137,10 @@ export default function UserDetailPage() {
                                       </div>
                                     </div>
                                     <p className="text-xs text-gray-500 dark:text-white/50">
-                                      Venció: {parseLocalDate(membership.end_date).toLocaleDateString('es-ES', {
+                                      Venció:{' '}
+                                      {parseLocalDate(
+                                        membership.end_date,
+                                      ).toLocaleDateString('es-ES', {
                                         day: '2-digit',
                                         month: 'long',
                                         year: 'numeric',
@@ -1689,45 +2148,58 @@ export default function UserDetailPage() {
                                     </p>
                                     {membership.payment?.invoice_number && (
                                       <p className="text-xs font-medium text-[#164151] dark:text-white mt-1">
-                                        Factura: #{membership.payment.invoice_number}
+                                        Factura: #
+                                        {membership.payment.invoice_number}
                                       </p>
                                     )}
                                   </div>
                                 </div>
                                 <div className="mt-3 pt-3 border-t border-gray-200 dark:border-white/10 space-y-2">
                                   {/* Botón Invitar a renovar (WhatsApp) */}
-                                  {userData.whatsapp || userData.phone ? (() => {
-                                    const planName = membership.plan?.name || 'tu plan';
-                                    const endDateFormatted = parseLocalDate(membership.end_date).toLocaleDateString('es-ES', {
-                                      day: '2-digit',
-                                      month: 'long',
-                                      year: 'numeric',
-                                    });
+                                  {userData.whatsapp || userData.phone ? (
+                                    (() => {
+                                      const planName =
+                                        membership.plan?.name || 'tu plan';
+                                      const endDateFormatted = parseLocalDate(
+                                        membership.end_date,
+                                      ).toLocaleDateString('es-ES', {
+                                        day: '2-digit',
+                                        month: 'long',
+                                        year: 'numeric',
+                                      });
 
-                                    const handleRenew = () => {
-                                      const clientName = userData.name || userData.full_name || 'Cliente';
-                                      const whatsappNumber = (userData.whatsapp || userData.phone || '').replace(/\D/g, '');
+                                      const handleRenew = () => {
+                                        const clientName =
+                                          userData.name ||
+                                          userData.full_name ||
+                                          'Cliente';
+                                        const whatsappNumber = (
+                                          userData.whatsapp ||
+                                          userData.phone ||
+                                          ''
+                                        ).replace(/\D/g, '');
 
-                                      if (!whatsappNumber) return;
+                                        if (!whatsappNumber) return;
 
-                                      const message = encodeURIComponent(
-                                        `Hola ${clientName}, tu plan "${planName}" finalizó el ${endDateFormatted}. ¿Deseas renovar tu membresía para continuar?`
+                                        const message = encodeURIComponent(
+                                          `Hola ${clientName}, tu plan "${planName}" finalizó el ${endDateFormatted}. ¿Deseas renovar tu membresía para continuar?`,
+                                        );
+
+                                        const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${message}`;
+                                        window.open(whatsappUrl, '_blank');
+                                      };
+
+                                      return (
+                                        <button
+                                          onClick={handleRenew}
+                                          className="w-full px-4 py-2 rounded-lg bg-[#85ea10]/20 dark:bg-[#85ea10]/30 text-[#164151] dark:text-[#85ea10] hover:bg-[#85ea10]/30 dark:hover:bg-[#85ea10]/40 transition-colors flex items-center justify-center gap-2 text-sm font-medium"
+                                        >
+                                          <MessageSquare className="w-4 h-4" />
+                                          Invitar a renovar
+                                        </button>
                                       );
-
-                                      const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${message}`;
-                                      window.open(whatsappUrl, '_blank');
-                                    };
-
-                                    return (
-                                      <button
-                                        onClick={handleRenew}
-                                        className="w-full px-4 py-2 rounded-lg bg-[#85ea10]/20 dark:bg-[#85ea10]/30 text-[#164151] dark:text-[#85ea10] hover:bg-[#85ea10]/30 dark:hover:bg-[#85ea10]/40 transition-colors flex items-center justify-center gap-2 text-sm font-medium"
-                                      >
-                                        <MessageSquare className="w-4 h-4" />
-                                        Invitar a renovar
-                                      </button>
-                                    );
-                                  })() : (
+                                    })()
+                                  ) : (
                                     <p className="text-xs text-gray-400 dark:text-white/40 text-center">
                                       No hay número de contacto disponible
                                     </p>
@@ -1743,7 +2215,12 @@ export default function UserDetailPage() {
                                       clientInfoId = userData.id;
                                     } else {
                                       // Usuario registrado: usar client_info_id de la membresía o del userData
-                                      clientInfoId = membership.client_info_id || userData.client_info_id || userData.gym_memberships?.[0]?.client_info_id || null;
+                                      clientInfoId =
+                                        membership.client_info_id ||
+                                        userData.client_info_id ||
+                                        userData.gym_memberships?.[0]
+                                          ?.client_info_id ||
+                                        null;
                                     }
 
                                     const planId = membership.plan?.id || null;
@@ -1751,13 +2228,16 @@ export default function UserDetailPage() {
                                     if (!clientInfoId) {
                                       return (
                                         <p className="text-xs text-gray-400 dark:text-white/40 text-center">
-                                          No se puede registrar pago: falta información del cliente
+                                          No se puede registrar pago: falta
+                                          información del cliente
                                         </p>
                                       );
                                     }
 
                                     const handleRegisterPayment = () => {
-                                      router.push(`/admin?tab=gym-payments&clientId=${clientInfoId}${planId ? `&planId=${planId}` : ''}`);
+                                      router.push(
+                                        `/admin?tab=gym-payments&clientId=${clientInfoId}${planId ? `&planId=${planId}` : ''}`,
+                                      );
                                     };
 
                                     return (
@@ -1780,101 +2260,112 @@ export default function UserDetailPage() {
                 })()}
 
                 {/* Membresías */}
-                {userData.gym_memberships && userData.gym_memberships.length > 0 && (
-                  <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-white/10 p-6">
-                    <h2 className="text-sm font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider mb-4">
-                      Historial de Facturación
-                    </h2>
-                    <div className="space-y-3">
-                      {userData.gym_memberships
-                        .sort((a: any, b: any) => new Date(b.end_date).getTime() - new Date(a.end_date).getTime())
-                        .map((membership: any) => {
-                          // Verificar dinámicamente si está vencida
-                          const today = new Date();
-                          today.setHours(0, 0, 0, 0);
-                          const endDate = parseLocalDate(membership.end_date);
-                          const isExpired = endDate < today;
-                          const isActive = !isExpired && membership.status === 'active';
+                {userData.gym_memberships &&
+                  userData.gym_memberships.length > 0 && (
+                    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-white/10 p-6">
+                      <h2 className="text-sm font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider mb-4">
+                        Historial de Facturación
+                      </h2>
+                      <div className="space-y-3">
+                        {userData.gym_memberships
+                          .sort(
+                            (a: any, b: any) =>
+                              new Date(b.end_date).getTime() -
+                              new Date(a.end_date).getTime(),
+                          )
+                          .map((membership: any) => {
+                            // Verificar dinámicamente si está vencida
+                            const today = new Date();
+                            today.setHours(0, 0, 0, 0);
+                            const endDate = parseLocalDate(membership.end_date);
+                            const isExpired = endDate < today;
+                            const isActive =
+                              !isExpired && membership.status === 'active';
 
-                          return (
-                            <div
-                              key={membership.id}
-                              className="p-3 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-200 dark:border-white/10"
-                            >
-                              <div className="flex items-center justify-between mb-2">
-                                <p className="text-sm font-medium text-[#164151] dark:text-white">
-                                  {membership.plan?.name || 'Plan'}
-                                </p>
-                                <span
-                                  className={`px-2 py-1 rounded-full text-xs font-semibold ${isActive
-                                    ? 'bg-[#85ea10]/20 text-[#164151] dark:bg-[#85ea10]/30 dark:text-[#85ea10]'
-                                    : isExpired
-                                      ? 'bg-slate-100 dark:bg-slate-500/20 text-slate-700 dark:text-slate-400'
-                                      : 'bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-white/60'
-                                    }`}
-                                >
-                                  {isActive
-                                    ? 'Al día'
-                                    : isExpired
-                                      ? 'Finalizada'
-                                      : membership.status === 'cancelled'
-                                        ? 'Cancelada'
-                                        : membership.status === 'courtesy'
-                                          ? 'Cortesía'
-                                          : membership.status}
-                                </span>
-                              </div>
-                              <div className="space-y-1">
-                                <p className="text-xs text-gray-500 dark:text-white/50">
-                                  {isExpired ? 'Venció' : 'Vence'}: {parseLocalDate(membership.end_date).toLocaleDateString('es-ES', {
-                                    day: '2-digit',
-                                    month: 'long',
-                                    year: 'numeric',
-                                  })}
-                                </p>
-                                {membership.payment?.invoice_number ? (
-                                  <p className="text-xs font-medium text-[#164151] dark:text-white">
-                                    Factura: #{membership.payment.invoice_number}
+                            return (
+                              <div
+                                key={membership.id}
+                                className="p-3 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-200 dark:border-white/10"
+                              >
+                                <div className="flex items-center justify-between mb-2">
+                                  <p className="text-sm font-medium text-[#164151] dark:text-white">
+                                    {membership.plan?.name || 'Plan'}
                                   </p>
-                                ) : null}
+                                  <span
+                                    className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                                      isActive
+                                        ? 'bg-[#85ea10]/20 text-[#164151] dark:bg-[#85ea10]/30 dark:text-[#85ea10]'
+                                        : isExpired
+                                          ? 'bg-slate-100 dark:bg-slate-500/20 text-slate-700 dark:text-slate-400'
+                                          : 'bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-white/60'
+                                    }`}
+                                  >
+                                    {isActive
+                                      ? 'Al día'
+                                      : isExpired
+                                        ? 'Finalizada'
+                                        : membership.status === 'cancelled'
+                                          ? 'Cancelada'
+                                          : membership.status === 'courtesy'
+                                            ? 'Cortesía'
+                                            : membership.status}
+                                  </span>
+                                </div>
+                                <div className="space-y-1">
+                                  <p className="text-xs text-gray-500 dark:text-white/50">
+                                    {isExpired ? 'Venció' : 'Vence'}:{' '}
+                                    {parseLocalDate(
+                                      membership.end_date,
+                                    ).toLocaleDateString('es-ES', {
+                                      day: '2-digit',
+                                      month: 'long',
+                                      year: 'numeric',
+                                    })}
+                                  </p>
+                                  {membership.payment?.invoice_number ? (
+                                    <p className="text-xs font-medium text-[#164151] dark:text-white">
+                                      Factura: #
+                                      {membership.payment.invoice_number}
+                                    </p>
+                                  ) : null}
+                                </div>
                               </div>
-                            </div>
-                          );
-                        })}
+                            );
+                          })}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
                 {/* Cursos */}
-                {userData.course_purchases && userData.course_purchases.length > 0 && (
-                  <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-white/10 p-6">
-                    <h2 className="text-sm font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider mb-4">
-                      Historial de Cursos
-                    </h2>
-                    <div className="space-y-3">
-                      {userData.course_purchases.map((purchase: any) => (
-                        <div
-                          key={purchase.id}
-                          className="p-3 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-200 dark:border-white/10"
-                        >
-                          <p className="text-sm font-medium text-[#164151] dark:text-white">
-                            {purchase.course?.title || 'Curso'}
-                          </p>
-                          <p className="text-xs text-gray-500 dark:text-white/50">
-                            {purchase.is_active ? (
-                              <span className="text-[#85ea10]">Activo</span>
-                            ) : (
-                              <span>Completado</span>
-                            )}
-                          </p>
-                        </div>
-                      ))}
+                {userData.course_purchases &&
+                  userData.course_purchases.length > 0 && (
+                    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-white/10 p-6">
+                      <h2 className="text-sm font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider mb-4">
+                        Historial de Cursos
+                      </h2>
+                      <div className="space-y-3">
+                        {userData.course_purchases.map((purchase: any) => (
+                          <div
+                            key={purchase.id}
+                            className="p-3 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-200 dark:border-white/10"
+                          >
+                            <p className="text-sm font-medium text-[#164151] dark:text-white">
+                              {purchase.course?.title || 'Curso'}
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-white/50">
+                              {purchase.is_active ? (
+                                <span className="text-[#85ea10]">Activo</span>
+                              ) : (
+                                <span>Completado</span>
+                              )}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
               </div>
             </div>
-
           </div>
         </div>
       </main>
@@ -1888,13 +2379,21 @@ export default function UserDetailPage() {
                 <Trash2 className="w-6 h-6 text-red-600 dark:text-red-400" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-[#164151] dark:text-white">Eliminar Usuario</h3>
-                <p className="text-sm text-gray-500 dark:text-white/50">Esta acción no se puede deshacer</p>
+                <h3 className="text-lg font-bold text-[#164151] dark:text-white">
+                  Eliminar Usuario
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-white/50">
+                  Esta acción no se puede deshacer
+                </p>
               </div>
             </div>
 
             <p className="text-[#164151] dark:text-white/80 mb-4">
-              ¿Estás seguro de que deseas eliminar a <strong>{userData?.name || userData?.full_name || 'este usuario'}</strong>?
+              ¿Estás seguro de que deseas eliminar a{' '}
+              <strong>
+                {userData?.name || userData?.full_name || 'este usuario'}
+              </strong>
+              ?
             </p>
 
             {userData?.hasActiveGymMembership && (
@@ -1908,7 +2407,9 @@ export default function UserDetailPage() {
 
             {deleteError && (
               <div className="mb-4 p-3 bg-red-100 dark:bg-red-500/20 rounded-lg border border-red-200 dark:border-red-500/30">
-                <p className="text-sm text-red-700 dark:text-red-400">{deleteError}</p>
+                <p className="text-sm text-red-700 dark:text-red-400">
+                  {deleteError}
+                </p>
               </div>
             )}
 
@@ -1953,22 +2454,32 @@ export default function UserDetailPage() {
                 <AlertTriangle className="w-6 h-6 text-orange-600 dark:text-orange-400" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-[#164151] dark:text-white">Cancelar Membresía</h3>
-                <p className="text-sm text-gray-500 dark:text-white/50">Esta acción no se puede deshacer</p>
+                <h3 className="text-lg font-bold text-[#164151] dark:text-white">
+                  Cancelar Membresía
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-white/50">
+                  Esta acción no se puede deshacer
+                </p>
               </div>
             </div>
 
             <p className="text-[#164151] dark:text-white/80 mb-4">
-              ¿Estás seguro de que deseas cancelar el plan <strong>{membershipToCancel.plan?.name || 'seleccionado'}</strong>?
+              ¿Estás seguro de que deseas cancelar el plan{' '}
+              <strong>{membershipToCancel.plan?.name || 'seleccionado'}</strong>
+              ?
             </p>
 
             <div className="p-3 bg-gray-50 dark:bg-white/5 rounded-lg mb-4">
               <p className="text-sm text-gray-600 dark:text-white/60">
-                <strong>Vencimiento:</strong> {parseLocalDate(membershipToCancel.end_date).toLocaleDateString('es-ES', {
-                  day: '2-digit',
-                  month: 'long',
-                  year: 'numeric',
-                })}
+                <strong>Vencimiento:</strong>{' '}
+                {parseLocalDate(membershipToCancel.end_date).toLocaleDateString(
+                  'es-ES',
+                  {
+                    day: '2-digit',
+                    month: 'long',
+                    year: 'numeric',
+                  },
+                )}
               </p>
             </div>
 

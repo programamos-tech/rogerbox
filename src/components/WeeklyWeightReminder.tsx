@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Scale, X, Calendar } from 'lucide-react';
+import { Calendar, Scale, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 interface WeeklyWeightReminderProps {
   onClose: () => void;
@@ -9,7 +9,11 @@ interface WeeklyWeightReminderProps {
   isWeeklyReminder?: boolean; // Para distinguir si es el recordatorio semanal o registro manual
 }
 
-export default function WeeklyWeightReminder({ onClose, onWeightSubmit, isWeeklyReminder = false }: WeeklyWeightReminderProps) {
+export default function WeeklyWeightReminder({
+  onClose,
+  onWeightSubmit,
+  isWeeklyReminder = false,
+}: WeeklyWeightReminderProps) {
   const [weight, setWeight] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -43,7 +47,9 @@ export default function WeeklyWeightReminder({ onClose, onWeightSubmit, isWeekly
                 {isWeeklyReminder ? '¡Es Viernes! 📅' : 'Registrar Peso'}
               </h3>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                {isWeeklyReminder ? 'Hora de pesarte' : 'Registra tu peso actual'}
+                {isWeeklyReminder
+                  ? 'Hora de pesarte'
+                  : 'Registra tu peso actual'}
               </p>
             </div>
           </div>
@@ -65,13 +71,17 @@ export default function WeeklyWeightReminder({ onClose, onWeightSubmit, isWeekly
               </span>
             </div>
             <p className="text-sm text-gray-700 dark:text-gray-300">
-              Registra tu peso para mantener un seguimiento de tu progreso y alcanzar tus metas.
+              Registra tu peso para mantener un seguimiento de tu progreso y
+              alcanzar tus metas.
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="weight" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label
+                htmlFor="weight"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+              >
                 ¿Cuál es tu peso actual? (kg)
               </label>
               <input
@@ -119,7 +129,8 @@ export default function WeeklyWeightReminder({ onClose, onWeightSubmit, isWeekly
 
         {/* Footer */}
         <div className="text-xs text-gray-500 dark:text-gray-400 text-center">
-          💡 Tip: Pésate siempre a la misma hora para obtener mediciones más precisas
+          💡 Tip: Pésate siempre a la misma hora para obtener mediciones más
+          precisas
         </div>
       </div>
     </div>

@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { Play, Pause, Maximize, Minimize } from 'lucide-react';
+import { Maximize, Minimize, Pause, Play } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
 declare global {
   interface Window {
@@ -21,7 +21,7 @@ export default function RogerBoxVideoPlayer({
   videoId,
   courseImage,
   courseTitle,
-  autoPlay = true
+  autoPlay = true,
 }: RogerBoxVideoPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(autoPlay);
   const [currentTime, setCurrentTime] = useState(0);
@@ -116,14 +116,14 @@ export default function RogerBoxVideoPlayer({
           // Parámetros de calidad más agresivos
           vq: 'hd1080',
           hd: 1,
-          quality: 'hd1080'
+          quality: 'hd1080',
         },
         events: {
           onReady: (event: any) => {
             console.log('✅ Reproductor RogerBox listo');
             setYoutubePlayer(event.target);
             setIsLoading(false);
-            
+
             // Forzar calidad HD múltiples veces
             const forceHD = () => {
               try {
@@ -133,7 +133,7 @@ export default function RogerBoxVideoPlayer({
                 console.warn('⚠️ Error al forzar HD:', error);
               }
             };
-            
+
             forceHD();
             if (autoPlay) {
               event.target.playVideo();
@@ -150,8 +150,8 @@ export default function RogerBoxVideoPlayer({
           onError: (event: any) => {
             console.error('❌ Error en el reproductor:', event.data);
             setIsLoading(false);
-          }
-        }
+          },
+        },
       });
     }
   };
@@ -176,8 +176,13 @@ export default function RogerBoxVideoPlayer({
   }, [youtubePlayer, isPlaying]);
 
   const togglePlayPause = () => {
-    console.log('🎮 togglePlayPause llamado, youtubePlayer:', !!youtubePlayer, 'isPlaying:', isPlaying);
-    
+    console.log(
+      '🎮 togglePlayPause llamado, youtubePlayer:',
+      !!youtubePlayer,
+      'isPlaying:',
+      isPlaying,
+    );
+
     if (youtubePlayer) {
       if (isPlaying) {
         // Guardar el tiempo actual antes de pausar
@@ -272,26 +277,31 @@ export default function RogerBoxVideoPlayer({
 
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
-      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
-      document.removeEventListener('msfullscreenchange', handleFullscreenChange);
+      document.removeEventListener(
+        'webkitfullscreenchange',
+        handleFullscreenChange,
+      );
+      document.removeEventListener(
+        'msfullscreenchange',
+        handleFullscreenChange,
+      );
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, [isFullscreen]);
 
   return (
-    <div 
+    <div
       ref={containerRef}
       className={`relative bg-gray-900 rounded-2xl overflow-hidden shadow-lg group rogerbox-player ${
         isFullscreen ? 'fixed inset-0 z-50 rounded-none' : ''
       }`}
     >
       {/* Contenedor con aspect ratio 16:9 para que coincida con el video */}
-      <div className={`relative w-full ${isFullscreen ? 'h-screen' : 'aspect-video'}`}>
+      <div
+        className={`relative w-full ${isFullscreen ? 'h-screen' : 'aspect-video'}`}
+      >
         {/* Video de YouTube (siempre presente) */}
-        <div
-          ref={playerRef}
-          className="absolute inset-0 w-full h-full"
-        />
+        <div ref={playerRef} className="absolute inset-0 w-full h-full" />
 
         {/* Imagen del curso (siempre presente, pero oculta cuando está reproduciendo) */}
         <img
@@ -302,37 +312,38 @@ export default function RogerBoxVideoPlayer({
           }`}
         />
 
+        {/* Controles personalizados de RogerBox */}
+        <div className="absolute inset-0 flex items-center justify-center z-30">
+          <button
+            onClick={togglePlayPause}
+            className={`w-16 h-16 bg-[#85ea10] rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-all duration-300 ${
+              isPlaying ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'
+            }`}
+          >
+            {isPlaying ? (
+              <Pause className="w-6 h-6 text-black" />
+            ) : (
+              <Play className="w-6 h-6 text-black ml-1" />
+            )}
+          </button>
+        </div>
 
-                {/* Controles personalizados de RogerBox */}
-                <div className="absolute inset-0 flex items-center justify-center z-30">
-                  <button
-                    onClick={togglePlayPause}
-                    className={`w-16 h-16 bg-[#85ea10] rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-all duration-300 ${
-                      isPlaying ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'
-                    }`}
-                  >
-                    {isPlaying ? (
-                      <Pause className="w-6 h-6 text-black" />
-                    ) : (
-                      <Play className="w-6 h-6 text-black ml-1" />
-                    )}
-                  </button>
-                </div>
-
-                {/* Botón de pantalla completa */}
-                <div className="absolute top-4 right-4 z-30">
-                  <button
-                    onClick={toggleFullscreen}
-                    className="w-10 h-10 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center text-white transition-all duration-300 hover:scale-110"
-                    title={isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
-                  >
-                    {isFullscreen ? (
-                      <Minimize className="w-5 h-5" />
-                    ) : (
-                      <Maximize className="w-5 h-5" />
-                    )}
-                  </button>
-                </div>
+        {/* Botón de pantalla completa */}
+        <div className="absolute top-4 right-4 z-30">
+          <button
+            onClick={toggleFullscreen}
+            className="w-10 h-10 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center text-white transition-all duration-300 hover:scale-110"
+            title={
+              isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'
+            }
+          >
+            {isFullscreen ? (
+              <Minimize className="w-5 h-5" />
+            ) : (
+              <Maximize className="w-5 h-5" />
+            )}
+          </button>
+        </div>
 
         {/* Barra de progreso de RogerBox - Solo visible cuando está pausado */}
         {!isPlaying && (

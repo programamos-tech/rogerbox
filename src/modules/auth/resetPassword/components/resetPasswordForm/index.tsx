@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import { useResetPassword } from '../../hooks/useSetPAssword';
 import PasswordField from '../passwordField';
 import { className as styles } from './styles';
-import { useResetPassword } from '../../hooks/useSetPAssword';
 
 function ResetPasswordForm() {
   const { reset, loading, error, success } = useResetPassword();

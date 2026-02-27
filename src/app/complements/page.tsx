@@ -1,10 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { ArrowLeft, Filter, Search } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Search, Filter } from 'lucide-react';
+import { useState } from 'react';
 import ComplementSection from '@/components/ComplementSection';
-
 
 const categories = [
   { name: 'Todos', emoji: '🌟', color: 'bg-white/20' },
@@ -15,7 +14,7 @@ const categories = [
   { name: 'Movilidad', emoji: '🏃', color: 'bg-cyan-500/20' },
   { name: 'Yoga', emoji: '🧘‍♀️', color: 'bg-pink-500/20' },
   { name: 'Cardio', emoji: '❤️', color: 'bg-red-500/20' },
-  { name: 'Fuerza', emoji: '💪', color: 'bg-yellow-500/20' }
+  { name: 'Fuerza', emoji: '💪', color: 'bg-yellow-500/20' },
 ];
 
 export default function AllComplements() {
@@ -39,7 +38,7 @@ export default function AllComplements() {
                 ROGER<span className="text-[#85ea10]">BOX</span>
               </h1>
             </button>
-            
+
             {/* Back Button */}
             <button
               onClick={() => router.back()}
@@ -55,8 +54,12 @@ export default function AllComplements() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Page Title */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2">Todos los Complementos</h1>
-          <p className="text-white/60 text-lg">Descubre rutinas y ejercicios para complementar tu entrenamiento</p>
+          <h1 className="text-4xl font-bold text-white mb-2">
+            Todos los Complementos
+          </h1>
+          <p className="text-white/60 text-lg">
+            Descubre rutinas y ejercicios para complementar tu entrenamiento
+          </p>
         </div>
 
         {/* Search and Filters */}
@@ -80,7 +83,7 @@ export default function AllComplements() {
               <span className="text-white/80 font-medium">Categorías:</span>
             </div>
             <div className="flex flex-wrap gap-3">
-              {categories.map(category => (
+              {categories.map((category) => (
                 <button
                   key={category.name}
                   onClick={() => setSelectedCategory(category.name)}

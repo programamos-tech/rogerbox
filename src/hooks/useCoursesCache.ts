@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { useEffect, useState } from 'react';
 import { getMostViewedCourse } from '@/lib/analytics';
+import { supabase } from '@/lib/supabase';
 
 interface Course {
   id: string;
@@ -54,7 +54,7 @@ export function useCoursesCache(userProfile: any) {
   // Verificar si el caché es válido
   const isCacheValid = (cacheData: CacheData): boolean => {
     const now = Date.now();
-    return (now - cacheData.lastFetch) < CACHE_DURATION;
+    return now - cacheData.lastFetch < CACHE_DURATION;
   };
 
   // Cargar desde caché
@@ -62,7 +62,7 @@ export function useCoursesCache(userProfile: any) {
     try {
       const cached = localStorage.getItem(CACHE_KEY);
       if (!cached) return null;
-      
+
       const cacheData: CacheData = JSON.parse(cached);
       return isCacheValid(cacheData) ? cacheData : null;
     } catch (error) {
@@ -76,7 +76,7 @@ export function useCoursesCache(userProfile: any) {
     try {
       const cacheData: CacheData = {
         ...data,
-        lastFetch: Date.now()
+        lastFetch: Date.now(),
       };
       localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
     } catch (error) {
@@ -88,7 +88,7 @@ export function useCoursesCache(userProfile: any) {
   const loadCoursesFromDB = async (page: number = 1) => {
     try {
       console.log(`🔄 Cargando página ${page} desde Supabase...`);
-      
+
       const from = (page - 1) * COURSES_PER_PAGE;
       const to = from + COURSES_PER_PAGE - 1;
 
@@ -139,7 +139,7 @@ export function useCoursesCache(userProfile: any) {
       // Crear mapa de categorías
       const categoryMap: { [key: string]: string } = {};
       if (categoriesData) {
-        categoriesData.forEach(cat => {
+        categoriesData.forEach((cat) => {
           categoryMap[cat.id] = cat.name;
         });
       }
@@ -149,16 +149,16 @@ export function useCoursesCache(userProfile: any) {
       console.log('📊 Dashboard: Curso más visitado:', mostViewedCourseId);
 
       // Transformar cursos
-      const transformedCourses = (data || []).map(course => {
+      const transformedCourses = (data || []).map((course) => {
         const categoryName = categoryMap[course.category] || 'Sin categoría';
-        
+
         // Determinar si es nuevo (últimas 2 semanas)
         const twoWeeksAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
         const isNew = new Date(course.created_at) > twoWeeksAgo;
-        
+
         // Determinar si es popular (el más visitado de la lista actual)
         const isPopular = mostViewedCourseId === course.id;
-        
+
         const transformed = {
           ...course,
           instructor: 'RogerBox',
@@ -171,16 +171,16 @@ export function useCoursesCache(userProfile: any) {
           students: course.students_count,
           category: course.category, // Usar el ID de la categoría
           category_name: categoryName, // Agregar el nombre de la categoría
-          originalCategory: course.category
+          originalCategory: course.category,
         };
-        
+
         console.log('📊 Curso transformado:', {
           title: transformed.title,
           duration_days: transformed.duration_days,
           students: transformed.students,
-          students_count: transformed.students_count
+          students_count: transformed.students_count,
         });
-        
+
         return transformed;
       });
 
@@ -194,18 +194,27 @@ export function useCoursesCache(userProfile: any) {
         // Si uno es popular y el otro no, el popular va primero
         if (a.isPopular && !b.isPopular) return -1;
         if (!a.isPopular && b.isPopular) return 1;
-        
+
         // Si ambos son populares o ninguno, ordenar por fecha de creación (más reciente primero)
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        return (
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
       });
-      
-      console.log('📊 Dashboard: Cursos ordenados - Popular primero:', sortedCourses.map(c => ({ title: c.title, isPopular: c.isPopular, isNew: c.isNew })));
+
+      console.log(
+        '📊 Dashboard: Cursos ordenados - Popular primero:',
+        sortedCourses.map((c) => ({
+          title: c.title,
+          isPopular: c.isPopular,
+          isNew: c.isNew,
+        })),
+      );
 
       return {
         courses: sortedCourses,
         totalCount,
         currentPage: page,
-        totalPages
+        totalPages,
       };
     } catch (error) {
       console.error('Error loading courses from DB:', error);
@@ -214,7 +223,10 @@ export function useCoursesCache(userProfile: any) {
   };
 
   // Cargar cursos (con caché)
-  const loadCourses = async (page: number = 1, forceRefresh: boolean = false) => {
+  const loadCourses = async (
+    page: number = 1,
+    forceRefresh: boolean = false,
+  ) => {
     try {
       setLoading(true);
       setError(null);
@@ -236,7 +248,7 @@ export function useCoursesCache(userProfile: any) {
       // Cargar desde base de datos
       console.log('🔄 Cargando desde base de datos...');
       const data = await loadCoursesFromDB(page);
-      
+
       setCourses(data.courses);
       setCurrentPage(data.currentPage);
       setTotalPages(data.totalPages);
@@ -244,7 +256,6 @@ export function useCoursesCache(userProfile: any) {
 
       // Guardar en caché
       saveToCache(data);
-      
     } catch (error) {
       console.error('Error loading courses:', error);
       setError(error instanceof Error ? error.message : 'Error desconocido');
@@ -286,6 +297,6 @@ export function useCoursesCache(userProfile: any) {
     error,
     changePage,
     refresh,
-    coursesPerPage: COURSES_PER_PAGE
+    coursesPerPage: COURSES_PER_PAGE,
   };
 }

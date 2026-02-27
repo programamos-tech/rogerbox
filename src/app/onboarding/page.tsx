@@ -17,28 +17,32 @@ export default function OnboardingPage() {
   useEffect(() => {
     const checkAuth = async () => {
       if (loading) return;
-      
+
       // Si no hay usuario en el hook, verificar directamente con Supabase
       if (!user) {
-        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        const {
+          data: { session: currentSession },
+        } = await supabase.auth.getSession();
         if (!currentSession?.user) {
           console.log('Onboarding: No hay sesión, redirigiendo a login');
           router.push('/login');
           return;
         }
       }
-      
+
       setAuthChecked(true);
     };
-    
+
     checkAuth();
   }, [loading, user, router]);
 
   const handleComplete = async (profileData: any) => {
     // Obtener el usuario actual directamente de Supabase
-    const { data: { session: currentSession } } = await supabase.auth.getSession();
+    const {
+      data: { session: currentSession },
+    } = await supabase.auth.getSession();
     const currentUser = currentSession?.user || user;
-    
+
     if (!currentUser?.id) {
       console.error('No hay usuario autenticado');
       alert('Error: No hay sesión activa. Por favor, inicia sesión de nuevo.');
@@ -55,7 +59,7 @@ export default function OnboardingPage() {
       console.log('Profile data:', profileData);
 
       const accessToken = currentSession?.access_token;
-      
+
       if (!accessToken) {
         console.error('No hay token de acceso');
         alert('Error de autenticación. Por favor, recarga la página.');
@@ -68,7 +72,7 @@ export default function OnboardingPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({ profile: profileData }),
       });
@@ -83,10 +87,9 @@ export default function OnboardingPage() {
       }
 
       console.log('✅ Perfil guardado:', result.data);
-      
+
       // Redirigir al dashboard - usar window.location para forzar recarga completa
       window.location.href = '/dashboard';
-      
     } catch (error) {
       console.error('Error inesperado:', error);
       alert('Error inesperado. Intenta de nuevo.');
@@ -107,10 +110,15 @@ export default function OnboardingPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
-      <Onboarding 
-        onComplete={handleComplete} 
+      <Onboarding
+        onComplete={handleComplete}
         isUpdating={isUpdating}
-        userName={profile?.name || currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || 'Usuario'}
+        userName={
+          profile?.name ||
+          currentUser.user_metadata?.name ||
+          currentUser.email?.split('@')[0] ||
+          'Usuario'
+        }
       />
     </div>
   );

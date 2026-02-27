@@ -1,16 +1,20 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getSession } from '@/lib/supabase-server';
-import { supabaseAdmin } from '@/lib/supabase';
 import { cookies } from 'next/headers';
+import { type NextRequest, NextResponse } from 'next/server';
+import { supabaseAdmin } from '@/lib/supabase';
+import { getSession } from '@/lib/supabase-server';
 
 function normalizeEmail(val?: string | null) {
   return (val || '').trim().toLowerCase();
 }
 
-function isAdminUser(user: { id?: string; email?: string; user_metadata?: any } | null) {
+function isAdminUser(
+  user: { id?: string; email?: string; user_metadata?: any } | null,
+) {
   if (!user) return false;
   const envId = (process.env.NEXT_PUBLIC_ADMIN_USER_ID || '').trim();
-  const envEmail = normalizeEmail(process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'rogerbox@admin.com');
+  const envEmail = normalizeEmail(
+    process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'rogerbox@admin.com',
+  );
   const matchId = !!envId && user.id === envId;
   const matchEmail = normalizeEmail(user.email) === envEmail;
   const matchRole = user.user_metadata?.role === 'admin';
@@ -95,7 +99,10 @@ export async function POST(request: NextRequest) {
 
   if (!isAdminUser(user)) {
     // Fallback dev bypass: si no hay session pero estamos en dev y hay service key, permitir
-    if (process.env.NODE_ENV !== 'production' && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    if (
+      process.env.NODE_ENV !== 'production' &&
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    ) {
       console.warn('Bypassing admin check in dev for categories POST');
     } else {
       console.error('Categories POST unauthorized', {
@@ -112,16 +119,16 @@ export async function POST(request: NextRequest) {
   const body = await request.json();
   const { name, description, icon, color, sort_order } = body;
 
-  const { error } = await supabaseAdmin
-    .from('course_categories')
-    .insert([{
+  const { error } = await supabaseAdmin.from('course_categories').insert([
+    {
       name,
       description,
       icon,
       color,
       sort_order: sort_order ?? 0,
       is_active: true,
-    }]);
+    },
+  ]);
 
   if (error) {
     console.error('Categories POST error:', error);
@@ -209,4 +216,3 @@ export async function DELETE(request: NextRequest) {
 
   return NextResponse.json({ ok: true });
 }
-

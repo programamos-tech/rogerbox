@@ -1,19 +1,16 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ slug: string }> }
+  { params }: { params: Promise<{ slug: string }> },
 ) {
   try {
     const resolvedParams = await params;
     const { slug } = resolvedParams;
 
     if (!slug) {
-      return NextResponse.json(
-        { error: 'Slug requerido' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Slug requerido' }, { status: 400 });
     }
 
     // Buscar curso por slug
@@ -27,7 +24,7 @@ export async function GET(
     if (courseError || !course) {
       return NextResponse.json(
         { error: 'Curso no encontrado' },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -46,15 +43,14 @@ export async function GET(
       success: true,
       course: {
         ...course,
-        lessons: lessons || []
-      }
+        lessons: lessons || [],
+      },
     });
-
   } catch (error) {
     console.error('Error in get course by slug:', error);
     return NextResponse.json(
       { error: 'Error interno del servidor' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

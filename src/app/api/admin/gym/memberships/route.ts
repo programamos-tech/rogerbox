@@ -1,17 +1,21 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getUser } from '@/lib/supabase-server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { type NextRequest, NextResponse } from 'next/server';
 import { insertLog, STORE_ID_FISICA } from '@/lib/logs-service';
-import { GymMembershipInsert } from '@/types/gym';
+import { supabaseAdmin } from '@/lib/supabase';
+import { getUser } from '@/lib/supabase-server';
+import type { GymMembershipInsert } from '@/types/gym';
 
 function normalizeEmail(val?: string | null) {
   return (val || '').trim().toLowerCase();
 }
 
-function isAdminUser(user: { id?: string; email?: string; user_metadata?: any } | null) {
+function isAdminUser(
+  user: { id?: string; email?: string; user_metadata?: any } | null,
+) {
   if (!user) return false;
   const envId = (process.env.NEXT_PUBLIC_ADMIN_USER_ID || '').trim();
-  const envEmail = normalizeEmail(process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'rogerbox@admin.com');
+  const envEmail = normalizeEmail(
+    process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'rogerbox@admin.com',
+  );
   const matchId = !!envId && user.id === envId;
   const matchEmail = normalizeEmail(user.email) === envEmail;
   const matchRole = user.user_metadata?.role === 'admin';
@@ -22,7 +26,7 @@ function isAdminUser(user: { id?: string; email?: string; user_metadata?: any } 
 export async function GET(request: NextRequest) {
   try {
     const { user } = await getUser();
-    
+
     if (!isAdminUser(user)) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
@@ -62,13 +66,19 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error('Error fetching gym memberships:', error);
-      return NextResponse.json({ error: 'Error al obtener membresías' }, { status: 500 });
+      return NextResponse.json(
+        { error: 'Error al obtener membresías' },
+        { status: 500 },
+      );
     }
 
     return NextResponse.json(data || []);
   } catch (error) {
     console.error('Error in GET /api/admin/gym/memberships:', error);
-    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Error interno del servidor' },
+      { status: 500 },
+    );
   }
 }
 
@@ -76,19 +86,20 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const { user } = await getUser();
-    
+
     if (!isAdminUser(user)) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
     const body: GymMembershipInsert = await request.json();
-    const { client_info_id, plan_id, start_date, end_date, status, user_id } = body;
+    const { client_info_id, plan_id, start_date, end_date, status, user_id } =
+      body;
 
     // Validaciones
     if (!client_info_id || !plan_id) {
       return NextResponse.json(
         { error: 'Cliente y plan son requeridos' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -100,7 +111,10 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (clientError || !client) {
-      return NextResponse.json({ error: 'Cliente no encontrado' }, { status: 404 });
+      return NextResponse.json(
+        { error: 'Cliente no encontrado' },
+        { status: 404 },
+      );
     }
 
     // Verificar que el plan existe y está activo
@@ -111,11 +125,17 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (planError || !plan) {
-      return NextResponse.json({ error: 'Plan no encontrado' }, { status: 404 });
+      return NextResponse.json(
+        { error: 'Plan no encontrado' },
+        { status: 404 },
+      );
     }
 
     if (!plan.is_active) {
-      return NextResponse.json({ error: 'El plan no está activo' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'El plan no está activo' },
+        { status: 400 },
+      );
     }
 
     // Usar user_id del cliente si existe, o el proporcionado
@@ -128,15 +148,20 @@ export async function POST(request: NextRequest) {
     // Buscar membresías activas o programadas del cliente (no canceladas)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
-    const { data: existingMemberships, error: existingError } = await supabaseAdmin
-      .from('gym_memberships')
-      .select('id, end_date, status')
-      .eq('client_info_id', client_info_id)
-      .neq('status', 'cancelled')
-      .order('end_date', { ascending: false });
 
-    if (!existingError && existingMemberships && existingMemberships.length > 0) {
+    const { data: existingMemberships, error: existingError } =
+      await supabaseAdmin
+        .from('gym_memberships')
+        .select('id, end_date, status')
+        .eq('client_info_id', client_info_id)
+        .neq('status', 'cancelled')
+        .order('end_date', { ascending: false });
+
+    if (
+      !existingError &&
+      existingMemberships &&
+      existingMemberships.length > 0
+    ) {
       // Encontrar la membresía con la fecha de fin más lejana (activa o programada)
       const latestMembership = existingMemberships.find((m: any) => {
         const endDate = new Date(m.end_date);
@@ -156,7 +181,9 @@ export async function POST(request: NextRequest) {
 
         // Calcular fecha de fin basada en la duración del plan
         const newEndDate = new Date(newStartDate);
-        newEndDate.setDate(newEndDate.getDate() + (plan.duration_days || 30) - 1);
+        newEndDate.setDate(
+          newEndDate.getDate() + (plan.duration_days || 30) - 1,
+        );
         finalEndDate = newEndDate.toISOString().split('T')[0];
       }
     }
@@ -167,7 +194,9 @@ export async function POST(request: NextRequest) {
     }
     if (!finalEndDate) {
       const endDateCalc = new Date(finalStartDate);
-      endDateCalc.setDate(endDateCalc.getDate() + (plan.duration_days || 30) - 1);
+      endDateCalc.setDate(
+        endDateCalc.getDate() + (plan.duration_days || 30) - 1,
+      );
       finalEndDate = endDateCalc.toISOString().split('T')[0];
     }
 
@@ -192,14 +221,21 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('Error creating gym membership:', error);
-      return NextResponse.json({ error: 'Error al crear membresía' }, { status: 500 });
+      return NextResponse.json(
+        { error: 'Error al crear membresía' },
+        { status: 500 },
+      );
     }
 
     await insertLog({
       user_id: user?.id ?? finalUserId,
       action: 'membership_create',
       module: 'gym',
-      details: { plan_id, client_info_id, description: 'Nueva membresía sede física' },
+      details: {
+        plan_id,
+        client_info_id,
+        description: 'Nueva membresía sede física',
+      },
       store_id: STORE_ID_FISICA,
     });
 
@@ -209,6 +245,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ...data, isAdvancePayment }, { status: 201 });
   } catch (error) {
     console.error('Error in POST /api/admin/gym/memberships:', error);
-    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Error interno del servidor' },
+      { status: 500 },
+    );
   }
 }

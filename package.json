@@ -12,7 +12,8 @@
     "lint:fix": "biome check src --write",
     "format": "biome format src --write",
     "migrate-images": "node scripts/migrate-base64-to-webp.js",
-    "create-admin:prod": "node scripts/create-admin-production.js"
+    "create-admin:prod": "node scripts/create-admin-production.js",
+    "ts": "tsc --noEmit"
   },
   "dependencies": {
     "@mux/mux-player": "3.6.1",

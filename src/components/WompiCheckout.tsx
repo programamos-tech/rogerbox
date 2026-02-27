@@ -1,8 +1,17 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import {
+  CreditCard,
+  FileText,
+  Loader2,
+  Mail,
+  MapPin,
+  Shield,
+  User,
+  X,
+} from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
-import { CreditCard, Loader2, X, User, Mail, MapPin, FileText, Shield } from 'lucide-react';
 import { supabase } from '@/lib/supabase-browser';
 
 interface WompiCheckoutProps {
@@ -27,13 +36,18 @@ interface BuyerData {
   address: string;
 }
 
-export default function WompiCheckout({ course, onSuccess, onError, onClose }: WompiCheckoutProps) {
+export default function WompiCheckout({
+  course,
+  onSuccess,
+  onError,
+  onClose,
+}: WompiCheckoutProps) {
   const { user } = useSupabaseAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [widgetReady, setWidgetReady] = useState(false);
   const [wompiPublicKey, setWompiPublicKey] = useState<string>('');
-  
+
   // Datos del comprador
   const [buyerData, setBuyerData] = useState<BuyerData>({
     firstName: '',
@@ -56,7 +70,10 @@ export default function WompiCheckout({ course, onSuccess, onError, onClose }: W
 
         if (data.publicKey) {
           setWompiPublicKey(data.publicKey);
-          console.log('✅ Wompi public key cargada:', data.publicKey.substring(0, 20) + '...');
+          console.log(
+            '✅ Wompi public key cargada:',
+            data.publicKey.substring(0, 20) + '...',
+          );
           console.log('🌍 Entorno:', data.environment);
         } else {
           console.error('❌ No se pudo obtener la public key de Wompi');
@@ -80,14 +97,19 @@ export default function WompiCheckout({ course, onSuccess, onError, onClose }: W
     const checkWidget = () => {
       attempts++;
       if (attempts % 10 === 0) {
-        console.log(`🔍 Verificando widget (intento ${attempts}/${maxAttempts})...`);
+        console.log(
+          `🔍 Verificando widget (intento ${attempts}/${maxAttempts})...`,
+        );
       }
 
-      if (typeof window !== 'undefined' && typeof window.WidgetCheckout === 'function') {
+      if (
+        typeof window !== 'undefined' &&
+        typeof window.WidgetCheckout === 'function'
+      ) {
         console.log('✅ Widget de Wompi encontrado y listo!');
         console.log('📦 window.WidgetCheckout:', window.WidgetCheckout);
         console.log('🔍 Verificando que sea una función constructora...');
-        
+
         // Verificar que se puede instanciar (sin crear realmente una instancia)
         try {
           // Solo verificar que es una función, no crear instancia aún
@@ -99,17 +121,25 @@ export default function WompiCheckout({ course, onSuccess, onError, onClose }: W
           console.warn('⚠️ Error verificando widget:', e);
         }
       }
-      
+
       if (attempts < maxAttempts) {
         setTimeout(checkWidget, 100);
       } else {
         console.error('❌ Widget de Wompi no se cargó después de 10 segundos');
-        console.error('💡 Verifica que el script de Wompi se esté cargando desde https://checkout.wompi.co/widget.js');
-        const wompiScripts = Array.from(document.scripts).map(s => s.src).filter(src => src.includes('wompi'));
+        console.error(
+          '💡 Verifica que el script de Wompi se esté cargando desde https://checkout.wompi.co/widget.js',
+        );
+        const wompiScripts = Array.from(document.scripts)
+          .map((s) => s.src)
+          .filter((src) => src.includes('wompi'));
         console.error('🔍 Scripts cargados:', wompiScripts);
         if (wompiScripts.length === 0) {
-          console.error('❌ No se encontró el script de Wompi. Intenta recargar la página.');
-          onError?.('El widget de pago no se cargó correctamente. Por favor recarga la página.');
+          console.error(
+            '❌ No se encontró el script de Wompi. Intenta recargar la página.',
+          );
+          onError?.(
+            'El widget de pago no se cargó correctamente. Por favor recarga la página.',
+          );
         }
       }
     };
@@ -136,7 +166,7 @@ export default function WompiCheckout({ course, onSuccess, onError, onClose }: W
         if (error) {
           console.warn('⚠️ Error cargando perfil:', error);
           // Pre-cargar al menos el email del usuario de auth
-          setBuyerData(prev => ({
+          setBuyerData((prev) => ({
             ...prev,
             email: user?.email || '',
           }));
@@ -148,8 +178,12 @@ export default function WompiCheckout({ course, onSuccess, onError, onClose }: W
           if (profile.name) {
             const nameParts = profile.name.trim().split(' ');
             if (nameParts.length >= 2) {
-              firstName = nameParts.slice(0, Math.ceil(nameParts.length / 2)).join(' ');
-              lastName = nameParts.slice(Math.ceil(nameParts.length / 2)).join(' ');
+              firstName = nameParts
+                .slice(0, Math.ceil(nameParts.length / 2))
+                .join(' ');
+              lastName = nameParts
+                .slice(Math.ceil(nameParts.length / 2))
+                .join(' ');
             } else {
               firstName = profile.name;
             }
@@ -160,12 +194,13 @@ export default function WompiCheckout({ course, onSuccess, onError, onClose }: W
             lastName: lastName,
             email: profile.email || user?.email || '',
             documentId: profile.document_id || '',
-            documentType: (profile.document_type as 'CC' | 'NIT' | 'CE' | 'PP') || 'CC',
+            documentType:
+              (profile.document_type as 'CC' | 'NIT' | 'CE' | 'PP') || 'CC',
             address: profile.address || '',
           });
         } else {
           // Si no existe el perfil, solo pre-cargar el email
-          setBuyerData(prev => ({
+          setBuyerData((prev) => ({
             ...prev,
             email: user?.email || '',
           }));
@@ -173,7 +208,7 @@ export default function WompiCheckout({ course, onSuccess, onError, onClose }: W
       } catch (error) {
         console.error('❌ Error cargando perfil:', error);
         // Pre-cargar al menos el email del usuario de auth
-        setBuyerData(prev => ({
+        setBuyerData((prev) => ({
           ...prev,
           email: user?.email || '',
         }));
@@ -199,11 +234,13 @@ export default function WompiCheckout({ course, onSuccess, onError, onClose }: W
   const handlePayment = async () => {
     console.log('🔵 handlePayment iniciado');
     console.log('📋 Validación de formulario:', isFormValid());
-    
+
     // Verificar si estamos en modo mock (solo en desarrollo local)
     // El modo mock solo está permitido en desarrollo
-    const isMockMode = process.env.NODE_ENV !== 'production' && process.env.NEXT_PUBLIC_MOCK_PAYMENTS === 'true';
-    
+    const isMockMode =
+      process.env.NODE_ENV !== 'production' &&
+      process.env.NEXT_PUBLIC_MOCK_PAYMENTS === 'true';
+
     if (isMockMode) {
       console.log('🎭 MODO MOCK ACTIVADO - Simulando pago sin Wompi');
     } else {
@@ -250,7 +287,9 @@ export default function WompiCheckout({ course, onSuccess, onError, onClose }: W
           courseId: course.id,
           amount: course.price,
           originalPrice: course.original_price,
-          discountAmount: course.original_price ? course.original_price - course.price : 0,
+          discountAmount: course.original_price
+            ? course.original_price - course.price
+            : 0,
           customerEmail: buyerData.email,
           customerName: fullName,
           // Datos adicionales del comprador
@@ -275,30 +314,34 @@ export default function WompiCheckout({ course, onSuccess, onError, onClose }: W
       const { orderId, reference, signature } = orderData;
 
       // Verificar si estamos en modo mock (solo en desarrollo)
-      const isMockMode = process.env.NODE_ENV !== 'production' && process.env.NEXT_PUBLIC_MOCK_PAYMENTS === 'true';
+      const isMockMode =
+        process.env.NODE_ENV !== 'production' &&
+        process.env.NEXT_PUBLIC_MOCK_PAYMENTS === 'true';
 
       // MODO MOCK: Simular pago exitoso sin llamar a Wompi
       if (isMockMode) {
         console.log('🎭 Simulando pago exitoso en modo mock...');
-        
+
         // Simular un pequeño delay para que parezca real y dar tiempo a que se complete la actualización en el backend
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+
         // Simular respuesta exitosa de Wompi
         const mockTransactionId = `mock-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-        
+
         console.log('✅ Pago simulado exitosamente');
         console.log('📝 Transaction ID (mock):', mockTransactionId);
-        console.log('⏳ Esperando a que el backend complete la actualización...');
-        
+        console.log(
+          '⏳ Esperando a que el backend complete la actualización...',
+        );
+
         // Dar un momento adicional para asegurar que la actualización se haya propagado
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
+        await new Promise((resolve) => setTimeout(resolve, 500));
+
         setIsLoading(false);
-        
+
         // Llamar callback de éxito
         onSuccess?.();
-        
+
         // Redirigir a página de resultado como si fuera un pago real
         window.location.href = `${window.location.origin}/payment/result?order_id=${orderId}&reference=${reference}&id=${mockTransactionId}`;
         return;
@@ -314,11 +357,16 @@ export default function WompiCheckout({ course, onSuccess, onError, onClose }: W
       console.log('🔐 Firma:', signature?.substring(0, 20) + '...');
       console.log('🔑 Public Key:', wompiPublicKey.substring(0, 20) + '...');
       console.log('👤 Cliente:', buyerData.email, fullName);
-      console.log('🔗 Redirect URL:', `${window.location.origin}/payment/result?order_id=${orderId}&reference=${reference}`);
+      console.log(
+        '🔗 Redirect URL:',
+        `${window.location.origin}/payment/result?order_id=${orderId}&reference=${reference}`,
+      );
 
       // Verificar que window.WidgetCheckout existe
       if (typeof window.WidgetCheckout !== 'function') {
-        throw new Error('El widget de Wompi no está disponible. Por favor recarga la página.');
+        throw new Error(
+          'El widget de Wompi no está disponible. Por favor recarga la página.',
+        );
       }
 
       console.log('🚀 Creando instancia del widget...');
@@ -338,19 +386,25 @@ export default function WompiCheckout({ course, onSuccess, onError, onClose }: W
       // Solo agregar signature si existe
       if (signature) {
         (widgetConfig as any).signature = {
-          integrity: signature
+          integrity: signature,
         };
       }
 
-      console.log('📦 Configuración del widget:', JSON.stringify(widgetConfig, null, 2));
+      console.log(
+        '📦 Configuración del widget:',
+        JSON.stringify(widgetConfig, null, 2),
+      );
       console.log('🔍 Verificando URL de redirección...');
-      
+
       // Validar que la URL de redirección sea válida
       try {
         const redirectUrlObj = new URL(widgetConfig.redirectUrl);
         console.log('✅ URL de redirección válida:', redirectUrlObj.href);
       } catch (urlError) {
-        console.error('❌ URL de redirección inválida:', widgetConfig.redirectUrl);
+        console.error(
+          '❌ URL de redirección inválida:',
+          widgetConfig.redirectUrl,
+        );
         throw new Error('URL de redirección inválida');
       }
 
@@ -365,43 +419,58 @@ export default function WompiCheckout({ course, onSuccess, onError, onClose }: W
       console.log('🎭 Abriendo modal del widget...');
 
       // Esperar un momento para asegurar que el widget esté completamente inicializado
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await new Promise((resolve) => setTimeout(resolve, 200));
 
       // Agregar listeners para errores de red (puede ayudar a diagnosticar el 403)
       const errorListener = (event: ErrorEvent) => {
         const target = event.target as HTMLElement;
-        const isWompiError = 
+        const isWompiError =
           (event.message && event.message.includes('wompi')) ||
-          (target && (target.tagName === 'SCRIPT' || target.tagName === 'IFRAME') && 
-           (target.getAttribute('src')?.includes('wompi') || target.getAttribute('src')?.includes('checkout.wompi')));
-        
+          (target &&
+            (target.tagName === 'SCRIPT' || target.tagName === 'IFRAME') &&
+            (target.getAttribute('src')?.includes('wompi') ||
+              target.getAttribute('src')?.includes('checkout.wompi')));
+
         if (isWompiError) {
           console.error('🚨 Error relacionado con Wompi:', event);
           console.error('🚨 Error target:', target);
           console.error('🚨 Error message:', event.message);
-          
+
           // Si es un error 403, mostrar mensaje útil
-          if (event.message?.includes('403') || event.message?.includes('Forbidden')) {
+          if (
+            event.message?.includes('403') ||
+            event.message?.includes('Forbidden')
+          ) {
             console.error('❌ Wompi está bloqueando la solicitud (Error 403)');
-            console.error('💡 Verifica la configuración de Wompi o contacta al soporte');
+            console.error(
+              '💡 Verifica la configuración de Wompi o contacta al soporte',
+            );
             setIsLoading(false);
-            onError?.('Error 403: Wompi rechazó la solicitud. Verifica la configuración.');
+            onError?.(
+              'Error 403: Wompi rechazó la solicitud. Verifica la configuración.',
+            );
           }
         }
       };
-      
+
       // Listener para errores de recursos (scripts, iframes, etc.)
       window.addEventListener('error', errorListener, true);
-      
+
       // También escuchar errores de fetch/XMLHttpRequest
       const originalFetch = window.fetch;
       window.fetch = async (...args) => {
         try {
           const response = await originalFetch(...args);
-          if (!response.ok && response.status === 403 && args[0]?.toString().includes('wompi')) {
+          if (
+            !response.ok &&
+            response.status === 403 &&
+            args[0]?.toString().includes('wompi')
+          ) {
             console.error('🚨 Error 403 en fetch a Wompi:', args[0]);
             setIsLoading(false);
-            onError?.('Error 403: Wompi rechazó la solicitud. Verifica la configuración.');
+            onError?.(
+              'Error 403: Wompi rechazó la solicitud. Verifica la configuración.',
+            );
           }
           return response;
         } catch (error) {
@@ -413,31 +482,43 @@ export default function WompiCheckout({ course, onSuccess, onError, onClose }: W
       try {
         // Verificar que el método open existe y es una función
         if (typeof checkout.open !== 'function') {
-          throw new Error('El método open() no está disponible en el widget de Wompi');
+          throw new Error(
+            'El método open() no está disponible en el widget de Wompi',
+          );
         }
 
         console.log('🔓 Llamando a checkout.open()...');
-        
+
         // Timeout para detectar si el widget no se abre
         const openTimeout = setTimeout(() => {
           console.warn('⚠️ El widget no se ha abierto después de 5 segundos');
-          console.warn('💡 Esto puede indicar un problema con la configuración o que Wompi está bloqueando la solicitud');
-          
+          console.warn(
+            '💡 Esto puede indicar un problema con la configuración o que Wompi está bloqueando la solicitud',
+          );
+
           // Verificar si hay errores de red relacionados con Wompi
           const wompiErrors = [];
-          window.addEventListener('error', (e) => {
-            if (e.message && e.message.includes('wompi')) {
-              wompiErrors.push(e);
-            }
-          }, { once: true });
-          
+          window.addEventListener(
+            'error',
+            (e) => {
+              if (e.message && e.message.includes('wompi')) {
+                wompiErrors.push(e);
+              }
+            },
+            { once: true },
+          );
+
           console.error('❌ Wompi no está respondiendo correctamente');
-          console.error('💡 Verifica la configuración de Wompi o contacta al soporte');
-          
+          console.error(
+            '💡 Verifica la configuración de Wompi o contacta al soporte',
+          );
+
           setIsLoading(false);
-          onError?.('El widget de Wompi no se abrió. Verifica la configuración o contacta al soporte.');
+          onError?.(
+            'El widget de Wompi no se abrió. Verifica la configuración o contacta al soporte.',
+          );
         }, 5000);
-        
+
         // Llamar a open() con el callback
         checkout.open((result: any) => {
           clearTimeout(openTimeout);
@@ -445,7 +526,7 @@ export default function WompiCheckout({ course, onSuccess, onError, onClose }: W
           window.fetch = originalFetch;
           window.removeEventListener('error', errorListener, true);
           console.log('📊 Resultado del Widget:', result);
-          
+
           setIsLoading(false);
 
           // Manejar diferentes estados de transacción
@@ -481,7 +562,7 @@ export default function WompiCheckout({ course, onSuccess, onError, onClose }: W
 
         console.log('✅ checkout.open() llamado exitosamente');
         console.log('⏳ Esperando respuesta del widget...');
-        
+
         // Restaurar fetch y remover listeners después de un tiempo si no hay respuesta
         setTimeout(() => {
           window.fetch = originalFetch;
@@ -493,31 +574,42 @@ export default function WompiCheckout({ course, onSuccess, onError, onClose }: W
         window.removeEventListener('error', errorListener, true);
         console.error('❌ Error al abrir el widget:', openError);
         console.error('❌ Error details:', {
-          message: openError instanceof Error ? openError.message : 'Unknown error',
+          message:
+            openError instanceof Error ? openError.message : 'Unknown error',
           stack: openError instanceof Error ? openError.stack : undefined,
           checkout: checkout,
           config: widgetConfig,
           publicKey: wompiPublicKey.substring(0, 20) + '...',
-          redirectUrl: widgetConfig.redirectUrl
+          redirectUrl: widgetConfig.redirectUrl,
         });
-        
+
         // Manejar errores
-        const errorMessage = openError instanceof Error ? openError.message : String(openError);
-        if (errorMessage.includes('403') || errorMessage.includes('Forbidden')) {
+        const errorMessage =
+          openError instanceof Error ? openError.message : String(openError);
+        if (
+          errorMessage.includes('403') ||
+          errorMessage.includes('Forbidden')
+        ) {
           console.error('🔧 Error 403: Wompi rechazó la solicitud');
-          onError?.('Error 403: Wompi rechazó la solicitud. Verifica la configuración.');
+          onError?.(
+            'Error 403: Wompi rechazó la solicitud. Verifica la configuración.',
+          );
         } else {
           onError?.(errorMessage || 'Error al abrir el widget de pago');
         }
-        
+
         setIsLoading(false);
       }
-
     } catch (error) {
       console.error('❌ Error en el checkout:', error);
-      console.error('❌ Stack trace:', error instanceof Error ? error.stack : 'No stack trace');
+      console.error(
+        '❌ Stack trace:',
+        error instanceof Error ? error.stack : 'No stack trace',
+      );
       setIsLoading(false);
-      onError?.(error instanceof Error ? error.message : 'Error al procesar el pago');
+      onError?.(
+        error instanceof Error ? error.message : 'Error al procesar el pago',
+      );
     }
   };
 
@@ -532,7 +624,7 @@ export default function WompiCheckout({ course, onSuccess, onError, onClose }: W
         >
           <X className="w-5 h-5 text-gray-700 dark:text-gray-300" />
         </button>
-        
+
         {/* Header */}
         <div className="text-center mb-6">
           <div className="w-16 h-16 bg-[#85ea10] rounded-full flex items-center justify-center mx-auto mb-4">
@@ -544,209 +636,252 @@ export default function WompiCheckout({ course, onSuccess, onError, onClose }: W
           <p className="text-gray-600 dark:text-gray-400">{course.title}</p>
         </div>
 
-      {/* Precio */}
-      <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 mb-6">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-gray-600 dark:text-gray-400">Subtotal</span>
-          {course.original_price && course.original_price > course.price ? (
-            <span className="text-gray-500 line-through">
-              ${course.original_price.toLocaleString('es-CO')} COP
-            </span>
-          ) : (
-            <span className="text-gray-900 dark:text-white font-semibold">
-              ${course.price.toLocaleString('es-CO')} COP
-            </span>
-          )}
-        </div>
-        
-        {course.original_price && course.original_price > course.price && (
-          <>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[#85ea10] font-semibold">
-                Descuento ({course.discount_percentage}%)
+        {/* Precio */}
+        <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 mb-6">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-gray-600 dark:text-gray-400">Subtotal</span>
+            {course.original_price && course.original_price > course.price ? (
+              <span className="text-gray-500 line-through">
+                ${course.original_price.toLocaleString('es-CO')} COP
               </span>
-              <span className="text-[#85ea10] font-semibold">
-                -${(course.original_price - course.price).toLocaleString('es-CO')} COP
+            ) : (
+              <span className="text-gray-900 dark:text-white font-semibold">
+                ${course.price.toLocaleString('es-CO')} COP
               </span>
-            </div>
-            <div className="border-t border-gray-300 dark:border-gray-600 pt-2 mt-2">
-              <div className="flex items-center justify-between">
-                <span className="text-lg font-bold text-gray-900 dark:text-white">Total</span>
-                <span className="text-2xl font-bold text-[#85ea10]">
-                  ${course.price.toLocaleString('es-CO')} COP
+            )}
+          </div>
+
+          {course.original_price && course.original_price > course.price && (
+            <>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[#85ea10] font-semibold">
+                  Descuento ({course.discount_percentage}%)
+                </span>
+                <span className="text-[#85ea10] font-semibold">
+                  -$
+                  {(course.original_price - course.price).toLocaleString(
+                    'es-CO',
+                  )}{' '}
+                  COP
                 </span>
               </div>
-            </div>
-          </>
-        )}
-      </div>
+              <div className="border-t border-gray-300 dark:border-gray-600 pt-2 mt-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-lg font-bold text-gray-900 dark:text-white">
+                    Total
+                  </span>
+                  <span className="text-2xl font-bold text-[#85ea10]">
+                    ${course.price.toLocaleString('es-CO')} COP
+                  </span>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
 
-      {/* Formulario de datos del comprador */}
-      <div className="space-y-4 mb-6">
-        {isLoadingProfile ? (
-          <div className="flex items-center justify-center py-4">
-            <Loader2 className="w-5 h-5 animate-spin text-[#85ea10] mr-2" />
-            <span className="text-gray-600 dark:text-gray-400">Cargando datos...</span>
-          </div>
-        ) : (
-          <>
-            {/* Nombres y Apellidos */}
-            <div className="grid grid-cols-2 gap-3">
+        {/* Formulario de datos del comprador */}
+        <div className="space-y-4 mb-6">
+          {isLoadingProfile ? (
+            <div className="flex items-center justify-center py-4">
+              <Loader2 className="w-5 h-5 animate-spin text-[#85ea10] mr-2" />
+              <span className="text-gray-600 dark:text-gray-400">
+                Cargando datos...
+              </span>
+            </div>
+          ) : (
+            <>
+              {/* Nombres y Apellidos */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Nombres <span className="text-[#85ea10]">*</span>
+                  </label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      type="text"
+                      value={buyerData.firstName}
+                      onChange={(e) =>
+                        setBuyerData({
+                          ...buyerData,
+                          firstName: e.target.value,
+                        })
+                      }
+                      placeholder="Juan Carlos"
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#85ea10] dark:bg-gray-700 dark:text-white text-sm"
+                      required
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Apellidos <span className="text-[#85ea10]">*</span>
+                  </label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      type="text"
+                      value={buyerData.lastName}
+                      onChange={(e) =>
+                        setBuyerData({ ...buyerData, lastName: e.target.value })
+                      }
+                      placeholder="Pérez García"
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#85ea10] dark:bg-gray-700 dark:text-white text-sm"
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Cédula/NIT */}
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Tipo Doc <span className="text-[#85ea10]">*</span>
+                  </label>
+                  <select
+                    value={buyerData.documentType}
+                    onChange={(e) =>
+                      setBuyerData({
+                        ...buyerData,
+                        documentType: e.target.value as
+                          | 'CC'
+                          | 'NIT'
+                          | 'CE'
+                          | 'PP',
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#85ea10] dark:bg-gray-700 dark:text-white text-sm"
+                  >
+                    <option value="CC">C.C.</option>
+                    <option value="NIT">NIT</option>
+                    <option value="CE">C.E.</option>
+                    <option value="PP">Pasaporte</option>
+                  </select>
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Número de Documento{' '}
+                    <span className="text-[#85ea10]">*</span>
+                  </label>
+                  <div className="relative">
+                    <FileText className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      type="text"
+                      value={buyerData.documentId}
+                      onChange={(e) =>
+                        setBuyerData({
+                          ...buyerData,
+                          documentId: e.target.value.replace(/[^0-9-]/g, ''),
+                        })
+                      }
+                      placeholder="1234567890"
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#85ea10] dark:bg-gray-700 dark:text-white text-sm"
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Correo electrónico */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Nombres <span className="text-[#85ea10]">*</span>
+                  Correo electrónico <span className="text-[#85ea10]">*</span>
                 </label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input
-                    type="text"
-                    value={buyerData.firstName}
-                    onChange={(e) => setBuyerData({ ...buyerData, firstName: e.target.value })}
-                    placeholder="Juan Carlos"
+                    type="email"
+                    value={buyerData.email}
+                    onChange={(e) =>
+                      setBuyerData({ ...buyerData, email: e.target.value })
+                    }
+                    placeholder="tu@email.com"
                     className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#85ea10] dark:bg-gray-700 dark:text-white text-sm"
                     required
                   />
                 </div>
               </div>
+
+              {/* Dirección */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Apellidos <span className="text-[#85ea10]">*</span>
+                  Dirección de residencia{' '}
+                  <span className="text-[#85ea10]">*</span>
                 </label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input
                     type="text"
-                    value={buyerData.lastName}
-                    onChange={(e) => setBuyerData({ ...buyerData, lastName: e.target.value })}
-                    placeholder="Pérez García"
+                    value={buyerData.address}
+                    onChange={(e) =>
+                      setBuyerData({ ...buyerData, address: e.target.value })
+                    }
+                    placeholder="Calle 123 # 45-67, Barrio, Ciudad"
                     className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#85ea10] dark:bg-gray-700 dark:text-white text-sm"
                     required
                   />
                 </div>
               </div>
-            </div>
 
-            {/* Cédula/NIT */}
-            <div className="grid grid-cols-3 gap-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Tipo Doc <span className="text-[#85ea10]">*</span>
-                </label>
-                <select
-                  value={buyerData.documentType}
-                  onChange={(e) => setBuyerData({ ...buyerData, documentType: e.target.value as 'CC' | 'NIT' | 'CE' | 'PP' })}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#85ea10] dark:bg-gray-700 dark:text-white text-sm"
-                >
-                  <option value="CC">C.C.</option>
-                  <option value="NIT">NIT</option>
-                  <option value="CE">C.E.</option>
-                  <option value="PP">Pasaporte</option>
-                </select>
-              </div>
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Número de Documento <span className="text-[#85ea10]">*</span>
-                </label>
-                <div className="relative">
-                  <FileText className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input
-                    type="text"
-                    value={buyerData.documentId}
-                    onChange={(e) => setBuyerData({ ...buyerData, documentId: e.target.value.replace(/[^0-9-]/g, '') })}
-                    placeholder="1234567890"
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#85ea10] dark:bg-gray-700 dark:text-white text-sm"
-                    required
-                  />
-                </div>
-              </div>
-            </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                <span className="text-[#85ea10]">*</span> Campos obligatorios.
+                Esta información se usará para tu factura.
+              </p>
+            </>
+          )}
+        </div>
 
-            {/* Correo electrónico */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Correo electrónico <span className="text-[#85ea10]">*</span>
-              </label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
-                  type="email"
-                  value={buyerData.email}
-                  onChange={(e) => setBuyerData({ ...buyerData, email: e.target.value })}
-                  placeholder="tu@email.com"
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#85ea10] dark:bg-gray-700 dark:text-white text-sm"
-                  required
-                />
-              </div>
-            </div>
+        {/* Botón de pago */}
+        <button
+          onClick={handlePayment}
+          disabled={
+            isLoading ||
+            !widgetReady ||
+            !wompiPublicKey ||
+            !isFormValid() ||
+            isLoadingProfile
+          }
+          className="w-full bg-[#85ea10] hover:bg-[#7dd30f] text-black font-bold py-4 px-6 rounded-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center shadow-lg"
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+              Procesando...
+            </>
+          ) : !widgetReady ? (
+            <>
+              <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+              Cargando widget...
+            </>
+          ) : !wompiPublicKey ? (
+            <>
+              <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+              Cargando configuración...
+            </>
+          ) : isLoadingProfile ? (
+            <>
+              <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+              Cargando datos...
+            </>
+          ) : (
+            <>
+              <CreditCard className="w-5 h-5 mr-2" />
+              Completar Pago
+            </>
+          )}
+        </button>
 
-            {/* Dirección */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Dirección de residencia <span className="text-[#85ea10]">*</span>
-              </label>
-              <div className="relative">
-                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
-                  type="text"
-                  value={buyerData.address}
-                  onChange={(e) => setBuyerData({ ...buyerData, address: e.target.value })}
-                  placeholder="Calle 123 # 45-67, Barrio, Ciudad"
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#85ea10] dark:bg-gray-700 dark:text-white text-sm"
-                  required
-                />
-              </div>
-            </div>
-
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              <span className="text-[#85ea10]">*</span> Campos obligatorios. Esta información se usará para tu factura.
-            </p>
-          </>
-        )}
-      </div>
-
-      {/* Botón de pago */}
-      <button
-        onClick={handlePayment}
-        disabled={isLoading || !widgetReady || !wompiPublicKey || !isFormValid() || isLoadingProfile}
-        className="w-full bg-[#85ea10] hover:bg-[#7dd30f] text-black font-bold py-4 px-6 rounded-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center shadow-lg"
-      >
-        {isLoading ? (
-          <>
-            <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-            Procesando...
-          </>
-        ) : !widgetReady ? (
-          <>
-            <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-            Cargando widget...
-          </>
-        ) : !wompiPublicKey ? (
-          <>
-            <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-            Cargando configuración...
-          </>
-        ) : isLoadingProfile ? (
-          <>
-            <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-            Cargando datos...
-          </>
-        ) : (
-          <>
-            <CreditCard className="w-5 h-5 mr-2" />
-            Completar Pago
-          </>
-        )}
-      </button>
-
-      {/* Información de seguridad */}
-      <div className="mt-6 text-center">
-        <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center justify-center gap-1">
-          <Shield className="w-3 h-3 text-[#85ea10]" /> Pago 100% seguro procesado por <strong>Wompi</strong>
-        </p>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-          Tus datos están protegidos con encriptación SSL
-        </p>
-      </div>
+        {/* Información de seguridad */}
+        <div className="mt-6 text-center">
+          <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center justify-center gap-1">
+            <Shield className="w-3 h-3 text-[#85ea10]" /> Pago 100% seguro
+            procesado por <strong>Wompi</strong>
+          </p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            Tus datos están protegidos con encriptación SSL
+          </p>
+        </div>
       </div>
     </div>
   );

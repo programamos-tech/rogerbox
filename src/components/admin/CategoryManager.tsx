@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Save, X, GripVertical } from 'lucide-react';
+import { Edit, GripVertical, Plus, Save, Trash2, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 
 interface Category {
@@ -19,7 +19,10 @@ interface CategoryManagerProps {
   onCategorySelect?: (category: Category) => void;
 }
 
-export default function CategoryManager({ onClose, onCategorySelect }: CategoryManagerProps) {
+export default function CategoryManager({
+  onClose,
+  onCategorySelect,
+}: CategoryManagerProps) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
@@ -28,19 +31,58 @@ export default function CategoryManager({ onClose, onCategorySelect }: CategoryM
     name: '',
     description: '',
     icon: '🔥',
-    color: '#85ea10'
+    color: '#85ea10',
   });
 
   const emojiOptions = [
-    '🔥', '⚡', '🏃', '💪', '🏠', '🌅', '🌙', '💨', '🎯', '🚀',
-    '💥', '⭐', '🌟', '✨', '💫', '🏆', '🎖️', '🥇', '💊', '🍎',
-    '💧', '🧘', '🤸', '🏋️', '🚴', '🏊', '🥊', '🎾', '⚽', '🏀'
+    '🔥',
+    '⚡',
+    '🏃',
+    '💪',
+    '🏠',
+    '🌅',
+    '🌙',
+    '💨',
+    '🎯',
+    '🚀',
+    '💥',
+    '⭐',
+    '🌟',
+    '✨',
+    '💫',
+    '🏆',
+    '🎖️',
+    '🥇',
+    '💊',
+    '🍎',
+    '💧',
+    '🧘',
+    '🤸',
+    '🏋️',
+    '🚴',
+    '🏊',
+    '🥊',
+    '🎾',
+    '⚽',
+    '🏀',
   ];
 
   const colorOptions = [
-    '#ff6b35', '#ff4757', '#ffa502', '#ff6348', '#ff9ff3',
-    '#ffd700', '#4834d4', '#ff3838', '#85ea10', '#2ed573',
-    '#1e90ff', '#ff6b9d', '#ffa726', '#66bb6a', '#ab47bc'
+    '#ff6b35',
+    '#ff4757',
+    '#ffa502',
+    '#ff6348',
+    '#ff9ff3',
+    '#ffd700',
+    '#4834d4',
+    '#ff3838',
+    '#85ea10',
+    '#2ed573',
+    '#1e90ff',
+    '#ff6b9d',
+    '#ffa726',
+    '#66bb6a',
+    '#ab47bc',
   ];
 
   useEffect(() => {
@@ -51,7 +93,8 @@ export default function CategoryManager({ onClose, onCategorySelect }: CategoryM
     try {
       const res = await fetch('/api/admin/categories');
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'No se pudieron cargar categorías');
+      if (!res.ok)
+        throw new Error(data.error || 'No se pudieron cargar categorías');
       setCategories(data.categories || []);
     } catch (error) {
       console.error('Error fetching categories:', error);
@@ -110,16 +153,19 @@ export default function CategoryManager({ onClose, onCategorySelect }: CategoryM
       name: category.name,
       description: category.description,
       icon: category.icon,
-      color: category.color
+      color: category.color,
     });
     setShowAddForm(true);
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('¿Estás seguro de que quieres eliminar esta categoría?')) return;
+    if (!confirm('¿Estás seguro de que quieres eliminar esta categoría?'))
+      return;
 
     try {
-      const res = await fetch(`/api/admin/categories?id=${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/admin/categories?id=${id}`, {
+        method: 'DELETE',
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'No se pudo eliminar');
       fetchCategories();
@@ -159,7 +205,9 @@ export default function CategoryManager({ onClose, onCategorySelect }: CategoryM
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
         <div className="bg-white dark:bg-gray-900 rounded-2xl p-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#85ea10] mx-auto"></div>
-          <p className="mt-4 text-gray-600 dark:text-white/70">Cargando categorías...</p>
+          <p className="mt-4 text-gray-600 dark:text-white/70">
+            Cargando categorías...
+          </p>
         </div>
       </div>
     );
@@ -177,7 +225,12 @@ export default function CategoryManager({ onClose, onCategorySelect }: CategoryM
             <button
               onClick={() => {
                 setEditingCategory(null);
-                setFormData({ name: '', description: '', icon: '🔥', color: '#85ea10' });
+                setFormData({
+                  name: '',
+                  description: '',
+                  icon: '🔥',
+                  color: '#85ea10',
+                });
                 setShowAddForm(true);
               }}
               className="bg-[#85ea10] hover:bg-[#7dd30f] text-black px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
@@ -201,7 +254,7 @@ export default function CategoryManager({ onClose, onCategorySelect }: CategoryM
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                 {editingCategory ? 'Editar Categoría' : 'Nueva Categoría'}
               </h3>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -210,7 +263,9 @@ export default function CategoryManager({ onClose, onCategorySelect }: CategoryM
                   <input
                     type="text"
                     value={formData.name}
-                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, name: e.target.value }))
+                    }
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#85ea10] focus:border-[#85ea10] bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     placeholder="Ej: Transformación Intensa"
                   />
@@ -221,10 +276,12 @@ export default function CategoryManager({ onClose, onCategorySelect }: CategoryM
                     Icono *
                   </label>
                   <div className="flex flex-wrap gap-2">
-                    {emojiOptions.map(emoji => (
+                    {emojiOptions.map((emoji) => (
                       <button
                         key={emoji}
-                        onClick={() => setFormData(prev => ({ ...prev, icon: emoji }))}
+                        onClick={() =>
+                          setFormData((prev) => ({ ...prev, icon: emoji }))
+                        }
                         className={`w-10 h-10 text-2xl rounded-lg border-2 transition-all ${
                           formData.icon === emoji
                             ? 'border-[#85ea10] bg-[#85ea10]/10'
@@ -242,10 +299,12 @@ export default function CategoryManager({ onClose, onCategorySelect }: CategoryM
                     Color *
                   </label>
                   <div className="flex flex-wrap gap-2">
-                    {colorOptions.map(color => (
+                    {colorOptions.map((color) => (
                       <button
                         key={color}
-                        onClick={() => setFormData(prev => ({ ...prev, color }))}
+                        onClick={() =>
+                          setFormData((prev) => ({ ...prev, color }))
+                        }
                         className={`w-8 h-8 rounded-full border-2 transition-all ${
                           formData.color === color
                             ? 'border-gray-900 dark:border-white scale-110'
@@ -263,7 +322,12 @@ export default function CategoryManager({ onClose, onCategorySelect }: CategoryM
                   </label>
                   <textarea
                     value={formData.description}
-                    onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        description: e.target.value,
+                      }))
+                    }
                     rows={3}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#85ea10] focus:border-[#85ea10] bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     placeholder="Describe qué incluye esta categoría..."
@@ -276,7 +340,12 @@ export default function CategoryManager({ onClose, onCategorySelect }: CategoryM
                   onClick={() => {
                     setShowAddForm(false);
                     setEditingCategory(null);
-                    setFormData({ name: '', description: '', icon: '🔥', color: '#85ea10' });
+                    setFormData({
+                      name: '',
+                      description: '',
+                      icon: '🔥',
+                      color: '#85ea10',
+                    });
                   }}
                   className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                 >
@@ -296,7 +365,7 @@ export default function CategoryManager({ onClose, onCategorySelect }: CategoryM
 
           {/* Categories List */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {categories.map(category => (
+            {categories.map((category) => (
               <div
                 key={category.id}
                 className={`p-4 rounded-lg border-2 transition-all cursor-pointer ${
@@ -323,7 +392,7 @@ export default function CategoryManager({ onClose, onCategorySelect }: CategoryM
                       </p>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center space-x-1">
                     <button
                       onClick={(e) => {
@@ -347,26 +416,32 @@ export default function CategoryManager({ onClose, onCategorySelect }: CategoryM
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <span className={`text-xs px-2 py-1 rounded-full ${
-                    category.is_active
-                      ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                      : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
-                  }`}>
+                  <span
+                    className={`text-xs px-2 py-1 rounded-full ${
+                      category.is_active
+                        ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                        : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
+                    }`}
+                  >
                     {category.is_active ? 'Activa' : 'Inactiva'}
                   </span>
-                  
+
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       handleToggleActive(category);
                     }}
                     className={`w-8 h-4 rounded-full transition-colors ${
-                      category.is_active ? 'bg-[#85ea10]' : 'bg-gray-300 dark:bg-gray-600'
+                      category.is_active
+                        ? 'bg-[#85ea10]'
+                        : 'bg-gray-300 dark:bg-gray-600'
                     }`}
                   >
-                    <div className={`w-3 h-3 bg-white rounded-full transition-transform ${
-                      category.is_active ? 'translate-x-4' : 'translate-x-0.5'
-                    }`} />
+                    <div
+                      className={`w-3 h-3 bg-white rounded-full transition-transform ${
+                        category.is_active ? 'translate-x-4' : 'translate-x-0.5'
+                      }`}
+                    />
                   </button>
                 </div>
               </div>
@@ -376,8 +451,12 @@ export default function CategoryManager({ onClose, onCategorySelect }: CategoryM
           {categories.length === 0 && (
             <div className="text-center py-12 text-gray-500 dark:text-white/60">
               <div className="text-6xl mb-4">🎯</div>
-              <p className="text-lg font-medium mb-2">No hay categorías creadas</p>
-              <p className="text-sm">Crea tu primera categoría para organizar tus cursos</p>
+              <p className="text-lg font-medium mb-2">
+                No hay categorías creadas
+              </p>
+              <p className="text-sm">
+                Crea tu primera categoría para organizar tus cursos
+              </p>
             </div>
           )}
         </div>

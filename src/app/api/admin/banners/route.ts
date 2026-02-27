@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getSession } from '@/lib/supabase-server';
 
@@ -15,7 +15,10 @@ export async function GET() {
     return NextResponse.json({ banners });
   } catch (error) {
     console.error('Error fetching banners:', error);
-    return NextResponse.json({ error: 'Error al obtener banners' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Error al obtener banners' },
+      { status: 500 },
+    );
   }
 }
 
@@ -30,7 +33,10 @@ export async function POST(request: NextRequest) {
     const { title, image_url, link_url } = body;
 
     if (!image_url) {
-      return NextResponse.json({ error: 'La URL de imagen es requerida' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'La URL de imagen es requerida' },
+        { status: 400 },
+      );
     }
 
     // Obtener el orden máximo actual
@@ -60,10 +66,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ banner: data });
   } catch (error) {
     console.error('Error creating banner:', error);
-    return NextResponse.json({ error: 'Error al crear banner' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Error al crear banner' },
+      { status: 500 },
+    );
   }
 }
-
-
-
-

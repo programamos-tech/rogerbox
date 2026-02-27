@@ -1,28 +1,45 @@
 'use client';
 
+import {
+  ArrowLeft,
+  CheckCircle,
+  Eye,
+  EyeOff,
+  Lock,
+  Mail,
+  User,
+  Weight,
+} from 'lucide-react';
 import { useState } from 'react';
-import { ArrowLeft, User, Weight, Mail, Lock, Eye, EyeOff, CheckCircle } from 'lucide-react';
 
 interface RegisterPageProps {
   onBack: () => void;
-  onRegister: (userData: { name: string; email: string; password: string; weight: number }) => void;
+  onRegister: (userData: {
+    name: string;
+    email: string;
+    password: string;
+    weight: number;
+  }) => void;
 }
 
-export default function RegisterPage({ onBack, onRegister }: RegisterPageProps) {
+export default function RegisterPage({
+  onBack,
+  onRegister,
+}: RegisterPageProps) {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: '',
     confirmPassword: '',
-    weight: ''
+    weight: '',
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [errors, setErrors] = useState<{[key: string]: string}>({});
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [isLoading, setIsLoading] = useState(false);
 
   const validateForm = () => {
-    const newErrors: {[key: string]: string} = {};
+    const newErrors: { [key: string]: string } = {};
 
     if (!formData.name.trim()) {
       newErrors.name = 'El nombre es requerido';
@@ -63,30 +80,30 @@ export default function RegisterPage({ onBack, onRegister }: RegisterPageProps) 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
 
     setIsLoading(true);
-    
+
     // Simular delay de registro
     setTimeout(() => {
       onRegister({
         name: formData.name.trim(),
         email: formData.email.trim(),
         password: formData.password,
-        weight: parseFloat(formData.weight)
+        weight: parseFloat(formData.weight),
       });
       setIsLoading(false);
     }, 1500);
   };
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
     // Limpiar error cuando el usuario empiece a escribir
     if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }));
+      setErrors((prev) => ({ ...prev, [field]: '' }));
     }
   };
 
@@ -128,8 +145,8 @@ export default function RegisterPage({ onBack, onRegister }: RegisterPageProps) 
                   value={formData.name}
                   onChange={(e) => handleInputChange('name', e.target.value)}
                   className={`w-full pl-12 pr-4 py-4 bg-black/60 border rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 transition-all ${
-                    errors.name 
-                      ? 'border-red-500 focus:ring-red-500' 
+                    errors.name
+                      ? 'border-red-500 focus:ring-red-500'
                       : 'border-white/30 focus:ring-[#85ea10] focus:border-[#85ea10]'
                   }`}
                   placeholder="Tu nombre completo"
@@ -155,8 +172,8 @@ export default function RegisterPage({ onBack, onRegister }: RegisterPageProps) 
                   value={formData.email}
                   onChange={(e) => handleInputChange('email', e.target.value)}
                   className={`w-full pl-12 pr-4 py-4 bg-black/60 border rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 transition-all ${
-                    errors.email 
-                      ? 'border-red-500 focus:ring-red-500' 
+                    errors.email
+                      ? 'border-red-500 focus:ring-red-500'
                       : 'border-white/30 focus:ring-[#85ea10] focus:border-[#85ea10]'
                   }`}
                   placeholder="tu@email.com"
@@ -180,10 +197,12 @@ export default function RegisterPage({ onBack, onRegister }: RegisterPageProps) 
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={formData.password}
-                  onChange={(e) => handleInputChange('password', e.target.value)}
+                  onChange={(e) =>
+                    handleInputChange('password', e.target.value)
+                  }
                   className={`w-full pl-12 pr-12 py-4 bg-black/60 border rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 transition-all ${
-                    errors.password 
-                      ? 'border-red-500 focus:ring-red-500' 
+                    errors.password
+                      ? 'border-red-500 focus:ring-red-500'
                       : 'border-white/30 focus:ring-[#85ea10] focus:border-[#85ea10]'
                   }`}
                   placeholder="Mínimo 6 caracteres"
@@ -193,7 +212,11 @@ export default function RegisterPage({ onBack, onRegister }: RegisterPageProps) 
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
                 >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  {showPassword ? (
+                    <EyeOff className="w-5 h-5" />
+                  ) : (
+                    <Eye className="w-5 h-5" />
+                  )}
                 </button>
               </div>
               {errors.password && (
@@ -214,10 +237,12 @@ export default function RegisterPage({ onBack, onRegister }: RegisterPageProps) 
                 <input
                   type={showConfirmPassword ? 'text' : 'password'}
                   value={formData.confirmPassword}
-                  onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
+                  onChange={(e) =>
+                    handleInputChange('confirmPassword', e.target.value)
+                  }
                   className={`w-full pl-12 pr-12 py-4 bg-black/60 border rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 transition-all ${
-                    errors.confirmPassword 
-                      ? 'border-red-500 focus:ring-red-500' 
+                    errors.confirmPassword
+                      ? 'border-red-500 focus:ring-red-500'
                       : 'border-white/30 focus:ring-[#85ea10] focus:border-[#85ea10]'
                   }`}
                   placeholder="Repite tu contraseña"
@@ -227,7 +252,11 @@ export default function RegisterPage({ onBack, onRegister }: RegisterPageProps) 
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
                 >
-                  {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  {showConfirmPassword ? (
+                    <EyeOff className="w-5 h-5" />
+                  ) : (
+                    <Eye className="w-5 h-5" />
+                  )}
                 </button>
               </div>
               {errors.confirmPassword && (
@@ -250,8 +279,8 @@ export default function RegisterPage({ onBack, onRegister }: RegisterPageProps) 
                   value={formData.weight}
                   onChange={(e) => handleInputChange('weight', e.target.value)}
                   className={`w-full pl-12 pr-4 py-4 bg-black/60 border rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 transition-all ${
-                    errors.weight 
-                      ? 'border-red-500 focus:ring-red-500' 
+                    errors.weight
+                      ? 'border-red-500 focus:ring-red-500'
                       : 'border-white/30 focus:ring-[#85ea10] focus:border-[#85ea10]'
                   }`}
                   placeholder="70"

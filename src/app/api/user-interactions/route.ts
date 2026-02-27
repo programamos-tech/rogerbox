@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getSession } from '@/lib/supabase-server';
 
@@ -31,11 +31,16 @@ export async function GET(request: NextRequest) {
       query = query.not('user_rating', 'is', null);
     }
 
-    const { data, error } = await query.order('created_at', { ascending: false });
+    const { data, error } = await query.order('created_at', {
+      ascending: false,
+    });
 
     if (error) {
       console.error('❌ Debug API: Error fetching user interactions:', error);
-      return NextResponse.json({ error: 'Failed to fetch interactions' }, { status: 500 });
+      return NextResponse.json(
+        { error: 'Failed to fetch interactions' },
+        { status: 500 },
+      );
     }
 
     console.log('✅ Debug API: Interacciones encontradas:', data?.length || 0);
@@ -43,6 +48,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ interactions: data || [] });
   } catch (error) {
     console.error('Error in GET /api/user-interactions:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 },
+    );
   }
 }

@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 
 // POST - Crear la tabla de blogs si no existe
@@ -16,16 +16,19 @@ export async function POST(request: NextRequest) {
     if (tablesError) {
       console.error('Error checking tables:', tablesError);
       return NextResponse.json(
-        { error: 'Error checking database tables', details: tablesError.message },
-        { status: 500 }
+        {
+          error: 'Error checking database tables',
+          details: tablesError.message,
+        },
+        { status: 500 },
       );
     }
 
     if (tables && tables.length > 0) {
       console.log('✅ Table nutritional_blogs already exists');
-      return NextResponse.json({ 
+      return NextResponse.json({
         message: 'Table nutritional_blogs already exists',
-        exists: true 
+        exists: true,
       });
     }
 
@@ -47,27 +50,33 @@ export async function POST(request: NextRequest) {
       );
     `;
 
-    const { error: createError } = await supabase.rpc('exec_sql', { 
-      sql: createTableSQL 
+    const { error: createError } = await supabase.rpc('exec_sql', {
+      sql: createTableSQL,
     });
 
     if (createError) {
       console.error('Error creating table:', createError);
-      
+
       // Intentar con un enfoque diferente
       const { error: directError } = await supabase
         .from('nutritional_blogs')
         .select('id')
         .limit(1);
 
-      if (directError && directError.message.includes('relation "nutritional_blogs" does not exist')) {
+      if (
+        directError &&
+        directError.message.includes(
+          'relation "nutritional_blogs" does not exist',
+        )
+      ) {
         return NextResponse.json(
-          { 
+          {
             error: 'Table does not exist and cannot be created automatically',
-            details: 'Please create the table manually in your Supabase dashboard',
-            sql: createTableSQL
+            details:
+              'Please create the table manually in your Supabase dashboard',
+            sql: createTableSQL,
           },
-          { status: 500 }
+          { status: 500 },
         );
       }
     }
@@ -85,20 +94,19 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Table nutritional_blogs created successfully');
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       message: 'Table nutritional_blogs created successfully',
       exists: false,
-      created: true
+      created: true,
     });
-
   } catch (error) {
     console.error('Error in setup:', error);
     return NextResponse.json(
-      { 
+      {
         error: 'Error setting up table',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        details: error instanceof Error ? error.message : 'Unknown error',
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -115,21 +123,20 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         exists: false,
         error: error.message,
-        details: 'Table nutritional_blogs does not exist or has issues'
+        details: 'Table nutritional_blogs does not exist or has issues',
       });
     }
 
     return NextResponse.json({
       exists: true,
       count: data?.length || 0,
-      message: 'Table nutritional_blogs is working correctly'
+      message: 'Table nutritional_blogs is working correctly',
     });
-
   } catch (error) {
     return NextResponse.json({
       exists: false,
       error: error instanceof Error ? error.message : 'Unknown error',
-      details: 'Cannot connect to nutritional_blogs table'
+      details: 'Cannot connect to nutritional_blogs table',
     });
   }
 }

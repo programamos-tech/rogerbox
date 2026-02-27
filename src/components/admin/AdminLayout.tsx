@@ -1,7 +1,5 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
-import { useState } from 'react';
 import {
   BarChart3,
   Bell,
@@ -19,35 +17,89 @@ import {
   User,
   Users,
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 
 const menuSections = [
   {
     title: 'Principal',
-    items: [{ id: 'overview', label: 'Dashboard', icon: BarChart3, description: 'Resumen general' }],
+    items: [
+      {
+        id: 'overview',
+        label: 'Dashboard',
+        icon: BarChart3,
+        description: 'Resumen general',
+      },
+    ],
   },
   {
     title: 'Sede Física',
     items: [
-      { id: 'users', label: 'Usuarios', icon: Users, description: 'Gestiona usuarios y clientes físicos' },
-      { id: 'gym-plans', label: 'Planes', icon: Dumbbell, description: 'Gestionar planes del gimnasio' },
-      { id: 'gym-payments', label: 'Pagos', icon: CreditCard, description: 'Facturar planes a clientes físicos' },
+      {
+        id: 'users',
+        label: 'Usuarios',
+        icon: Users,
+        description: 'Gestiona usuarios y clientes físicos',
+      },
+      {
+        id: 'gym-plans',
+        label: 'Planes',
+        icon: Dumbbell,
+        description: 'Gestionar planes del gimnasio',
+      },
+      {
+        id: 'gym-payments',
+        label: 'Pagos',
+        icon: CreditCard,
+        description: 'Facturar planes a clientes físicos',
+      },
     ],
   },
   {
     title: 'Sede en Línea',
     items: [
-      { id: 'sales', label: 'Ventas', icon: ShoppingCart, description: 'Historial de compras' },
-      { id: 'courses', label: 'Cursos', icon: BookOpen, description: 'Gestionar cursos' },
-      { id: 'complements', label: 'Complementos', icon: Play, description: 'Videos semanales' },
-      { id: 'banners', label: 'Banners', icon: Image, description: 'Banners del dashboard' },
-      { id: 'blogs', label: 'Blogs', icon: FileText, description: 'Artículos nutricionales' },
+      {
+        id: 'sales',
+        label: 'Ventas',
+        icon: ShoppingCart,
+        description: 'Historial de compras',
+      },
+      {
+        id: 'courses',
+        label: 'Cursos',
+        icon: BookOpen,
+        description: 'Gestionar cursos',
+      },
+      {
+        id: 'complements',
+        label: 'Complementos',
+        icon: Play,
+        description: 'Videos semanales',
+      },
+      {
+        id: 'banners',
+        label: 'Banners',
+        icon: Image,
+        description: 'Banners del dashboard',
+      },
+      {
+        id: 'blogs',
+        label: 'Blogs',
+        icon: FileText,
+        description: 'Artículos nutricionales',
+      },
     ],
   },
   {
     title: 'Sistema',
     items: [
-      { id: 'settings', label: 'Configuración', icon: Settings, description: 'Ajustes de la plataforma' },
+      {
+        id: 'settings',
+        label: 'Configuración',
+        icon: Settings,
+        description: 'Ajustes de la plataforma',
+      },
     ],
   },
 ];
@@ -113,14 +165,18 @@ export default function AdminLayout({
           )}
           {sidebarCollapsed && (
             <div className="w-10 h-10 bg-gray-200 dark:bg-white/10 rounded-lg flex items-center justify-center">
-              <span className="text-[#164151] dark:text-white font-bold text-sm">R</span>
+              <span className="text-[#164151] dark:text-white font-bold text-sm">
+                R
+              </span>
             </div>
           )}
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
             className="hidden md:flex w-8 h-8 items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-gray-500 dark:text-white/60 hover:text-[#164151] dark:hover:text-white transition-colors"
           >
-            <ChevronLeft className={`w-4 h-4 transition-transform ${sidebarCollapsed ? 'rotate-180' : ''}`} />
+            <ChevronLeft
+              className={`w-4 h-4 transition-transform ${sidebarCollapsed ? 'rotate-180' : ''}`}
+            />
           </button>
         </div>
 
@@ -140,15 +196,20 @@ export default function AdminLayout({
                     <button
                       key={item.id}
                       onClick={() => {
-                        router.push(item.id === 'overview' ? '/admin' : `/admin?tab=${item.id}`);
+                        router.push(
+                          item.id === 'overview'
+                            ? '/admin'
+                            : `/admin?tab=${item.id}`,
+                        );
                         setMobileMenuOpen(false);
                       }}
                       className={`
                         w-full flex items-center gap-3 px-4 py-2.5 rounded-lg
                         transition-all duration-200 group
-                        ${isActive
-                          ? 'bg-[#85ea10]/20 dark:bg-[#85ea10]/20 text-[#164151] dark:text-white'
-                          : 'text-[#164151]/80 dark:text-white/60 hover:text-[#164151] dark:hover:text-white hover:bg-gray-50 dark:hover:bg-white/5'
+                        ${
+                          isActive
+                            ? 'bg-[#85ea10]/20 dark:bg-[#85ea10]/20 text-[#164151] dark:text-white'
+                            : 'text-[#164151]/80 dark:text-white/60 hover:text-[#164151] dark:hover:text-white hover:bg-gray-50 dark:hover:bg-white/5'
                         }
                         ${sidebarCollapsed ? 'justify-center' : ''}
                       `}
@@ -185,7 +246,9 @@ export default function AdminLayout({
                 <p className="text-xs font-semibold text-[#164151] dark:text-white truncate">
                   {authUser?.user_metadata?.name || profile?.name || 'Admin'}
                 </p>
-                <p className="text-[10px] font-medium text-gray-500 dark:text-white/50 truncate">Admin</p>
+                <p className="text-[10px] font-medium text-gray-500 dark:text-white/50 truncate">
+                  Admin
+                </p>
               </div>
               <button
                 onClick={() => router.push('/dashboard')}
@@ -235,9 +298,7 @@ export default function AdminLayout({
         </header>
 
         <div className="flex-1 overflow-y-auto">
-          <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
-            {children}
-          </div>
+          <div className="w-full px-4 sm:px-6 lg:px-8 py-6">{children}</div>
         </div>
       </main>
     </div>

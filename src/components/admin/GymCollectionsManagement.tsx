@@ -1,8 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { AlertCircle, Phone, Search, Filter, MessageSquare } from 'lucide-react';
-import { CollectionItem } from '@/types/gym';
+import {
+  AlertCircle,
+  Filter,
+  MessageSquare,
+  Phone,
+  Search,
+} from 'lucide-react';
+import { useEffect, useState } from 'react';
+import type { CollectionItem } from '@/types/gym';
 
 export default function GymCollectionsManagement() {
   const [collections, setCollections] = useState<CollectionItem[]>([]);
@@ -36,7 +42,7 @@ export default function GymCollectionsManagement() {
 
   const handleWhatsAppReminder = (item: CollectionItem) => {
     const message = encodeURIComponent(
-      `Hola ${item.client_name}, te recordamos que tu plan "${item.plan_name}" vence el ${new Date(item.membership_end_date).toLocaleDateString('es-CO', { day: '2-digit', month: 'long', year: 'numeric' })}. Por favor realiza el pago para continuar disfrutando de nuestros servicios.`
+      `Hola ${item.client_name}, te recordamos que tu plan "${item.plan_name}" vence el ${new Date(item.membership_end_date).toLocaleDateString('es-CO', { day: '2-digit', month: 'long', year: 'numeric' })}. Por favor realiza el pago para continuar disfrutando de nuestros servicios.`,
     );
     const whatsappUrl = `https://wa.me/${item.whatsapp.replace(/\D/g, '')}?text=${message}`;
     window.open(whatsappUrl, '_blank');
@@ -63,7 +69,9 @@ export default function GymCollectionsManagement() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h2 className="text-xl font-bold text-[#164151] dark:text-white">Gestión de Planes - Cobranza</h2>
+        <h2 className="text-xl font-bold text-[#164151] dark:text-white">
+          Gestión de Planes - Cobranza
+        </h2>
         <p className="text-sm text-[#164151]/80 dark:text-white/60 mt-1">
           Clientes con pagos pendientes o vencidos
         </p>
@@ -143,19 +151,30 @@ export default function GymCollectionsManagement() {
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-white/5">
                 {filteredCollections.map((item) => (
-                  <tr key={item.membership_id} className="hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
+                  <tr
+                    key={item.membership_id}
+                    className="hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
+                  >
                     <td className="px-6 py-4">
                       <div>
-                        <p className="text-sm font-medium text-[#164151] dark:text-white">{item.client_name}</p>
-                        <p className="text-xs text-[#164151]/60 dark:text-white/60">CC: {item.document_id}</p>
+                        <p className="text-sm font-medium text-[#164151] dark:text-white">
+                          {item.client_name}
+                        </p>
+                        <p className="text-xs text-[#164151]/60 dark:text-white/60">
+                          CC: {item.document_id}
+                        </p>
                         {item.email && (
-                          <p className="text-xs text-[#164151]/60 dark:text-white/60">{item.email}</p>
+                          <p className="text-xs text-[#164151]/60 dark:text-white/60">
+                            {item.email}
+                          </p>
                         )}
                       </div>
                     </td>
                     <td className="px-6 py-4">
                       <div>
-                        <p className="text-sm font-medium text-[#164151] dark:text-white">{item.plan_name}</p>
+                        <p className="text-sm font-medium text-[#164151] dark:text-white">
+                          {item.plan_name}
+                        </p>
                         <p className="text-xs text-[#164151]/60 dark:text-white/60">
                           ${item.plan_price.toLocaleString('es-CO')}
                         </p>
@@ -163,11 +182,14 @@ export default function GymCollectionsManagement() {
                     </td>
                     <td className="px-6 py-4">
                       <p className="text-sm text-[#164151] dark:text-white">
-                        {new Date(item.membership_end_date).toLocaleDateString('es-CO', {
-                          day: '2-digit',
-                          month: 'short',
-                          year: 'numeric',
-                        })}
+                        {new Date(item.membership_end_date).toLocaleDateString(
+                          'es-CO',
+                          {
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric',
+                          },
+                        )}
                       </p>
                     </td>
                     <td className="px-6 py-4">
@@ -176,8 +198,8 @@ export default function GymCollectionsManagement() {
                           item.days_overdue > 30
                             ? 'bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400'
                             : item.days_overdue > 15
-                            ? 'bg-orange-100 dark:bg-orange-500/20 text-orange-700 dark:text-orange-400'
-                            : 'bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-400'
+                              ? 'bg-orange-100 dark:bg-orange-500/20 text-orange-700 dark:text-orange-400'
+                              : 'bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-400'
                         }`}
                       >
                         {item.days_overdue} días
@@ -189,7 +211,10 @@ export default function GymCollectionsManagement() {
                       </p>
                       {item.last_payment_date && (
                         <p className="text-xs text-[#164151]/60 dark:text-white/60">
-                          Último pago: {new Date(item.last_payment_date).toLocaleDateString('es-CO')}
+                          Último pago:{' '}
+                          {new Date(item.last_payment_date).toLocaleDateString(
+                            'es-CO',
+                          )}
                         </p>
                       )}
                     </td>

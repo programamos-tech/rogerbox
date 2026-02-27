@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 
 // GET - Obtener todos los blogs publicados
@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
       console.error('Error fetching blogs:', error);
       return NextResponse.json(
         { error: 'Error al obtener los blogs' },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     console.error('Error in GET /api/blogs:', error);
     return NextResponse.json(
       { error: 'Error interno del servidor' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -32,13 +32,20 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { title, author, reading_time, excerpt, content, featured_image_url } = body;
+    const {
+      title,
+      author,
+      reading_time,
+      excerpt,
+      content,
+      featured_image_url,
+    } = body;
 
     // Validaciones básicas
     if (!title || !author || !reading_time || !excerpt || !content) {
       return NextResponse.json(
         { error: 'Faltan campos requeridos' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -69,7 +76,7 @@ export async function POST(request: NextRequest) {
       console.error('Error creating blog:', error);
       return NextResponse.json(
         { error: 'Error al crear el blog' },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -78,7 +85,7 @@ export async function POST(request: NextRequest) {
     console.error('Error in POST /api/blogs:', error);
     return NextResponse.json(
       { error: 'Error interno del servidor' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

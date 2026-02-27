@@ -6,10 +6,14 @@ function normalizeEmail(val?: string | null) {
   return (val || '').trim().toLowerCase();
 }
 
-function isAdminUser(user: { id?: string; email?: string; user_metadata?: any } | null) {
+function isAdminUser(
+  user: { id?: string; email?: string; user_metadata?: any } | null,
+) {
   if (!user) return false;
   const envId = (process.env.NEXT_PUBLIC_ADMIN_USER_ID || '').trim();
-  const envEmail = normalizeEmail(process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'rogerbox@admin.com');
+  const envEmail = normalizeEmail(
+    process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'rogerbox@admin.com',
+  );
   const matchId = !!envId && user.id === envId;
   const matchEmail = normalizeEmail(user.email) === envEmail;
   const matchRole = user.user_metadata?.role === 'admin';
@@ -19,14 +23,17 @@ function isAdminUser(user: { id?: string; email?: string; user_metadata?: any } 
 export async function GET(request: Request) {
   try {
     const { session } = await getSession();
-    
+
     // En producción, solo admins pueden acceder
     // Usar verificación de string para evitar problemas de tipos
     const nodeEnv = String(process.env.NODE_ENV || 'development');
     const isProduction = nodeEnv === 'production' || nodeEnv === 'prod';
-    
+
     if (isProduction && (!session?.user || !isAdminUser(session.user))) {
-      return NextResponse.json({ error: 'Not available in production' }, { status: 403 });
+      return NextResponse.json(
+        { error: 'Not available in production' },
+        { status: 403 },
+      );
     }
 
     const { searchParams } = new URL(request.url);
@@ -34,10 +41,16 @@ export async function GET(request: Request) {
     const user_id = searchParams.get('user_id');
 
     if (!complement_id || !user_id) {
-      return NextResponse.json({ error: 'complement_id and user_id are required' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'complement_id and user_id are required' },
+        { status: 400 },
+      );
     }
 
-    console.log('🔍 Debug: Buscando interacciones para:', { complement_id, user_id });
+    console.log('🔍 Debug: Buscando interacciones para:', {
+      complement_id,
+      user_id,
+    });
 
     const { data, error } = await supabase
       .from('user_complement_interactions')
@@ -52,12 +65,15 @@ export async function GET(request: Request) {
 
     console.log('✅ Debug: Interacciones encontradas:', data);
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       interactions: data,
-      debug: true 
+      debug: true,
     });
   } catch (error) {
     console.error('❌ Error en debug API:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 },
+    );
   }
 }

@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useTransition } from 'react';
 import { updatePassword } from '@auth/resetPassword/services/update-password.service';
 import { validatePassword } from '@auth/resetPassword/utils/passwordValidation';
+import { useState, useTransition } from 'react';
 
 export function useResetPassword() {
   const [isPending, startTransition] = useTransition();

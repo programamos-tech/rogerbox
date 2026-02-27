@@ -1,12 +1,12 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
-import { useEffect } from 'react';
 import { ArrowLeft } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import CourseCreator from '@/components/admin/CourseCreator';
 import QuickLoading from '@/components/QuickLoading';
+import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 
 export default function NewCoursePage() {
   const router = useRouter();
@@ -15,7 +15,8 @@ export default function NewCoursePage() {
   const isAdmin = () => {
     if (!user) return false;
     const envId = process.env.NEXT_PUBLIC_ADMIN_USER_ID;
-    const envEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'rogerbox@admin.com';
+    const envEmail =
+      process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'rogerbox@admin.com';
     const matchId = envId && user.id === envId;
     const matchEmail = envEmail && user.email === envEmail;
     const matchRole = user.user_metadata?.role === 'admin';
@@ -62,16 +63,14 @@ export default function NewCoursePage() {
           title="Volver a Cursos"
         >
           <ArrowLeft className="w-5 h-5 sm:w-4 sm:h-4" />
-          <span className="hidden sm:inline text-sm font-medium">Volver a Cursos</span>
+          <span className="hidden sm:inline text-sm font-medium">
+            Volver a Cursos
+          </span>
         </button>
       }
     >
       <div className="w-full">
-        <CourseCreator
-          onClose={handleClose}
-          onSuccess={handleSuccess}
-          asPage
-        />
+        <CourseCreator onClose={handleClose} onSuccess={handleSuccess} asPage />
       </div>
     </AdminLayout>
   );

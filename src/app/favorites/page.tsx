@@ -1,8 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import {
+  ArrowLeft,
+  Clock,
+  Eye,
+  Filter,
+  Heart,
+  Search,
+  Star,
+} from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Heart, Star, Clock, Eye, Filter, Search } from 'lucide-react';
+import { useState } from 'react';
 import SimpleLoading from '@/components/SimpleLoading';
 
 interface FavoriteItem {
@@ -31,7 +39,7 @@ const favoriteItems: FavoriteItem[] = [
     difficulty: 'Principiante',
     rating: 4.8,
     views: 1250,
-    addedDate: '2024-01-15'
+    addedDate: '2024-01-15',
   },
   {
     id: '2',
@@ -44,7 +52,7 @@ const favoriteItems: FavoriteItem[] = [
     difficulty: 'Principiante',
     rating: 4.6,
     views: 890,
-    addedDate: '2024-01-14'
+    addedDate: '2024-01-14',
   },
   {
     id: '3',
@@ -57,7 +65,7 @@ const favoriteItems: FavoriteItem[] = [
     difficulty: 'Principiante',
     rating: 4.9,
     views: 3200,
-    addedDate: '2024-01-12'
+    addedDate: '2024-01-12',
   },
   {
     id: '4',
@@ -70,20 +78,20 @@ const favoriteItems: FavoriteItem[] = [
     difficulty: 'Principiante',
     rating: 4.7,
     views: 4500,
-    addedDate: '2024-01-10'
-  }
+    addedDate: '2024-01-10',
+  },
 ];
 
 const typeLabels = {
   complement: 'Complementos',
   course: 'Cursos',
-  blog: 'Blog'
+  blog: 'Blog',
 };
 
 const typeColors = {
   complement: 'bg-[#85ea10]',
   course: 'bg-blue-500',
-  blog: 'bg-purple-500'
+  blog: 'bg-purple-500',
 };
 
 export default function FavoritesPage() {
@@ -92,19 +100,22 @@ export default function FavoritesPage() {
   const [selectedType, setSelectedType] = useState('all');
   const [sortBy, setSortBy] = useState('recientes');
 
-  const filteredItems = favoriteItems.filter(item => {
-    const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         item.description.toLowerCase().includes(searchQuery.toLowerCase());
-    
+  const filteredItems = favoriteItems.filter((item) => {
+    const matchesSearch =
+      item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.description.toLowerCase().includes(searchQuery.toLowerCase());
+
     const matchesType = selectedType === 'all' || item.type === selectedType;
-    
+
     return matchesSearch && matchesType;
   });
 
   const sortedItems = [...filteredItems].sort((a, b) => {
     switch (sortBy) {
       case 'recientes':
-        return new Date(b.addedDate).getTime() - new Date(a.addedDate).getTime();
+        return (
+          new Date(b.addedDate).getTime() - new Date(a.addedDate).getTime()
+        );
       case 'rating':
         return b.rating - a.rating;
       case 'views':
@@ -120,7 +131,7 @@ export default function FavoritesPage() {
         router.push(`/complement/${item.id}`);
         break;
       case 'course':
-         router.push(`/course/${(item as any).slug || item.id}`);
+        router.push(`/course/${(item as any).slug || item.id}`);
         break;
       case 'blog':
         router.push(`/blog/${item.id}`);
@@ -146,12 +157,10 @@ export default function FavoritesPage() {
               <ArrowLeft className="w-5 h-5" />
               <span>Volver</span>
             </button>
-            
             <h1 className="text-xl font-bold text-white flex items-center space-x-2">
               <Heart className="w-6 h-6 text-[#85ea10]" />
               <span>Mis Favoritos</span>
             </h1>
-            
             <div className="w-20"></div> {/* Spacer for centering */}
           </div>
         </div>
@@ -182,10 +191,18 @@ export default function FavoritesPage() {
                 onChange={(e) => setSelectedType(e.target.value)}
                 className="bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-[#85ea10] backdrop-blur-lg"
               >
-                <option value="all" className="bg-gray-800">Todos</option>
-                <option value="complement" className="bg-gray-800">Complementos</option>
-                <option value="course" className="bg-gray-800">Cursos</option>
-                <option value="blog" className="bg-gray-800">Blog</option>
+                <option value="all" className="bg-gray-800">
+                  Todos
+                </option>
+                <option value="complement" className="bg-gray-800">
+                  Complementos
+                </option>
+                <option value="course" className="bg-gray-800">
+                  Cursos
+                </option>
+                <option value="blog" className="bg-gray-800">
+                  Blog
+                </option>
               </select>
             </div>
 
@@ -195,9 +212,15 @@ export default function FavoritesPage() {
               onChange={(e) => setSortBy(e.target.value)}
               className="bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-[#85ea10] backdrop-blur-lg"
             >
-              <option value="recientes" className="bg-gray-800">Más recientes</option>
-              <option value="rating" className="bg-gray-800">Mejor calificados</option>
-              <option value="views" className="bg-gray-800">Más populares</option>
+              <option value="recientes" className="bg-gray-800">
+                Más recientes
+              </option>
+              <option value="rating" className="bg-gray-800">
+                Mejor calificados
+              </option>
+              <option value="views" className="bg-gray-800">
+                Más populares
+              </option>
             </select>
           </div>
         </div>
@@ -205,7 +228,8 @@ export default function FavoritesPage() {
         {/* Results Count */}
         <div className="mb-6">
           <p className="text-white/80">
-            {sortedItems.length} elemento{sortedItems.length !== 1 ? 's' : ''} en favoritos
+            {sortedItems.length} elemento{sortedItems.length !== 1 ? 's' : ''}{' '}
+            en favoritos
           </p>
         </div>
 
@@ -227,7 +251,9 @@ export default function FavoritesPage() {
                 </div>
 
                 {/* Type Badge */}
-                <div className={`absolute top-3 left-3 ${typeColors[item.type]} text-white px-3 py-1.5 rounded-lg text-xs font-bold`}>
+                <div
+                  className={`absolute top-3 left-3 ${typeColors[item.type]} text-white px-3 py-1.5 rounded-lg text-xs font-bold`}
+                >
                   {typeLabels[item.type]}
                 </div>
 
@@ -288,8 +314,12 @@ export default function FavoritesPage() {
             <div className="w-20 h-20 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-4">
               <Heart className="w-10 h-10 text-white/40" />
             </div>
-            <h3 className="text-xl font-bold text-white mb-2">No tienes favoritos</h3>
-            <p className="text-white/60 mb-6">Agrega contenido a tus favoritos para verlo aquí</p>
+            <h3 className="text-xl font-bold text-white mb-2">
+              No tienes favoritos
+            </h3>
+            <p className="text-white/60 mb-6">
+              Agrega contenido a tus favoritos para verlo aquí
+            </p>
             <button
               onClick={() => router.push('/dashboard')}
               className="bg-[#85ea10] hover:bg-[#7dd30f] text-black font-bold px-6 py-3 rounded-lg transition-colors"

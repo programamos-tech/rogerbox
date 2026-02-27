@@ -1,16 +1,16 @@
-import { supabaseAdmin } from './supabase'
+import { supabaseAdmin } from './supabase';
 
 /** ID sede física (tienda física) */
-export const STORE_ID_FISICA = '00000000-0000-0000-0000-000000000001'
+export const STORE_ID_FISICA = '00000000-0000-0000-0000-000000000001';
 /** ID en línea */
-export const STORE_ID_ONLINE = '00000000-0000-0000-0000-000000000002'
+export const STORE_ID_ONLINE = '00000000-0000-0000-0000-000000000002';
 
 export interface LogInsert {
-  user_id?: string | null
-  action: string
-  module: string
-  details?: Record<string, unknown>
-  store_id?: string | null
+  user_id?: string | null;
+  action: string;
+  module: string;
+  details?: Record<string, unknown>;
+  store_id?: string | null;
 }
 
 /**
@@ -24,8 +24,8 @@ export async function insertLog(entry: LogInsert): Promise<void> {
       module: entry.module,
       details: entry.details ?? {},
       store_id: entry.store_id ?? null,
-    })
+    });
   } catch (e) {
-    console.error('[logs-service] insertLog', e)
+    console.error('[logs-service] insertLog', e);
   }
 }

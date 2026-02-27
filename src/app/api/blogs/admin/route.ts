@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 
 // GET - Obtener todos los blogs para el admin (incluyendo no publicados)
@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
       console.error('Error fetching blogs for admin:', error);
       return NextResponse.json(
         { error: 'Error al obtener los blogs' },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     console.error('Error in GET /api/blogs/admin:', error);
     return NextResponse.json(
       { error: 'Error interno del servidor' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

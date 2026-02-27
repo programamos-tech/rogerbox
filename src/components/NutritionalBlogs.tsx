@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { BookOpen, Calendar, ChevronRight, Clock, User } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { NutritionalBlog } from '@/types';
-import { Clock, User, Calendar, ChevronRight, BookOpen } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import type { NutritionalBlog } from '@/types';
 
 export default function NutritionalBlogs() {
   const router = useRouter();
@@ -113,7 +113,7 @@ export default function NutritionalBlogs() {
                 <h3 className="font-semibold text-gray-900 dark:text-white line-clamp-2 group-hover:text-[#85ea10] transition-colors">
                   {blog.title}
                 </h3>
-                
+
                 <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-3">
                   {blog.excerpt}
                 </p>
@@ -148,7 +148,6 @@ export default function NutritionalBlogs() {
           </div>
         ))}
       </div>
-
     </div>
   );
 }

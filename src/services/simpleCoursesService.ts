@@ -45,7 +45,7 @@ class SimpleCoursesService {
   async getCourses(): Promise<SimpleCourse[]> {
     try {
       console.log('🚀 SimpleCourses: Cargando desde Supabase...');
-      
+
       // Consulta directa a Supabase
       const { data: coursesData, error: coursesError } = await supabase
         .from('courses')
@@ -79,34 +79,43 @@ class SimpleCoursesService {
         .eq('is_active', true);
 
       if (categoriesError) {
-        console.error('❌ SimpleCourses: Error en categorías:', categoriesError);
+        console.error(
+          '❌ SimpleCourses: Error en categorías:',
+          categoriesError,
+        );
         // Continuar sin categorías si hay error
       }
 
       // Crear mapa de categorías
       const categoryMap: { [key: string]: string } = {};
       if (categoriesData) {
-        categoriesData.forEach(cat => {
+        categoriesData.forEach((cat) => {
           categoryMap[cat.id] = cat.name;
         });
       }
 
       // Transformar datos
       const twoWeeksAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
-      const courses = (coursesData || []).map(course => {
+      const courses = (coursesData || []).map((course) => {
         const isNew = new Date(course.created_at) > twoWeeksAgo;
-        
+
         return {
           id: course.id,
           title: course.title,
           description: course.description || '',
           short_description: course.short_description || '',
-          thumbnail: course.intro_video_url ? this.getYouTubeThumbnail(course.intro_video_url) : '/images/course-placeholder.jpg',
-          preview_image: course.intro_video_url ? this.getYouTubeThumbnail(course.intro_video_url) : '/images/course-placeholder.jpg',
+          thumbnail: course.intro_video_url
+            ? this.getYouTubeThumbnail(course.intro_video_url)
+            : '/images/course-placeholder.jpg',
+          preview_image: course.intro_video_url
+            ? this.getYouTubeThumbnail(course.intro_video_url)
+            : '/images/course-placeholder.jpg',
           price: course.price || 0,
-          original_price: course.discount_percentage > 0 ? course.price : undefined,
+          original_price:
+            course.discount_percentage > 0 ? course.price : undefined,
           discount_percentage: course.discount_percentage || 0,
-          category_name: categoryMap[course.category] || course.category || 'Sin categoría',
+          category_name:
+            categoryMap[course.category] || course.category || 'Sin categoría',
           rating: course.rating || 4.8,
           students_count: course.students_count || 0,
           lessons_count: 12, // Valor fijo ya que no existe en la BD
@@ -114,13 +123,12 @@ class SimpleCoursesService {
           level: 'Intermedio', // Valor por defecto
           isNew,
           isPopular: false, // Simplificado
-          created_at: course.created_at
+          created_at: course.created_at,
         };
       });
 
       console.log(`✅ SimpleCourses: ${courses.length} cursos cargados`);
       return courses;
-
     } catch (error) {
       console.error('❌ SimpleCourses: Error general:', error);
       throw error;
@@ -172,8 +180,12 @@ class SimpleCoursesService {
         title: data.title,
         description: data.description || '',
         short_description: data.short_description || '',
-        thumbnail: data.intro_video_url ? this.getYouTubeThumbnail(data.intro_video_url) : '/images/course-placeholder.jpg',
-        preview_image: data.intro_video_url ? this.getYouTubeThumbnail(data.intro_video_url) : '/images/course-placeholder.jpg',
+        thumbnail: data.intro_video_url
+          ? this.getYouTubeThumbnail(data.intro_video_url)
+          : '/images/course-placeholder.jpg',
+        preview_image: data.intro_video_url
+          ? this.getYouTubeThumbnail(data.intro_video_url)
+          : '/images/course-placeholder.jpg',
         price: data.price || 0,
         original_price: data.discount_percentage > 0 ? data.price : undefined,
         discount_percentage: data.discount_percentage || 0,
@@ -185,11 +197,13 @@ class SimpleCoursesService {
         level: 'Intermedio',
         isNew,
         isPopular: false,
-        created_at: data.created_at
+        created_at: data.created_at,
       };
-
     } catch (error) {
-      console.error('❌ SimpleCourses: Error al obtener curso específico:', error);
+      console.error(
+        '❌ SimpleCourses: Error al obtener curso específico:',
+        error,
+      );
       return null;
     }
   }

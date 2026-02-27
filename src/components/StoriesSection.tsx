@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
-import { Play, Video, CheckCircle, X, Calendar } from 'lucide-react';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import MuxPlayer from '@mux/mux-player-react';
+import { Calendar, CheckCircle, Play, Video, X } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 
 interface WeeklyComplement {
   id: string;
@@ -32,9 +32,12 @@ const dayNumberToName: Record<number, string> = {
   7: 'Domingo',
 };
 
-export default function StoriesSection({ courseStartDate }: StoriesSectionProps) {
+export default function StoriesSection({
+  courseStartDate,
+}: StoriesSectionProps) {
   const { user } = useSupabaseAuth();
-  const [todayComplement, setTodayComplement] = useState<WeeklyComplement | null>(null);
+  const [todayComplement, setTodayComplement] =
+    useState<WeeklyComplement | null>(null);
   const [loading, setLoading] = useState(true);
   const [isCompleted, setIsCompleted] = useState(false);
   const [showModal, setShowModal] = useState(false);
@@ -42,7 +45,7 @@ export default function StoriesSection({ courseStartDate }: StoriesSectionProps)
   // Obtener el día de la semana actual (1=Lunes, ..., 7=Domingo)
   const getCurrentDayOfWeek = () => {
     const today = new Date();
-    let day = today.getDay(); // 0=Domingo, 1=Lunes, ..., 6=Sábado
+    const day = today.getDay(); // 0=Domingo, 1=Lunes, ..., 6=Sábado
     return day === 0 ? 7 : day;
   };
 
@@ -55,12 +58,12 @@ export default function StoriesSection({ courseStartDate }: StoriesSectionProps)
     const loadTodayComplement = async () => {
       try {
         setLoading(true);
-        
+
         const response = await fetch('/api/complements/today');
         const result = await response.json();
-        
+
         console.log('🔍 API Response:', result);
-        
+
         if (result.complement) {
           setTodayComplement(result.complement);
         } else {
@@ -88,7 +91,8 @@ export default function StoriesSection({ courseStartDate }: StoriesSectionProps)
         if (response.ok) {
           const data = await response.json();
           const completed = data.interactions?.some(
-            (i: any) => i.complement_id === todayComplement.id && i.is_completed
+            (i: any) =>
+              i.complement_id === todayComplement.id && i.is_completed,
           );
           setIsCompleted(completed || false);
         }
@@ -114,12 +118,12 @@ export default function StoriesSection({ courseStartDate }: StoriesSectionProps)
 
   // Marcar como completado
   const [isCompleting, setIsCompleting] = useState(false);
-  
+
   const handleMarkComplete = async () => {
     if (!todayComplement || !user?.id || isCompleting) return;
 
     setIsCompleting(true);
-    
+
     try {
       const response = await fetch('/api/user-interactions/complete', {
         method: 'POST',
@@ -182,7 +186,9 @@ export default function StoriesSection({ courseStartDate }: StoriesSectionProps)
             `}
           >
             {/* Thumbnail de Mux */}
-            <div className={`absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 transition-all duration-500 ${isCompleted ? 'grayscale' : ''}`}>
+            <div
+              className={`absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 transition-all duration-500 ${isCompleted ? 'grayscale' : ''}`}
+            >
               {todayComplement.mux_playback_id ? (
                 <img
                   src={`https://image.mux.com/${todayComplement.mux_playback_id}/thumbnail.jpg?time=1`}
@@ -219,7 +225,10 @@ export default function StoriesSection({ courseStartDate }: StoriesSectionProps)
                     </div>
                   ) : (
                     <div className="bg-[#85ea10] rounded-full p-5 shadow-2xl shadow-[#85ea10]/30 hover:scale-110 transition-transform">
-                      <Play className="w-10 h-10 text-black ml-1" fill="currentColor" />
+                      <Play
+                        className="w-10 h-10 text-black ml-1"
+                        fill="currentColor"
+                      />
                     </div>
                   )
                 ) : (
@@ -227,7 +236,9 @@ export default function StoriesSection({ courseStartDate }: StoriesSectionProps)
                     <div className="bg-gray-700/80 backdrop-blur-sm rounded-full p-4">
                       <Video className="w-8 h-8 text-gray-500" />
                     </div>
-                    <p className="text-gray-500 text-sm mt-2">Video no disponible</p>
+                    <p className="text-gray-500 text-sm mt-2">
+                      Video no disponible
+                    </p>
                   </div>
                 )}
               </div>
@@ -235,19 +246,23 @@ export default function StoriesSection({ courseStartDate }: StoriesSectionProps)
               {/* Bottom - Título y descripción */}
               <div className="space-y-2">
                 <h4 className="text-xl font-black text-white leading-tight">
-                  {isWeekend ? 'Complemento Fin de Semana' : todayComplement.title}
+                  {isWeekend
+                    ? 'Complemento Fin de Semana'
+                    : todayComplement.title}
                 </h4>
                 {todayComplement.description && (
                   <p className="text-sm text-gray-300 line-clamp-2">
                     {todayComplement.description}
                   </p>
                 )}
-                
+
                 {/* Indicador */}
                 {todayComplement.mux_playback_id && !isCompleted && (
                   <div className="flex items-center gap-2 mt-2">
                     <div className="w-2 h-2 bg-[#85ea10] rounded-full animate-pulse" />
-                    <span className="text-[#85ea10] text-xs font-bold uppercase">Toca para ver</span>
+                    <span className="text-[#85ea10] text-xs font-bold uppercase">
+                      Toca para ver
+                    </span>
                   </div>
                 )}
               </div>
@@ -266,9 +281,11 @@ export default function StoriesSection({ courseStartDate }: StoriesSectionProps)
             autoPlay
             accentColor="#85ea10"
             className="absolute inset-0 w-full h-full"
-            style={{ 
-              '--controls': 'auto',
-            } as Record<string, string>}
+            style={
+              {
+                '--controls': 'auto',
+              } as Record<string, string>
+            }
             envKey={process.env.NEXT_PUBLIC_MUX_DATA_ENV_KEY}
             metadata={{
               video_id: todayComplement.id,
@@ -304,16 +321,22 @@ export default function StoriesSection({ courseStartDate }: StoriesSectionProps)
                   {displayDayName}
                 </span>
                 {isWeekend && (
-                  <span className="text-[#85ea10] text-[10px] font-medium">Fin de Semana</span>
+                  <span className="text-[#85ea10] text-[10px] font-medium">
+                    Fin de Semana
+                  </span>
                 )}
               </div>
-              
+
               {/* Título y descripción */}
-              <h3 className="text-white font-bold text-lg mb-1">{todayComplement.title}</h3>
+              <h3 className="text-white font-bold text-lg mb-1">
+                {todayComplement.title}
+              </h3>
               {todayComplement.description && (
-                <p className="text-white/70 text-sm mb-4 line-clamp-2">{todayComplement.description}</p>
+                <p className="text-white/70 text-sm mb-4 line-clamp-2">
+                  {todayComplement.description}
+                </p>
               )}
-              
+
               {/* Botón de completar */}
               {!isCompleted ? (
                 <button

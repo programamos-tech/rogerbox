@@ -2,8 +2,8 @@
 
 import { Eye, EyeOff } from 'lucide-react';
 import { useState } from 'react';
-import { PasswordFieldProps } from './types';
 import { className as styles } from './styles';
+import type { PasswordFieldProps } from './types';
 
 function PasswordField({
   label,

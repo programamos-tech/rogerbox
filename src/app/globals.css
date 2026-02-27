@@ -32,7 +32,8 @@ body {
 
 /* Animación personalizada para la burbuja de bienvenida */
 @keyframes pulse-slow {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
     transform: scale(1);
   }
@@ -92,7 +93,12 @@ body {
 }
 
 /* Estilos específicos para títulos importantes */
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   font-weight: 700;
 }
 
@@ -126,11 +132,11 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Hide scrollbar for horizontal carousel */
 .scrollbar-hide {
-  -ms-overflow-style: none;  /* Internet Explorer 10+ */
-  scrollbar-width: none;  /* Firefox */
+  -ms-overflow-style: none; /* Internet Explorer 10+ */
+  scrollbar-width: none; /* Firefox */
 }
 .scrollbar-hide::-webkit-scrollbar {
-  display: none;  /* Safari and Chrome */
+  display: none; /* Safari and Chrome */
 }
 
 button,
@@ -180,7 +186,9 @@ select:focus-visible,
 input,
 textarea,
 select {
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .card-hover:hover,

@@ -1,27 +1,21 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getSession } from '@/lib/supabase-server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
+import { getSession } from '@/lib/supabase-server';
 
 export async function POST(request: NextRequest) {
   try {
     // Verificar autenticación con Supabase Auth
     const { session } = await getSession();
-    
+
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'No autorizado' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
     const body = await request.json();
     const { weight, record_date, notes } = body;
 
     if (!weight || isNaN(Number(weight))) {
-      return NextResponse.json(
-        { error: 'Peso inválido' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Peso inválido' }, { status: 400 });
     }
 
     const userId = (session.user as any).id;
@@ -33,7 +27,7 @@ export async function POST(request: NextRequest) {
         user_id: userId,
         weight: Number(weight),
         record_date: record_date || new Date().toISOString().split('T')[0],
-        notes: notes || null
+        notes: notes || null,
       })
       .select()
       .single();
@@ -41,8 +35,11 @@ export async function POST(request: NextRequest) {
     if (weightRecordError) {
       console.error('Error guardando registro de peso:', weightRecordError);
       return NextResponse.json(
-        { error: weightRecordError.message || 'Error al guardar el registro de peso' },
-        { status: 500 }
+        {
+          error:
+            weightRecordError.message || 'Error al guardar el registro de peso',
+        },
+        { status: 500 },
       );
     }
 
@@ -51,7 +48,8 @@ export async function POST(request: NextRequest) {
       .from('profiles')
       .update({
         current_weight: Number(weight),
-        last_weight_update: record_date || new Date().toISOString().split('T')[0]
+        last_weight_update:
+          record_date || new Date().toISOString().split('T')[0],
       })
       .eq('id', userId);
 
@@ -62,17 +60,13 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      data: weightData
+      data: weightData,
     });
-
   } catch (error) {
     console.error('❌ Error inesperado guardando peso:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Error desconocido' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
-
-
-

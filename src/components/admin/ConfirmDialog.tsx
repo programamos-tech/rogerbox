@@ -1,6 +1,6 @@
 'use client';
 
-import { X, AlertTriangle, CheckCircle, Info, XCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Info, X, XCircle } from 'lucide-react';
 
 interface ConfirmDialogProps {
   isOpen: boolean;
@@ -23,7 +23,7 @@ export default function ConfirmDialog({
   type = 'danger',
   confirmText = 'Confirmar',
   cancelText = 'Cancelar',
-  isLoading = false
+  isLoading = false,
 }: ConfirmDialogProps) {
   if (!isOpen) return null;
 
@@ -67,27 +67,33 @@ export default function ConfirmDialog({
       case 'danger':
         return {
           confirm: 'bg-red-500 hover:bg-red-600 text-white',
-          cancel: 'bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-[#164151] dark:text-white'
+          cancel:
+            'bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-[#164151] dark:text-white',
         };
       case 'warning':
         return {
           confirm: 'bg-[#164151] hover:bg-[#1a4d5f] text-white',
-          cancel: 'bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-[#164151] dark:text-white'
+          cancel:
+            'bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-[#164151] dark:text-white',
         };
       case 'info':
         return {
           confirm: 'bg-[#164151] hover:bg-[#1a4d5f] text-white',
-          cancel: 'bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-[#164151] dark:text-white'
+          cancel:
+            'bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-[#164151] dark:text-white',
         };
       case 'success':
         return {
-          confirm: 'bg-[#85ea10] hover:bg-[#75d10e] text-[#164151] font-semibold',
-          cancel: 'bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-[#164151] dark:text-white'
+          confirm:
+            'bg-[#85ea10] hover:bg-[#75d10e] text-[#164151] font-semibold',
+          cancel:
+            'bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-[#164151] dark:text-white',
         };
       default:
         return {
           confirm: 'bg-[#164151] hover:bg-[#1a4d5f] text-white',
-          cancel: 'bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-[#164151] dark:text-white'
+          cancel:
+            'bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-[#164151] dark:text-white',
         };
     }
   };

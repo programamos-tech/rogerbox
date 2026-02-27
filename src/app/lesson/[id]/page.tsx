@@ -1,26 +1,26 @@
 'use client';
 
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState, use } from 'react';
-import { supabase } from '@/lib/supabase';
-import { 
-  Play, 
-  Clock, 
-  Users, 
-  MessageCircle,
-  Send,
-  Heart,
-  Share2,
-  ThumbsUp,
-  Target,
-  Flame,
-  Timer,
-  TrendingUp,
+import {
   Award,
   Calendar,
-  CheckCircle
+  CheckCircle,
+  Clock,
+  Flame,
+  Heart,
+  MessageCircle,
+  Play,
+  Send,
+  Share2,
+  Target,
+  ThumbsUp,
+  Timer,
+  TrendingUp,
+  Users,
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { use, useEffect, useState } from 'react';
+import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { supabase } from '@/lib/supabase';
 
 interface Lesson {
   id: string;
@@ -48,7 +48,11 @@ interface Comment {
   is_liked: boolean;
 }
 
-export default function LessonPage({ params }: { params: Promise<{ id: string }> }) {
+export default function LessonPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const resolvedParams = use(params);
   const { user, profile, loading: authLoading } = useSupabaseAuth();
   const router = useRouter();
@@ -64,23 +68,24 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
   const [streakDays, setStreakDays] = useState(0);
   const [caloriesBurned, setCaloriesBurned] = useState(0);
   const [upcomingLessons, setUpcomingLessons] = useState<Lesson[]>([]);
-  const [showCongratulationsModal, setShowCongratulationsModal] = useState(false);
+  const [showCongratulationsModal, setShowCongratulationsModal] =
+    useState(false);
   const [courseStats, setCourseStats] = useState({
     totalMinutes: 0,
     totalCalories: 0,
     lessonsCompleted: 0,
-    streakDays: 0
+    streakDays: 0,
   });
 
   useEffect(() => {
     console.log('LessonPage mounted, params:', resolvedParams);
-    
+
     if (!authLoading && !user) {
       router.push('/login');
       return;
     }
-    
-    if (!!user) {
+
+    if (user) {
       loadLessonData();
       loadUserProgress();
     }
@@ -117,7 +122,7 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
           name: user.email?.split('@')[0] || 'Usuario',
           weight: 0,
           target_weight: 0,
-          streak_days: 0
+          streak_days: 0,
         };
         setUserProfile(defaultProfile);
         setCourseProgress(0);
@@ -131,12 +136,13 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
       setUserProfile(profileData);
 
       // Obtener progreso real del curso desde la DB
-      const { data: courseProgressData, error: courseProgressError } = await supabase
-        .from('user_course_progress')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('course_id', lesson?.course_id || '1')
-        .single();
+      const { data: courseProgressData, error: courseProgressError } =
+        await supabase
+          .from('user_course_progress')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('course_id', lesson?.course_id || '1')
+          .single();
 
       if (courseProgressError) {
         console.log('No hay progreso de curso registrado, usando 0%');
@@ -145,7 +151,9 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
         // Calcular progreso basado en lecciones completadas
         const completedLessons = courseProgressData?.completed_lessons || 0;
         const totalLessons = courseProgressData?.total_lessons || 1;
-        const progressPercentage = Math.round((completedLessons / totalLessons) * 100);
+        const progressPercentage = Math.round(
+          (completedLessons / totalLessons) * 100,
+        );
         setCourseProgress(progressPercentage);
       }
 
@@ -154,7 +162,7 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
         const currentWeight = profileData.weight;
         const targetWeight = profileData.target_weight;
         const totalToLose = currentWeight - targetWeight;
-        
+
         if (totalToLose > 0) {
           // Obtener calorías quemadas reales desde la DB
           const { data: caloriesData, error: caloriesError } = await supabase
@@ -164,16 +172,20 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
 
           let totalCaloriesBurned = 0;
           if (!caloriesError && caloriesData) {
-            totalCaloriesBurned = caloriesData.reduce((sum, completion) => 
-              sum + (completion.calories_burned || 0), 0
+            totalCaloriesBurned = caloriesData.reduce(
+              (sum, completion) => sum + (completion.calories_burned || 0),
+              0,
             );
           }
 
           // Calcular progreso basado en calorías (7700 cal = 1kg)
           const caloriesPerKg = 7700;
           const totalCaloriesNeeded = totalToLose * caloriesPerKg;
-          const goalProgressPercentage = Math.min(100, Math.round((totalCaloriesBurned / totalCaloriesNeeded) * 100));
-          
+          const goalProgressPercentage = Math.min(
+            100,
+            Math.round((totalCaloriesBurned / totalCaloriesNeeded) * 100),
+          );
+
           setGoalProgress(goalProgressPercentage);
           setCaloriesBurned(totalCaloriesBurned);
         } else {
@@ -187,7 +199,6 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
 
       // Usar datos reales del perfil
       setStreakDays(profileData?.streak_days || 0);
-
     } catch (error) {
       console.error('Error loading user progress:', error);
       // En caso de error, usar datos por defecto
@@ -196,7 +207,7 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
         name: user?.email?.split('@')[0] || 'Usuario',
         weight: 0,
         target_weight: 0,
-        streak_days: 0
+        streak_days: 0,
       };
       setUserProfile(defaultProfile);
       setCourseProgress(0);
@@ -210,7 +221,7 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
     try {
       // Usar el course_id de la lección actual o un default
       const courseId = lesson?.course_id || '1'; // ID del curso HIIT por defecto
-      
+
       const { data: lessonsData, error: lessonsError } = await supabase
         .from('course_lessons')
         .select('*')
@@ -224,7 +235,7 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
 
       console.log('Lessons loaded:', lessonsData?.length || 0);
       setUpcomingLessons(lessonsData || []);
-      
+
       // Si no hay lecciones en la DB, mostrar modal de felicitaciones
       if (!lessonsData || lessonsData.length === 0) {
         console.log('No lessons found, showing congratulations modal');
@@ -258,20 +269,24 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
 
       if (completionsData && completionsData.length > 0) {
         lessonsCompleted = completionsData.length;
-        totalCalories = completionsData.reduce((sum, completion) => 
-          sum + (completion.calories_burned || 0), 0
+        totalCalories = completionsData.reduce(
+          (sum, completion) => sum + (completion.calories_burned || 0),
+          0,
         );
 
         // Obtener duración de las lecciones completadas
-        const lessonIds = completionsData.map(completion => completion.lesson_id);
+        const lessonIds = completionsData.map(
+          (completion) => completion.lesson_id,
+        );
         const { data: lessonsData, error: lessonsError } = await supabase
           .from('course_lessons')
           .select('duration_minutes')
           .in('id', lessonIds);
 
         if (!lessonsError && lessonsData) {
-          totalMinutes = lessonsData.reduce((sum, lesson) => 
-            sum + (lesson.duration_minutes || 0), 0
+          totalMinutes = lessonsData.reduce(
+            (sum, lesson) => sum + (lesson.duration_minutes || 0),
+            0,
           );
         }
       }
@@ -280,9 +295,8 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
         totalMinutes,
         totalCalories,
         lessonsCompleted,
-        streakDays: userProfile?.streak_days || 0
+        streakDays: userProfile?.streak_days || 0,
       });
-
     } catch (error) {
       console.error('Error loading course stats:', error);
     }
@@ -290,12 +304,12 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
 
   const shareToSocialMedia = (platform: string) => {
     const message = `🔥 ¡Acabo de completar mi curso de HIIT Cardio! 💪\n\n📊 Mis estadísticas:\n⏱️ ${courseStats.totalMinutes} minutos entrenados\n🔥 ${courseStats.totalCalories} calorías quemadas\n📚 ${courseStats.lessonsCompleted} lecciones completadas\n🔥 ${courseStats.streakDays} días de racha\n\n¡Gracias @RogerBox por ayudarme a alcanzar mis metas! 🎯 #Fitness #HIIT #RogerBox`;
-    
+
     const encodedMessage = encodeURIComponent(message);
     const url = encodeURIComponent(window.location.origin);
-    
+
     let shareUrl = '';
-    
+
     switch (platform) {
       case 'twitter':
         shareUrl = `https://twitter.com/intent/tweet?text=${encodedMessage}&url=${url}`;
@@ -310,12 +324,11 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
         shareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${url}`;
         break;
     }
-    
+
     if (shareUrl) {
       window.open(shareUrl, '_blank', 'width=600,height=400');
     }
   };
-
 
   const loadLessonData = async () => {
     try {
@@ -337,14 +350,15 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
           id: resolvedParams.id,
           course_id: 'mock-course-id',
           title: 'Día 1 - Full Body Express',
-          description: 'Circuito completo para activar todo el cuerpo. Ejercicios de alta intensidad sin equipo.',
+          description:
+            'Circuito completo para activar todo el cuerpo. Ejercicios de alta intensidad sin equipo.',
           video_url: '', // No hay video por ahora
           duration_minutes: 12,
           lesson_number: 1,
           preview_image: null,
           views_count: 0,
           is_preview: true,
-          created_at: new Date().toISOString()
+          created_at: new Date().toISOString(),
         };
         setLesson(mockLesson);
       } else {
@@ -354,7 +368,6 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
 
       // Cargar comentarios simulados
       loadComments();
-
     } catch (error) {
       console.error('Error loading lesson data:', error);
       setError('Error al cargar la lección');
@@ -388,7 +401,7 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
             user_name: 'María González',
             user_avatar: null,
             likes_count: 12,
-            is_liked: false
+            is_liked: false,
           },
           {
             id: '2',
@@ -399,7 +412,7 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
             user_name: 'Carlos Ruiz',
             user_avatar: null,
             likes_count: 8,
-            is_liked: true
+            is_liked: true,
           },
           {
             id: '3',
@@ -410,24 +423,25 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
             user_name: 'Ana Martínez',
             user_avatar: null,
             likes_count: 5,
-            is_liked: false
-          }
+            is_liked: false,
+          },
         ];
         setComments(mockComments);
       } else {
         // Convertir datos de la DB al formato esperado
-        const realComments: Comment[] = commentsData?.map(comment => ({
-          id: comment.id,
-          lesson_id: comment.lesson_id,
-          user_id: comment.user_id,
-          content: comment.content,
-          created_at: comment.created_at,
-          user_name: comment.user_profiles?.name || 'Usuario',
-          user_avatar: comment.user_profiles?.avatar_url || null,
-          likes_count: comment.likes_count || 0,
-          is_liked: comment.is_liked || false
-        })) || [];
-        
+        const realComments: Comment[] =
+          commentsData?.map((comment) => ({
+            id: comment.id,
+            lesson_id: comment.lesson_id,
+            user_id: comment.user_id,
+            content: comment.content,
+            created_at: comment.created_at,
+            user_name: comment.user_profiles?.name || 'Usuario',
+            user_avatar: comment.user_profiles?.avatar_url || null,
+            likes_count: comment.likes_count || 0,
+            is_liked: comment.is_liked || false,
+          })) || [];
+
         setComments(realComments);
       }
     } catch (error) {
@@ -450,7 +464,7 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
           user_id: user.id,
           content: newComment.trim(),
           likes_count: 0,
-          is_liked: false
+          is_liked: false,
         })
         .select(`
           *,
@@ -470,9 +484,9 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
           user_name: user.email?.split('@')[0] || 'Usuario',
           user_avatar: null,
           likes_count: 0,
-          is_liked: false
+          is_liked: false,
         };
-        setComments(prev => [fallbackComment, ...prev]);
+        setComments((prev) => [fallbackComment, ...prev]);
       } else {
         // Convertir datos de la DB al formato esperado
         const realComment: Comment = {
@@ -484,11 +498,11 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
           user_name: newCommentData.user_profiles?.name || 'Usuario',
           user_avatar: newCommentData.user_profiles?.avatar_url || null,
           likes_count: newCommentData.likes_count || 0,
-          is_liked: newCommentData.is_liked || false
+          is_liked: newCommentData.is_liked || false,
         };
-        setComments(prev => [realComment, ...prev]);
+        setComments((prev) => [realComment, ...prev]);
       }
-      
+
       setNewComment('');
     } catch (error) {
       console.error('Error submitting comment:', error);
@@ -497,44 +511,50 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
 
   const handleLikeComment = async (commentId: string) => {
     try {
-      const comment = comments.find(c => c.id === commentId);
+      const comment = comments.find((c) => c.id === commentId);
       if (!comment) return;
 
       const newLikeStatus = !comment.is_liked;
-      const newLikesCount = newLikeStatus ? comment.likes_count + 1 : comment.likes_count - 1;
+      const newLikesCount = newLikeStatus
+        ? comment.likes_count + 1
+        : comment.likes_count - 1;
 
       // Actualizar en la base de datos
       const { error: updateError } = await supabase
         .from('lesson_comments')
         .update({
           is_liked: newLikeStatus,
-          likes_count: newLikesCount
+          likes_count: newLikesCount,
         })
         .eq('id', commentId);
 
       if (updateError) {
         console.error('Error updating like:', updateError);
         // Si hay error, actualizar solo localmente
-        setComments(prev => prev.map(comment => 
-          comment.id === commentId 
-            ? { 
-                ...comment, 
-                likes_count: newLikesCount,
-                is_liked: newLikeStatus 
-              }
-            : comment
-        ));
+        setComments((prev) =>
+          prev.map((comment) =>
+            comment.id === commentId
+              ? {
+                  ...comment,
+                  likes_count: newLikesCount,
+                  is_liked: newLikeStatus,
+                }
+              : comment,
+          ),
+        );
       } else {
         // Actualizar estado local
-        setComments(prev => prev.map(comment => 
-          comment.id === commentId 
-            ? { 
-                ...comment, 
-                likes_count: newLikesCount,
-                is_liked: newLikeStatus 
-              }
-            : comment
-        ));
+        setComments((prev) =>
+          prev.map((comment) =>
+            comment.id === commentId
+              ? {
+                  ...comment,
+                  likes_count: newLikesCount,
+                  is_liked: newLikeStatus,
+                }
+              : comment,
+          ),
+        );
       }
     } catch (error) {
       console.error('Error handling like:', error);
@@ -544,15 +564,22 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
   const formatTimeAgo = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
-    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
-    
+    const diffInMinutes = Math.floor(
+      (now.getTime() - date.getTime()) / (1000 * 60),
+    );
+
     if (diffInMinutes < 1) return 'Ahora mismo';
     if (diffInMinutes < 60) return `Hace ${diffInMinutes} min`;
     if (diffInMinutes < 1440) return `Hace ${Math.floor(diffInMinutes / 60)}h`;
     return `Hace ${Math.floor(diffInMinutes / 1440)}d`;
   };
 
-  console.log('Render state:', { loading, error, lesson: !!lesson, user: !!user });
+  console.log('Render state:', {
+    loading,
+    error,
+    lesson: !!lesson,
+    user: !!user,
+  });
 
   if (loading) {
     console.log('Showing loading...');
@@ -560,36 +587,21 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#85ea10] mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">Cargando lección...</p>
+          <p className="text-gray-600 dark:text-gray-400">
+            Cargando lección...
+          </p>
         </div>
       </div>
     );
   }
-  
+
   if (error) {
     console.log('Showing error:', error);
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
           <p className="text-red-500 text-xl mb-4">{error}</p>
-          <button 
-            onClick={() => router.back()}
-            className="bg-[#85ea10] text-black px-4 py-2 rounded-lg"
-          >
-            Volver
-          </button>
-        </div>
-      </div>
-    );
-  }
-  
-  if (!lesson) {
-    console.log('No lesson found');
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-        <div className="text-center">
-          <p className="text-gray-500 text-xl mb-4">Lección no encontrada</p>
-          <button 
+          <button
             onClick={() => router.back()}
             className="bg-[#85ea10] text-black px-4 py-2 rounded-lg"
           >
@@ -600,7 +612,31 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
     );
   }
 
-  console.log('Render state:', { user: !!user, userProfile: !!userProfile, courseProgress, goalProgress, streakDays, caloriesBurned });
+  if (!lesson) {
+    console.log('No lesson found');
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <div className="text-center">
+          <p className="text-gray-500 text-xl mb-4">Lección no encontrada</p>
+          <button
+            onClick={() => router.back()}
+            className="bg-[#85ea10] text-black px-4 py-2 rounded-lg"
+          >
+            Volver
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  console.log('Render state:', {
+    user: !!user,
+    userProfile: !!userProfile,
+    courseProgress,
+    goalProgress,
+    streakDays,
+    caloriesBurned,
+  });
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -628,7 +664,9 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
                       <Play className="w-12 h-12 text-gray-500" />
                     </div>
                     <p className="text-gray-400">Video no disponible</p>
-                    <p className="text-gray-500 text-sm mt-2">Esta lección aún no tiene video</p>
+                    <p className="text-gray-500 text-sm mt-2">
+                      Esta lección aún no tiene video
+                    </p>
                   </div>
                 )}
               </div>
@@ -652,11 +690,13 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
                       }`}
                     >
                       <div className="flex items-center space-x-3">
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                          upcomingLesson.id === lesson?.id
-                            ? 'bg-[#85ea10]'
-                            : 'bg-gray-300 dark:bg-gray-600'
-                        }`}>
+                        <div
+                          className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                            upcomingLesson.id === lesson?.id
+                              ? 'bg-[#85ea10]'
+                              : 'bg-gray-300 dark:bg-gray-600'
+                          }`}
+                        >
                           {upcomingLesson.id === lesson?.id ? (
                             <Play className="w-4 h-4 text-white" />
                           ) : (
@@ -666,12 +706,15 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
                           )}
                         </div>
                         <div className="flex-1">
-                          <h4 className={`font-semibold text-sm ${
-                            upcomingLesson.id === lesson?.id
-                              ? 'text-[#85ea10]'
-                              : 'text-gray-900 dark:text-white'
-                          }`}>
-                            {upcomingLesson.lesson_number}. {upcomingLesson.title}
+                          <h4
+                            className={`font-semibold text-sm ${
+                              upcomingLesson.id === lesson?.id
+                                ? 'text-[#85ea10]'
+                                : 'text-gray-900 dark:text-white'
+                            }`}
+                          >
+                            {upcomingLesson.lesson_number}.{' '}
+                            {upcomingLesson.title}
                           </h4>
                           <div className="flex items-center space-x-2 text-xs text-gray-500 dark:text-gray-400">
                             <Clock className="w-3 h-3" />
@@ -690,7 +733,6 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
               </div>
             )}
 
-
             {/* Información de la lección */}
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4">
               <div className="flex items-center justify-between">
@@ -701,7 +743,7 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
                   <p className="text-gray-600 dark:text-gray-400 text-sm mb-3">
                     {lesson.description}
                   </p>
-                  
+
                   {/* Estadísticas de la lección */}
                   <div className="flex items-center space-x-4 text-xs text-gray-500 dark:text-gray-400">
                     <div className="flex items-center space-x-1">
@@ -718,22 +760,26 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
                     </div>
                   </div>
                 </div>
-                
+
                 {/* Botones de acción */}
                 <div className="flex items-center space-x-2 ml-4">
                   <button
                     onClick={() => setIsFavorited(!isFavorited)}
                     className={`p-2 rounded-lg transition-colors ${
-                      isFavorited 
-                        ? 'bg-red-100 text-red-600 dark:bg-red-900 dark:text-red-400' 
+                      isFavorited
+                        ? 'bg-red-100 text-red-600 dark:bg-red-900 dark:text-red-400'
                         : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
                     }`}
                   >
-                    <Heart className={`w-4 h-4 ${isFavorited ? 'fill-current' : ''}`} />
+                    <Heart
+                      className={`w-4 h-4 ${isFavorited ? 'fill-current' : ''}`}
+                    />
                   </button>
-                  
+
                   <button
-                    onClick={() => {/* Lógica para compartir */}}
+                    onClick={() => {
+                      /* Lógica para compartir */
+                    }}
                     className="p-2 rounded-lg bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                   >
                     <Share2 className="w-4 h-4" />
@@ -779,7 +825,10 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
               {/* Lista de comentarios */}
               <div className="space-y-3 max-h-96 overflow-y-auto">
                 {comments.map((comment) => (
-                  <div key={comment.id} className="border-b border-gray-200 dark:border-gray-700 pb-3 last:border-b-0">
+                  <div
+                    key={comment.id}
+                    className="border-b border-gray-200 dark:border-gray-700 pb-3 last:border-b-0"
+                  >
                     <div className="flex items-start space-x-2">
                       <div className="w-6 h-6 bg-[#85ea10] rounded-full flex items-center justify-center text-black font-semibold text-xs">
                         {comment.user_name.charAt(0).toUpperCase()}
@@ -821,7 +870,13 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
 
             {/* Progress Section - Moved to sidebar below comments */}
             {(() => {
-              console.log('Rendering progress section in sidebar:', { user: !!user, courseProgress, goalProgress, streakDays, caloriesBurned });
+              console.log('Rendering progress section in sidebar:', {
+                user: !!user,
+                courseProgress,
+                goalProgress,
+                streakDays,
+                caloriesBurned,
+              });
               return true;
             })() && (
               <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4">
@@ -840,15 +895,19 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
                         Progreso General
                       </span>
                     </div>
-                    
+
                     {/* Course Progress */}
                     <div className="mb-3">
                       <div className="flex justify-between items-center mb-1">
-                        <span className="text-xs text-gray-600 dark:text-gray-400">Curso</span>
-                        <span className="text-sm font-bold text-[#85ea10]">{courseProgress}%</span>
+                        <span className="text-xs text-gray-600 dark:text-gray-400">
+                          Curso
+                        </span>
+                        <span className="text-sm font-bold text-[#85ea10]">
+                          {courseProgress}%
+                        </span>
                       </div>
                       <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
-                        <div 
+                        <div
                           className="bg-[#85ea10] h-2 rounded-full transition-all duration-500"
                           style={{ width: `${courseProgress}%` }}
                         ></div>
@@ -858,14 +917,18 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
                     {/* Goal Progress */}
                     <div>
                       <div className="flex justify-between items-center mb-1">
-                        <span className="text-xs text-gray-600 dark:text-gray-400">Meta de Peso</span>
-                        <span className="text-sm font-bold text-blue-600">{goalProgress}%</span>
+                        <span className="text-xs text-gray-600 dark:text-gray-400">
+                          Meta de Peso
+                        </span>
+                        <span className="text-sm font-bold text-blue-600">
+                          {goalProgress}%
+                        </span>
                       </div>
                       <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
                         {userProfile?.weight}kg → {userProfile?.target_weight}kg
                       </div>
                       <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
-                        <div 
+                        <div
                           className="bg-blue-600 h-2 rounded-full transition-all duration-500"
                           style={{ width: `${goalProgress}%` }}
                         ></div>
@@ -883,7 +946,7 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
                         Estadísticas
                       </span>
                     </div>
-                    
+
                     <div className="grid grid-cols-2 gap-3">
                       {/* Streak Days */}
                       <div className="text-center">
@@ -936,7 +999,7 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
                   <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 text-center">
                     📊 Tu Resumen de Entrenamiento
                   </h3>
-                  
+
                   <div className="grid grid-cols-2 gap-4 mb-4">
                     {/* Minutos Entrenados */}
                     <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 text-center">
@@ -999,7 +1062,8 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
                       ¡Eres una Máquina! 💪
                     </h4>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                      Has demostrado una dedicación increíble. ¡Sigue así y alcanzarás todas tus metas!
+                      Has demostrado una dedicación increíble. ¡Sigue así y
+                      alcanzarás todas tus metas!
                     </p>
                   </div>
                 </div>
@@ -1053,7 +1117,6 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
           </div>
         )}
       </div>
-
     </div>
   );
 }
