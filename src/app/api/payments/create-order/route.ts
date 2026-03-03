@@ -2,21 +2,21 @@ import crypto from 'crypto';
 import { type NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { createClient, getSession } from '@/lib/supabase-server';
-import { wompiService } from '@/lib/wompi';
 
 interface BuyerData {
   firstName: string;
   lastName: string;
   documentId: string;
-  documentType: string;
+  documentType?: string;
   address: string;
 }
 
 export async function POST(request: NextRequest) {
   try {
-    // MANDATORY: Verificar autenticación - NO permitir compra como invitado
+    /* =====================================================
+       1️⃣  Verificar autenticación obligatoria
+    ====================================================== */
     const { session } = await getSession();
-
     const userId = session?.user?.id;
 
     if (!userId) {
@@ -26,21 +26,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Crear cliente de Supabase con el contexto del usuario autenticado
     const supabase = await createClient();
 
+    /* =====================================================
+       2️⃣  Obtener y validar body
+    ====================================================== */
     const body = await request.json();
-    const {
-      courseId,
-      amount,
-      originalPrice,
-      discountAmount,
-      customerEmail,
-      customerName,
-      buyerData,
-    } = body;
 
-    // Validar datos requeridos
+    const { courseId, amount, customerEmail, customerName, buyerData } = body;
+
     if (!courseId || !amount || !customerEmail || !customerName) {
       return NextResponse.json(
         { error: 'Datos requeridos faltantes' },
@@ -48,10 +42,55 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validar datos del comprador
+    if (typeof amount !== 'number' || amount <= 0) {
+      return NextResponse.json(
+        { error: 'El monto debe ser un número válido mayor a 0' },
+        { status: 400 },
+      );
+    }
+
+    /* =====================================================
+       3️⃣  Verificar que el curso existe
+    ====================================================== */
+    const { data: course, error: courseError } = await supabase
+      .from('courses')
+      .select('id, title') // 🔥 NO validamos precio todavía
+      .eq('id', courseId)
+      .eq('is_published', true)
+      .single();
+
+    if (courseError || !course) {
+      return NextResponse.json(
+        { error: 'Curso no encontrado o no publicado' },
+        { status: 404 },
+      );
+    }
+
+    /* =====================================================
+       ⚠️  PENDIENTE:
+       Aquí deberías validar que:
+       amount === course.price
+
+       Ejemplo futuro:
+       if (amount !== course.price) { ... }
+
+       IMPORTANTE: Nunca confíes en el precio enviado desde el frontend.
+       Siempre debe validarse contra la base de datos.
+       if (amount !== course.price) {
+          return NextResponse.json(
+            { error: 'El monto no coincide con el precio actual del curso' },
+            { status: 400 }
+          );
+        }
+    ====================================================== */
+
+    /* =====================================================
+       4️⃣  Validar y actualizar datos del comprador
+    ====================================================== */
     if (buyerData) {
       const { firstName, lastName, documentId, address } =
         buyerData as BuyerData;
+
       if (!firstName || !lastName || !documentId || !address) {
         return NextResponse.json(
           {
@@ -61,110 +100,61 @@ export async function POST(request: NextRequest) {
           { status: 400 },
         );
       }
-    }
 
-    // Verificar que el curso existe
-    const { data: course, error: courseError } = await supabase
-      .from('courses')
-      .select('id, title, price')
-      .eq('id', courseId)
-      .eq('is_published', true)
-      .single();
-
-    if (courseError || !course) {
-      return NextResponse.json(
-        { error: 'Curso no encontrado' },
-        { status: 404 },
-      );
-    }
-
-    // Guardar/actualizar datos del comprador en el perfil
-    if (buyerData) {
-      const { firstName, lastName, documentId, documentType, address } =
-        buyerData as BuyerData;
-
-      const { error: profileError } = await supabase
+      await supabase
         .from('profiles')
         .update({
           name: `${firstName} ${lastName}`.trim(),
           document_id: documentId,
-          document_type: documentType || 'CC',
-          address: address,
+          document_type: buyerData.documentType || 'CC',
+          address,
           email: customerEmail,
           updated_at: new Date().toISOString(),
         })
         .eq('id', userId);
-
-      if (profileError) {
-        // No fallamos la orden por esto, solo logueamos
-      } else {
-      }
     }
 
-    // Generar referencia única
-    const reference = `ROGER-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    /* =====================================================
+       5️⃣  Generar referencia única
+    ====================================================== */
+    const reference = `ORDER-${Date.now()}-${crypto
+      .randomBytes(4)
+      .toString('hex')}`;
 
-    // Crear orden en la base de datos (SIEMPRE con userId)
+    /* =====================================================
+       6️⃣  Crear orden en base de datos
+    ====================================================== */
     const { data: order, error: orderError } = await supabase
       .from('orders')
       .insert({
-        user_id: userId, // OBLIGATORIO: usuario autenticado
+        user_id: userId,
         course_id: courseId,
-        amount: amount,
+        amount,
         currency: 'COP',
         status: 'pending',
         wompi_reference: reference,
         customer_email: customerEmail,
         customer_name: customerName,
-        expires_at: new Date(Date.now() + 30 * 60 * 1000), // 30 minutos
+        expires_at: new Date(Date.now() + 30 * 60 * 1000), // 30 min
       })
       .select()
       .single();
 
-    if (orderError) {
-      return NextResponse.json(
-        {
-          error: 'Error al crear la orden',
-          details: orderError.message,
-        },
-        { status: 500 },
-      );
-    }
+    /* =====================================================
+    🔹 MOCK MODE (SOLO DESARROLLO)
+    ===================================================== */
 
-    // Generar firma de integridad para Wompi (solo si no estamos en modo mock)
-    // El modo mock solo está permitido en desarrollo
-    const nodeEnv = String(process.env.NODE_ENV || 'development');
     const isMockMode =
-      nodeEnv !== 'production' &&
-      nodeEnv !== 'prod' &&
+      process.env.NODE_ENV === 'development' &&
       process.env.NEXT_PUBLIC_MOCK_PAYMENTS === 'true';
-    const amountInCents = Math.round(amount * 100);
-    let signature = '';
 
-    if (!isMockMode) {
-      const integrityKey = process.env.WOMPI_INTEGRITY_KEY;
-      if (!integrityKey) {
-        return NextResponse.json(
-          { error: 'Configuración de pagos incompleta' },
-          { status: 500 },
-        );
-      }
-
-      const signatureString = `${reference}${amountInCents}COP${integrityKey}`;
-      signature = crypto
-        .createHash('sha256')
-        .update(signatureString)
-        .digest('hex');
-    } else {
-      signature = 'mock-signature';
-    }
-
-    // En modo mock, actualizar la orden como aprobada automáticamente
     if (isMockMode) {
-      const mockTransactionId = `mock-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const mockTransactionId = `mock-${Date.now()}-${crypto
+        .randomBytes(4)
+        .toString('hex')}`;
 
-      // Actualizar orden a approved usando admin para bypass RLS (como en el webhook)
-      const { error: updateError } = await supabaseAdmin
+      // Aprobar orden inmediatamente
+      await supabaseAdmin
         .from('orders')
         .update({
           status: 'approved',
@@ -173,82 +163,69 @@ export async function POST(request: NextRequest) {
         })
         .eq('id', order.id);
 
-      if (updateError) {
-        // No fallar la respuesta, pero loguear el error
-      } else {
-        // Verificar si ya existe una compra activa (como en el webhook)
-        const { data: existingPurchase } = await supabaseAdmin
-          .from('course_purchases')
-          .select('id, user_id, course_id, is_active')
-          .eq('user_id', userId)
-          .eq('course_id', courseId)
-          .eq('is_active', true)
-          .maybeSingle();
+      // Crear acceso al curso
+      await supabaseAdmin.from('course_purchases').insert({
+        user_id: userId,
+        course_id: courseId,
+        order_id: order.id,
+        purchase_price: amount,
+        is_active: true,
+        access_granted_at: new Date().toISOString(),
+      });
 
-        if (existingPurchase) {
-        } else {
-          // Crear la compra del curso inmediatamente (como lo haría el webhook)
-          const { data: createdPurchase, error: purchaseError } =
-            await supabaseAdmin
-              .from('course_purchases')
-              .insert({
-                user_id: userId,
-                course_id: courseId,
-                order_id: order.id,
-                purchase_price: amount,
-                is_active: true,
-                access_granted_at: new Date().toISOString(),
-              })
-              .select('id, user_id, course_id, order_id, is_active, created_at')
-              .single();
-
-          if (purchaseError) {
-          } else {
-            // IMPORTANTE: Verificar que el user_id de la compra coincide con el de la sesión
-            if (createdPurchase?.user_id !== session?.user?.id) {
-            }
-
-            // Verificar que la compra se puede leer con el cliente normal (RLS)
-            const { data: verifyPurchase, error: verifyError } = await supabase
-              .from('course_purchases')
-              .select('id, user_id, course_id, is_active')
-              .eq('id', createdPurchase.id)
-              .single();
-
-            if (verifyError) {
-            } else {
-            }
-
-            // Verificar también con una consulta más amplia usando el cliente normal (con RLS)
-            const { data: allUserPurchases, error: allError } = await supabase
-              .from('course_purchases')
-              .select('id, user_id, course_id, is_active')
-              .eq('user_id', userId);
-
-            // Verificar también con admin para comparar
-            const { data: allUserPurchasesAdmin } = await supabaseAdmin
-              .from('course_purchases')
-              .select('id, user_id, course_id, is_active')
-              .eq('user_id', userId);
-
-            if (
-              allUserPurchasesAdmin &&
-              allUserPurchasesAdmin.length > 0 &&
-              (!allUserPurchases || allUserPurchases.length === 0)
-            ) {
-            }
-          }
-        }
-      }
-    } else {
+      return NextResponse.json({
+        success: true,
+        mock: true,
+        orderId: order.id,
+      });
     }
 
+    /* =====================================================
+    🔹 MOCK MODE (SOLO DESARROLLO)
+    ===================================================== */
+
+    if (orderError || !order) {
+      return NextResponse.json(
+        {
+          error: 'Error al crear la orden',
+          details: orderError?.message,
+        },
+        { status: 500 },
+      );
+    }
+
+    /* =====================================================
+       7️⃣  Generar firma para Wompi
+    ====================================================== */
+    const integrityKey = process.env.WOMPI_INTEGRITY_KEY;
+
+    if (!integrityKey) {
+      return NextResponse.json(
+        { error: 'Configuración de pagos incompleta' },
+        { status: 500 },
+      );
+    }
+
+    const amountInCents = Math.round(amount * 100);
+
+    const signatureString = `${reference}${amountInCents}COP${integrityKey}`;
+
+    const signature = crypto
+      .createHash('sha256')
+      .update(signatureString)
+      .digest('hex');
+
+    /* =====================================================
+       8️⃣  Respuesta final
+    ====================================================== */
     return NextResponse.json({
       success: true,
       orderId: order.id,
-      reference: reference,
-      signature: signature,
-      amountInCents: amountInCents,
+      reference,
+      signature,
+      amountInCents,
+      publicKey: process.env.NEXT_PUBLIC_WOMPI_PUBLIC_KEY,
+      environment: process.env.WOMPI_ENVIRONMENT || 'sandbox',
     });
   } catch (error) {
     return NextResponse.json(

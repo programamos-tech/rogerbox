@@ -28,6 +28,9 @@
       ],
       "@auth/*": [
         "./src/modules/auth/*"
+      ],
+      "@payments/*": [
+        "./src/modules/payments/*"
       ]
     }
   },

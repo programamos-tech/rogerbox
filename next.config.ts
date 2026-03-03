@@ -33,9 +33,9 @@ const nextConfig: NextConfig = {
     optimizePackageImports: ["@supabase/supabase-js", "@supabase/ssr"],
   },
   
-  compiler: {
-    removeConsole: true,
-  },
+  // compiler: {
+  //   removeConsole: true,
+  // },
 
   transpilePackages: ["pako", "fast-png"],
 };

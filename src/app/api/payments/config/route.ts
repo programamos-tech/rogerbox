@@ -1,24 +1,25 @@
 import { NextResponse } from 'next/server';
 
 export async function GET() {
-  try {
-    const publicKey = process.env.NEXT_PUBLIC_WOMPI_PUBLIC_KEY;
+  const publicKey = process.env.NEXT_PUBLIC_WOMPI_PUBLIC_KEY;
 
-    if (!publicKey) {
-      return NextResponse.json(
-        { error: 'Wompi public key not configured' },
-        { status: 500 },
-      );
-    }
-
-    return NextResponse.json({
-      publicKey,
-      environment: process.env.WOMPI_ENVIRONMENT || 'sandbox',
-    });
-  } catch (error) {
+  if (!publicKey) {
+    console.error('Wompi public key missing');
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Payment system not configured' },
       { status: 500 },
     );
   }
+
+  return NextResponse.json(
+    {
+      publicKey,
+      environment: process.env.WOMPI_ENVIRONMENT ?? 'sandbox',
+    },
+    {
+      headers: {
+        'Cache-Control': 'public, max-age=3600',
+      },
+    },
+  );
 }

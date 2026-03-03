@@ -54,6 +54,7 @@ import {
   generateGoalSuggestion,
 } from '@/lib/goalSuggestion';
 import { supabase } from '@/lib/supabase-browser';
+import { useIsAdmin } from '@/hooks/auth/useIsAdmin';
 
 interface UserProfile {
   id: string;
@@ -112,16 +113,17 @@ export default function DashboardPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
-  const isAdmin = useMemo(() => {
-    if (!user) return false;
-    const envId = process.env.NEXT_PUBLIC_ADMIN_USER_ID;
-    const envEmail =
-      process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'rogerbox@admin.com'; // fallback seguro
-    const matchId = envId && user.id === envId;
-    const matchEmail = envEmail && user.email === envEmail;
-    const matchRole = user.user_metadata?.role === 'admin';
-    return Boolean(matchId || matchEmail || matchRole);
-  }, [user]);
+  const isAdmin = useIsAdmin();
+  // const isAdmin = useMemo(() => {
+  //   if (!user) return false;
+  //   const envId = process.env.NEXT_PUBLIC_ADMIN_USER_ID;
+  //   const envEmail =
+  //     process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'rogerbox@admin.com'; // fallback seguro
+  //   const matchId = envId && user.id === envId;
+  //   const matchEmail = envEmail && user.email === envEmail;
+  //   const matchRole = user.user_metadata?.role === 'admin';
+  //   return Boolean(matchId || matchEmail || matchRole);
+  // }, [user]);
   const displayName = userProfile?.name || user?.email || 'RogerBox';
 
   // Verificar si es viernes para notificación de peso
@@ -2400,7 +2402,7 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
-      <NewsModal />
+      {!isAdmin && <NewsModal />}
     </>
   );
 }
