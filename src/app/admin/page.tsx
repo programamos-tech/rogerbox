@@ -68,6 +68,7 @@ import GymPlansManagement, {
 import QuickLoading from '@/components/QuickLoading';
 import UnderConstruction from '@/components/UnderConstruction';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { formatDateOnlyLocal } from '@/lib/dateUtils';
 import { supabaseAdmin } from '@/lib/supabase';
 import { supabase } from '@/lib/supabase-browser';
 
@@ -2183,14 +2184,27 @@ function AdminDashboardContent() {
                                         Fecha
                                       </p>
                                       <p className="text-sm font-medium text-[#164151] dark:text-white">
-                                        {paymentDate.toLocaleDateString(
-                                          'es-ES',
-                                          {
-                                            day: '2-digit',
-                                            month: 'short',
-                                            year: 'numeric',
-                                          },
-                                        )}
+                                        {payment.payment_date &&
+                                        /^\d{4}-\d{2}-\d{2}$/.test(
+                                          payment.payment_date,
+                                        )
+                                          ? formatDateOnlyLocal(
+                                              payment.payment_date,
+                                              {
+                                                day: '2-digit',
+                                                month: 'short',
+                                                year: 'numeric',
+                                              },
+                                              'es-ES',
+                                            )
+                                          : paymentDate.toLocaleDateString(
+                                              'es-ES',
+                                              {
+                                                day: '2-digit',
+                                                month: 'short',
+                                                year: 'numeric',
+                                              },
+                                            )}
                                       </p>
                                     </div>
                                     {payment.invoice_number && (

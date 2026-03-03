@@ -40,6 +40,7 @@ import {
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { formatDateOnlyLocal } from '@/lib/dateUtils';
 import { supabaseAdmin } from '@/lib/supabase';
 
 // Función para traducir los goals a español
@@ -828,9 +829,10 @@ export default function UserDetailPage() {
                     new Date(b.payment.payment_date).getTime(),
                 )
                 .map((m: any) => ({
-                  date: new Date(m.payment.payment_date).toLocaleDateString(
-                    'es-CO',
+                  date: formatDateOnlyLocal(
+                    m.payment.payment_date,
                     { day: 'numeric', month: 'short' },
+                    'es-CO',
                   ),
                   amount: m.payment.amount,
                   plan: m.plan?.name || 'Plan',
@@ -869,12 +871,11 @@ export default function UserDetailPage() {
                     <div className="bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-xl border border-gray-200 dark:border-white/10 p-4 text-center">
                       <div className="text-2xl font-bold text-[#164151] dark:text-white">
                         {lastPayment?.payment?.payment_date
-                          ? new Date(
+                          ? formatDateOnlyLocal(
                               lastPayment.payment.payment_date,
-                            ).toLocaleDateString('es-CO', {
-                              day: 'numeric',
-                              month: 'short',
-                            })
+                              { day: 'numeric', month: 'short' },
+                              'es-CO',
+                            )
                           : '-'}
                       </div>
                       <div className="text-xs text-gray-500 dark:text-white/50 flex items-center justify-center gap-1">
@@ -2049,12 +2050,22 @@ export default function UserDetailPage() {
                   const today = new Date();
                   today.setHours(0, 0, 0, 0);
 
-                  // Filtrar membresías vencidas (excluir canceladas)
+                  // Filtrar membresías vencidas (excluir canceladas) que aún no tienen renovación
                   const expiredMemberships = (
                     userData.gym_memberships || []
                   ).filter((membership: any) => {
                     const endDate = parseLocalDate(membership.end_date);
-                    return endDate < today && membership.status !== 'cancelled';
+                    if (endDate >= today || membership.status === 'cancelled')
+                      return false;
+                    // No mostrar en "necesitan renovación" si ya renovó (tiene otra membresía activa o próxima del mismo plan)
+                    const hasRenewedSamePlan = (userData.gym_memberships || []).some(
+                      (m: any) =>
+                        m.id !== membership.id &&
+                        m.plan_id === membership.plan_id &&
+                        m.status !== 'cancelled' &&
+                        parseLocalDate(m.end_date) >= today,
+                    );
+                    return !hasRenewedSamePlan;
                   });
 
                   if (expiredMemberships.length === 0) {

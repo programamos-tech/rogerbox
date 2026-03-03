@@ -32,6 +32,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import QuickLoading from '@/components/QuickLoading';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { formatDateOnlyLocal } from '@/lib/dateUtils';
 import type { GymPayment } from '@/types/gym';
 
 // Definición de las secciones del sidebar (mismo que en admin/page.tsx)
@@ -201,57 +202,102 @@ export default function PaymentDetailPage() {
     invoiceDiv.style.position = 'absolute';
     invoiceDiv.style.left = '-9999px';
 
-    const paymentMethodText = {
-      cash: 'Efectivo',
-      transfer: 'Transferencia',
-      mixed: 'Mixto',
-    };
+    const paymentMethodText =
+      payment.payment_method === 'cash'
+        ? 'Efectivo'
+        : payment.payment_method === 'transfer'
+          ? 'Transferencia'
+          : 'Mixto';
+    const periodStartFormatted = formatDateOnlyLocal(payment.period_start, {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+    });
+    const periodEndFormatted = formatDateOnlyLocal(payment.period_end, {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+    });
+    const paymentDateFormatted = formatDateOnlyLocal(payment.payment_date, {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+    });
 
     invoiceDiv.innerHTML = `
-      <div style="border: 2px solid #164151; padding: 30px; border-radius: 8px;">
-        <div style="text-align: center; margin-bottom: 30px; border-bottom: 2px solid #164151; padding-bottom: 20px;">
-          <h1 style="color: #164151; margin: 0; font-size: 28px; font-weight: bold;">FACTURA</h1>
-          <p style="color: #666; margin: 5px 0; font-size: 14px;">RogerBox</p>
+      <div style="text-align: center; margin-bottom: 32px; padding-bottom: 24px; border-bottom: 2px solid #e5e7eb;">
+        <div style="font-size: 28px; font-weight: 900; color: #164151; letter-spacing: -0.5px; font-family: Arial, sans-serif;">
+          <strong style="font-weight: 900;">ROGER</strong><strong style="color: #85ea10; font-weight: 900;">BOX</strong>
         </div>
-        
-        <div style="margin-bottom: 30px;">
-          <h2 style="color: #164151; font-size: 18px; margin-bottom: 15px; border-bottom: 1px solid #ddd; padding-bottom: 10px;">Información de la Factura</h2>
-          <p style="margin: 5px 0; color: #666; font-size: 14px;"><strong>Número de Factura:</strong> #${payment.invoice_number || payment.id.substring(0, 8).toUpperCase()}</p>
-          <p style="margin: 5px 0; color: #666; font-size: 14px;"><strong>Fecha de Emisión:</strong> ${new Date(payment.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
-          <p style="margin: 5px 0; color: #666; font-size: 14px;"><strong>Fecha de Pago:</strong> ${new Date(payment.payment_date).toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
+        <div style="font-size: 13px; color: #64748b; margin-top: 6px; text-transform: uppercase; letter-spacing: 0.08em;">
+          Comprobante de pago
         </div>
-        
-        <div style="margin-bottom: 30px;">
-          <h2 style="color: #164151; font-size: 18px; margin-bottom: 15px; border-bottom: 1px solid #ddd; padding-bottom: 10px;">Información del Cliente</h2>
-          <p style="margin: 5px 0; color: #666; font-size: 14px;"><strong>Nombre:</strong> ${payment.client_info?.name || 'No especificado'}</p>
-          <p style="margin: 5px 0; color: #666; font-size: 14px;"><strong>Documento:</strong> ${payment.client_info?.document_id || 'No especificado'}</p>
-          ${payment.client_info?.email ? `<p style="margin: 5px 0; color: #666; font-size: 14px;"><strong>Email:</strong> ${payment.client_info.email}</p>` : ''}
-          ${payment.client_info?.whatsapp ? `<p style="margin: 5px 0; color: #666; font-size: 14px;"><strong>WhatsApp:</strong> ${payment.client_info.whatsapp}</p>` : ''}
+        <div style="font-size: 15px; color: #164151; font-weight: 600; margin-top: 12px;">
+          ${payment.invoice_number ? `Factura Nº ${String(payment.invoice_number).padStart(3, '0')}` : `Pago ${payment.id.substring(0, 8).toUpperCase()}`}
         </div>
-        
-        <div style="margin-bottom: 30px;">
-          <h2 style="color: #164151; font-size: 18px; margin-bottom: 15px; border-bottom: 1px solid #ddd; padding-bottom: 10px;">Detalles del Pago</h2>
-          <p style="margin: 5px 0; color: #666; font-size: 14px;"><strong>Plan:</strong> ${payment.plan?.name || 'No especificado'}</p>
-          <p style="margin: 5px 0; color: #666; font-size: 14px;"><strong>Monto:</strong> $${payment.amount.toLocaleString('es-CO')}</p>
-          <p style="margin: 5px 0; color: #666; font-size: 14px;"><strong>Método de Pago:</strong> ${paymentMethodText[payment.payment_method] || payment.payment_method}</p>
-          <p style="margin: 5px 0; color: #666; font-size: 14px;"><strong>Período:</strong> ${new Date(payment.period_start).toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })} - ${new Date(payment.period_end).toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
+      </div>
+
+      <div style="display: flex; gap: 24px; margin-bottom: 28px; flex-wrap: wrap;">
+        <div style="flex: 1; min-width: 220px; background: #f8fafc; padding: 16px; border-radius: 12px; border: 1px solid #e2e8f0;">
+          <div style="font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px;">Emisor</div>
+          <div style="font-size: 14px; color: #164151; font-weight: 600;">ROGERBOX</div>
+          <div style="font-size: 12px; color: #64748b; margin-top: 4px;">NIT 1102819763-9</div>
+          <div style="font-size: 12px; color: #64748b; margin-top: 2px;">Cr 54 A #25-26, Los Alpes · 3005009487</div>
         </div>
-        
-        ${
-          payment.notes
-            ? `
-        <div style="margin-bottom: 30px;">
-          <h2 style="color: #164151; font-size: 18px; margin-bottom: 15px; border-bottom: 1px solid #ddd; padding-bottom: 10px;">Notas</h2>
-          <p style="margin: 5px 0; color: #666; font-size: 14px;">${payment.notes}</p>
+        <div style="flex: 1; min-width: 220px; background: #f8fafc; padding: 16px; border-radius: 12px; border: 1px solid #e2e8f0;">
+          <div style="font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px;">Cliente</div>
+          <div style="font-size: 14px; color: #164151; font-weight: 600;">${payment.client_info?.name || '—'}</div>
+          <div style="font-size: 12px; color: #64748b; margin-top: 4px;">Doc. ${payment.client_info?.document_id || '—'}</div>
+          ${payment.client_info?.whatsapp ? `<div style="font-size: 12px; color: #64748b; margin-top: 2px;">${payment.client_info.whatsapp}</div>` : ''}
         </div>
-        `
-            : ''
-        }
-        
-        <div style="margin-top: 40px; padding-top: 20px; border-top: 2px solid #164151; text-align: center;">
-          <p style="color: #666; font-size: 12px; margin: 5px 0;">Gracias por su pago</p>
-          <p style="color: #666; font-size: 12px; margin: 5px 0;">RogerBox - Sistema de Gestión</p>
-        </div>
+      </div>
+
+      <div style="background: #164151; color: #fff; padding: 14px 20px; border-radius: 12px 12px 0 0; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">
+        Detalle del plan y pago
+      </div>
+      <div style="border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 12px 12px; overflow: hidden;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+          <tr style="border-bottom: 1px solid #e2e8f0;">
+            <td style="padding: 14px 20px; color: #64748b; font-weight: 500; width: 38%;">Plan</td>
+            <td style="padding: 14px 20px; color: #164151; font-weight: 600;">${payment.plan?.name || 'Plan'}</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #e2e8f0;">
+            <td style="padding: 14px 20px; color: #64748b; font-weight: 500;">Fecha de inicio</td>
+            <td style="padding: 14px 20px; color: #0f172a;">${periodStartFormatted}</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #e2e8f0;">
+            <td style="padding: 14px 20px; color: #64748b; font-weight: 500;">Fecha de finalización</td>
+            <td style="padding: 14px 20px; color: #0f172a;">${periodEndFormatted}</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #e2e8f0;">
+            <td style="padding: 14px 20px; color: #64748b; font-weight: 500;">Fecha de pago</td>
+            <td style="padding: 14px 20px; color: #0f172a;">${paymentDateFormatted}</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #e2e8f0;">
+            <td style="padding: 14px 20px; color: #64748b; font-weight: 500;">Método de pago</td>
+            <td style="padding: 14px 20px; color: #0f172a;">${paymentMethodText}</td>
+          </tr>
+          ${
+            payment.notes
+              ? `<tr style="border-bottom: 1px solid #e2e8f0;">
+            <td style="padding: 14px 20px; color: #64748b; font-weight: 500;">Notas</td>
+            <td style="padding: 14px 20px; color: #0f172a;">${payment.notes}</td>
+          </tr>`
+              : ''
+          }
+          <tr style="background: #f0fdf4;">
+            <td style="padding: 18px 20px; color: #164151; font-weight: 700; font-size: 15px;">Total pagado</td>
+            <td style="padding: 18px 20px; color: #164151; font-weight: 800; font-size: 20px;">$${payment.amount.toLocaleString('es-CO')} COP</td>
+          </tr>
+        </table>
+      </div>
+
+      <div style="margin-top: 28px; padding: 16px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0; text-align: center;">
+        <p style="margin: 0; font-size: 12px; color: #64748b;">
+          <strong style="color: #164151;">Válido como comprobante de pago.</strong><br>
+          Generado el ${new Date().toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+        </p>
+        <p style="margin: 8px 0 0 0; font-size: 11px; color: #94a3b8;">RogerBox · www.rogerbox.co</p>
       </div>
     `;
 
@@ -283,7 +329,7 @@ export default function PaymentDetailPage() {
         heightLeft -= pageHeight;
       }
 
-      const fileName = `factura-${payment.invoice_number || payment.id.substring(0, 8)}-${new Date(payment.payment_date).toISOString().split('T')[0]}.pdf`;
+      const fileName = `factura-${payment.invoice_number || payment.id.substring(0, 8)}-${payment.payment_date}.pdf`;
       pdf.save(fileName);
     } catch (error) {
       alert('Error al generar el PDF');
@@ -554,14 +600,11 @@ export default function PaymentDetailPage() {
                       Fecha de Pago
                     </p>
                     <p className="text-sm font-medium text-[#164151] dark:text-white">
-                      {new Date(payment.payment_date).toLocaleDateString(
-                        'es-ES',
-                        {
-                          day: '2-digit',
-                          month: 'long',
-                          year: 'numeric',
-                        },
-                      )}
+                      {formatDateOnlyLocal(payment.payment_date, {
+                        day: '2-digit',
+                        month: 'long',
+                        year: 'numeric',
+                      })}
                     </p>
                   </div>
                 </div>
