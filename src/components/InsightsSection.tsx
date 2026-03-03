@@ -72,6 +72,12 @@ const formatDateLabel = (dateString?: string | null) => {
   return `${dayName.charAt(0).toUpperCase() + dayName.slice(1)} ${dayNumber} ${monthName}`;
 };
 
+// Fecha local como YYYY-MM-DD para comparar "hoy"
+const getLocalDateString = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const getRecordDateString = (dateStr: string) =>
+  getLocalDateString(new Date(dateStr));
+
 // Calcular IMC
 const calculateBMI = (weight: number, height: number): number => {
   if (!weight || !height || height === 0) return 0;
@@ -387,8 +393,18 @@ export default function InsightsSection({
         throw new Error('No hay sesión de usuario');
       }
 
-      // Usar timestamp completo para permitir múltiples registros por día
       const now = new Date();
+      const todayStr = getLocalDateString(now);
+      const hasWeightToday = weightHistory.some(
+        (r) => getRecordDateString(r.date) === todayStr,
+      );
+      if (hasWeightToday) {
+        alert(
+          'Ya tienes un registro de peso para hoy. Solo puedes registrar un peso por día.',
+        );
+        return;
+      }
+
       const recordDate = now.toISOString().split('T')[0]; // YYYY-MM-DD para compatibilidad
       const notes = `Registro del ${now.toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })}`;
 
@@ -463,6 +479,12 @@ export default function InsightsSection({
       throw error;
     }
   };
+
+  // Comprobar si ya hay un registro de peso hoy (solo uno por día)
+  const todayStr = getLocalDateString(new Date());
+  const hasWeightToday = weightHistory.some(
+    (r) => getRecordDateString(r.date) === todayStr,
+  );
 
   // Limitar la cantidad de registros mostrados para mantener el gráfico limpio
   const MAX_VISIBLE_RECORDS = 12; // Máximo de puntos a mostrar
@@ -683,104 +705,105 @@ export default function InsightsSection({
 
   // Modo dashboard: mostrar insights/progreso completo
   return (
-    <div className="w-full h-full bg-white dark:bg-gray-800 rounded-xl shadow-lg p-5 min-h-0 overflow-hidden flex flex-col">
-      <div className="flex-1 min-h-0 flex flex-col space-y-4">
-        {/* Header */}
-        <div className="flex items-center justify-between flex-shrink-0">
-          <div>
-            <div className="flex items-center space-x-2 mb-1">
-              <TrendingUp className="w-5 h-5 text-[#85ea10]" />
-              <h2 className="text-lg font-bold text-gray-900 dark:text-white">
+    <div className="w-full h-full bg-white dark:bg-gray-800 rounded-xl shadow-lg p-3 sm:p-5 min-h-0 overflow-hidden flex flex-col">
+      <div className="flex-1 min-h-0 flex flex-col space-y-3 sm:space-y-4">
+        {/* Header - títulos y contador con jerarquía consistente en mobile */}
+        <div className="flex items-start sm:items-center justify-between flex-shrink-0 gap-2">
+          <div className="min-w-0">
+            <div className="flex items-center space-x-1.5 sm:space-x-2 mb-0.5 sm:mb-1">
+              <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-[#85ea10] flex-shrink-0" />
+              <h2 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white truncate">
                 Tu Progreso
               </h2>
             </div>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
+            <p className="text-xs text-gray-600 dark:text-gray-300">
               Sigue así, vas por buen camino
             </p>
           </div>
-          <div className="text-right">
-            <div className="text-xl font-bold text-[#85ea10]">
+          <div className="text-right flex-shrink-0">
+            <div className="text-lg sm:text-xl font-bold text-[#85ea10]">
               {classStreak}
             </div>
-            <div className="text-xs text-gray-500 dark:text-gray-400">
+            <div className="text-[11px] sm:text-xs text-gray-600 dark:text-gray-300">
               {classStreak === 1 ? 'Sesión completada' : 'Sesiones completadas'}
             </div>
           </div>
         </div>
 
-        {/* Stats Grid - 4 tarjetas */}
-        <div className="grid grid-cols-2 gap-3 flex-shrink-0">
+        {/* Stats Grid - 4 tarjetas: iconos y texto más proporcionados en mobile */}
+        <div className="grid grid-cols-2 gap-2 sm:gap-3 flex-shrink-0">
           {/* Racha (clases + complementos) */}
-          <div className="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 rounded-lg p-3 border border-orange-200 dark:border-orange-800">
-            <div className="flex items-center space-x-1.5 mb-1.5">
-              <Zap className="w-4 h-4 text-orange-600 dark:text-orange-400" />
-              <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                Racha
+          <div className="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 rounded-lg p-2.5 sm:p-3 border border-orange-200 dark:border-orange-800 flex flex-col">
+            <div className="flex items-start justify-between gap-2 mb-1 sm:mb-1.5">
+              <div className="flex items-center space-x-1 sm:space-x-1.5 min-w-0">
+                <Zap className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-orange-600 dark:text-orange-400 flex-shrink-0" />
+                <span className="text-[11px] sm:text-xs font-semibold text-gray-800 dark:text-gray-200">
+                  Racha
+                </span>
+              </div>
+              <span className="text-2xl sm:text-3xl font-black tabular-nums text-orange-600 dark:text-orange-400 leading-none flex-shrink-0">
+                {consecutiveDaysStreak}
               </span>
             </div>
-            <div className="text-xl font-bold text-orange-600 dark:text-orange-400">
-              {consecutiveDaysStreak}
-            </div>
-            <div className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
+            <div className="text-[11px] sm:text-xs text-gray-600 dark:text-gray-300 leading-tight">
               Clases y complementos completados
             </div>
           </div>
 
           {/* Minutos ejercitados (clases + complementos) */}
-          <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-lg p-3 border border-purple-200 dark:border-purple-800">
-            <div className="flex items-center space-x-1.5 mb-1.5">
-              <Activity className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-              <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                Minutos
+          <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-lg p-2.5 sm:p-3 border border-purple-200 dark:border-purple-800 flex flex-col">
+            <div className="flex items-start justify-between gap-2 mb-1 sm:mb-1.5">
+              <div className="flex items-center space-x-1 sm:space-x-1.5 min-w-0">
+                <Activity className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-600 dark:text-purple-400 flex-shrink-0" />
+                <span className="text-[11px] sm:text-xs font-semibold text-gray-800 dark:text-gray-200">
+                  Minutos
+                </span>
+              </div>
+              <span className="text-2xl sm:text-3xl font-black tabular-nums text-purple-600 dark:text-purple-400 leading-none flex-shrink-0">
+                {totalMinutesExercised}
               </span>
             </div>
-            <div className="text-xl font-bold text-purple-600 dark:text-purple-400">
-              {totalMinutesExercised}
-            </div>
-            <div className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
+            <div className="text-[11px] sm:text-xs text-gray-600 dark:text-gray-300 leading-tight">
               Ejercitados en total
             </div>
           </div>
 
           {/* Peso actual */}
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-lg p-3 border border-blue-200 dark:border-blue-800 flex flex-col h-full">
-            {/* Título con icono de editar */}
-            <div className="flex items-center justify-between mb-2 flex-shrink-0">
-              <div className="flex items-center space-x-1.5">
-                <Weight className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+          <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-lg p-2.5 sm:p-3 border border-blue-200 dark:border-blue-800 flex flex-col h-full">
+            <div className="flex items-center justify-between mb-1.5 sm:mb-2 flex-shrink-0">
+              <div className="flex items-center space-x-1 sm:space-x-1.5">
+                <Weight className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                <span className="text-[11px] sm:text-xs font-semibold text-gray-800 dark:text-gray-200">
                   Peso
                 </span>
               </div>
               <button
                 onClick={handleOpenGoalModal}
-                className="bg-[#85ea10] hover:bg-[#7dd30f] text-black rounded-full p-1.5 transition-colors shadow-sm"
+                className="rounded-full p-1 sm:p-1.5 border border-blue-200 dark:border-blue-700/50 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
                 title="Actualizar meta"
               >
-                <Edit className="w-4 h-4" />
+                <Edit className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </button>
             </div>
 
-            {/* Valores en una línea horizontal alineada a la izquierda */}
-            <div className="flex items-start justify-start gap-3 flex-shrink-0">
-              <div className="flex flex-col">
-                <div className="text-lg font-bold text-blue-600 dark:text-blue-400">
+            <div className="flex items-start justify-start gap-2 sm:gap-3 flex-shrink-0">
+              <div className="flex flex-col min-w-0">
+                <div className="text-base sm:text-lg font-bold text-blue-600 dark:text-blue-400">
                   {latestWeight.toFixed(1)} kg
                 </div>
-                <div className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
+                <div className="text-[11px] sm:text-xs text-gray-600 dark:text-gray-300 mt-0.5">
                   Peso actual
                 </div>
               </div>
 
-              {/* Meta de peso con flecha */}
               {localTargetWeight ? (
                 <>
-                  <ChevronRight className="w-4 h-4 text-[#85ea10] flex-shrink-0 mt-1" />
-                  <div className="flex flex-col">
-                    <div className="text-lg font-bold text-[#1e3a8a] dark:text-[#85ea10]">
+                  <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#85ea10] flex-shrink-0 mt-1" />
+                  <div className="flex flex-col min-w-0">
+                    <div className="text-base sm:text-lg font-bold text-[#1e3a8a] dark:text-[#85ea10]">
                       {localTargetWeight} kg
                     </div>
-                    <div className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
+                    <div className="text-[11px] sm:text-xs text-gray-600 dark:text-gray-300 mt-0.5">
                       Peso meta
                     </div>
                   </div>
@@ -788,7 +811,7 @@ export default function InsightsSection({
               ) : (
                 <button
                   onClick={handleOpenGoalModal}
-                  className="bg-[#1e3a8a] hover:bg-[#152a6a] text-white text-xs font-semibold px-2 py-1 rounded-md transition-colors shadow-md flex-shrink-0"
+                  className="bg-[#1e3a8a] hover:bg-[#152a6a] text-white text-[11px] sm:text-xs font-semibold px-2 py-1 rounded-md transition-colors shadow-md flex-shrink-0"
                 >
                   Agregar meta
                 </button>
@@ -799,12 +822,12 @@ export default function InsightsSection({
           {/* IMC con semáforo */}
           {bmi > 0 && bmiColors && bmiCategory && (
             <div
-              className={`bg-gradient-to-br ${bmiColors.background} rounded-lg p-3 border ${bmiColors.border}`}
+              className={`bg-gradient-to-br ${bmiColors.background} rounded-lg p-2.5 sm:p-3 border ${bmiColors.border}`}
             >
-              <div className="flex items-center justify-between mb-1.5">
-                <div className="flex items-center space-x-1.5">
+              <div className="flex items-center justify-between mb-1 sm:mb-1.5">
+                <div className="flex items-center space-x-1 sm:space-x-1.5">
                   <div
-                    className={`w-2.5 h-2.5 rounded-full ${
+                    className={`w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full flex-shrink-0 ${
                       bmiCategory.color === 'rojo'
                         ? 'bg-red-500'
                         : bmiCategory.color === 'amarillo'
@@ -814,44 +837,57 @@ export default function InsightsSection({
                             : 'bg-blue-500'
                     }`}
                   ></div>
-                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                  <span className="text-[11px] sm:text-xs font-semibold text-gray-800 dark:text-gray-200">
                     IMC
                   </span>
                 </div>
                 <button
                   onClick={() => setShowBMIModal(true)}
-                  className="bg-[#85ea10] hover:bg-[#7dd30f] text-black rounded-full p-1.5 transition-colors shadow-sm"
+                  className="rounded-full p-1 sm:p-1.5 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors"
                   title="Información sobre IMC"
                 >
-                  <Info className="w-5 h-5" />
+                  <Info className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 </button>
               </div>
-              <div className={`text-xl font-bold ${bmiColors.text}`}>
+              <div className={`text-base sm:text-xl font-bold ${bmiColors.text}`}>
                 {bmi.toFixed(1)}
               </div>
-              <div className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
+              <div className="text-[11px] sm:text-xs text-gray-600 dark:text-gray-300 mt-0.5">
                 {bmiCategory.label}
               </div>
             </div>
           )}
         </div>
 
-        {/* Gráfica de Progreso de Peso */}
+        {/* Gráfica de Progreso de Peso - mismo nivel de título que Tu Progreso en mobile */}
         {hasWeightData && (
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700 flex-1 min-h-0 flex flex-col">
-            <div className="flex items-center justify-between mb-3 flex-shrink-0">
-              <div className="flex items-center space-x-2">
-                <TrendingUp className="w-5 h-5 text-[#85ea10]" />
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-3 sm:p-4 border border-gray-200 dark:border-gray-700 flex-1 min-h-0 flex flex-col">
+            <div className="flex items-center justify-between mb-2 sm:mb-3 flex-shrink-0 gap-2">
+              <div className="flex items-center space-x-1.5 sm:space-x-2 min-w-0">
+                <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-[#85ea10] flex-shrink-0" />
+                <h3 className="text-base sm:text-sm font-bold sm:font-semibold text-gray-900 dark:text-white truncate">
                   Progreso de Peso
                 </h3>
               </div>
               <button
-                onClick={() => setShowWeightModal(true)}
-                className="flex items-center space-x-2 px-4 py-2.5 bg-[#85ea10] hover:bg-[#7dd30f] text-black text-sm font-semibold rounded-lg transition-colors"
+                onClick={() => {
+                  if (hasWeightToday) {
+                    alert(
+                      'Ya tienes un registro de peso para hoy. Solo puedes registrar un peso por día.',
+                    );
+                    return;
+                  }
+                  setShowWeightModal(true);
+                }}
+                disabled={hasWeightToday}
+                className={`flex items-center space-x-1.5 sm:space-x-2 px-3 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm font-semibold rounded-lg transition-colors flex-shrink-0 ${
+                  hasWeightToday
+                    ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed'
+                    : 'bg-[#85ea10] hover:bg-[#7dd30f] text-black'
+                }`}
               >
-                <Plus className="w-5 h-5" />
-                <span>Registrar peso</span>
+                <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
+                <span>{hasWeightToday ? 'Ya registrado hoy' : 'Registrar peso'}</span>
               </button>
             </div>
 
@@ -995,19 +1031,19 @@ export default function InsightsSection({
                           width={60}
                           height={28}
                           rx="6"
-                          fill="white"
-                          className="dark:fill-gray-900"
+                          fill={isLast ? '#dcfce7' : 'white'}
+                          className={isLast ? '' : 'dark:fill-gray-900'}
                           stroke={pointColor}
                           strokeWidth="2"
                         />
-                        {/* Peso - siempre visible, centrado verticalmente */}
+                        {/* Peso - siempre visible, texto negro para buen contraste */}
                         <text
                           x={0}
                           y={2}
                           textAnchor="middle"
                           dominantBaseline="middle"
                           className="text-[12px] font-bold"
-                          fill={pointColor}
+                          fill="#171717"
                         >
                           {record.weight.toFixed(1)}kg
                         </text>

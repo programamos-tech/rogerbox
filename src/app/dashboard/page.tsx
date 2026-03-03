@@ -915,38 +915,38 @@ export default function DashboardPage() {
         {/* Header */}
         <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-gray-200 dark:border-white/20 sticky top-0 z-50">
           <div className="max-w-full mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
-            <div className="flex items-center justify-between h-14 sm:h-16">
-              {/* Logo - Alineado a la izquierda */}
+            <div className="flex items-center justify-between h-11 sm:h-14 md:h-16">
+              {/* Logo - más compacto en móvil */}
               <button
                 onClick={() => router.push('/dashboard')}
                 className="flex items-center hover:opacity-80 transition-opacity"
               >
-                <h1 className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tight">
+                <h1 className="text-base sm:text-xl md:text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tight">
                   ROGER<span className="text-[#85ea10]">BOX</span>
                 </h1>
               </button>
 
-              {/* User Menu - Alineado a la derecha */}
-              <div className="flex items-center space-x-2 sm:space-x-3">
+              {/* User Menu - iconos más pequeños en móvil */}
+              <div className="flex items-center space-x-1.5 sm:space-x-2 md:space-x-3">
                 {/* Icono Mi Curso */}
                 <button
                   onClick={() => router.push('/student')}
-                  className="w-7 h-7 sm:w-8 sm:h-8 bg-[#85ea10] rounded-full flex items-center justify-center hover:bg-[#7dd30f] transition-colors"
+                  className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 bg-[#85ea10] rounded-full flex items-center justify-center hover:bg-[#7dd30f] transition-colors"
                   title="Mi Curso"
                 >
-                  <Dumbbell className="w-4 h-4 sm:w-5 sm:h-5 text-black" />
+                  <Dumbbell className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 text-black" />
                 </button>
 
                 {/* Notificaciones */}
                 <div className="relative" data-notifications-dropdown>
                   <button
                     onClick={() => setShowNotifications(!showNotifications)}
-                    className="w-7 h-7 sm:w-8 sm:h-8 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors relative"
+                    className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors relative"
                     title="Notificaciones"
                   >
-                    <Bell className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700 dark:text-gray-300" />
+                    <Bell className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 text-gray-700 dark:text-gray-300" />
                     {notifications.length > 0 && (
-                      <span className="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 bg-red-500 rounded-full flex items-center justify-center text-[10px] sm:text-xs text-white font-bold animate-pulse">
+                      <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 sm:w-4 sm:h-4 bg-red-500 rounded-full flex items-center justify-center text-[9px] sm:text-[10px] text-white font-bold animate-pulse">
                         {notifications.length}
                       </span>
                     )}
@@ -1008,15 +1008,15 @@ export default function DashboardPage() {
                 <div className="relative" data-user-menu>
                   <button
                     onClick={() => setShowUserMenu(!showUserMenu)}
-                    className="flex items-center space-x-2 sm:space-x-3 text-gray-700 dark:text-white hover:text-[#85ea10] transition-colors"
+                    className="flex items-center space-x-1.5 sm:space-x-2 md:space-x-3 text-gray-700 dark:text-white hover:text-[#85ea10] transition-colors"
                   >
-                    <div className="w-7 h-7 sm:w-8 sm:h-8 bg-[#85ea10] rounded-full flex items-center justify-center">
-                      <User className="w-4 h-4 sm:w-5 sm:h-5 text-black" />
+                    <div className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 bg-[#85ea10] rounded-full flex items-center justify-center flex-shrink-0">
+                      <User className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 text-black" />
                     </div>
-                    <div className="hidden sm:block text-left">
-                      <p className="text-sm font-medium">{displayName}</p>
+                    <div className="hidden sm:block text-left min-w-0">
+                      <p className="text-xs sm:text-sm font-medium truncate max-w-[100px] md:max-w-none">{displayName}</p>
                     </div>
-                    <ChevronDown className="w-3 h-3 sm:w-4 sm:h-4" />
+                    <ChevronDown className="w-3 h-3 flex-shrink-0" />
                   </button>
 
                   {/* Dropdown Menu */}
@@ -1307,13 +1307,6 @@ export default function DashboardPage() {
                     Transforma tu cuerpo con nuestros programas especializados
                   </p>
                 </div>
-                <button
-                  onClick={() => router.push('/courses')}
-                  className="text-xs sm:text-sm text-[#85ea10] hover:text-[#7dd30f] font-semibold flex items-center space-x-1"
-                >
-                  <span>Ver todos</span>
-                  <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4" />
-                </button>
               </div>
 
               {/* Carrusel con curso principal y coming soon */}
@@ -1349,9 +1342,10 @@ export default function DashboardPage() {
                       }
                     }
                   }}
-                  className="hidden sm:flex absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-20 bg-white/95 dark:bg-gray-800/95 backdrop-blur-md hover:bg-white dark:hover:bg-gray-800 text-gray-900 dark:text-white rounded-full p-2 sm:p-3 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-110 border border-gray-200 dark:border-gray-700"
+                  className="hidden sm:flex absolute left-1 sm:left-2 md:left-4 top-[72%] -translate-y-1/2 z-20 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm hover:bg-white dark:hover:bg-gray-800 text-gray-900 dark:text-white rounded-full p-1.5 sm:p-2 shadow-lg border border-gray-200 dark:border-gray-700 transition-colors"
+                  aria-label="Anterior"
                 >
-                  <ChevronLeft className="w-4 h-4 sm:w-6 sm:h-6" />
+                  <ChevronLeft className="w-4 h-4" />
                 </button>
 
                 <button
@@ -1384,9 +1378,10 @@ export default function DashboardPage() {
                       }
                     }
                   }}
-                  className="hidden sm:flex absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-20 bg-white/95 dark:bg-gray-800/95 backdrop-blur-md hover:bg-white dark:hover:bg-gray-800 text-gray-900 dark:text-white rounded-full p-2 sm:p-3 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-110 border border-gray-200 dark:border-gray-700"
+                  className="hidden sm:flex absolute right-1 sm:right-2 md:right-4 top-[72%] -translate-y-1/2 z-20 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm hover:bg-white dark:hover:bg-gray-800 text-gray-900 dark:text-white rounded-full p-1.5 sm:p-2 shadow-lg border border-gray-200 dark:border-gray-700 transition-colors"
+                  aria-label="Siguiente"
                 >
-                  <ChevronRight className="w-4 h-4 sm:w-6 sm:h-6" />
+                  <ChevronRight className="w-4 h-4" />
                 </button>
 
                 {/* Contenedor del carrusel */}
@@ -1525,11 +1520,11 @@ export default function DashboardPage() {
                           onClick={(e) => {
                             router.push(`/course/${course.slug || course.id}`);
                           }}
-                          className="flex flex-col md:flex-row bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl hover:shadow-[#85ea10]/10 hover:border-[#85ea10]/30 transition-all duration-200 rounded-2xl cursor-pointer w-full overflow-hidden h-auto md:h-full"
+                          className="flex flex-col lg:flex-row bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl hover:shadow-[#85ea10]/10 hover:border-[#85ea10]/30 transition-all duration-200 rounded-2xl cursor-pointer w-full overflow-hidden h-auto lg:h-full"
                         >
-                          {/* IMAGEN - Vertical en mobile, horizontal en desktop */}
-                          <div className="w-full md:w-[320px] h-[200px] sm:h-[250px] md:h-full flex-shrink-0 relative">
-                            <div className="absolute inset-0 w-full h-full rounded-t-2xl md:rounded-l-2xl md:rounded-tr-none overflow-hidden">
+                          {/* IMAGEN - Vertical hasta lg para que en tablet el contenido no quede estrecho */}
+                          <div className="w-full lg:w-[320px] h-[200px] sm:h-[250px] lg:h-full flex-shrink-0 relative">
+                            <div className="absolute inset-0 w-full h-full rounded-t-2xl lg:rounded-l-2xl lg:rounded-tr-none overflow-hidden">
                               <img
                                 src={
                                   course.thumbnail ||
@@ -1562,7 +1557,7 @@ export default function DashboardPage() {
                               </div>
                             </div>
 
-                            <div className="absolute top-3 left-3 flex gap-2 z-20">
+                            <div className="absolute top-3 left-6 sm:left-8 flex gap-2 z-20">
                               {course.isPopular && (
                                 <div className="bg-orange-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">
                                   POPULAR
@@ -1575,7 +1570,7 @@ export default function DashboardPage() {
                               )}
                             </div>
 
-                            <div className="absolute bottom-3 right-3 flex items-center space-x-1 bg-black/70 backdrop-blur-sm text-white px-3 py-1.5 rounded-full z-10">
+                            <div className="absolute bottom-3 right-6 sm:right-8 flex items-center space-x-1 bg-black/70 backdrop-blur-sm text-white px-3 py-1.5 rounded-full z-10">
                               <Star className="w-4 h-4 text-yellow-400 fill-current" />
                               <span className="text-sm font-semibold">
                                 {course.rating || '4.8'}
@@ -1583,48 +1578,61 @@ export default function DashboardPage() {
                             </div>
                           </div>
 
-                          {/* CONTENIDO - Resto del espacio */}
-                          <div className="flex-1 flex flex-col min-w-0 overflow-visible p-3 sm:p-4 md:p-5 lg:p-6 md:justify-between">
-                            <div className="flex flex-col gap-2 sm:gap-3 md:gap-4 mb-4 md:mb-0">
-                              <h3 className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-gray-900 dark:text-white break-words leading-tight line-clamp-2 sm:line-clamp-none">
+                          {/* CONTENIDO - Resto del espacio; padding horizontal en sm/tablet para flechas; min-width en lg para que no se estrangule */}
+                          <div className="flex-1 flex flex-col min-w-0 lg:min-w-[320px] overflow-visible p-3 pl-10 pr-10 sm:p-4 sm:pl-10 sm:pr-10 lg:p-5 lg:pl-5 lg:pr-5 xl:p-6 lg:justify-between">
+                            <div className="flex flex-col gap-1.5 sm:gap-2 lg:gap-4 mb-3 lg:mb-0">
+                              <h3 className="text-base sm:text-lg lg:text-xl xl:text-2xl font-bold text-gray-900 dark:text-white break-words leading-tight line-clamp-2 sm:line-clamp-none">
                                 {course.title}
                               </h3>
-                              <p className="text-xs sm:text-sm md:text-base text-gray-700 dark:text-white/80 leading-relaxed break-words line-clamp-3 sm:line-clamp-none">
+                              <p className="text-xs sm:text-sm lg:text-base text-gray-700 dark:text-white/80 leading-relaxed break-words line-clamp-3 sm:line-clamp-none">
                                 {course.short_description || course.description}
                               </p>
-                              <div className="flex justify-center w-full">
-                                <span className="inline-flex items-center justify-center px-3 py-1.5 rounded-full text-sm font-medium bg-[#85ea10] text-black">
+                              {/* Etiqueta de categoría/objetivo: más discreta en mobile */}
+                              <div className="flex justify-start sm:justify-center w-full">
+                                <span className="inline-flex items-center justify-center px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[11px] sm:text-sm font-medium bg-[#85ea10]/20 text-[#164151] dark:bg-[#85ea10]/25 dark:text-[#85ea10] border border-[#85ea10]/40">
                                   {getCategoryDisplayName(course)}
                                 </span>
                               </div>
-                              <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 mb-4">
-                                <div className="flex items-center gap-1.5">
-                                  <Play className="w-4 h-4 text-[#85ea10]" />
-                                  <span className="text-sm text-gray-600 dark:text-white/80">
+                              {/* Opciones del curso en una sola línea; en tablet también abreviado para que no se corte */}
+                              <div className="flex flex-nowrap items-center justify-start sm:justify-center gap-2 sm:gap-4 lg:gap-6 mb-3 lg:mb-4 overflow-x-auto scrollbar-hide min-h-[1.5rem]">
+                                <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
+                                  <Play className="w-3 h-3 sm:w-4 sm:h-4 text-[#85ea10]" />
+                                  <span className="text-[11px] sm:text-sm text-gray-600 dark:text-white/80 whitespace-nowrap">
                                     {course.lessons_count || 0} clases
                                   </span>
                                 </div>
-                                <div className="flex items-center gap-1.5">
-                                  <Clock className="w-4 h-4 text-[#85ea10]" />
-                                  <span className="text-sm text-gray-600 dark:text-white/80">
+                                <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
+                                  <Clock className="w-3 h-3 sm:w-4 sm:h-4 text-[#85ea10]" />
+                                  <span className="text-[11px] sm:text-sm text-gray-600 dark:text-white/80 whitespace-nowrap">
                                     {course.duration || '8 semanas'}
                                   </span>
                                 </div>
-                                <div className="flex items-center gap-1.5">
-                                  <Users className="w-4 h-4 text-[#85ea10]" />
-                                  <span className="text-sm text-gray-600 dark:text-white/80">
-                                    {course.students_count || 0} estudiantes
+                                <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
+                                  <Users className="w-3 h-3 sm:w-4 sm:h-4 text-[#85ea10]" />
+                                  <span className="text-[11px] sm:text-sm text-gray-600 dark:text-white/80 whitespace-nowrap">
+                                    {course.students_count || 0} est.
                                   </span>
                                 </div>
-                                <div className="flex items-center gap-1.5">
-                                  <Zap className="w-4 h-4 text-[#85ea10]" />
-                                  <span className="text-sm text-gray-600 dark:text-white/80">
-                                    {course.level || 'Todos'}
+                                <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
+                                  <Zap className="w-3 h-3 sm:w-4 sm:h-4 text-[#85ea10]" />
+                                  <span className="text-[11px] sm:text-sm text-gray-600 dark:text-white/80 whitespace-nowrap">
+                                    <span className="lg:hidden">
+                                      {course.level === 'Principiante'
+                                        ? 'Princ.'
+                                        : course.level === 'Intermedio'
+                                          ? 'Inter.'
+                                          : course.level === 'Avanzado'
+                                            ? 'Avanz.'
+                                            : course.level || 'Todos'}
+                                    </span>
+                                    <span className="hidden lg:inline">
+                                      {course.level || 'Todos'}
+                                    </span>
                                   </span>
                                 </div>
                               </div>
                             </div>
-                            <div className="pt-4 border-t border-gray-200 dark:border-gray-700 mt-auto md:mt-0">
+                            <div className="pt-4 border-t border-gray-200 dark:border-gray-700 mt-auto lg:mt-0">
                               <div className="flex items-center justify-center flex-wrap gap-2 mb-3">
                                 {(course.discount_percentage ?? 0) > 0 ? (
                                   <>
@@ -1640,7 +1648,7 @@ export default function DashboardPage() {
                                         course,
                                       ).toLocaleString('es-CO')}
                                     </span>
-                                    <span className="text-xs md:text-sm text-[#85ea10] font-bold bg-[#85ea10]/10 px-2 py-1 rounded-lg">
+                                    <span className="text-xs md:text-sm text-gray-900 dark:text-white font-bold bg-[#85ea10]/25 dark:bg-[#85ea10]/30 border border-[#85ea10]/50 px-2 py-1 rounded-lg">
                                       {course.discount_percentage ?? 0}% de
                                       descuento
                                     </span>

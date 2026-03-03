@@ -1,6 +1,6 @@
 'use client';
 
-import { Lock, Mail, MapPin, Phone } from 'lucide-react';
+import { Lock, Mail, MapPin, Phone, Zap } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function Footer() {
@@ -8,9 +8,9 @@ export default function Footer() {
 
   return (
     <footer className="bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 w-full">
-      {/* Mobile Footer - Compacto y minimalista */}
-      <div className="md:hidden px-4 py-4">
-        <div className="flex flex-col items-center gap-3">
+      {/* Mobile Footer - Todos los links visibles, layout que aguanta */}
+      <div className="md:hidden px-4 py-5">
+        <div className="flex flex-col items-center gap-4 text-center">
           {/* Logo */}
           <button
             onClick={() => router.push('/')}
@@ -21,23 +21,16 @@ export default function Footer() {
             </span>
           </button>
 
-          {/* Social Icons - Solo iconos */}
-          <div className="flex items-center gap-4">
+          {/* Social Icons */}
+          <div className="flex items-center justify-center gap-4">
             <a
               href="https://instagram.com/rogerbox"
               target="_blank"
               rel="noopener noreferrer"
               className="text-gray-400 hover:text-[#85ea10] transition-colors"
+              aria-label="Instagram"
             >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                viewBox="0 0 24 24"
-              >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
                 <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
                 <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
                 <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
@@ -48,16 +41,9 @@ export default function Footer() {
               target="_blank"
               rel="noopener noreferrer"
               className="text-gray-400 hover:text-[#85ea10] transition-colors"
+              aria-label="YouTube"
             >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                viewBox="0 0 24 24"
-              >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
                 <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z" />
                 <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02" />
               </svg>
@@ -67,41 +53,59 @@ export default function Footer() {
               target="_blank"
               rel="noopener noreferrer"
               className="text-gray-400 hover:text-[#85ea10] transition-colors"
+              aria-label="TikTok"
             >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                viewBox="0 0 24 24"
-              >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
                 <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z" />
               </svg>
             </a>
           </div>
 
-          {/* Copyright y links */}
-          <div className="flex items-center gap-3 text-[10px] text-gray-400">
-            <span>© 2025 RogerBox</span>
-            <span>•</span>
-            <a href="/terms" className="hover:text-[#85ea10]">
-              Términos
-            </a>
-            <span>•</span>
-            <a href="/privacy" className="hover:text-[#85ea10]">
-              Privacidad
+          {/* Enlaces legales: todos visibles en 2 filas si hace falta */}
+          <div className="flex flex-col items-center gap-2 w-full max-w-xs">
+            <p className="text-xs text-gray-500 dark:text-white/60">
+              © 2025 RogerBox. Todos los derechos reservados.
+            </p>
+            <div className="flex flex-wrap justify-center gap-x-3 gap-y-1.5 text-xs text-gray-500 dark:text-white/60">
+              <a href="/terms" className="hover:text-[#85ea10] transition-colors whitespace-nowrap">
+                Términos
+              </a>
+              <span className="text-gray-400">·</span>
+              <a href="/privacy" className="hover:text-[#85ea10] transition-colors whitespace-nowrap">
+                Privacidad
+              </a>
+              <span className="text-gray-400">·</span>
+              <a href="/cookies" className="hover:text-[#85ea10] transition-colors whitespace-nowrap">
+                Cookies
+              </a>
+              <span className="text-gray-400">·</span>
+              <a href="/contact" className="hover:text-[#85ea10] transition-colors whitespace-nowrap">
+                Contacto
+              </a>
+            </div>
+            <p className="flex items-center justify-center gap-1.5 text-[11px] text-gray-400 dark:text-white/50">
+              <Lock className="w-3 h-3 flex-shrink-0" />
+              <span>Pagos seguros · Powered by Wompi</span>
+            </p>
+            <a
+              href="https://andresruss.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-1.5 text-[11px] font-medium text-gray-500 dark:text-white/50 hover:text-gray-700 dark:hover:text-white/70 transition-colors mt-1"
+            >
+              <Zap className="w-3 h-3 flex-shrink-0" style={{ color: '#ff9568' }} />
+              <span className="font-semibold">powered by</span>
+              <span className="font-bold" style={{ color: '#ff9568' }}>programamos.st</span>
             </a>
           </div>
         </div>
       </div>
 
-      {/* Desktop Footer - Completo */}
-      <div className="hidden md:block w-full px-6 lg:px-12 py-8">
-        <div className="grid grid-cols-3 gap-8 lg:gap-12 mb-6">
+      {/* Desktop/Tablet Footer - 3 columnas desde tablet para mejor distribución */}
+      <div className="hidden md:block w-full px-4 sm:px-6 lg:px-12 py-6 lg:py-8">
+        <div className="grid grid-cols-3 gap-4 sm:gap-6 lg:gap-8 xl:gap-12 mb-6">
           {/* Brand Section */}
-          <div className="text-left">
+          <div className="text-left min-w-0">
             <button
               onClick={() => router.push('/')}
               className="hover:opacity-80 transition-opacity mb-2"
@@ -116,10 +120,10 @@ export default function Footer() {
               Cambia tu mente, transforma tu cuerpo
             </p>
 
-            <div className="space-y-2 text-sm text-gray-500 dark:text-white/60">
-              <div className="flex items-center space-x-2">
+            <div className="space-y-2 text-sm text-gray-500 dark:text-white/60 min-w-0">
+              <div className="flex items-center space-x-2 min-w-0">
                 <Mail className="w-4 h-4 flex-shrink-0" />
-                <span>contacto@rogerbox.com</span>
+                <span className="break-all">contacto@rogerbox.com</span>
               </div>
               <div className="flex items-center space-x-2">
                 <Phone className="w-4 h-4 flex-shrink-0" />
@@ -256,52 +260,49 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* Bottom Section */}
-        <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <p className="text-sm text-gray-500 dark:text-white/60">
+        {/* Bottom Section — una fila ordenada: copyright | links | powered by */}
+        <div className="border-t border-gray-200 dark:border-gray-700 pt-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+            <div className="order-1 sm:order-1 min-w-0">
+              <p className="text-xs text-gray-500 dark:text-white/60">
                 © 2025 RogerBox. Todos los derechos reservados.
               </p>
-              <p className="text-sm text-gray-500 dark:text-white/60 mt-1">
+              <p className="text-xs text-gray-500 dark:text-white/60 mt-0.5">
                 Plataforma de fitness y bienestar integral
               </p>
             </div>
 
-            <div className="flex gap-6 text-sm text-gray-500 dark:text-white/60">
-              <a
-                href="/terms"
-                className="hover:text-[#85ea10] transition-colors"
-              >
+            <div className="order-2 sm:order-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-white/60">
+              <a href="/terms" className="hover:text-[#85ea10] transition-colors">
                 Términos
               </a>
-              <a
-                href="/privacy"
-                className="hover:text-[#85ea10] transition-colors"
-              >
+              <a href="/privacy" className="hover:text-[#85ea10] transition-colors">
                 Privacidad
               </a>
-              <a
-                href="/cookies"
-                className="hover:text-[#85ea10] transition-colors"
-              >
+              <a href="/cookies" className="hover:text-[#85ea10] transition-colors">
                 Cookies
               </a>
-              <a
-                href="/contact"
-                className="hover:text-[#85ea10] transition-colors"
-              >
+              <a href="/contact" className="hover:text-[#85ea10] transition-colors">
                 Contacto
               </a>
             </div>
 
-            <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-white/60">
-              <Lock className="w-4 h-4" />
-              <span>Pagos seguros</span>
-              <span className="text-gray-400">•</span>
-              <span>
-                Powered by <span className="font-semibold">Wompi</span>
+            <div className="order-3 sm:order-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-white/60">
+              <span className="flex items-center gap-1.5">
+                <Lock className="w-3 h-3 flex-shrink-0" />
+                Pagos seguros · Wompi
               </span>
+              <span className="text-gray-400">·</span>
+              <a
+                href="https://andresruss.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 font-medium hover:opacity-80 transition-opacity"
+              >
+                <Zap className="w-3 h-3 flex-shrink-0" style={{ color: '#ff9568' }} />
+                <span className="text-gray-500 dark:text-white/60">powered by</span>
+                <span className="font-bold" style={{ color: '#ff9568' }}>programamos.st</span>
+              </a>
             </div>
           </div>
         </div>

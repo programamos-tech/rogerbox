@@ -1,7 +1,7 @@
 'use client';
 
 import MuxPlayer from '@mux/mux-player-react';
-import { Calendar, CheckCircle, Play, Video, X } from 'lucide-react';
+import { Calendar, CheckCircle, Pause, Play, Video, Volume2, VolumeX, X } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 
@@ -41,6 +41,26 @@ export default function StoriesSection({
   const [loading, setLoading] = useState(true);
   const [isCompleted, setIsCompleted] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const playerContainerRef = useRef<HTMLDivElement>(null);
+
+  const handlePlayerPlay = () => {
+    const player = playerContainerRef.current?.querySelector('mux-player') as HTMLMediaElement | undefined;
+    player?.play?.();
+  };
+  const handlePlayerPause = () => {
+    const player = playerContainerRef.current?.querySelector('mux-player') as HTMLMediaElement | undefined;
+    player?.pause?.();
+  };
+  const handlePlayerMute = () => {
+    const player = playerContainerRef.current?.querySelector('mux-player');
+    if (!player) return;
+    const next = !isMuted;
+    if ('muted' in player) (player as HTMLMediaElement).muted = next;
+    else if (next) player.setAttribute('muted', '');
+    else player.removeAttribute('muted');
+    setIsMuted(next);
+  };
 
   // Obtener el día de la semana actual (1=Lunes, ..., 7=Domingo)
   const getCurrentDayOfWeek = () => {
@@ -101,6 +121,7 @@ export default function StoriesSection({
   // Abrir modal de video
   const handlePlayClick = () => {
     if (todayComplement?.mux_playback_id) {
+      setIsMuted(false);
       setShowModal(true);
     }
   };
@@ -162,101 +183,86 @@ export default function StoriesSection({
         <div className="p-4 sm:p-5 flex-shrink-0">
           <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
             <Video className="w-5 h-5 text-[#85ea10]" />
-            <span>Complemento del Día</span>
+            <span>Complemento de la semana</span>
           </h3>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            {displayDayName} {isWeekend && '• Fin de semana'}
+            Tips, ejercicios, consejos y más
           </p>
         </div>
 
-        {/* Video Card */}
-        <div className="flex-1 relative min-h-[300px] sm:min-h-[400px] px-3 pb-3">
+        {/* Video Card — alineado con la marca: limpio, acento sutil */}
+        <div className="flex-1 relative min-h-[280px] sm:min-h-[340px] px-3 pb-3">
           <div
             onClick={handlePlayClick}
             className={`
-              relative w-full h-full cursor-pointer overflow-hidden rounded-xl
+              group relative w-full h-full cursor-pointer overflow-hidden rounded-xl
+              border border-gray-200 dark:border-gray-600/50
               ${!todayComplement.mux_playback_id ? 'cursor-not-allowed' : ''}
             `}
           >
-            {/* Thumbnail de Mux */}
+            {/* Thumbnail */}
             <div
-              className={`absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 transition-all duration-500 ${isCompleted ? 'grayscale' : ''}`}
+              className={`absolute inset-0 bg-gray-900 transition-all duration-300 ${isCompleted ? 'grayscale' : ''}`}
             >
               {todayComplement.mux_playback_id ? (
                 <img
                   src={`https://image.mux.com/${todayComplement.mux_playback_id}/thumbnail.jpg?time=1`}
                   alt={todayComplement.title}
-                  className={`w-full h-full object-cover transition-all duration-500 ${isCompleted ? 'grayscale opacity-70' : ''}`}
+                  className={`w-full h-full object-cover transition-all duration-300 group-hover:scale-[1.02] ${isCompleted ? 'grayscale opacity-80' : ''}`}
                   onError={(e) => {
-                    // Si falla el thumbnail, mostrar placeholder
                     (e.target as HTMLImageElement).style.display = 'none';
                   }}
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
-                  <Video className="w-16 h-16 text-gray-600" />
+                  <Video className="w-14 h-14 text-gray-500" />
                 </div>
               )}
             </div>
 
-            {/* Gradiente overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
+            {/* Gradiente solo abajo para texto */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
 
             {/* Contenido */}
             <div className="absolute inset-0 flex flex-col justify-between p-4">
-              {/* Top - Espacio reservado */}
-              <div className="flex items-center justify-end">
-                {/* Check ahora está en el centro */}
-              </div>
-
-              {/* Center - Botón de play o check si completado */}
-              <div className="flex-1 flex items-center justify-center">
-                {todayComplement.mux_playback_id ? (
-                  isCompleted ? (
-                    <div className="bg-[#85ea10] rounded-full p-5 shadow-2xl shadow-[#85ea10]/30">
-                      <CheckCircle className="w-10 h-10 text-black" />
-                    </div>
-                  ) : (
-                    <div className="bg-[#85ea10] rounded-full p-5 shadow-2xl shadow-[#85ea10]/30 hover:scale-110 transition-transform">
-                      <Play
-                        className="w-10 h-10 text-black ml-1"
-                        fill="currentColor"
-                      />
-                    </div>
-                  )
-                ) : (
-                  <div className="text-center">
-                    <div className="bg-gray-700/80 backdrop-blur-sm rounded-full p-4">
-                      <Video className="w-8 h-8 text-gray-500" />
-                    </div>
-                    <p className="text-gray-500 text-sm mt-2">
-                      Video no disponible
-                    </p>
-                  </div>
+              {/* Top: día como pill sutil */}
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-white/80 bg-white/10 backdrop-blur-sm px-2.5 py-1 rounded-md">
+                  {displayDayName}
+                </span>
+                {isCompleted && (
+                  <span className="flex items-center gap-1 text-[10px] font-medium text-white/90 bg-[#85ea10]/20 text-[#85ea10] px-2.5 py-1 rounded-md">
+                    <CheckCircle className="w-3 h-3" />
+                    Hecho
+                  </span>
                 )}
               </div>
 
-              {/* Bottom - Título y descripción */}
-              <div className="space-y-2">
-                <h4 className="text-xl font-black text-white leading-tight">
+              {/* Center: play discreto (marca) */}
+              {todayComplement.mux_playback_id && !isCompleted && (
+                <div className="flex-1 flex items-center justify-center">
+                  <div className="w-14 h-14 rounded-full bg-white/95 flex items-center justify-center shadow-lg group-hover:bg-white group-hover:scale-105 transition-all duration-200">
+                    <Play className="w-6 h-6 text-gray-900 ml-0.5" fill="currentColor" />
+                  </div>
+                </div>
+              )}
+
+              {/* Bottom: título y CTA */}
+              <div className="space-y-1.5">
+                <h4 className="text-base sm:text-lg font-bold text-white leading-tight">
                   {isWeekend
                     ? 'Complemento Fin de Semana'
                     : todayComplement.title}
                 </h4>
                 {todayComplement.description && (
-                  <p className="text-sm text-gray-300 line-clamp-2">
+                  <p className="text-xs text-white/70 line-clamp-2">
                     {todayComplement.description}
                   </p>
                 )}
-
-                {/* Indicador */}
                 {todayComplement.mux_playback_id && !isCompleted && (
-                  <div className="flex items-center gap-2 mt-2">
-                    <div className="w-2 h-2 bg-[#85ea10] rounded-full animate-pulse" />
-                    <span className="text-[#85ea10] text-xs font-bold uppercase">
-                      Toca para ver
-                    </span>
-                  </div>
+                  <p className="text-xs font-medium text-white/80 pt-0.5">
+                    Toca para reproducir
+                  </p>
                 )}
               </div>
             </div>
@@ -264,99 +270,101 @@ export default function StoriesSection({
         </div>
       </div>
 
-      {/* Modal de Video - Estilo RogerBox */}
+      {/* Card de reproducción (modal negro) — solo botón play visible */}
       {showModal && todayComplement?.mux_playback_id && (
-        <div className="fixed inset-0 z-50 bg-black">
-          {/* Video - Protagonista a pantalla completa */}
-          <MuxPlayer
-            playbackId={todayComplement.mux_playback_id}
-            streamType="on-demand"
-            autoPlay
-            accentColor="#85ea10"
-            className="absolute inset-0 w-full h-full"
-            style={
-              {
-                '--controls': 'auto',
-              } as Record<string, string>
-            }
-            envKey={process.env.NEXT_PUBLIC_MUX_DATA_ENV_KEY}
-            metadata={{
-              video_id: todayComplement.id,
-              video_title: todayComplement.title,
-              viewer_user_id: user?.id || 'anonymous',
-              video_content_type: 'complement',
-              video_series: `Semana ${todayComplement.week_number}`,
-            }}
-          />
-
-          {/* Header - Encima del video */}
-          <div className="absolute top-0 left-0 right-0 z-20 pt-12 px-4 pb-6 bg-gradient-to-b from-black/80 via-black/40 to-transparent">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <span className="text-white font-black text-sm">ROGER</span>
-                <span className="text-[#85ea10] font-black text-sm">BOX</span>
-              </div>
-              <button
-                onClick={handleCloseModal}
-                className="w-8 h-8 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white/30 transition-all"
-              >
-                <X className="w-5 h-5 text-white" />
-              </button>
-            </div>
+        <div className="complement-video-modal fixed inset-0 z-50 flex flex-col bg-black">
+          {/* 1. Reproductor MUX: solo play (resto oculto por CSS) */}
+          <div ref={playerContainerRef} className="absolute inset-0">
+            <MuxPlayer
+              playbackId={todayComplement.mux_playback_id}
+              streamType="on-demand"
+              autoPlay
+              muted={false}
+              className="absolute inset-0 w-full h-full object-contain"
+              style={{
+                ['--controls' as string]: 'auto',
+                ['--media-accent-color' as string]: '#85ea10',
+              }}
+              envKey={process.env.NEXT_PUBLIC_MUX_DATA_ENV_KEY}
+              metadata={{
+                video_id: todayComplement.id,
+                video_title: todayComplement.title,
+                viewer_user_id: user?.id || 'anonymous',
+                video_content_type: 'complement',
+                video_series: `Semana ${todayComplement.week_number}`,
+              }}
+            />
           </div>
 
-          {/* Footer con info y botón */}
-          <div className="absolute bottom-0 left-0 right-0 z-20 bg-gradient-to-t from-black via-black/80 to-transparent">
-            <div className="p-4 pb-6 safe-area-bottom">
-              {/* Tags */}
-              <div className="flex items-center gap-2 mb-2">
-                <span className="bg-[#85ea10] text-black text-[10px] font-bold px-2 py-0.5 rounded-full">
-                  {displayDayName}
-                </span>
-                {isWeekend && (
-                  <span className="text-[#85ea10] text-[10px] font-medium">
-                    Fin de Semana
-                  </span>
+          {/* 2. Barra superior única: no tapa la zona de controles de MUX */}
+          <header
+            className="relative z-10 flex items-center justify-between gap-3 px-4 pb-4 bg-gradient-to-b from-black/70 to-transparent pointer-events-none"
+            style={{ paddingTop: 'max(env(safe-area-inset-top, 24px), 24px)' }}
+          >
+            <div className="pointer-events-auto flex items-center gap-3 min-w-0">
+              <span className="text-white font-black text-sm tracking-tight">
+                ROGER<span className="text-[#85ea10]">BOX</span>
+              </span>
+              <span className="text-white/50 text-xs font-medium truncate">
+                {displayDayName} · {todayComplement.title}
+              </span>
+            </div>
+            <div className="pointer-events-auto flex items-center gap-2 flex-shrink-0">
+              <button
+                onClick={handlePlayerPlay}
+                className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition"
+                aria-label="Play"
+              >
+                <Play className="w-5 h-5 text-white" fill="currentColor" />
+              </button>
+              <button
+                onClick={handlePlayerPause}
+                className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition"
+                aria-label="Pausar"
+              >
+                <Pause className="w-5 h-5 text-white" />
+              </button>
+              <button
+                onClick={handlePlayerMute}
+                className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition"
+                aria-label={isMuted ? 'Activar sonido' : 'Silenciar'}
+              >
+                {isMuted ? (
+                  <VolumeX className="w-5 h-5 text-white" />
+                ) : (
+                  <Volume2 className="w-5 h-5 text-white" />
                 )}
-              </div>
-
-              {/* Título y descripción */}
-              <h3 className="text-white font-bold text-lg mb-1">
-                {todayComplement.title}
-              </h3>
-              {todayComplement.description && (
-                <p className="text-white/70 text-sm mb-4 line-clamp-2">
-                  {todayComplement.description}
-                </p>
-              )}
-
-              {/* Botón de completar */}
+              </button>
               {!isCompleted ? (
                 <button
                   onClick={handleMarkComplete}
                   disabled={isCompleting}
-                  className="w-full bg-[#85ea10] hover:bg-[#7dd30f] disabled:bg-[#85ea10]/70 text-black font-bold py-3 px-6 rounded-xl transition-all flex items-center justify-center gap-2 active:scale-[0.98] disabled:scale-100"
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-white/25 bg-white/10 hover:bg-white/15 text-white text-sm font-medium transition active:scale-[0.98] disabled:opacity-50"
                 >
                   {isCompleting ? (
-                    <>
-                      <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-                      <span>Guardando...</span>
-                    </>
+                    <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
                   ) : (
                     <>
-                      <CheckCircle className="w-5 h-5" />
-                      <span>Marcar como Completado</span>
+                      <CheckCircle className="w-4 h-4" />
+                      Completado
                     </>
                   )}
                 </button>
               ) : (
-                <div className="w-full bg-[#85ea10] text-black font-bold py-3 px-6 rounded-xl flex items-center justify-center gap-2 animate-pulse">
-                  <CheckCircle className="w-5 h-5 fill-current" />
-                  <span>¡Lo lograste! 💪</span>
-                </div>
+                <span className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white/10 text-white/80 text-sm font-medium">
+                  <CheckCircle className="w-4 h-4 fill-white/80" />
+                  Hecho
+                </span>
               )}
+              <button
+                onClick={handleCloseModal}
+                className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition"
+                aria-label="Cerrar"
+              >
+                <X className="w-5 h-5 text-white" />
+              </button>
             </div>
-          </div>
+          </header>
         </div>
       )}
     </>

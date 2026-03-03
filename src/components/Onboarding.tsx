@@ -153,11 +153,11 @@ export default function Onboarding({
   const steps = [
     {
       title: '¿Cuál es tu altura?',
-      icon: <Ruler className="w-8 h-8 text-[#85ea10]" />,
+      icon: <Ruler className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-[#85ea10] flex-shrink-0 mx-auto" />,
       component: (
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           <div className="text-center">
-            <div className="text-6xl font-black text-gray-900 dark:text-white mb-4">
+            <div className="text-4xl sm:text-5xl lg:text-6xl font-black text-gray-900 dark:text-white mb-3 sm:mb-4">
               {profile.height} cm
             </div>
             <input
@@ -171,7 +171,7 @@ export default function Onboarding({
               className="w-full h-2 bg-gray-200 dark:bg-white/20 rounded-lg appearance-none cursor-pointer slider"
             />
           </div>
-          <div className="flex justify-between text-gray-600 dark:text-white/60 text-sm">
+          <div className="flex justify-between text-gray-600 dark:text-white/60 text-xs sm:text-sm">
             <span>140 cm</span>
             <span>220 cm</span>
           </div>
@@ -180,9 +180,9 @@ export default function Onboarding({
     },
     {
       title: '¿Cuál es tu sexo?',
-      icon: <User className="w-8 h-8 text-[#85ea10]" />,
+      icon: <User className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-[#85ea10] flex-shrink-0 mx-auto" />,
       component: (
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-3 gap-2 sm:gap-4">
           {[
             { value: 'male', label: 'Hombre', emoji: '👨🏽' },
             { value: 'female', label: 'Mujer', emoji: '👩🏽' },
@@ -193,14 +193,14 @@ export default function Onboarding({
               onClick={() =>
                 setProfile({ ...profile, gender: option.value as any })
               }
-              className={`p-6 rounded-2xl border-2 transition-all duration-300 ${
+              className={`p-3 sm:p-5 lg:p-6 rounded-xl sm:rounded-2xl border-2 transition-all duration-300 ${
                 profile.gender === option.value
                   ? 'border-[#85ea10] bg-[#85ea10]/10 text-[#85ea10]'
                   : 'border-gray-200 dark:border-white/30 text-gray-900 dark:text-white hover:border-[#85ea10]/50'
               }`}
             >
-              <div className="text-4xl mb-2">{option.emoji}</div>
-              <div className="font-bold">{option.label}</div>
+              <div className="text-2xl sm:text-3xl lg:text-4xl mb-1 sm:mb-2">{option.emoji}</div>
+              <div className="font-bold text-xs sm:text-sm">{option.label}</div>
             </button>
           ))}
         </div>
@@ -208,11 +208,11 @@ export default function Onboarding({
     },
     {
       title: '¿Cuál es tu peso actual?',
-      icon: <Weight className="w-8 h-8 text-[#85ea10]" />,
+      icon: <Weight className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-[#85ea10] flex-shrink-0 mx-auto" />,
       component: (
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           <div className="text-center">
-            <div className="text-6xl font-black text-gray-900 dark:text-white mb-4">
+            <div className="text-4xl sm:text-5xl lg:text-6xl font-black text-gray-900 dark:text-white mb-3 sm:mb-4">
               {profile.weight} kg
             </div>
             <input
@@ -226,24 +226,24 @@ export default function Onboarding({
               className="w-full h-2 bg-gray-200 dark:bg-white/20 rounded-lg appearance-none cursor-pointer slider"
             />
           </div>
-          <div className="flex justify-between text-gray-600 dark:text-white/60 text-sm">
+          <div className="flex justify-between text-gray-600 dark:text-white/60 text-xs sm:text-sm">
             <span>40 kg</span>
             <span>150 kg</span>
           </div>
           {profile.goals.length > 0 && (
-            <div className="mt-6 p-4 bg-[#85ea10]/10 border border-[#85ea10]/30 rounded-xl">
+            <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-[#85ea10]/10 border border-[#85ea10]/30 rounded-xl">
               <div className="text-center">
-                <div className="text-sm text-gray-600 dark:text-white/80 mb-2">
+                <div className="text-xs sm:text-sm text-gray-600 dark:text-white/80 mb-1.5 sm:mb-2">
                   Tu meta de peso recomendada:
                 </div>
-                <div className="text-2xl font-bold text-[#85ea10]">
+                <div className="text-xl sm:text-2xl font-bold text-[#85ea10]">
                   {
                     calculateTargetWeightFromBMI(profile.height, profile.weight)
                       .targetWeight
                   }{' '}
                   kg
                 </div>
-                <div className="text-xs text-gray-500 dark:text-white/60 mt-1">
+                <div className="text-[11px] sm:text-xs text-gray-500 dark:text-white/60 mt-1">
                   Basado en tu IMC según la OMS
                 </div>
               </div>
@@ -254,11 +254,11 @@ export default function Onboarding({
     },
     {
       title: '¿En qué año naciste?',
-      icon: <Calendar className="w-8 h-8 text-[#85ea10]" />,
+      icon: <Calendar className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-[#85ea10] flex-shrink-0 mx-auto" />,
       component: (
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           <div className="text-center">
-            <div className="text-6xl font-black text-gray-900 dark:text-white mb-4">
+            <div className="text-4xl sm:text-5xl lg:text-6xl font-black text-gray-900 dark:text-white mb-3 sm:mb-4">
               {profile.birthYear}
             </div>
             <input
@@ -272,11 +272,11 @@ export default function Onboarding({
               className="w-full h-2 bg-gray-200 dark:bg-white/20 rounded-lg appearance-none cursor-pointer slider"
             />
           </div>
-          <div className="flex justify-between text-gray-600 dark:text-white/60 text-sm">
+          <div className="flex justify-between text-gray-600 dark:text-white/60 text-xs sm:text-sm">
             <span>1950</span>
             <span>2010</span>
           </div>
-          <div className="text-center text-sm text-gray-500 dark:text-white/60">
+          <div className="text-center text-xs sm:text-sm text-gray-500 dark:text-white/60">
             Edad:{' '}
             {profile.birthYear
               ? new Date().getFullYear() - profile.birthYear
@@ -288,9 +288,9 @@ export default function Onboarding({
     },
     {
       title: '¿Qué quieres lograr?',
-      icon: <Target className="w-8 h-8 text-[#85ea10]" />,
+      icon: <Target className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-[#85ea10] flex-shrink-0 mx-auto" />,
       component: (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-2 sm:gap-4">
           {[
             { id: 'lose_weight', label: 'Bajar de peso', emoji: '🔥' },
             { id: 'tone', label: 'Tonificar', emoji: '💪' },
@@ -307,14 +307,14 @@ export default function Onboarding({
                   : [...profile.goals, goal.id];
                 setProfile({ ...profile, goals: newGoals });
               }}
-              className={`p-4 rounded-xl border-2 transition-all duration-300 ${
+              className={`p-3 sm:p-4 rounded-lg sm:rounded-xl border-2 transition-all duration-300 ${
                 profile.goals.includes(goal.id)
                   ? 'border-[#85ea10] bg-[#85ea10]/10 text-[#85ea10]'
                   : 'border-gray-200 dark:border-white/30 text-gray-900 dark:text-white hover:border-[#85ea10]/50'
               }`}
             >
-              <div className="text-2xl mb-2">{goal.emoji}</div>
-              <div className="font-bold text-sm">{goal.label}</div>
+              <div className="text-xl sm:text-2xl mb-1 sm:mb-2">{goal.emoji}</div>
+              <div className="font-bold text-xs sm:text-sm">{goal.label}</div>
             </button>
           ))}
         </div>
@@ -322,7 +322,7 @@ export default function Onboarding({
     },
     {
       title: 'Tu meta de peso objetivo',
-      icon: <Target className="w-8 h-8 text-[#85ea10]" />,
+      icon: <Target className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-[#85ea10] flex-shrink-0 mx-auto" />,
       component: (() => {
         // Componente interno para manejar la actualización del estado
         const WeightGoalStepContent = () => {
@@ -353,29 +353,29 @@ export default function Onboarding({
           }, [profile.weight, profile.height, profile.targetWeight]);
 
           return (
-            <div className="space-y-3">
+            <div className="space-y-3 sm:space-y-4">
               {/* Información del IMC actual */}
-              <div className="bg-gradient-to-br from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 rounded-xl p-4 border border-gray-200 dark:border-white/20">
+              <div className="bg-gradient-to-br from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 rounded-xl p-3 sm:p-4 border border-gray-200 dark:border-white/20">
                 <div className="text-center mb-3">
-                  <div className="text-xs text-gray-600 dark:text-white/60 mb-1">
+                  <div className="text-[11px] sm:text-xs text-gray-600 dark:text-white/60 mb-1">
                     Tu IMC actual
                   </div>
-                  <div className="text-4xl font-black text-gray-900 dark:text-white mb-1">
+                  <div className="text-3xl sm:text-4xl font-black text-gray-900 dark:text-white mb-1">
                     {currentBMI.toFixed(1)}
                   </div>
                   <div
-                    className={`text-base font-bold ${condition.color} mb-1`}
+                    className={`text-sm sm:text-base font-bold ${condition.color} mb-1`}
                   >
                     {condition.category}
                   </div>
-                  <div className="text-xs text-gray-600 dark:text-white/70">
+                  <div className="text-[11px] sm:text-xs text-gray-600 dark:text-white/70 leading-snug">
                     {condition.description}
                   </div>
                 </div>
 
                 {/* Barra de rango IMC */}
                 <div className="mt-3">
-                  <div className="flex justify-between text-xs text-gray-500 dark:text-white/50 mb-1.5">
+                  <div className="flex justify-between text-[10px] sm:text-xs text-gray-500 dark:text-white/50 mb-1.5">
                     <span>Bajo peso</span>
                     <span>Normal</span>
                     <span>Sobrepeso</span>
@@ -397,7 +397,7 @@ export default function Onboarding({
                       }}
                     ></div>
                   </div>
-                  <div className="flex justify-between text-xs text-gray-500 dark:text-white/50 mt-0.5">
+                  <div className="flex justify-between text-[10px] sm:text-xs text-gray-500 dark:text-white/50 mt-0.5">
                     <span>15</span>
                     <span>18.5</span>
                     <span>25</span>
@@ -409,7 +409,7 @@ export default function Onboarding({
 
               {/* Meta de peso objetivo */}
               <div
-                className={`rounded-xl p-4 border-2 ${
+                className={`rounded-xl p-3 sm:p-4 border-2 ${
                   currentBMI >= 25
                     ? 'border-orange-300 dark:border-orange-700 bg-orange-50 dark:bg-orange-900/20'
                     : currentBMI < 18.5
@@ -418,50 +418,50 @@ export default function Onboarding({
                 }`}
               >
                 <div className="text-center">
-                  <div className="flex items-center justify-center mb-2">
+                  <div className="flex items-center justify-center mb-2 flex-wrap gap-1">
                     {currentBMI >= 25 ? (
-                      <TrendingDown className="w-6 h-6 text-orange-600 dark:text-orange-400 mr-2" />
+                      <TrendingDown className="w-5 h-5 sm:w-6 sm:h-6 text-orange-600 dark:text-orange-400 flex-shrink-0" />
                     ) : currentBMI < 18.5 ? (
-                      <TrendingUp className="w-6 h-6 text-blue-600 dark:text-blue-400 mr-2" />
+                      <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 dark:text-blue-400 flex-shrink-0" />
                     ) : (
-                      <Activity className="w-6 h-6 text-green-600 dark:text-green-400 mr-2" />
+                      <Activity className="w-5 h-5 sm:w-6 sm:h-6 text-green-600 dark:text-green-400 flex-shrink-0" />
                     )}
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                    <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
                       Tu meta objetivo
                     </h3>
                   </div>
 
-                  <div className="text-3xl font-black text-gray-900 dark:text-white mb-1">
+                  <div className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white mb-1">
                     {targetData.targetWeight} kg
                   </div>
 
                   {targetData.weightToLose > 0 && (
-                    <div className="text-base text-orange-600 dark:text-orange-400 font-semibold mb-2">
+                    <div className="text-sm sm:text-base text-orange-600 dark:text-orange-400 font-semibold mb-2">
                       Bajar {targetData.weightToLose} kg
                     </div>
                   )}
 
                   {targetData.weightToLose < 0 && (
-                    <div className="text-base text-blue-600 dark:text-blue-400 font-semibold mb-2">
+                    <div className="text-sm sm:text-base text-blue-600 dark:text-blue-400 font-semibold mb-2">
                       Ganar {Math.abs(targetData.weightToLose)} kg
                     </div>
                   )}
 
                   {targetData.weightToLose === 0 && (
-                    <div className="text-base text-green-600 dark:text-green-400 font-semibold mb-2">
+                    <div className="text-sm sm:text-base text-green-600 dark:text-green-400 font-semibold mb-2">
                       Mantener peso y tonificar
                     </div>
                   )}
 
-                  <div className="text-xs text-gray-700 dark:text-white/80 mt-2 p-2 bg-white/50 dark:bg-gray-800/50 rounded-lg">
+                  <div className="text-[11px] sm:text-xs text-gray-700 dark:text-white/80 mt-2 p-2 bg-white/50 dark:bg-gray-800/50 rounded-lg leading-snug">
                     {targetData.recommendation}
                   </div>
                 </div>
               </div>
 
               {/* Información adicional */}
-              <div className="bg-[#85ea10]/10 border border-[#85ea10]/30 rounded-xl p-3">
-                <div className="text-xs text-gray-700 dark:text-white/80 text-center">
+              <div className="bg-[#85ea10]/10 border border-[#85ea10]/30 rounded-xl p-2.5 sm:p-3">
+                <div className="text-[11px] sm:text-xs text-gray-700 dark:text-white/80 text-center leading-snug">
                   <span className="font-semibold text-[#85ea10]">💡 Nota:</span>{' '}
                   Esta meta se establecerá como tu objetivo principal en
                   ROGERBOX y se ajustará automáticamente según tu progreso.
@@ -519,15 +519,15 @@ export default function Onboarding({
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
       {/* Content */}
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="max-w-2xl w-full">
-          {/* Header */}
-          <div className="text-center mb-4">
-            <h1 className="text-3xl font-black text-gray-900 dark:text-white mb-2">
+      <div className="min-h-screen flex items-center justify-center p-3 sm:p-4">
+        <div className="max-w-2xl w-full min-w-0">
+          {/* Header - tamaños responsive para móviles pequeños */}
+          <div className="text-center mb-3 sm:mb-4">
+            <h1 className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white mb-2">
               ROGER<span className="text-[#85ea10]">BOX</span>
             </h1>
-            <div className="p-2 bg-[#85ea10]/10 border border-[#85ea10]/30 rounded-lg">
-              <p className="text-xs text-gray-700 dark:text-white/80">
+            <div className="p-2.5 sm:p-3 bg-[#85ea10]/10 border border-[#85ea10]/30 rounded-lg">
+              <p className="text-[11px] sm:text-xs text-gray-700 dark:text-white/80 leading-snug">
                 <span className="font-semibold text-[#85ea10]">
                   Importante:
                 </span>{' '}
@@ -538,8 +538,8 @@ export default function Onboarding({
           </div>
 
           {/* Progress Bar */}
-          <div className="mb-4">
-            <div className="flex justify-between text-gray-600 dark:text-white/60 text-sm mb-2">
+          <div className="mb-3 sm:mb-4">
+            <div className="flex justify-between text-gray-600 dark:text-white/60 text-xs sm:text-sm mb-1.5 sm:mb-2">
               <span>
                 Paso {currentStep + 1} de {steps.length}
               </span>
@@ -547,9 +547,9 @@ export default function Onboarding({
                 {Math.round(((currentStep + 1) / steps.length) * 100)}%
               </span>
             </div>
-            <div className="w-full bg-gray-200 dark:bg-white/20 rounded-full h-2">
+            <div className="w-full bg-gray-200 dark:bg-white/20 rounded-full h-1.5 sm:h-2">
               <div
-                className="bg-[#85ea10] h-2 rounded-full transition-all duration-500"
+                className="bg-[#85ea10] h-1.5 sm:h-2 rounded-full transition-all duration-500"
                 style={{
                   width: `${((currentStep + 1) / steps.length) * 100}%`,
                 }}
@@ -557,26 +557,33 @@ export default function Onboarding({
             </div>
           </div>
 
-          {/* Current Step */}
-          <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-200 dark:border-white/20 shadow-xl">
-            <div className="text-center mb-4">
+          {/* Current Step - padding y tamaños responsive */}
+          <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 sm:p-6 border border-gray-200 dark:border-white/20 shadow-xl">
+            <div className="text-center mb-3 sm:mb-4">
               {steps[currentStep].icon}
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white mt-3">
+              <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900 dark:text-white mt-2 sm:mt-3">
                 {steps[currentStep].title}
               </h2>
             </div>
 
             {steps[currentStep].component}
 
-            {/* Navigation */}
-            <div className="flex justify-between items-center mt-8">
+            {/* Aviso en paso de objetivos si no hay ninguno seleccionado */}
+            {currentStep === 4 && profile.goals.length === 0 && (
+              <p className="text-center text-sm text-amber-600 dark:text-amber-400 mt-3">
+                Selecciona al menos un objetivo para continuar.
+              </p>
+            )}
+
+            {/* Navigation - botones más compactos en móvil */}
+            <div className="flex justify-between items-center mt-6 sm:mt-8">
               <div className="flex items-center">
                 {currentStep > 0 && (
                   <button
                     onClick={handlePrevious}
-                    className="flex items-center space-x-2 text-gray-600 dark:text-white/60 hover:text-gray-900 dark:hover:text-white transition-colors"
+                    className="flex items-center space-x-1.5 sm:space-x-2 text-gray-600 dark:text-white/60 hover:text-gray-900 dark:hover:text-white transition-colors text-sm sm:text-base"
                   >
-                    <ChevronLeft className="w-5 h-5" />
+                    <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
                     <span>Anterior</span>
                   </button>
                 )}
@@ -584,12 +591,12 @@ export default function Onboarding({
 
               <button
                 onClick={handleNext}
-                disabled={isUpdating}
-                className="bg-[#85ea10] hover:bg-[#7dd30f] disabled:bg-[#85ea10]/70 disabled:cursor-not-allowed text-black font-bold px-8 py-3 rounded-xl transition-all duration-300 flex items-center space-x-2"
+                disabled={isUpdating || (currentStep === 4 && profile.goals.length === 0)}
+                className="bg-[#85ea10] hover:bg-[#7dd30f] disabled:bg-[#85ea10]/70 disabled:cursor-not-allowed text-black font-bold text-sm sm:text-base px-5 sm:px-8 py-2.5 sm:py-3 rounded-xl transition-all duration-300 flex items-center space-x-1.5 sm:space-x-2"
               >
                 {isUpdating ? (
                   <>
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-black"></div>
+                    <div className="animate-spin rounded-full h-4 w-4 sm:h-5 sm:w-5 border-b-2 border-black"></div>
                     <span>Guardando...</span>
                   </>
                 ) : (
@@ -599,7 +606,7 @@ export default function Onboarding({
                         ? 'Finalizar'
                         : 'Siguiente'}
                     </span>
-                    <ChevronRight className="w-5 h-5" />
+                    <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
                   </>
                 )}
               </button>

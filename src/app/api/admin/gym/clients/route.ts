@@ -147,7 +147,7 @@ export async function POST(request: NextRequest) {
         );
       }
       return NextResponse.json(
-        { error: 'Error al crear cliente' },
+        { error: 'Error al crear cliente', details: error.message },
         { status: 500 },
       );
     }

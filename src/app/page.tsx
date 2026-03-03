@@ -9,6 +9,7 @@ import {
   Clock,
   Dumbbell,
   Flame,
+  Heart,
   Home,
   Play,
   Search,
@@ -25,6 +26,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import Footer from '@/components/Footer';
 import QuickLoading from '@/components/QuickLoading';
+import ScrollReveal from '@/components/ScrollReveal';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useUnifiedCourses } from '@/hooks/useUnifiedCourses';
 import { trackCourseView } from '@/lib/analytics';
@@ -108,37 +110,14 @@ export default function HomePage() {
   // Mostrar todos los cursos sin filtros
   const displayedCourses = courses;
 
-  // Efecto para centrar el curso principal en el carrusel al cargar
+  // Asegurar que el curso en oferta (primero) sea visible al cargar el carrusel
   useEffect(() => {
-    if (
-      displayedCourses.length === 1 &&
-      carouselContainerRef.current &&
-      mainCourseRef.current
-    ) {
-      // Usar setTimeout para asegurar que el DOM esté completamente renderizado
-      setTimeout(() => {
-        const container = carouselContainerRef.current;
-        const mainCourse = mainCourseRef.current;
-
-        if (container && mainCourse) {
-          // Calcular el scroll necesario para centrar el curso principal
-          const containerWidth = container.offsetWidth;
-          const mainCourseLeft = mainCourse.offsetLeft;
-          const mainCourseWidth = mainCourse.offsetWidth;
-
-          // Centrar el curso principal horizontalmente
-          const scrollPosition =
-            mainCourseLeft - containerWidth / 2 + mainCourseWidth / 2;
-
-          // Hacer scroll al centro (sin behavior smooth para que sea instantáneo al cargar)
-          container.scrollTo({
-            left: scrollPosition,
-            behavior: 'auto',
-          });
-        }
-      }, 100);
+    if (displayedCourses.length === 0) return;
+    const container = document.getElementById('landing-courses-carousel');
+    if (container) {
+      container.scrollLeft = 0;
     }
-  }, [displayedCourses.length, courses]);
+  }, [displayedCourses.length]);
 
   // Efecto para centrar el plan principal en el carrusel al cargar
   useEffect(() => {
@@ -306,8 +285,8 @@ export default function HomePage() {
             : 'bg-transparent border-b border-transparent'
         }`}
       >
-        <div className="w-full px-4 md:px-12 lg:px-20 xl:px-32">
-          <div className="flex items-center justify-between h-20 w-full">
+        <div className="w-full px-3 sm:px-4 md:px-12 lg:px-20 xl:px-32">
+          <div className="flex items-center justify-between h-12 sm:h-14 md:h-16 w-full">
             <div className="flex items-center flex-shrink-0">
               <button
                 onClick={() => {
@@ -316,13 +295,13 @@ export default function HomePage() {
                 className="flex items-center hover:scale-105 hover:opacity-90 transition-all duration-300 ease-out group"
                 style={{ minWidth: 'fit-content' }}
               >
-                <h1 className="text-xl md:text-2xl lg:text-3xl font-black uppercase tracking-tight whitespace-nowrap">
+                <h1 className="text-base sm:text-lg md:text-xl font-black uppercase tracking-tight whitespace-nowrap">
                   <span
-                    className={`${isScrolled ? 'text-gray-900 dark:text-white' : 'text-white dark:text-white'} drop-shadow-md group-hover:text-[#85ea10] transition-colors duration-300`}
+                    className="text-[#164151] dark:text-[#29839c] drop-shadow-md group-hover:text-[#85ea10] transition-colors duration-300"
                   >
                     ROGER
                   </span>
-                  <span className="text-[#85ea10] drop-shadow-md group-hover:text-gray-900 dark:group-hover:text-white transition-colors duration-300">
+                  <span className="text-[#85ea10] drop-shadow-md group-hover:text-[#164151] dark:group-hover:text-[#29839c] transition-colors duration-300">
                     BOX
                   </span>
                 </h1>
@@ -353,11 +332,11 @@ export default function HomePage() {
               }`}>Contacto</a>
             </nav> */}
 
-            {/* Auth Buttons */}
-            <div className="flex items-center space-x-2 md:space-x-4">
+            {/* Auth Buttons - compactos en todos los tamaños */}
+            <div className="flex items-center space-x-1.5 sm:space-x-2 md:space-x-3">
               <button
                 onClick={() => router.push('/login')}
-                className={`transition-all duration-300 font-semibold px-3 py-2 md:px-6 md:py-3 rounded-xl hover:scale-105 hover:shadow-lg text-sm md:text-base ${
+                className={`transition-all duration-300 font-semibold px-2 py-1.5 sm:px-3 sm:py-2 rounded-lg hover:scale-105 hover:shadow-lg text-xs sm:text-sm ${
                   isScrolled
                     ? 'text-gray-900 hover:text-gray-700 hover:bg-gray-100 dark:text-white dark:hover:text-white dark:hover:bg-white/10'
                     : 'text-white hover:text-white hover:bg-white/10 dark:text-white dark:hover:text-white dark:hover:bg-white/10'
@@ -367,7 +346,7 @@ export default function HomePage() {
               </button>
               <button
                 onClick={() => router.push('/register')}
-                className="bg-[#85ea10] hover:bg-[#7dd30f] text-black font-bold px-3 py-2 md:px-6 md:py-3 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 text-sm md:text-base"
+                className="bg-[#85ea10] hover:bg-[#7dd30f] text-black font-bold px-2 py-1.5 sm:px-3 sm:py-2 md:px-4 md:py-2.5 rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 text-xs sm:text-sm"
               >
                 Registrarse
               </button>
@@ -377,20 +356,20 @@ export default function HomePage() {
       </header>
 
       {/* Hero Section */}
-      <section className="relative min-h-screen flex items-center justify-center pt-16 pb-8">
+      <section className="relative min-h-screen flex items-center justify-center pt-14 sm:pt-16 md:pt-20 pb-8">
         {/* Hero Content */}
-        <div className="relative z-10 w-full px-6 md:px-12 lg:px-20 xl:px-32 text-center max-w-[95%] lg:max-w-[90%] xl:max-w-full mx-auto">
-          <div className="space-y-5 md:space-y-6">
-            {/* Main Title */}
-            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-white mb-4 md:mb-5 uppercase tracking-tight leading-[1.2]">
+        <div className="relative z-10 w-full px-4 sm:px-6 md:px-12 lg:px-20 xl:px-32 text-center max-w-[95%] lg:max-w-[90%] xl:max-w-full mx-auto">
+          <div className="space-y-4 sm:space-y-5 md:space-y-6">
+            {/* Main Title - compacto en mobile, verde de marca en HIIT */}
+            <h1 className="text-2xl sm:text-3xl md:text-5xl lg:text-6xl font-black text-white mb-3 md:mb-5 uppercase tracking-tight leading-[1.15] md:leading-[1.2]">
               <div className="drop-shadow-lg">QUEMA GRASA CON</div>
-              <div className="text-[#85ea10] drop-shadow-lg">
+              <div className="text-[#85ea10] drop-shadow-lg mt-0.5 md:mt-0">
                 ENTRENAMIENTOS HIIT
               </div>
             </h1>
 
-            {/* Subtitle */}
-            <p className="text-lg sm:text-xl md:text-xl lg:text-xl text-white/95 mb-6 md:mb-7 font-medium leading-relaxed max-w-3xl mx-auto line-clamp-3 sm:line-clamp-none">
+            {/* Subtitle - legible, frase de cierre en verde de marca */}
+            <p className="text-base sm:text-lg md:text-xl text-white/95 mb-4 md:mb-7 font-medium leading-snug md:leading-relaxed max-w-3xl mx-auto">
               Transforma tu cuerpo con entrenamientos intensos de alta calidad.
               <br className="hidden md:block" />
               <span className="text-[#85ea10] font-bold">
@@ -398,11 +377,11 @@ export default function HomePage() {
               </span>
             </p>
 
-            {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+            {/* CTA Buttons - mismo ancho y alto, efecto líquido en Ver Cursos */}
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center">
               <button
                 onClick={() => router.push('/register')}
-                className="bg-[#85ea10] hover:bg-[#7dd30f] text-black font-black px-8 py-4 rounded-xl text-base md:text-lg transition-all duration-300 hover:scale-105 shadow-2xl hover:shadow-[#85ea10]/25"
+                className="w-[240px] sm:w-[260px] h-12 sm:h-14 flex items-center justify-center bg-[#85ea10] hover:bg-[#7dd30f] text-black font-black rounded-xl text-sm sm:text-base md:text-lg transition-all duration-300 hover:scale-[1.02] sm:hover:scale-105 shadow-xl hover:shadow-[#85ea10]/30"
               >
                 ¡EMPEZAR AHORA!
               </button>
@@ -412,12 +391,11 @@ export default function HomePage() {
                     const tituloSection =
                       document.getElementById('titulo-cursos');
                     if (tituloSection) {
-                      const headerOffset = 80; // Altura del header sticky
+                      const headerOffset = 80;
                       const elementPosition =
                         tituloSection.getBoundingClientRect().top;
                       const offsetPosition =
                         elementPosition + window.pageYOffset - headerOffset;
-
                       window.scrollTo({
                         top: offsetPosition,
                         behavior: 'smooth',
@@ -425,45 +403,39 @@ export default function HomePage() {
                     }
                   }, 100);
                 }}
-                className="bg-white/20 hover:bg-white/30 backdrop-blur-lg text-white font-bold px-8 py-4 rounded-xl text-base md:text-lg transition-all duration-300 hover:scale-105 border border-white/30"
+                className="w-[240px] sm:w-[260px] h-12 sm:h-14 flex items-center justify-center bg-white/15 hover:bg-white/25 backdrop-blur-md text-white font-bold rounded-xl text-sm sm:text-base md:text-lg transition-all duration-300 border border-white/30"
               >
                 Ver Cursos
               </button>
             </div>
 
-            {/* Stats */}
-            <div className="grid grid-cols-3 md:grid-cols-3 gap-4 md:gap-6 mt-8 md:mt-10 max-w-4xl mx-auto">
-              <div className="text-center">
-                <div className="flex justify-center mb-2">
-                  <Flame className="w-8 h-8 md:w-10 md:h-10 text-[#85ea10]" />
+            {/* Features - mismo estilo en mobile y desktop: lista vertical, icono izquierda + texto derecha */}
+            <div className="grid grid-cols-1 gap-3 sm:gap-4 mt-6 sm:mt-8 md:mt-10 max-w-lg mx-auto px-1">
+              <div className="flex flex-row items-center gap-3 sm:gap-4 text-left p-3 sm:p-4 rounded-xl bg-white/5 border border-white/10">
+                <div className="flex-shrink-0 w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-[#85ea10]/20 flex items-center justify-center">
+                  <Flame className="w-5 h-5 sm:w-6 sm:h-6 text-[#85ea10]" strokeWidth={2} />
                 </div>
-                <div className="text-white font-semibold text-sm md:text-base mb-1">
-                  Quema de Grasa
-                </div>
-                <div className="text-white/80 text-xs md:text-sm">
-                  Resultados visibles en 2 semanas
+                <div className="min-w-0 flex-1">
+                  <div className="text-white font-semibold text-sm sm:text-base">Quema de Grasa</div>
+                  <div className="text-white/80 text-xs sm:text-sm mt-0.5">Resultados visibles en 2 semanas</div>
                 </div>
               </div>
-              <div className="text-center">
-                <div className="flex justify-center mb-2">
-                  <Dumbbell className="w-8 h-8 md:w-10 md:h-10 text-[#85ea10]" />
+              <div className="flex flex-row items-center gap-3 sm:gap-4 text-left p-3 sm:p-4 rounded-xl bg-white/5 border border-white/10">
+                <div className="flex-shrink-0 w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-[#85ea10]/20 flex items-center justify-center">
+                  <Dumbbell className="w-5 h-5 sm:w-6 sm:h-6 text-[#85ea10]" strokeWidth={2} />
                 </div>
-                <div className="text-white font-semibold text-sm md:text-base mb-1">
-                  Mejor Estado Físico
-                </div>
-                <div className="text-white/80 text-xs md:text-sm">
-                  Fuerza y resistencia
+                <div className="min-w-0 flex-1">
+                  <div className="text-white font-semibold text-sm sm:text-base">Mejor Estado Físico</div>
+                  <div className="text-white/80 text-xs sm:text-sm mt-0.5">Fuerza y resistencia</div>
                 </div>
               </div>
-              <div className="text-center">
-                <div className="flex justify-center mb-2">
-                  <Home className="w-8 h-8 md:w-10 md:h-10 text-[#85ea10]" />
+              <div className="flex flex-row items-center gap-3 sm:gap-4 text-left p-3 sm:p-4 rounded-xl bg-white/5 border border-white/10">
+                <div className="flex-shrink-0 w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-[#85ea10]/20 flex items-center justify-center">
+                  <Home className="w-5 h-5 sm:w-6 sm:h-6 text-[#85ea10]" strokeWidth={2} />
                 </div>
-                <div className="text-white font-semibold text-sm md:text-base mb-1">
-                  Desde Casa
-                </div>
-                <div className="text-white/80 text-xs md:text-sm">
-                  Sin gimnasio, sin excusas
+                <div className="min-w-0 flex-1">
+                  <div className="text-white font-semibold text-sm sm:text-base">Desde Casa</div>
+                  <div className="text-white/80 text-xs sm:text-sm mt-0.5">Sin gimnasio, sin excusas</div>
                 </div>
               </div>
             </div>
@@ -485,7 +457,7 @@ export default function HomePage() {
         id="titulo-cursos"
         className="relative py-16 md:py-20 bg-white dark:bg-gray-900 w-full z-10 overflow-visible"
       >
-        <div className="w-full px-4 md:px-12 lg:px-20 xl:px-32 max-w-7xl mx-auto">
+        <ScrollReveal className="w-full px-3 sm:px-4 md:px-12 lg:px-20 xl:px-32">
           {loadingCourses ? (
             <div className="flex items-center justify-center py-16">
               <div className="animate-pulse rounded-xl bg-gray-200 dark:bg-gray-800 h-48 w-full max-w-2xl" />
@@ -504,13 +476,6 @@ export default function HomePage() {
                     Transforma tu cuerpo con nuestros programas especializados
                   </p>
                 </div>
-                <button
-                  onClick={() => router.push('/courses')}
-                  className="text-sm text-[#85ea10] hover:text-[#7dd30f] font-semibold flex items-center space-x-1"
-                >
-                  <span>Ver todos</span>
-                  <ChevronRight className="w-4 h-4" />
-                </button>
               </div>
             </div>
           )}
@@ -541,21 +506,23 @@ export default function HomePage() {
                   WebkitOverflowScrolling: 'touch',
                 }}
               >
-                <div className="flex gap-4 sm:gap-6 md:gap-8 px-3 sm:px-4 md:px-6 justify-start md:justify-center">
-                  {displayedCourses.map((course) => (
+                <div className="flex gap-4 sm:gap-6 md:gap-8 px-3 sm:px-4 md:px-6 justify-start">
+                  {/* Copiado del dashboard: Cursos Disponibles */}
+                  {displayedCourses.map((course, index) => (
                     <div
                       key={course.id}
+                      ref={index === 0 ? mainCourseRef : undefined}
                       className="flex-shrink-0 w-[calc(100vw-2rem)] sm:w-[calc(100vw-4rem)] md:w-[850px]"
                     >
                       <div
-                        onClick={() =>
-                          router.push(`/course/${course.slug || course.id}`)
-                        }
-                        className="flex flex-col md:flex-row bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl hover:shadow-[#85ea10]/10 hover:border-[#85ea10]/30 transition-all duration-200 rounded-2xl cursor-pointer w-full overflow-hidden"
+                        onClick={(e) => {
+                          router.push(`/course/${course.slug || course.id}`);
+                        }}
+                        className="flex flex-col lg:flex-row bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl hover:shadow-[#85ea10]/10 hover:border-[#85ea10]/30 transition-all duration-200 rounded-2xl cursor-pointer w-full overflow-hidden h-auto lg:h-full"
                       >
-                        {/* Bloque de imagen con altura fija para que nunca se corte */}
-                        <div className="w-full md:w-[320px] h-[220px] sm:h-[260px] md:h-[280px] flex-shrink-0 relative bg-gray-100 dark:bg-gray-700">
-                          <div className="absolute inset-0 w-full h-full rounded-t-2xl md:rounded-l-2xl md:rounded-tr-none overflow-hidden">
+                        {/* IMAGEN - Vertical hasta lg para que en tablet el contenido no quede estrecho */}
+                        <div className="w-full lg:w-[320px] h-[200px] sm:h-[250px] lg:h-full flex-shrink-0 relative">
+                          <div className="absolute inset-0 w-full h-full rounded-t-2xl lg:rounded-l-2xl lg:rounded-tr-none overflow-hidden">
                             <img
                               src={
                                 course.thumbnail ||
@@ -563,11 +530,21 @@ export default function HomePage() {
                                 '/images/course-placeholder.jpg'
                               }
                               alt={course.title}
-                              className="w-full h-full object-cover object-center"
+                              className="w-full h-full object-cover"
+                              style={{
+                                objectPosition: 'center center',
+                                display: 'block',
+                              }}
                               onError={(e) => {
-                                const t = e.target as HTMLImageElement;
-                                if (!t.src?.endsWith('course-placeholder.jpg'))
-                                  t.src = '/images/course-placeholder.jpg';
+                                const target = e.target as HTMLImageElement;
+                                if (
+                                  !target.src?.endsWith(
+                                    'course-placeholder.jpg',
+                                  )
+                                ) {
+                                  target.src =
+                                    '/images/course-placeholder.jpg';
+                                }
                               }}
                             />
                             <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-all duration-300 flex items-center justify-center opacity-0 hover:opacity-100 z-10">
@@ -577,77 +554,96 @@ export default function HomePage() {
                               />
                             </div>
                           </div>
-                          <div className="absolute top-3 left-3 flex gap-2 z-20">
+
+                          <div className="absolute top-3 left-6 sm:left-8 flex gap-2 z-20">
+                            {index === 0 && (
+                              <div className="bg-[#85ea10] text-black text-xs font-bold px-2 py-1 rounded-full shadow-lg">
+                                En oferta
+                              </div>
+                            )}
                             {course.isPopular && (
-                              <span className="bg-orange-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">
+                              <div className="bg-orange-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">
                                 POPULAR
-                              </span>
+                              </div>
                             )}
                             {course.isNew && (
-                              <span className="bg-[#85ea10] text-black text-xs font-bold px-2 py-1 rounded-full shadow-lg">
+                              <div className="bg-[#85ea10] text-black text-xs font-bold px-2 py-1 rounded-full shadow-lg">
                                 NUEVO
-                              </span>
+                              </div>
                             )}
                           </div>
-                          <div className="absolute bottom-3 right-3 flex items-center space-x-1 bg-black/70 backdrop-blur-sm text-white px-3 py-1.5 rounded-full z-10">
+
+                          <div className="absolute bottom-3 right-6 sm:right-8 flex items-center space-x-1 bg-black/70 backdrop-blur-sm text-white px-3 py-1.5 rounded-full z-10">
                             <Star className="w-4 h-4 text-yellow-400 fill-current" />
                             <span className="text-sm font-semibold">
                               {course.rating || '4.8'}
                             </span>
                           </div>
                         </div>
-                        <div className="flex-1 flex flex-col min-w-0 p-4 md:p-5 lg:p-6 md:justify-between">
-                          <div className="flex flex-col gap-2 sm:gap-3 mb-4 md:mb-0">
-                            <h3 className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-gray-900 dark:text-white break-words leading-tight line-clamp-2 sm:line-clamp-none">
+
+                        {/* CONTENIDO - Resto del espacio; padding horizontal en sm/tablet para flechas; min-width en lg para que no se estrangule */}
+                        <div className="flex-1 flex flex-col min-w-0 lg:min-w-[320px] overflow-visible p-3 pl-10 pr-10 sm:p-4 sm:pl-10 sm:pr-10 lg:p-5 lg:pl-5 lg:pr-5 xl:p-6 lg:justify-between">
+                          <div className="flex flex-col gap-1.5 sm:gap-2 lg:gap-4 mb-3 lg:mb-0">
+                            <h3 className="text-base sm:text-lg lg:text-xl xl:text-2xl font-bold text-gray-900 dark:text-white break-words leading-tight line-clamp-2 sm:line-clamp-none">
                               {course.title}
                             </h3>
-                            <p className="text-xs sm:text-sm md:text-base text-gray-700 dark:text-white/80 leading-relaxed line-clamp-3 sm:line-clamp-none">
+                            <p className="text-xs sm:text-sm lg:text-base text-gray-700 dark:text-white/80 leading-relaxed break-words line-clamp-3 sm:line-clamp-none">
                               {course.short_description || course.description}
                             </p>
-                            <div className="flex justify-center w-full">
-                              <span className="inline-flex items-center justify-center px-3 py-1.5 rounded-full text-sm font-medium bg-[#85ea10] text-black">
+                            {/* Etiqueta de categoría/objetivo: más discreta en mobile */}
+                            <div className="flex justify-start sm:justify-center w-full">
+                              <span className="inline-flex items-center justify-center px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[11px] sm:text-sm font-medium bg-[#85ea10]/20 text-[#164151] dark:bg-[#85ea10]/25 dark:text-[#85ea10] border border-[#85ea10]/40">
                                 {getCategoryDisplayName(course)}
                               </span>
                             </div>
-                            <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 mb-4">
-                              <div className="flex items-center gap-1.5">
-                                <Play className="w-4 h-4 text-[#85ea10]" />
-                                <span className="text-sm text-gray-600 dark:text-white/80">
-                                  {course.lessons_count ?? 0} clases
+                            {/* Opciones del curso en una sola línea; en tablet también abreviado para que no se corte */}
+                            <div className="flex flex-nowrap items-center justify-start sm:justify-center gap-2 sm:gap-4 lg:gap-6 mb-3 lg:mb-4 overflow-x-auto scrollbar-hide min-h-[1.5rem]">
+                              <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
+                                <Play className="w-3 h-3 sm:w-4 sm:h-4 text-[#85ea10]" />
+                                <span className="text-[11px] sm:text-sm text-gray-600 dark:text-white/80 whitespace-nowrap">
+                                  {course.lessons_count || 0} clases
                                 </span>
                               </div>
-                              <div className="flex items-center gap-1.5">
-                                <Clock className="w-4 h-4 text-[#85ea10]" />
-                                <span className="text-sm text-gray-600 dark:text-white/80">
-                                  {course.duration ||
-                                    ((course as CourseLike).duration_days
-                                      ? `${(course as CourseLike).duration_days} semanas`
-                                      : '8 semanas')}
+                              <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
+                                <Clock className="w-3 h-3 sm:w-4 sm:h-4 text-[#85ea10]" />
+                                <span className="text-[11px] sm:text-sm text-gray-600 dark:text-white/80 whitespace-nowrap">
+                                  {course.duration || '8 semanas'}
                                 </span>
                               </div>
-                              <div className="flex items-center gap-1.5">
-                                <Users className="w-4 h-4 text-[#85ea10]" />
-                                <span className="text-sm text-gray-600 dark:text-white/80">
-                                  {course.students_count ?? 0} estudiantes
+                              <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
+                                <Users className="w-3 h-3 sm:w-4 sm:h-4 text-[#85ea10]" />
+                                <span className="text-[11px] sm:text-sm text-gray-600 dark:text-white/80 whitespace-nowrap">
+                                  {course.students_count || 0} est.
                                 </span>
                               </div>
-                              <div className="flex items-center gap-1.5">
-                                <Zap className="w-4 h-4 text-[#85ea10]" />
-                                <span className="text-sm text-gray-600 dark:text-white/80">
-                                  {course.level || 'Todos'}
+                              <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
+                                <Zap className="w-3 h-3 sm:w-4 sm:h-4 text-[#85ea10]" />
+                                <span className="text-[11px] sm:text-sm text-gray-600 dark:text-white/80 whitespace-nowrap">
+                                  <span className="lg:hidden">
+                                    {course.level === 'Principiante'
+                                      ? 'Princ.'
+                                      : course.level === 'Intermedio'
+                                        ? 'Inter.'
+                                        : course.level === 'Avanzado'
+                                          ? 'Avanz.'
+                                          : course.level || 'Todos'}
+                                  </span>
+                                  <span className="hidden lg:inline">
+                                    {course.level || 'Todos'}
+                                  </span>
                                 </span>
                               </div>
                             </div>
                           </div>
-                          <div className="pt-4 border-t border-gray-200 dark:border-gray-700 mt-auto">
+                          <div className="pt-4 border-t border-gray-200 dark:border-gray-700 mt-auto lg:mt-0">
                             <div className="flex items-center justify-center flex-wrap gap-2 mb-3">
                               {(course.discount_percentage ?? 0) > 0 ? (
                                 <>
                                   <span className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
                                     $
-                                    {calculateFinalPrice(course).toLocaleString(
-                                      'es-CO',
-                                    )}
+                                    {calculateFinalPrice(
+                                      course,
+                                    ).toLocaleString('es-CO')}
                                   </span>
                                   <span className="text-lg md:text-xl text-gray-500 dark:text-white/50 line-through">
                                     $
@@ -655,7 +651,7 @@ export default function HomePage() {
                                       course,
                                     ).toLocaleString('es-CO')}
                                   </span>
-                                  <span className="text-xs md:text-sm text-[#85ea10] font-bold bg-[#85ea10]/10 px-2 py-1 rounded-lg">
+                                  <span className="text-xs md:text-sm text-gray-900 dark:text-white font-bold bg-[#85ea10]/25 dark:bg-[#85ea10]/30 border border-[#85ea10]/50 px-2 py-1 rounded-lg">
                                     {course.discount_percentage ?? 0}% de
                                     descuento
                                   </span>
@@ -670,16 +666,31 @@ export default function HomePage() {
                               )}
                             </div>
                             <button
-                              onClick={(e) => {
+                              onClick={async (e) => {
                                 e.stopPropagation();
                                 router.push(
                                   `/course/${course.slug || course.id}`,
                                 );
                               }}
-                              className="w-full bg-[#85ea10] hover:bg-[#7dd30f] text-black font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors shadow-lg"
+                              style={{
+                                width: '100%',
+                                backgroundColor: '#85ea10',
+                                color: 'black',
+                                fontWeight: 'bold',
+                                padding: '12px',
+                                borderRadius: '8px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '6px',
+                                fontSize: '0.875rem',
+                                cursor: 'pointer',
+                                border: 'none',
+                              }}
+                              className="hover:bg-[#7dd30f] transition-colors duration-150 shadow-lg"
                             >
                               <ShoppingCart className="w-4 h-4" />
-                              ¡Comenzar Ahora!
+                              <span>¡Comenzar Ahora!</span>
                             </button>
                           </div>
                         </div>
@@ -740,6 +751,178 @@ export default function HomePage() {
               </p>
             </div>
           )}
+        </ScrollReveal>
+      </section>
+
+      {/* Landing RogerBox: quiénes somos, HIIT, filosofía, beneficios, galería, plataforma */}
+      <section
+        id="rogerbox"
+        className="relative py-16 md:py-24 bg-gray-50 dark:bg-gray-900/50 border-t border-gray-200 dark:border-gray-800 w-full z-10"
+      >
+        <div className="w-full px-3 sm:px-4 md:px-12 lg:px-20 xl:px-32 space-y-16 md:space-y-24">
+          {/* Título de sección — Logo en mayúscula + azul oscuro del navbar/dashboard/admin */}
+          <ScrollReveal variant="fade" className="text-center">
+            <h2 className="text-2xl md:text-4xl font-black uppercase tracking-tight">
+              <span className="text-[#164151] dark:text-[#29839c]">Conoce </span>
+              <span className="text-[#164151] dark:text-[#29839c]">ROGER</span>
+              <span className="text-[#85ea10]">BOX</span>
+            </h2>
+            <p className="mt-3 text-gray-600 dark:text-gray-400 text-base md:text-lg max-w-2xl mx-auto">
+              El gimnasio que llevamos a tu pantalla. Entrena HIIT donde sea, cuando sea.
+            </p>
+          </ScrollReveal>
+
+          {/* Quiénes somos */}
+          <ScrollReveal className="grid md:grid-cols-2 gap-8 md:gap-12 items-center">
+            <div>
+              <h3 className="text-xl md:text-2xl font-bold text-[#164151] dark:text-[#29839c] flex items-center gap-2">
+                <Users className="w-6 h-6 text-[#85ea10]" />
+                Quiénes somos
+              </h3>
+              <p className="mt-4 text-gray-600 dark:text-gray-400 leading-relaxed">
+                RogerBox nace de la pasión por el entrenamiento de alta intensidad y la idea de que
+                todo el mundo puede transformar su cuerpo con la guía correcta. Somos un equipo de
+                entrenadores y atletas con años de experiencia en HIIT y funcional, y hemos creado
+                esta plataforma para que entrenes con la misma intensidad y calidad que en nuestro
+                box, desde casa o donde estés.
+              </p>
+            </div>
+            <div className="relative rounded-2xl overflow-hidden shadow-xl aspect-[4/3] bg-gray-200 dark:bg-gray-700">
+              <img
+                src="/images/555451280_1375584947910175_1641301510443057474_n.jpg"
+                alt="Equipo RogerBox"
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = '/images/course-placeholder.jpg';
+                }}
+              />
+            </div>
+          </ScrollReveal>
+
+          {/* Qué es el HIIT */}
+          <ScrollReveal className="grid md:grid-cols-2 gap-8 md:gap-12 items-center">
+            <div className="order-2 md:order-1 relative rounded-2xl overflow-hidden shadow-xl aspect-[4/3] bg-gray-200 dark:bg-gray-700">
+              <img
+                src="/images/curso1.jpeg"
+                alt="Entrenamiento HIIT"
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = '/images/course-placeholder.jpg';
+                }}
+              />
+            </div>
+            <div className="order-1 md:order-2">
+              <h3 className="text-xl md:text-2xl font-bold text-[#164151] dark:text-[#29839c] flex items-center gap-2">
+                <Zap className="w-6 h-6 text-[#85ea10]" />
+                ¿Qué es el HIIT?
+              </h3>
+              <p className="mt-4 text-gray-600 dark:text-gray-400 leading-relaxed">
+                El <strong className="text-gray-900 dark:text-white">High Intensity Interval Training</strong> (entrenamiento
+                por intervalos de alta intensidad) son sesiones cortas en las que alternas esfuerzo
+                máximo con recuperaciones breves. En RogerBox usamos HIIT para quemar grasa, ganar
+                resistencia y fortalecer todo el cuerpo en menos tiempo, con rutinas que puedes
+                hacer con tu propio peso o material mínimo.
+              </p>
+            </div>
+          </ScrollReveal>
+
+          {/* Nuestra filosofía */}
+          <ScrollReveal className="rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-6 md:p-10 text-center shadow-lg">
+            <Target className="w-10 h-10 text-[#85ea10] mx-auto mb-4" />
+            <h3 className="text-xl md:text-2xl font-bold text-[#164151] dark:text-[#29839c]">
+              Nuestra filosofía
+            </h3>
+            <p className="mt-4 text-gray-600 dark:text-gray-400 leading-relaxed max-w-3xl mx-auto">
+              Creemos que la constancia y la intensidad bien dirigida cambian vidas. No vendemos
+              milagros: vendemos método, acompañamiento y una comunidad que te empuja. Cada
+              sesión está pensada para que des el máximo, te sientas bien y veas resultados
+              reales — sin necesidad de horas interminables en el gym.
+            </p>
+          </ScrollReveal>
+
+          {/* Beneficios del HIIT */}
+          <ScrollReveal>
+            <h3 className="text-xl md:text-2xl font-bold text-[#164151] dark:text-[#29839c] text-center mb-8 flex items-center justify-center gap-2">
+              <Flame className="w-6 h-6 text-[#85ea10]" />
+              Beneficios del HIIT
+            </h3>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+              {[
+                { icon: Flame, title: 'Quema grasa', text: 'Mayor gasto calórico en menos tiempo gracias al efecto afterburn.' },
+                { icon: Heart, title: 'Mejor condición', text: 'Refuerza tu sistema cardiovascular y resistencia.' },
+                { icon: Dumbbell, title: 'Más fuerza', text: 'Trabajo funcional que mejora fuerza y tono muscular.' },
+                { icon: Clock, title: 'Sesiones cortas', text: 'Resultados con entrenamientos de 15–40 minutos.' },
+              ].map((item) => (
+                <div
+                  key={item.title}
+                  className="rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-5 shadow-md hover:shadow-[#85ea10]/10 hover:border-[#85ea10]/30 transition-all"
+                >
+                  <item.icon className="w-8 h-8 text-[#85ea10] mb-3" />
+                  <h4 className="font-bold text-[#164151] dark:text-[#29839c]">{item.title}</h4>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{item.text}</p>
+                </div>
+              ))}
+            </div>
+          </ScrollReveal>
+
+          {/* Galería del gym */}
+          <ScrollReveal>
+            <h3 className="text-xl md:text-2xl font-bold text-[#164151] dark:text-[#29839c] text-center mb-8">
+              Nuestro espacio
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {[
+                { src: '/images/555451280_1375584947910175_1641301510443057474_n.jpg', alt: 'RogerBox' },
+                { src: '/images/banner.jpeg', alt: 'RogerBox banner' },
+                { src: '/images/curso2.jpeg', alt: 'RogerBox entrenamiento' },
+              ].map((img) => (
+                <div
+                  key={img.src}
+                  className="relative rounded-xl overflow-hidden aspect-[4/3] bg-gray-200 dark:bg-gray-700 shadow-lg"
+                >
+                  <img
+                    src={img.src}
+                    alt={img.alt}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = '/images/course-placeholder.jpg';
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+          </ScrollReveal>
+
+          {/* Qué podrás hacer en la plataforma */}
+          <ScrollReveal className="rounded-2xl bg-gradient-to-br from-[#85ea10]/10 to-[#85ea10]/5 dark:from-[#85ea10]/15 dark:to-[#85ea10]/5 border border-[#85ea10]/20 p-6 md:p-10">
+            <h3 className="text-xl md:text-2xl font-bold text-[#164151] dark:text-[#29839c] text-center mb-6">
+              ¿Qué podrás hacer en la plataforma?
+            </h3>
+            <ul className="grid sm:grid-cols-2 gap-3 max-w-3xl mx-auto">
+              {[
+                'Cursos de HIIT y entrenamiento funcional con seguimiento semanal.',
+                'Complementos del día para mantener la constancia.',
+                'Planes adaptados a tu nivel (principiante a avanzado).',
+                'Videos en alta calidad con la misma intensidad que en el box.',
+                'Marcar tu progreso y ver tu evolución.',
+                'Acceso desde cualquier dispositivo, cuando quieras.',
+              ].map((item) => (
+                <li key={item} className="flex items-start gap-2 text-gray-700 dark:text-gray-300">
+                  <CheckCircle className="w-5 h-5 text-[#85ea10] flex-shrink-0 mt-0.5" />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-8 text-center">
+              <button
+                onClick={() => router.push('/register')}
+                className="inline-flex items-center gap-2 bg-[#85ea10] hover:bg-[#7dd30f] text-black font-bold py-3 px-6 rounded-xl transition-colors shadow-lg"
+              >
+                <Zap className="w-5 h-5" />
+                Empieza ahora
+              </button>
+            </div>
+          </ScrollReveal>
         </div>
       </section>
 

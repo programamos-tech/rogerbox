@@ -265,3 +265,74 @@ mux-player::part(play) {
 mux-player video {
   object-fit: contain;
 }
+
+/* Complement modal: solo botón play, resto del reproductor oculto */
+.complement-video-modal mux-player {
+  --time-range: none;
+  --time-display: none;
+  --duration-display: none;
+  --mute-button: none;
+  --volume-range: none;
+  --fullscreen-button: none;
+  --seek-backward-button: none;
+  --seek-forward-button: none;
+  --captions-button: none;
+  --pip-button: none;
+  --airplay-button: none;
+  --cast-button: none;
+  --playback-rate-button: none;
+  --rendition-menu-button: none;
+  --bottom-play-button: none;
+  border-radius: 0;
+}
+.complement-video-modal mux-player::part(center play button) {
+  display: flex !important;
+}
+.complement-video-modal mux-player::part(bottom),
+.complement-video-modal mux-player::part(time),
+.complement-video-modal mux-player::part(range),
+.complement-video-modal mux-player::part(volume) {
+  display: none !important;
+}
+
+/* Animaciones al hacer scroll */
+@keyframes scrollRevealUp {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes scrollRevealFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.scroll-reveal {
+  opacity: 0;
+  transform: translateY(36px);
+  will-change: opacity, transform;
+  transition:
+    opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.scroll-reveal.scroll-reveal-visible {
+  opacity: 1;
+  transform: translateY(0);
+  will-change: auto;
+}
+.scroll-reveal-fade {
+  opacity: 0;
+  will-change: opacity;
+  transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.scroll-reveal-fade.scroll-reveal-visible {
+  opacity: 1;
+  will-change: auto;
+}

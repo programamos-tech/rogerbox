@@ -1,7 +1,7 @@
 export const className = {
   overlay: 'fixed inset-0 z-50 flex items-center justify-center p-4',
   backdrop:
-    'absolute inset-0 bg-black/70 backdrop-blur-md transition-all duration-300',
+    'absolute inset-0 bg-white/50 dark:bg-white/40 backdrop-blur-md transition-all duration-300',
   backdropShow: 'opacity-100',
   backdropHide: 'opacity-0',
   modalBase:

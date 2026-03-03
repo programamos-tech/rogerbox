@@ -1543,9 +1543,9 @@ function AdminDashboardContent() {
               rel="noopener noreferrer"
               className="flex items-center gap-1.5 text-xs font-medium text-[#164151]/60 dark:text-white/50 hover:text-[#164151] dark:hover:text-white transition-colors mr-2"
             >
-              <Zap className="w-3 h-3 text-[#85ea10]" />
+              <Zap className="w-3 h-3" style={{ color: '#ff9568' }} />
               <span className="font-semibold">powered by</span>
-              <span className="font-bold text-[#85ea10]">andresruss.st</span>
+              <span className="font-bold" style={{ color: '#ff9568' }}>programamos.st</span>
             </a>
 
             {/* Notifications */}
