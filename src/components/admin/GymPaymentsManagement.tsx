@@ -15,6 +15,7 @@ import {
   Eye,
   FileText,
   Filter,
+  MessageSquare,
   Save,
   Search,
   User,
@@ -22,12 +23,21 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
+import { formatDateOnlyLocal } from '@/lib/dateUtils';
 import type {
   GymClientInfo,
   GymPayment,
   GymPlan,
   PaymentMethod,
 } from '@/types/gym';
+
+/** Fecha en YYYY-MM-DD según la zona horaria local (evita que "hoy" salga en UTC). */
+function toLocalDateString(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
 
 interface PaymentFormData {
   client_info_id: string;
@@ -59,8 +69,8 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
       plan_id: '',
       amount: 0,
       payment_method: 'cash',
-      payment_date: new Date().toISOString().split('T')[0],
-      period_start: new Date().toISOString().split('T')[0],
+      payment_date: toLocalDateString(new Date()),
+      period_start: toLocalDateString(new Date()),
       period_end: '',
       notes: '',
     });
@@ -152,8 +162,8 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                 ...prev,
                 plan_id: planId!,
                 amount: plan.price,
-                period_start: startDate.toISOString().split('T')[0],
-                period_end: endDate.toISOString().split('T')[0],
+                period_start: toLocalDateString(startDate),
+                period_end: toLocalDateString(endDate),
               }));
 
               // Verificar membresía activa para este plan si hay cliente seleccionado
@@ -202,7 +212,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
           ...prev,
           plan_id: selectedPlan.id,
           amount: selectedPlan.price,
-          period_end: endDate.toISOString().split('T')[0],
+          period_end: toLocalDateString(endDate),
         }));
         setDiscountPercent(0);
       }
@@ -241,12 +251,15 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
 
           // Si hay membresía activa para ESTE MISMO plan, es pago anticipado
           if (activeMembershipForThisPlan) {
-            const latestEndDate = new Date(
-              activeMembershipForThisPlan.end_date,
-            );
-            latestEndDate.setHours(0, 0, 0, 0);
+            // Parsear end_date como fecha local (evitar UTC) para que "día siguiente" sea correcto
+            const endStr = String(
+              activeMembershipForThisPlan.end_date || '',
+            ).slice(0, 10);
+            const [y, m, d] = endStr.split('-').map(Number);
+            const latestEndDate =
+              y && m && d ? new Date(y, m - 1, d) : new Date(activeMembershipForThisPlan.end_date);
 
-            // El nuevo plan empieza el día siguiente
+            // El nuevo plan empieza el día siguiente al último día del plan actual
             const newStartDate = new Date(latestEndDate);
             newStartDate.setDate(newStartDate.getDate() + 1);
 
@@ -258,8 +271,8 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
             // Actualizar las fechas del formulario automáticamente
             setFormData((prev) => ({
               ...prev,
-              period_start: newStartDate.toISOString().split('T')[0],
-              period_end: newEndDate.toISOString().split('T')[0],
+              period_start: toLocalDateString(newStartDate),
+              period_end: toLocalDateString(newEndDate),
             }));
 
             // Marcar como pago anticipado (permitido)
@@ -275,8 +288,8 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
 
             setFormData((prev) => ({
               ...prev,
-              period_start: startDate.toISOString().split('T')[0],
-              period_end: endDate.toISOString().split('T')[0],
+              period_start: toLocalDateString(startDate),
+              period_end: toLocalDateString(endDate),
             }));
 
             setError('');
@@ -365,46 +378,27 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
         let membershipId: string;
 
         if (membershipsRes.ok) {
-          const memberships = await membershipsRes.json();
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-
-          // Buscar membresía vencida para este plan específico para reutilizarla
-          const expiredMembershipForThisPlan = memberships.find((m: any) => {
-            const endDate = new Date(m.end_date);
-            endDate.setHours(0, 0, 0, 0);
-            return (
-              m.plan_id === formData.plan_id &&
-              m.status !== 'cancelled' &&
-              (m.status === 'expired' || endDate < today)
-            );
+          // Siempre crear una nueva membresía para este pago (1 membresía = 1 período = 1 pago).
+          // Renovación = nueva membresía con el período elegido + nuevo pago.
+          const membershipRes = await fetch('/api/admin/gym/memberships', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              client_info_id: formData.client_info_id,
+              plan_id: formData.plan_id,
+              start_date: formData.period_start,
+              end_date: formData.period_end,
+              status: 'active',
+            }),
           });
 
-          if (expiredMembershipForThisPlan && !isAdvancePayment) {
-            // Usar membresía vencida existente (se renovará con el nuevo pago)
-            membershipId = expiredMembershipForThisPlan.id;
-          } else {
-            // Crear nueva membresía (pago anticipado o plan nuevo o plan diferente)
-            const membershipRes = await fetch('/api/admin/gym/memberships', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                client_info_id: formData.client_info_id,
-                plan_id: formData.plan_id,
-                start_date: formData.period_start,
-                end_date: formData.period_end,
-                status: 'active',
-              }),
-            });
-
-            if (!membershipRes.ok) {
-              const errorData = await membershipRes.json();
-              throw new Error(errorData.error || 'Error al crear membresía');
-            }
-
-            const membershipData = await membershipRes.json();
-            membershipId = membershipData.id;
+          if (!membershipRes.ok) {
+            const errorData = await membershipRes.json();
+            throw new Error(errorData.error || 'Error al crear membresía');
           }
+
+          const membershipData = await membershipRes.json();
+          membershipId = membershipData.id;
         } else {
           // Si no se puede verificar membresías, crear nueva membresía
           const membershipRes = await fetch('/api/admin/gym/memberships', {
@@ -474,8 +468,8 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
         plan_id: '',
         amount: 0,
         payment_method: 'cash',
-        payment_date: new Date().toISOString().split('T')[0],
-        period_start: new Date().toISOString().split('T')[0],
+        payment_date: toLocalDateString(new Date()),
+        period_start: toLocalDateString(new Date()),
         period_end: '',
         notes: '',
       });
@@ -530,8 +524,8 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
               ...prev,
               plan_id: planId,
               amount: plan.price,
-              period_start: startDate.toISOString().split('T')[0],
-              period_end: endDate.toISOString().split('T')[0],
+              period_start: toLocalDateString(startDate),
+              period_end: toLocalDateString(endDate),
             }));
           }
         }
@@ -611,106 +605,103 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
       invoiceDiv.style.left = '-9999px';
       invoiceDiv.style.top = '0';
 
+      const periodStartFormatted = formatDateOnlyLocal(payment.period_start, {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric',
+      });
+      const periodEndFormatted = formatDateOnlyLocal(payment.period_end, {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric',
+      });
+      const paymentDateFormatted = formatDateOnlyLocal(payment.payment_date, {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric',
+      });
+      const methodLabel =
+        payment.payment_method === 'cash'
+          ? 'Efectivo'
+          : payment.payment_method === 'transfer'
+            ? 'Transferencia'
+            : 'Mixto';
+
       invoiceDiv.innerHTML = `
-      <div style="text-align: center; margin-bottom: 40px; border-bottom: 3px solid #85ea10; padding-bottom: 20px;">
-        <div style="font-size: 36px; font-weight: 900; color: #000; font-family: 'Arial Black', Arial, sans-serif; letter-spacing: 0px; text-transform: uppercase;">
-          ROGER<span style="color: #85ea10;">BOX</span>
+      <div style="text-align: center; margin-bottom: 32px; padding-bottom: 24px; border-bottom: 2px solid #e5e7eb;">
+        <div style="font-size: 28px; font-weight: 900; color: #164151; letter-spacing: -0.5px; font-family: Arial, sans-serif;">
+          <strong style="font-weight: 900;">ROGER</strong><strong style="color: #85ea10; font-weight: 900;">BOX</strong>
         </div>
-        <div style="font-size: 24px; font-weight: bold; color: #85ea10; margin-top: 20px;">FACTURA</div>
-        <div style="font-size: 18px; color: #666; margin-top: 10px;">
-          ${payment.invoice_number ? `Factura No. ${payment.invoice_number}` : `Pago No. ${payment.id.substring(0, 8).toUpperCase()}`}
+        <div style="font-size: 13px; color: #64748b; margin-top: 6px; text-transform: uppercase; letter-spacing: 0.08em;">
+          Comprobante de pago
+        </div>
+        <div style="font-size: 15px; color: #164151; font-weight: 600; margin-top: 12px;">
+          ${payment.invoice_number ? `Factura Nº ${String(payment.invoice_number).padStart(3, '0')}` : `Pago ${payment.id.substring(0, 8).toUpperCase()}`}
         </div>
       </div>
 
-      <div style="background: #f9fafb; padding: 20px; border-radius: 12px; margin: 30px 0; border-left: 4px solid #85ea10;">
-        <h3 style="margin: 0 0 15px 0; color: #000; font-size: 18px;">Información del Emisor</h3>
-        <p style="margin: 5px 0; color: #666; font-size: 14px;"><strong>Razón Social:</strong> ROGERBOX</p>
-        <p style="margin: 5px 0; color: #666; font-size: 14px;"><strong>NIT:</strong> 1102819763-9</p>
-        <p style="margin: 5px 0; color: #666; font-size: 14px;"><strong>Dirección:</strong> Cr 54 A #25-26, Edificio Mont Cervino, Local 1, Los Alpes</p>
-        <p style="margin: 5px 0; color: #666; font-size: 14px;"><strong>Teléfono/WhatsApp:</strong> 3005009487</p>
-        <p style="margin: 5px 0; color: #666; font-size: 14px;"><strong>Email:</strong> info@rogerbox.com</p>
+      <div style="display: flex; gap: 24px; margin-bottom: 28px; flex-wrap: wrap;">
+        <div style="flex: 1; min-width: 220px; background: #f8fafc; padding: 16px; border-radius: 12px; border: 1px solid #e2e8f0;">
+          <div style="font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px;">Emisor</div>
+          <div style="font-size: 14px; color: #164151; font-weight: 600;">ROGERBOX</div>
+          <div style="font-size: 12px; color: #64748b; margin-top: 4px;">NIT 1102819763-9</div>
+          <div style="font-size: 12px; color: #64748b; margin-top: 2px;">Cr 54 A #25-26, Los Alpes</div>
+          <div style="font-size: 12px; color: #64748b; margin-top: 2px;">3005009487 · info@rogerbox.com</div>
+        </div>
+        <div style="flex: 1; min-width: 220px; background: #f8fafc; padding: 16px; border-radius: 12px; border: 1px solid #e2e8f0;">
+          <div style="font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px;">Cliente</div>
+          <div style="font-size: 14px; color: #164151; font-weight: 600;">${payment.client_info?.name || '—'}</div>
+          <div style="font-size: 12px; color: #64748b; margin-top: 4px;">Doc. ${payment.client_info?.document_id || '—'}</div>
+          ${payment.client_info?.whatsapp ? `<div style="font-size: 12px; color: #64748b; margin-top: 2px;">${payment.client_info.whatsapp}</div>` : ''}
+        </div>
       </div>
 
-      <div style="background: #f9fafb; padding: 20px; border-radius: 12px; margin: 30px 0;">
-        <h3 style="margin: 0 0 15px 0; color: #000; font-size: 18px;">Información del Cliente</h3>
-        <p style="margin: 5px 0; color: #666; font-size: 14px;"><strong>Nombre:</strong> ${payment.client_info?.name || 'No especificado'}</p>
-        <p style="margin: 5px 0; color: #666; font-size: 14px;"><strong>Documento:</strong> ${payment.client_info?.document_id || 'No especificado'}</p>
-        ${payment.client_info?.email ? `<p style="margin: 5px 0; color: #666; font-size: 14px;"><strong>Email:</strong> ${payment.client_info.email}</p>` : ''}
-        ${payment.client_info?.whatsapp ? `<p style="margin: 5px 0; color: #666; font-size: 14px;"><strong>WhatsApp:</strong> ${payment.client_info.whatsapp}</p>` : ''}
+      <div style="background: #164151; color: #fff; padding: 14px 20px; border-radius: 12px 12px 0 0; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">
+        Detalle del plan y pago
+      </div>
+      <div style="border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 12px 12px; overflow: hidden;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+          <tr style="border-bottom: 1px solid #e2e8f0;">
+            <td style="padding: 14px 20px; color: #64748b; font-weight: 500; width: 38%;">Plan</td>
+            <td style="padding: 14px 20px; color: #164151; font-weight: 600;">${payment.plan?.name || 'Plan'}</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #e2e8f0;">
+            <td style="padding: 14px 20px; color: #64748b; font-weight: 500;">Fecha de inicio</td>
+            <td style="padding: 14px 20px; color: #0f172a;">${periodStartFormatted}</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #e2e8f0;">
+            <td style="padding: 14px 20px; color: #64748b; font-weight: 500;">Fecha de finalización</td>
+            <td style="padding: 14px 20px; color: #0f172a;">${periodEndFormatted}</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #e2e8f0;">
+            <td style="padding: 14px 20px; color: #64748b; font-weight: 500;">Fecha de pago</td>
+            <td style="padding: 14px 20px; color: #0f172a;">${paymentDateFormatted}</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #e2e8f0;">
+            <td style="padding: 14px 20px; color: #64748b; font-weight: 500;">Método de pago</td>
+            <td style="padding: 14px 20px; color: #0f172a;">${methodLabel}</td>
+          </tr>
+          ${
+            payment.notes
+              ? `<tr style="border-bottom: 1px solid #e2e8f0;">
+            <td style="padding: 14px 20px; color: #64748b; font-weight: 500;">Notas</td>
+            <td style="padding: 14px 20px; color: #0f172a;">${payment.notes}</td>
+          </tr>`
+              : ''
+          }
+          <tr style="background: #f0fdf4;">
+            <td style="padding: 18px 20px; color: #164151; font-weight: 700; font-size: 15px;">Total pagado</td>
+            <td style="padding: 18px 20px; color: #164151; font-weight: 800; font-size: 20px;">$${payment.amount.toLocaleString('es-CO')} COP</td>
+          </tr>
+        </table>
       </div>
 
-      <div style="background: #f9fafb; padding: 30px; border-radius: 12px; margin: 30px 0;">
-        <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
-          <span style="font-weight: 600; color: #666;">Plan:</span>
-          <span style="color: #000; text-align: right; max-width: 60%;">${payment.plan?.name || 'Plan'}</span>
-        </div>
-        <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
-          <span style="font-weight: 600; color: #666;">Descripción:</span>
-          <span style="color: #000; text-align: right; max-width: 60%;">${payment.plan?.description || 'Membresía de gimnasio'}</span>
-        </div>
-        <div style="background: #e5f7ff; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #3b82f6;">
-          <strong>Período Facturado:</strong><br>
-          Del ${new Date(payment.period_start).toLocaleDateString('es-ES', {
-            day: '2-digit',
-            month: 'long',
-            year: 'numeric',
-          })} al ${new Date(payment.period_end).toLocaleDateString('es-ES', {
-            day: '2-digit',
-            month: 'long',
-            year: 'numeric',
-          })}
-        </div>
-        <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
-          <span style="font-weight: 600; color: #666;">Fecha de Pago:</span>
-          <span style="color: #000; text-align: right; max-width: 60%;">${new Date(
-            payment.payment_date,
-          ).toLocaleDateString('es-ES', {
-            day: '2-digit',
-            month: 'long',
-            year: 'numeric',
-          })}</span>
-        </div>
-        <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
-          <span style="font-weight: 600; color: #666;">Método de Pago:</span>
-          <span style="color: #000; text-align: right; max-width: 60%;">${
-            payment.payment_method === 'cash'
-              ? 'Efectivo'
-              : payment.payment_method === 'transfer'
-                ? 'Transferencia'
-                : 'Mixto'
-          }</span>
-        </div>
-        ${
-          payment.notes
-            ? `
-        <div style="display: flex; justify-content: space-between; padding: 12px 0;">
-          <span style="font-weight: 600; color: #666;">Notas:</span>
-          <span style="color: #000; text-align: right; max-width: 60%;">${payment.notes}</span>
-        </div>
-        `
-            : ''
-        }
-      </div>
-
-      <div style="background: #85ea10; color: #000; padding: 20px; border-radius: 12px; margin: 30px 0; text-align: center;">
-        <div style="font-size: 14px; font-weight: 600; margin-bottom: 10px;">TOTAL A PAGAR</div>
-        <div style="font-size: 32px; font-weight: 900;">$${payment.amount.toLocaleString('es-CO')} COP</div>
-      </div>
-
-      <div style="margin-top: 40px; padding-top: 20px; border-top: 2px solid #e5e7eb; text-align: center; color: #666; font-size: 12px;">
-        <p><strong>Esta factura es válida como comprobante de pago</strong></p>
-        <p>Factura generada el ${new Date().toLocaleDateString('es-ES', {
-          day: '2-digit',
-          month: 'long',
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-        })}</p>
-        <p style="margin-top: 15px;">RogerBox - Entrenamientos HIIT profesionales</p>
-        <p>www.rogerbox.com</p>
-        <p style="margin-top: 10px; font-size: 11px; color: #999;">
-          Para consultas o reclamos, contacta a nuestro equipo de soporte
+      <div style="margin-top: 28px; padding: 16px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0; text-align: center;">
+        <p style="margin: 0; font-size: 12px; color: #64748b;">
+          <strong style="color: #164151;">Válido como comprobante de pago.</strong><br>
+          Generado el ${new Date().toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
         </p>
+        <p style="margin: 8px 0 0 0; font-size: 11px; color: #94a3b8;">RogerBox · www.rogerbox.co</p>
       </div>
     `;
 
@@ -746,7 +737,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
         );
 
         // Descargar el PDF
-        const fileName = `factura-${payment.invoice_number || payment.id.substring(0, 8)}-${new Date(payment.payment_date).toISOString().split('T')[0]}.pdf`;
+        const fileName = `factura-${payment.invoice_number || payment.id.substring(0, 8)}-${payment.payment_date}.pdf`;
         pdf.save(fileName);
       } catch (error) {
         alert('Error al generar la factura. Por favor, intenta nuevamente.');
@@ -754,6 +745,38 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
         // Limpiar el elemento temporal
         document.body.removeChild(invoiceDiv);
       }
+    };
+
+    const handleSendReceiptWhatsApp = (payment: GymPayment) => {
+      const whatsapp = (payment.client_info?.whatsapp || '').replace(/\D/g, '');
+      if (!whatsapp) {
+        alert('Este cliente no tiene número de WhatsApp registrado.');
+        return;
+      }
+      const phone = whatsapp.length === 10 ? `57${whatsapp}` : whatsapp;
+      const name = payment.client_info?.name || 'Cliente';
+      const plan = payment.plan?.name || 'Plan';
+      const periodStart = formatDateOnlyLocal(payment.period_start, {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric',
+      });
+      const periodEnd = formatDateOnlyLocal(payment.period_end, {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric',
+      });
+      const paymentDate = formatDateOnlyLocal(payment.payment_date, {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric',
+      });
+      const amount = payment.amount.toLocaleString('es-CO');
+      const message = `Hola ${name}, aquí está tu comprobante de pago de RogerBox:\n\n*Plan:* ${plan}\n*Período:* ${periodStart} - ${periodEnd}\n*Fecha de pago:* ${paymentDate}\n*Monto:* $${amount} COP\n\nGracias por tu pago. RogerBox · www.rogerbox.co`;
+      window.open(
+        `https://wa.me/${phone}?text=${encodeURIComponent(message)}`,
+        '_blank',
+      );
     };
 
     if (loading) {
@@ -822,18 +845,15 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                         </p>
                         <p className="text-sm text-cyan-600 dark:text-cyan-300 mt-1">
                           Este cliente tiene un plan activo. El nuevo plan
-                          iniciará automáticamente el{' '}
+                          iniciará el{' '}
                           <strong>
-                            {new Date(formData.period_start).toLocaleDateString(
-                              'es-ES',
-                              {
-                                day: '2-digit',
-                                month: 'long',
-                                year: 'numeric',
-                              },
-                            )}
+                            {formatDateOnlyLocal(formData.period_start, {
+                              day: '2-digit',
+                              month: 'long',
+                              year: 'numeric',
+                            })}
                           </strong>
-                          .
+                          . Puedes ajustar la fecha abajo si lo necesitas.
                         </p>
                       </div>
                     </div>
@@ -1068,7 +1088,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                         Inicio del Período *
                         {isAdvancePayment && (
                           <span className="ml-2 text-xs font-normal text-cyan-600 dark:text-cyan-400">
-                            (automático)
+                            (sugerido, editable)
                           </span>
                         )}
                       </label>
@@ -1080,9 +1100,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                           type="date"
                           required
                           value={formData.period_start}
-                          readOnly={isAdvancePayment}
                           onChange={(e) => {
-                            if (isAdvancePayment) return; // No permitir cambio manual en pago anticipado
                             const startDate = new Date(e.target.value);
                             const endDate = new Date(startDate);
                             if (selectedPlan) {
@@ -1092,7 +1110,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                               setFormData({
                                 ...formData,
                                 period_start: e.target.value,
-                                period_end: endDate.toISOString().split('T')[0],
+                                period_end: toLocalDateString(endDate),
                               });
                             } else {
                               setFormData({
@@ -1103,7 +1121,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                           }}
                           className={`w-full pl-12 pr-5 py-3.5 border rounded-xl text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 focus:border-[#85ea10]/50 transition-all text-base ${
                             isAdvancePayment
-                              ? 'bg-cyan-50 dark:bg-cyan-500/10 border-cyan-200 dark:border-cyan-500/30 cursor-not-allowed'
+                              ? 'bg-cyan-50 dark:bg-cyan-500/10 border-cyan-200 dark:border-cyan-500/30'
                               : 'bg-gray-50 dark:bg-white/5 border-gray-200 dark:border-white/10'
                           }`}
                         />
@@ -1332,9 +1350,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                           </td>
                           <td className="px-3 md:px-4 py-3 md:py-4">
                             <p className="text-xs text-[#164151] dark:text-white">
-                              {new Date(
-                                payment.payment_date,
-                              ).toLocaleDateString('es-ES', {
+                              {formatDateOnlyLocal(payment.payment_date, {
                                 day: '2-digit',
                                 month: 'short',
                                 year: 'numeric',
@@ -1343,37 +1359,47 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                           </td>
                           <td className="px-3 md:px-4 py-3 md:py-4">
                             <p className="text-xs text-[#164151] dark:text-white">
-                              {new Date(
-                                payment.period_start,
-                              ).toLocaleDateString('es-ES', {
+                              {formatDateOnlyLocal(payment.period_start, {
                                 day: '2-digit',
                                 month: 'short',
                               })}{' '}
                               -{' '}
-                              {new Date(payment.period_end).toLocaleDateString(
-                                'es-ES',
-                                {
-                                  day: '2-digit',
-                                  month: 'short',
-                                  year: 'numeric',
-                                },
-                              )}
+                              {formatDateOnlyLocal(payment.period_end, {
+                                day: '2-digit',
+                                month: 'short',
+                                year: 'numeric',
+                              })}
                             </p>
                           </td>
                           <td className="px-3 md:px-4 py-3 md:py-4">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDownloadInvoice(payment);
-                              }}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[#85ea10]/20 dark:bg-[#85ea10]/30 text-[#164151] dark:text-[#85ea10] hover:bg-[#85ea10]/30 dark:hover:bg-[#85ea10]/40 transition-colors"
-                              title="Descargar factura"
-                            >
-                              <Download className="w-3 h-3" />
-                              {payment.invoice_number
-                                ? `Fact. ${payment.invoice_number.padStart(3, '0')}`
-                                : 'Factura'}
-                            </button>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleSendReceiptWhatsApp(payment);
+                                }}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-500/30 transition-colors"
+                                title="Enviar comprobante por WhatsApp"
+                              >
+                                <MessageSquare className="w-3.5 h-3.5" />
+                                <span className="hidden sm:inline">WhatsApp</span>
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDownloadInvoice(payment);
+                                }}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-[#85ea10]/20 dark:bg-[#85ea10]/30 text-[#164151] dark:text-[#85ea10] hover:bg-[#85ea10]/30 dark:hover:bg-[#85ea10]/40 transition-colors"
+                                title="Descargar factura"
+                              >
+                                <Download className="w-3.5 h-3.5" />
+                                <span className="hidden sm:inline">
+                                  {payment.invoice_number
+                                    ? `Fact. ${payment.invoice_number.padStart(3, '0')}`
+                                    : 'Factura'}
+                                </span>
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))
@@ -1432,9 +1458,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                           <div className="flex items-center gap-1.5 text-[#164151]/60 dark:text-white/40">
                             <Calendar className="w-3 h-3" />
                             <span>
-                              {new Date(
-                                payment.payment_date,
-                              ).toLocaleDateString('es-ES', {
+                              {formatDateOnlyLocal(payment.payment_date, {
                                 day: '2-digit',
                                 month: 'short',
                                 year: 'numeric',
@@ -1448,16 +1472,29 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                             </span>
                           </div>
                         </div>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDownloadInvoice(payment);
-                          }}
-                          className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#85ea10]/20 dark:bg-[#85ea10]/30 text-[#164151] dark:text-[#85ea10] font-bold active:scale-95 transition-all"
-                        >
-                          <Download className="w-3.5 h-3.5" />
-                          <span>PDF</span>
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSendReceiptWhatsApp(payment);
+                            }}
+                            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400 font-bold active:scale-95 transition-all"
+                            title="Enviar por WhatsApp"
+                          >
+                            <MessageSquare className="w-3.5 h-3.5" />
+                            <span>WhatsApp</span>
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDownloadInvoice(payment);
+                            }}
+                            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#85ea10]/20 dark:bg-[#85ea10]/30 text-[#164151] dark:text-[#85ea10] font-bold active:scale-95 transition-all"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                            <span>PDF</span>
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))

@@ -8,6 +8,7 @@ import {
   Search,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { formatDateOnlyLocal } from '@/lib/dateUtils';
 import type { CollectionItem } from '@/types/gym';
 
 export default function GymCollectionsManagement() {
@@ -211,7 +212,9 @@ export default function GymCollectionsManagement() {
                       {item.last_payment_date && (
                         <p className="text-xs text-[#164151]/60 dark:text-white/60">
                           Último pago:{' '}
-                          {new Date(item.last_payment_date).toLocaleDateString(
+                          {formatDateOnlyLocal(
+                            item.last_payment_date,
+                            {},
                             'es-CO',
                           )}
                         </p>
