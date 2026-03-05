@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
     /* =====================================================
        3️⃣  Verificar que el curso existe
     ====================================================== */
-    const { data: course, error: courseError } = await supabase
+    const { data: course, error: courseError } = await supabaseAdmin
       .from('courses')
       .select('id, title') // 🔥 NO validamos precio todavía
       .eq('id', courseId)
@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      await supabase
+      await supabaseAdmin
         .from('profiles')
         .update({
           name: `${firstName} ${lastName}`.trim(),
@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
     /* =====================================================
        6️⃣  Crear orden en base de datos
     ====================================================== */
-    const { data: order, error: orderError } = await supabase
+    const { data: order, error: orderError } = await supabaseAdmin
       .from('orders')
       .insert({
         user_id: userId,
@@ -197,7 +197,7 @@ export async function POST(request: NextRequest) {
     /* =====================================================
        7️⃣  Generar firma para Wompi
     ====================================================== */
-    const integrityKey = process.env.WOMPI_INTEGRITY_KEY;
+    const integrityKey = process.env.WOMPI_INTEGRITY_SECRET;
 
     if (!integrityKey) {
       return NextResponse.json(

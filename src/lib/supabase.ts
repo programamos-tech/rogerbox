@@ -1,3 +1,4 @@
+import { createBrowserClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 
 // Fallbacks seguros para entorno local Supabase (dev services corriendo en 127.0.0.1:54321)
@@ -71,7 +72,7 @@ if (
   }
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey);
 
 // Cliente con SERVICE_ROLE_KEY para operaciones de escritura
 // IMPORTANTE: Usar auth: { persistSession: false } para evitar conflictos con sesiones

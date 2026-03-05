@@ -30,7 +30,15 @@ export default function Footer() {
               className="text-gray-400 hover:text-[#85ea10] transition-colors"
               aria-label="Instagram"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                viewBox="0 0 24 24"
+              >
                 <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
                 <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
                 <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
@@ -43,7 +51,15 @@ export default function Footer() {
               className="text-gray-400 hover:text-[#85ea10] transition-colors"
               aria-label="YouTube"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                viewBox="0 0 24 24"
+              >
                 <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z" />
                 <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02" />
               </svg>
@@ -55,7 +71,15 @@ export default function Footer() {
               className="text-gray-400 hover:text-[#85ea10] transition-colors"
               aria-label="TikTok"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                viewBox="0 0 24 24"
+              >
                 <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z" />
               </svg>
             </a>
@@ -67,19 +91,31 @@ export default function Footer() {
               © 2025 RogerBox. Todos los derechos reservados.
             </p>
             <div className="flex flex-wrap justify-center gap-x-3 gap-y-1.5 text-xs text-gray-500 dark:text-white/60">
-              <a href="/terms" className="hover:text-[#85ea10] transition-colors whitespace-nowrap">
+              <a
+                href="/terms"
+                className="hover:text-[#85ea10] transition-colors whitespace-nowrap"
+              >
                 Términos
               </a>
               <span className="text-gray-400">·</span>
-              <a href="/privacy" className="hover:text-[#85ea10] transition-colors whitespace-nowrap">
+              <a
+                href="/privacy"
+                className="hover:text-[#85ea10] transition-colors whitespace-nowrap"
+              >
                 Privacidad
               </a>
               <span className="text-gray-400">·</span>
-              <a href="/cookies" className="hover:text-[#85ea10] transition-colors whitespace-nowrap">
+              <a
+                href="/cookies"
+                className="hover:text-[#85ea10] transition-colors whitespace-nowrap"
+              >
                 Cookies
               </a>
               <span className="text-gray-400">·</span>
-              <a href="/contact" className="hover:text-[#85ea10] transition-colors whitespace-nowrap">
+              <a
+                href="/contact"
+                className="hover:text-[#85ea10] transition-colors whitespace-nowrap"
+              >
                 Contacto
               </a>
             </div>
@@ -93,9 +129,14 @@ export default function Footer() {
               rel="noopener noreferrer"
               className="flex items-center justify-center gap-1.5 text-[11px] font-medium text-gray-500 dark:text-white/50 hover:text-gray-700 dark:hover:text-white/70 transition-colors mt-1"
             >
-              <Zap className="w-3 h-3 flex-shrink-0" style={{ color: '#ff9568' }} />
+              <Zap
+                className="w-3 h-3 flex-shrink-0"
+                style={{ color: '#ff9568' }}
+              />
               <span className="font-semibold">powered by</span>
-              <span className="font-bold" style={{ color: '#ff9568' }}>programamos.st</span>
+              <span className="font-bold" style={{ color: '#ff9568' }}>
+                programamos.st
+              </span>
             </a>
           </div>
         </div>
@@ -273,16 +314,28 @@ export default function Footer() {
             </div>
 
             <div className="order-2 sm:order-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-white/60">
-              <a href="/terms" className="hover:text-[#85ea10] transition-colors">
+              <a
+                href="/terms"
+                className="hover:text-[#85ea10] transition-colors"
+              >
                 Términos
               </a>
-              <a href="/privacy" className="hover:text-[#85ea10] transition-colors">
+              <a
+                href="/privacy"
+                className="hover:text-[#85ea10] transition-colors"
+              >
                 Privacidad
               </a>
-              <a href="/cookies" className="hover:text-[#85ea10] transition-colors">
+              <a
+                href="/cookies"
+                className="hover:text-[#85ea10] transition-colors"
+              >
                 Cookies
               </a>
-              <a href="/contact" className="hover:text-[#85ea10] transition-colors">
+              <a
+                href="/contact"
+                className="hover:text-[#85ea10] transition-colors"
+              >
                 Contacto
               </a>
             </div>
@@ -299,9 +352,16 @@ export default function Footer() {
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 font-medium hover:opacity-80 transition-opacity"
               >
-                <Zap className="w-3 h-3 flex-shrink-0" style={{ color: '#ff9568' }} />
-                <span className="text-gray-500 dark:text-white/60">powered by</span>
-                <span className="font-bold" style={{ color: '#ff9568' }}>programamos.st</span>
+                <Zap
+                  className="w-3 h-3 flex-shrink-0"
+                  style={{ color: '#ff9568' }}
+                />
+                <span className="text-gray-500 dark:text-white/60">
+                  powered by
+                </span>
+                <span className="font-bold" style={{ color: '#ff9568' }}>
+                  programamos.st
+                </span>
               </a>
             </div>
           </div>

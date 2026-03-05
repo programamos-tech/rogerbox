@@ -257,7 +257,9 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
             ).slice(0, 10);
             const [y, m, d] = endStr.split('-').map(Number);
             const latestEndDate =
-              y && m && d ? new Date(y, m - 1, d) : new Date(activeMembershipForThisPlan.end_date);
+              y && m && d
+                ? new Date(y, m - 1, d)
+                : new Date(activeMembershipForThisPlan.end_date);
 
             // El nuevo plan empieza el día siguiente al último día del plan actual
             const newStartDate = new Date(latestEndDate);
@@ -1382,7 +1384,9 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                                 title="Enviar comprobante por WhatsApp"
                               >
                                 <MessageSquare className="w-3.5 h-3.5" />
-                                <span className="hidden sm:inline">WhatsApp</span>
+                                <span className="hidden sm:inline">
+                                  WhatsApp
+                                </span>
                               </button>
                               <button
                                 onClick={(e) => {

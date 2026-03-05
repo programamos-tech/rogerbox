@@ -1545,7 +1545,9 @@ function AdminDashboardContent() {
             >
               <Zap className="w-3 h-3" style={{ color: '#ff9568' }} />
               <span className="font-semibold">powered by</span>
-              <span className="font-bold" style={{ color: '#ff9568' }}>programamos.st</span>
+              <span className="font-bold" style={{ color: '#ff9568' }}>
+                programamos.st
+              </span>
             </a>
 
             {/* Notifications */}

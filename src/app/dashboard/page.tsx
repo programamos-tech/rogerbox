@@ -45,6 +45,7 @@ import QuickLoading from '@/components/QuickLoading';
 import ReadMoreText from '@/components/ReadMoreText';
 import StoriesSection from '@/components/StoriesSection';
 import WeeklyWeightReminder from '@/components/WeeklyWeightReminder';
+import { useIsAdmin } from '@/hooks/auth/useIsAdmin';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useUnifiedCourses } from '@/hooks/useUnifiedCourses';
 import { useUserPurchases } from '@/hooks/useUserPurchases';
@@ -54,7 +55,6 @@ import {
   generateGoalSuggestion,
 } from '@/lib/goalSuggestion';
 import { supabase } from '@/lib/supabase-browser';
-import { useIsAdmin } from '@/hooks/auth/useIsAdmin';
 
 interface UserProfile {
   id: string;
@@ -1014,7 +1014,9 @@ export default function DashboardPage() {
                       <User className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 text-black" />
                     </div>
                     <div className="hidden sm:block text-left min-w-0">
-                      <p className="text-xs sm:text-sm font-medium truncate max-w-[100px] md:max-w-none">{displayName}</p>
+                      <p className="text-xs sm:text-sm font-medium truncate max-w-[100px] md:max-w-none">
+                        {displayName}
+                      </p>
                     </div>
                     <ChevronDown className="w-3 h-3 flex-shrink-0" />
                   </button>

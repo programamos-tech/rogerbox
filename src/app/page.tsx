@@ -296,9 +296,7 @@ export default function HomePage() {
                 style={{ minWidth: 'fit-content' }}
               >
                 <h1 className="text-base sm:text-lg md:text-xl font-black uppercase tracking-tight whitespace-nowrap">
-                  <span
-                    className="text-[#164151] dark:text-[#29839c] drop-shadow-md group-hover:text-[#85ea10] transition-colors duration-300"
-                  >
+                  <span className="text-[#164151] dark:text-[#29839c] drop-shadow-md group-hover:text-[#85ea10] transition-colors duration-300">
                     ROGER
                   </span>
                   <span className="text-[#85ea10] drop-shadow-md group-hover:text-[#164151] dark:group-hover:text-[#29839c] transition-colors duration-300">
@@ -413,29 +411,50 @@ export default function HomePage() {
             <div className="grid grid-cols-1 gap-3 sm:gap-4 mt-6 sm:mt-8 md:mt-10 max-w-lg mx-auto px-1">
               <div className="flex flex-row items-center gap-3 sm:gap-4 text-left p-3 sm:p-4 rounded-xl bg-white/5 border border-white/10">
                 <div className="flex-shrink-0 w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-[#85ea10]/20 flex items-center justify-center">
-                  <Flame className="w-5 h-5 sm:w-6 sm:h-6 text-[#85ea10]" strokeWidth={2} />
+                  <Flame
+                    className="w-5 h-5 sm:w-6 sm:h-6 text-[#85ea10]"
+                    strokeWidth={2}
+                  />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="text-white font-semibold text-sm sm:text-base">Quema de Grasa</div>
-                  <div className="text-white/80 text-xs sm:text-sm mt-0.5">Resultados visibles en 2 semanas</div>
+                  <div className="text-white font-semibold text-sm sm:text-base">
+                    Quema de Grasa
+                  </div>
+                  <div className="text-white/80 text-xs sm:text-sm mt-0.5">
+                    Resultados visibles en 2 semanas
+                  </div>
                 </div>
               </div>
               <div className="flex flex-row items-center gap-3 sm:gap-4 text-left p-3 sm:p-4 rounded-xl bg-white/5 border border-white/10">
                 <div className="flex-shrink-0 w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-[#85ea10]/20 flex items-center justify-center">
-                  <Dumbbell className="w-5 h-5 sm:w-6 sm:h-6 text-[#85ea10]" strokeWidth={2} />
+                  <Dumbbell
+                    className="w-5 h-5 sm:w-6 sm:h-6 text-[#85ea10]"
+                    strokeWidth={2}
+                  />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="text-white font-semibold text-sm sm:text-base">Mejor Estado Físico</div>
-                  <div className="text-white/80 text-xs sm:text-sm mt-0.5">Fuerza y resistencia</div>
+                  <div className="text-white font-semibold text-sm sm:text-base">
+                    Mejor Estado Físico
+                  </div>
+                  <div className="text-white/80 text-xs sm:text-sm mt-0.5">
+                    Fuerza y resistencia
+                  </div>
                 </div>
               </div>
               <div className="flex flex-row items-center gap-3 sm:gap-4 text-left p-3 sm:p-4 rounded-xl bg-white/5 border border-white/10">
                 <div className="flex-shrink-0 w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-[#85ea10]/20 flex items-center justify-center">
-                  <Home className="w-5 h-5 sm:w-6 sm:h-6 text-[#85ea10]" strokeWidth={2} />
+                  <Home
+                    className="w-5 h-5 sm:w-6 sm:h-6 text-[#85ea10]"
+                    strokeWidth={2}
+                  />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="text-white font-semibold text-sm sm:text-base">Desde Casa</div>
-                  <div className="text-white/80 text-xs sm:text-sm mt-0.5">Sin gimnasio, sin excusas</div>
+                  <div className="text-white font-semibold text-sm sm:text-base">
+                    Desde Casa
+                  </div>
+                  <div className="text-white/80 text-xs sm:text-sm mt-0.5">
+                    Sin gimnasio, sin excusas
+                  </div>
                 </div>
               </div>
             </div>
@@ -542,8 +561,7 @@ export default function HomePage() {
                                     'course-placeholder.jpg',
                                   )
                                 ) {
-                                  target.src =
-                                    '/images/course-placeholder.jpg';
+                                  target.src = '/images/course-placeholder.jpg';
                                 }
                               }}
                             />
@@ -641,9 +659,9 @@ export default function HomePage() {
                                 <>
                                   <span className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
                                     $
-                                    {calculateFinalPrice(
-                                      course,
-                                    ).toLocaleString('es-CO')}
+                                    {calculateFinalPrice(course).toLocaleString(
+                                      'es-CO',
+                                    )}
                                   </span>
                                   <span className="text-lg md:text-xl text-gray-500 dark:text-white/50 line-through">
                                     $
@@ -763,12 +781,15 @@ export default function HomePage() {
           {/* Título de sección — Logo en mayúscula + azul oscuro del navbar/dashboard/admin */}
           <ScrollReveal variant="fade" className="text-center">
             <h2 className="text-2xl md:text-4xl font-black uppercase tracking-tight">
-              <span className="text-[#164151] dark:text-[#29839c]">Conoce </span>
+              <span className="text-[#164151] dark:text-[#29839c]">
+                Conoce{' '}
+              </span>
               <span className="text-[#164151] dark:text-[#29839c]">ROGER</span>
               <span className="text-[#85ea10]">BOX</span>
             </h2>
             <p className="mt-3 text-gray-600 dark:text-gray-400 text-base md:text-lg max-w-2xl mx-auto">
-              El gimnasio que llevamos a tu pantalla. Entrena HIIT donde sea, cuando sea.
+              El gimnasio que llevamos a tu pantalla. Entrena HIIT donde sea,
+              cuando sea.
             </p>
           </ScrollReveal>
 
@@ -780,11 +801,12 @@ export default function HomePage() {
                 Quiénes somos
               </h3>
               <p className="mt-4 text-gray-600 dark:text-gray-400 leading-relaxed">
-                RogerBox nace de la pasión por el entrenamiento de alta intensidad y la idea de que
-                todo el mundo puede transformar su cuerpo con la guía correcta. Somos un equipo de
-                entrenadores y atletas con años de experiencia en HIIT y funcional, y hemos creado
-                esta plataforma para que entrenes con la misma intensidad y calidad que en nuestro
-                box, desde casa o donde estés.
+                RogerBox nace de la pasión por el entrenamiento de alta
+                intensidad y la idea de que todo el mundo puede transformar su
+                cuerpo con la guía correcta. Somos un equipo de entrenadores y
+                atletas con años de experiencia en HIIT y funcional, y hemos
+                creado esta plataforma para que entrenes con la misma intensidad
+                y calidad que en nuestro box, desde casa o donde estés.
               </p>
             </div>
             <div className="relative rounded-2xl overflow-hidden shadow-xl aspect-[4/3] bg-gray-200 dark:bg-gray-700">
@@ -793,7 +815,8 @@ export default function HomePage() {
                 alt="Equipo RogerBox"
                 className="w-full h-full object-cover"
                 onError={(e) => {
-                  (e.target as HTMLImageElement).src = '/images/course-placeholder.jpg';
+                  (e.target as HTMLImageElement).src =
+                    '/images/course-placeholder.jpg';
                 }}
               />
             </div>
@@ -807,7 +830,8 @@ export default function HomePage() {
                 alt="Entrenamiento HIIT"
                 className="w-full h-full object-cover"
                 onError={(e) => {
-                  (e.target as HTMLImageElement).src = '/images/course-placeholder.jpg';
+                  (e.target as HTMLImageElement).src =
+                    '/images/course-placeholder.jpg';
                 }}
               />
             </div>
@@ -817,11 +841,15 @@ export default function HomePage() {
                 ¿Qué es el HIIT?
               </h3>
               <p className="mt-4 text-gray-600 dark:text-gray-400 leading-relaxed">
-                El <strong className="text-gray-900 dark:text-white">High Intensity Interval Training</strong> (entrenamiento
-                por intervalos de alta intensidad) son sesiones cortas en las que alternas esfuerzo
-                máximo con recuperaciones breves. En RogerBox usamos HIIT para quemar grasa, ganar
-                resistencia y fortalecer todo el cuerpo en menos tiempo, con rutinas que puedes
-                hacer con tu propio peso o material mínimo.
+                El{' '}
+                <strong className="text-gray-900 dark:text-white">
+                  High Intensity Interval Training
+                </strong>{' '}
+                (entrenamiento por intervalos de alta intensidad) son sesiones
+                cortas en las que alternas esfuerzo máximo con recuperaciones
+                breves. En RogerBox usamos HIIT para quemar grasa, ganar
+                resistencia y fortalecer todo el cuerpo en menos tiempo, con
+                rutinas que puedes hacer con tu propio peso o material mínimo.
               </p>
             </div>
           </ScrollReveal>
@@ -833,10 +861,11 @@ export default function HomePage() {
               Nuestra filosofía
             </h3>
             <p className="mt-4 text-gray-600 dark:text-gray-400 leading-relaxed max-w-3xl mx-auto">
-              Creemos que la constancia y la intensidad bien dirigida cambian vidas. No vendemos
-              milagros: vendemos método, acompañamiento y una comunidad que te empuja. Cada
-              sesión está pensada para que des el máximo, te sientas bien y veas resultados
-              reales — sin necesidad de horas interminables en el gym.
+              Creemos que la constancia y la intensidad bien dirigida cambian
+              vidas. No vendemos milagros: vendemos método, acompañamiento y una
+              comunidad que te empuja. Cada sesión está pensada para que des el
+              máximo, te sientas bien y veas resultados reales — sin necesidad
+              de horas interminables en el gym.
             </p>
           </ScrollReveal>
 
@@ -848,18 +877,38 @@ export default function HomePage() {
             </h3>
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
               {[
-                { icon: Flame, title: 'Quema grasa', text: 'Mayor gasto calórico en menos tiempo gracias al efecto afterburn.' },
-                { icon: Heart, title: 'Mejor condición', text: 'Refuerza tu sistema cardiovascular y resistencia.' },
-                { icon: Dumbbell, title: 'Más fuerza', text: 'Trabajo funcional que mejora fuerza y tono muscular.' },
-                { icon: Clock, title: 'Sesiones cortas', text: 'Resultados con entrenamientos de 15–40 minutos.' },
+                {
+                  icon: Flame,
+                  title: 'Quema grasa',
+                  text: 'Mayor gasto calórico en menos tiempo gracias al efecto afterburn.',
+                },
+                {
+                  icon: Heart,
+                  title: 'Mejor condición',
+                  text: 'Refuerza tu sistema cardiovascular y resistencia.',
+                },
+                {
+                  icon: Dumbbell,
+                  title: 'Más fuerza',
+                  text: 'Trabajo funcional que mejora fuerza y tono muscular.',
+                },
+                {
+                  icon: Clock,
+                  title: 'Sesiones cortas',
+                  text: 'Resultados con entrenamientos de 15–40 minutos.',
+                },
               ].map((item) => (
                 <div
                   key={item.title}
                   className="rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-5 shadow-md hover:shadow-[#85ea10]/10 hover:border-[#85ea10]/30 transition-all"
                 >
                   <item.icon className="w-8 h-8 text-[#85ea10] mb-3" />
-                  <h4 className="font-bold text-[#164151] dark:text-[#29839c]">{item.title}</h4>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{item.text}</p>
+                  <h4 className="font-bold text-[#164151] dark:text-[#29839c]">
+                    {item.title}
+                  </h4>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                    {item.text}
+                  </p>
                 </div>
               ))}
             </div>
@@ -872,7 +921,10 @@ export default function HomePage() {
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {[
-                { src: '/images/555451280_1375584947910175_1641301510443057474_n.jpg', alt: 'RogerBox' },
+                {
+                  src: '/images/555451280_1375584947910175_1641301510443057474_n.jpg',
+                  alt: 'RogerBox',
+                },
                 { src: '/images/banner.jpeg', alt: 'RogerBox banner' },
                 { src: '/images/curso2.jpeg', alt: 'RogerBox entrenamiento' },
               ].map((img) => (
@@ -885,7 +937,8 @@ export default function HomePage() {
                     alt={img.alt}
                     className="w-full h-full object-cover"
                     onError={(e) => {
-                      (e.target as HTMLImageElement).src = '/images/course-placeholder.jpg';
+                      (e.target as HTMLImageElement).src =
+                        '/images/course-placeholder.jpg';
                     }}
                   />
                 </div>
@@ -907,7 +960,10 @@ export default function HomePage() {
                 'Marcar tu progreso y ver tu evolución.',
                 'Acceso desde cualquier dispositivo, cuando quieras.',
               ].map((item) => (
-                <li key={item} className="flex items-start gap-2 text-gray-700 dark:text-gray-300">
+                <li
+                  key={item}
+                  className="flex items-start gap-2 text-gray-700 dark:text-gray-300"
+                >
                   <CheckCircle className="w-5 h-5 text-[#85ea10] flex-shrink-0 mt-0.5" />
                   <span>{item}</span>
                 </li>

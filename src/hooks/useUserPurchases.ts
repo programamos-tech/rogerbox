@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { supabase } from '@/lib/supabase';
 
@@ -10,6 +10,17 @@ interface CourseLesson {
   duration_minutes: number;
 }
 
+interface Course {
+  id: string;
+  title: string;
+  slug: string;
+  preview_image: string;
+  duration_days: number;
+  short_description?: string;
+  description?: string;
+  lessons?: CourseLesson[];
+}
+
 interface UserPurchase {
   id: string;
   course_id: string;
@@ -18,16 +29,7 @@ interface UserPurchase {
   is_active: boolean;
   start_date?: string;
   completed_lessons: string[];
-  course: {
-    id: string;
-    title: string;
-    slug: string;
-    preview_image: string;
-    duration_days: number;
-    short_description?: string;
-    description?: string;
-    lessons?: CourseLesson[];
-  } | null;
+  course: Course | null;
 }
 
 interface UseUserPurchasesReturn {
@@ -44,177 +46,62 @@ export const useUserPurchases = (): UseUserPurchasesReturn => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadPurchases = async () => {
-    if (!user?.email) {
+  const loadPurchases = useCallback(async () => {
+    if (!user?.id) {
+      setPurchases([]);
       setLoading(false);
       return;
     }
 
+    setLoading(true);
+    setError(null);
+
     try {
-      setLoading(true);
-      setError(null);
-
-      // Obtener el user_id del usuario autenticado
-      const userId = user.id;
-
-      if (!userId) {
-        setError('No se pudo obtener el ID del usuario');
-        setLoading(false);
-        return;
-      }
-
-      // Verificar que el usuario tiene un ID válido
-      if (!userId) {
-        setPurchases([]);
-        setLoading(false);
-        setError('No se pudo identificar al usuario');
-        return;
-      }
-
-      // Obtener compras directamente sin JOIN (más confiable)
-      // Nota: completed_lessons no existe en course_purchases (se obtiene de user_lesson_completions)
-      // start_date ahora existe en la tabla course_purchases
-
-      // Primero, verificar si hay alguna compra sin filtro para diagnosticar
-      const { data: allPurchasesDebug, error: debugError } = await supabase
-        .from('course_purchases')
-        .select('id, user_id, course_id, is_active, created_at')
-        .eq('user_id', userId);
-
-      // Ahora buscar solo las activas
       const { data: purchasesData, error: fetchError } = await supabase
         .from('course_purchases')
-        .select(
-          'id, course_id, order_id, created_at, start_date, is_active, user_id',
-        )
-        .eq('user_id', userId)
-        .eq('is_active', true)
+        .select('id, course_id, order_id, created_at, start_date, is_active')
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
-      // Si hay error, manejarlo apropiadamente
       if (fetchError) {
-        // Verificar si el error tiene información útil
-        const hasErrorInfo =
-          fetchError?.message ||
-          fetchError?.code ||
-          fetchError?.details ||
-          fetchError?.hint;
-
-        // Si el error no tiene información útil (objeto vacío), tratarlo como si no hubiera compras
-        if (!hasErrorInfo) {
-          setPurchases([]);
-          setError(null);
-          setLoading(false);
-          return;
-        }
-
-        // Verificar si es un error de permisos RLS (común cuando no hay compras o permisos)
-        const isRLSError =
-          fetchError?.code === 'PGRST301' ||
-          fetchError?.message?.includes('permission') ||
-          fetchError?.message?.includes('RLS') ||
-          fetchError?.message?.includes('row-level security');
-
-        if (isRLSError) {
-          // Si es un error de RLS, probablemente no hay compras o el usuario no tiene permisos
-          // Tratar como si no hubiera compras en lugar de mostrar error
-          setPurchases([]);
-          setError(null);
-          setLoading(false);
-          return;
-        }
-
-        // Verificar si hay información útil ANTES de construir el objeto
-        const fields = {
-          message: fetchError?.message,
-          details: fetchError?.details,
-          hint: fetchError?.hint,
-          code: fetchError?.code,
-        };
-
-        const cleanEntries = Object.entries(fields).filter(
-          ([_, value]) =>
-            typeof value === 'string' &&
-            value.trim() !== '' &&
-            value !== 'Error al cargar las compras',
-        );
-
-        // Si no hay información útil, tratar como si no hubiera compras
-        if (cleanEntries.length === 0) {
-          setPurchases([]);
-          setError(null);
-          setLoading(false);
-          return;
-        }
-
-        // Mostrar como advertencia, no como error crítico
-        const errorDetails = Object.fromEntries(cleanEntries);
-        // No establecer error para no mostrar mensaje de error en la UI
+        console.error('Error al cargar compras:', fetchError);
+        setError(fetchError.message || 'Error al cargar compras');
         setPurchases([]);
-
-        setLoading(false);
         return;
       }
 
-      // Si no hay compras, terminar
       if (!purchasesData || purchasesData.length === 0) {
-        // Intentar buscar sin el filtro is_active para ver si hay compras inactivas
-        const { data: allPurchases } = await supabase
-          .from('course_purchases')
-          .select('id, course_id, is_active, user_id')
-          .eq('user_id', userId)
-          .order('created_at', { ascending: false });
-
         setPurchases([]);
-        setLoading(false);
         return;
       }
 
-      // Obtener los cursos por separado (más confiable que JOIN)
       const courseIds = purchasesData.map((p) => p.course_id).filter(Boolean);
 
-      if (courseIds.length > 0) {
-        // Obtener cursos con sus lecciones
-        const { data: coursesData, error: coursesError } = await supabase
-          .from('courses')
-          .select(`
-            id, title, slug, preview_image, duration_days, short_description, description,
-            lessons:course_lessons(id, title, lesson_order, duration_minutes)
-          `)
-          .in('id', courseIds);
+      const { data: coursesData } = await supabase
+        .from('courses')
+        .select(`
+          id, title, slug, preview_image, duration_days, short_description, description,
+          lessons:course_lessons(id, title, lesson_order, duration_minutes)
+        `)
+        .in('id', courseIds);
 
-        // Obtener lecciones completadas del usuario
-        const { data: completionsData } = await supabase
-          .from('user_lesson_completions')
-          .select('lesson_id, course_id, completed_at')
-          .eq('user_id', userId);
+      const { data: completionsData } = await supabase
+        .from('user_lesson_completions')
+        .select('lesson_id, course_id')
+        .eq('user_id', user.id);
 
-        // Combinar compras con cursos y completaciones
-        const purchasesWithCourses = purchasesData.map((purchase: any) => {
+      const purchasesWithCourses: UserPurchase[] = purchasesData.map(
+        (purchase) => {
           const course =
-            coursesData?.find((c: any) => {
-              const match = c.id === purchase.course_id;
-              if (!match) {
-                // Intentar comparación como strings
-                const matchAsString =
-                  String(c.id) === String(purchase.course_id);
-                return matchAsString;
-              }
-              return match;
-            }) || null;
-
-          // Obtener lecciones completadas para este curso
-          const courseCompletions =
-            completionsData?.filter(
-              (c: any) => c.course_id === purchase.course_id,
-            ) || [];
-          const completedLessonIds = courseCompletions.map(
-            (c: any) => c.lesson_id,
-          );
-
-          if (!course) {
-          } else {
-          }
+            coursesData?.find(
+              (c) => String(c.id) === String(purchase.course_id),
+            ) || null;
+          const completedLessonIds =
+            completionsData
+              ?.filter(
+                (c) => String(c.course_id) === String(purchase.course_id),
+              )
+              .map((c) => c.lesson_id) || [];
 
           return {
             id: purchase.id,
@@ -223,52 +110,35 @@ export const useUserPurchases = (): UseUserPurchasesReturn => {
             created_at: purchase.created_at || '',
             is_active: purchase.is_active,
             start_date:
-              purchase.start_date || purchase.created_at?.split('T')[0] || null, // Usar start_date si existe, sino created_at
+              purchase.start_date || purchase.created_at?.split('T')[0] || null,
             completed_lessons: completedLessonIds,
-            course: course,
+            course,
           };
-        });
+        },
+      );
 
-        setPurchases(purchasesWithCourses);
-        setLoading(false);
-      } else {
-        const purchasesWithoutCourses = purchasesData.map((purchase: any) => ({
-          id: purchase.id,
-          course_id: purchase.course_id,
-          order_id: purchase.order_id || '',
-          created_at: purchase.created_at || '',
-          is_active: purchase.is_active,
-          start_date: purchase.created_at || null, // Usar created_at como fecha de inicio
-          completed_lessons: [],
-          course: null,
-        }));
-        setPurchases(purchasesWithoutCourses);
-        setLoading(false);
-      }
+      setPurchases(purchasesWithCourses);
     } catch (err) {
-      // No mostrar como error crítico, puede ser normal si no hay sesión
+      console.error('Error inesperado al cargar compras:', err);
       setPurchases([]);
+      setError('Error inesperado al cargar compras');
     } finally {
       setLoading(false);
     }
-  };
-
-  const refresh = async () => {
-    await loadPurchases();
-  };
+  }, [user?.id]);
 
   useEffect(() => {
     loadPurchases();
-  }, [user?.email]);
+  }, [loadPurchases]);
 
-  const hasActivePurchases = purchases.length > 0;
+  const hasActivePurchases = purchases.some((p) => p.is_active);
 
   return {
     purchases,
     loading,
     error,
     hasActivePurchases,
-    refresh,
+    refresh: loadPurchases,
   };
 };
 

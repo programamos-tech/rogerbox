@@ -792,6 +792,13 @@ function StudentPageContent() {
 
   // Solo mostrar "No tienes cursos" si realmente no hay compras después de esperar
   // También mostrar si no hay compras y las compras ya terminaron de cargar
+  console.log('effectivePurchase', effectivePurchase);
+  console.log('purchasesLoading', purchasesLoading);
+  console.log('showNoCourses', showNoCourses);
+  console.log('purchases', purchases);
+  console.log('purchases?.length', purchases?.length);
+  console.log('purchases?.length === 0', purchases?.length === 0);
+  console.log('!purchases', !purchases);
   if (
     !effectivePurchase &&
     !purchasesLoading &&
