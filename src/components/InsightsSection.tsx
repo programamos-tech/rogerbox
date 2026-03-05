@@ -849,7 +849,9 @@ export default function InsightsSection({
                   <Info className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 </button>
               </div>
-              <div className={`text-base sm:text-xl font-bold ${bmiColors.text}`}>
+              <div
+                className={`text-base sm:text-xl font-bold ${bmiColors.text}`}
+              >
                 {bmi.toFixed(1)}
               </div>
               <div className="text-[11px] sm:text-xs text-gray-600 dark:text-gray-300 mt-0.5">
@@ -887,7 +889,9 @@ export default function InsightsSection({
                 }`}
               >
                 <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span>{hasWeightToday ? 'Ya registrado hoy' : 'Registrar peso'}</span>
+                <span>
+                  {hasWeightToday ? 'Ya registrado hoy' : 'Registrar peso'}
+                </span>
               </button>
             </div>
 

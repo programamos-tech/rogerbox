@@ -1,7 +1,16 @@
 'use client';
 
 import MuxPlayer from '@mux/mux-player-react';
-import { Calendar, CheckCircle, Pause, Play, Video, Volume2, VolumeX, X } from 'lucide-react';
+import {
+  Calendar,
+  CheckCircle,
+  Pause,
+  Play,
+  Video,
+  Volume2,
+  VolumeX,
+  X,
+} from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 
@@ -45,11 +54,15 @@ export default function StoriesSection({
   const playerContainerRef = useRef<HTMLDivElement>(null);
 
   const handlePlayerPlay = () => {
-    const player = playerContainerRef.current?.querySelector('mux-player') as HTMLMediaElement | undefined;
+    const player = playerContainerRef.current?.querySelector('mux-player') as
+      | HTMLMediaElement
+      | undefined;
     player?.play?.();
   };
   const handlePlayerPause = () => {
-    const player = playerContainerRef.current?.querySelector('mux-player') as HTMLMediaElement | undefined;
+    const player = playerContainerRef.current?.querySelector('mux-player') as
+      | HTMLMediaElement
+      | undefined;
     player?.pause?.();
   };
   const handlePlayerMute = () => {
@@ -242,7 +255,10 @@ export default function StoriesSection({
               {todayComplement.mux_playback_id && !isCompleted && (
                 <div className="flex-1 flex items-center justify-center">
                   <div className="w-14 h-14 rounded-full bg-white/95 flex items-center justify-center shadow-lg group-hover:bg-white group-hover:scale-105 transition-all duration-200">
-                    <Play className="w-6 h-6 text-gray-900 ml-0.5" fill="currentColor" />
+                    <Play
+                      className="w-6 h-6 text-gray-900 ml-0.5"
+                      fill="currentColor"
+                    />
                   </div>
                 </div>
               )}

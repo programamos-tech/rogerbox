@@ -1,4 +1,4 @@
-import { Buyer } from './types';
+import type { Buyer } from './types';
 
 export const validateBuyer = (buyer: Buyer): boolean => {
   return [

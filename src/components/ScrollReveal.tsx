@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import type React from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface ScrollRevealProps {
   children: React.ReactNode;
@@ -37,7 +38,7 @@ export default function ScrollReveal({
           });
         });
       },
-      { threshold: 0.08, rootMargin: '0px 0px -60px 0px' }
+      { threshold: 0.08, rootMargin: '0px 0px -60px 0px' },
     );
 
     observer.observe(el);
@@ -48,7 +49,10 @@ export default function ScrollReveal({
   const visibleClass = visible ? 'scroll-reveal-visible' : '';
 
   return (
-    <div ref={ref} className={`${baseClass} ${visibleClass} ${className}`.trim()}>
+    <div
+      ref={ref}
+      className={`${baseClass} ${visibleClass} ${className}`.trim()}
+    >
       {children}
     </div>
   );

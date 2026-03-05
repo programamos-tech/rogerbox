@@ -153,7 +153,9 @@ export default function Onboarding({
   const steps = [
     {
       title: '¿Cuál es tu altura?',
-      icon: <Ruler className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-[#85ea10] flex-shrink-0 mx-auto" />,
+      icon: (
+        <Ruler className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-[#85ea10] flex-shrink-0 mx-auto" />
+      ),
       component: (
         <div className="space-y-4 sm:space-y-6">
           <div className="text-center">
@@ -180,7 +182,9 @@ export default function Onboarding({
     },
     {
       title: '¿Cuál es tu sexo?',
-      icon: <User className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-[#85ea10] flex-shrink-0 mx-auto" />,
+      icon: (
+        <User className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-[#85ea10] flex-shrink-0 mx-auto" />
+      ),
       component: (
         <div className="grid grid-cols-3 gap-2 sm:gap-4">
           {[
@@ -199,7 +203,9 @@ export default function Onboarding({
                   : 'border-gray-200 dark:border-white/30 text-gray-900 dark:text-white hover:border-[#85ea10]/50'
               }`}
             >
-              <div className="text-2xl sm:text-3xl lg:text-4xl mb-1 sm:mb-2">{option.emoji}</div>
+              <div className="text-2xl sm:text-3xl lg:text-4xl mb-1 sm:mb-2">
+                {option.emoji}
+              </div>
               <div className="font-bold text-xs sm:text-sm">{option.label}</div>
             </button>
           ))}
@@ -208,7 +214,9 @@ export default function Onboarding({
     },
     {
       title: '¿Cuál es tu peso actual?',
-      icon: <Weight className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-[#85ea10] flex-shrink-0 mx-auto" />,
+      icon: (
+        <Weight className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-[#85ea10] flex-shrink-0 mx-auto" />
+      ),
       component: (
         <div className="space-y-4 sm:space-y-6">
           <div className="text-center">
@@ -254,7 +262,9 @@ export default function Onboarding({
     },
     {
       title: '¿En qué año naciste?',
-      icon: <Calendar className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-[#85ea10] flex-shrink-0 mx-auto" />,
+      icon: (
+        <Calendar className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-[#85ea10] flex-shrink-0 mx-auto" />
+      ),
       component: (
         <div className="space-y-4 sm:space-y-6">
           <div className="text-center">
@@ -288,7 +298,9 @@ export default function Onboarding({
     },
     {
       title: '¿Qué quieres lograr?',
-      icon: <Target className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-[#85ea10] flex-shrink-0 mx-auto" />,
+      icon: (
+        <Target className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-[#85ea10] flex-shrink-0 mx-auto" />
+      ),
       component: (
         <div className="grid grid-cols-2 gap-2 sm:gap-4">
           {[
@@ -313,7 +325,9 @@ export default function Onboarding({
                   : 'border-gray-200 dark:border-white/30 text-gray-900 dark:text-white hover:border-[#85ea10]/50'
               }`}
             >
-              <div className="text-xl sm:text-2xl mb-1 sm:mb-2">{goal.emoji}</div>
+              <div className="text-xl sm:text-2xl mb-1 sm:mb-2">
+                {goal.emoji}
+              </div>
               <div className="font-bold text-xs sm:text-sm">{goal.label}</div>
             </button>
           ))}
@@ -322,7 +336,9 @@ export default function Onboarding({
     },
     {
       title: 'Tu meta de peso objetivo',
-      icon: <Target className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-[#85ea10] flex-shrink-0 mx-auto" />,
+      icon: (
+        <Target className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-[#85ea10] flex-shrink-0 mx-auto" />
+      ),
       component: (() => {
         // Componente interno para manejar la actualización del estado
         const WeightGoalStepContent = () => {
@@ -591,7 +607,10 @@ export default function Onboarding({
 
               <button
                 onClick={handleNext}
-                disabled={isUpdating || (currentStep === 4 && profile.goals.length === 0)}
+                disabled={
+                  isUpdating ||
+                  (currentStep === 4 && profile.goals.length === 0)
+                }
                 className="bg-[#85ea10] hover:bg-[#7dd30f] disabled:bg-[#85ea10]/70 disabled:cursor-not-allowed text-black font-bold text-sm sm:text-base px-5 sm:px-8 py-2.5 sm:py-3 rounded-xl transition-all duration-300 flex items-center space-x-1.5 sm:space-x-2"
               >
                 {isUpdating ? (

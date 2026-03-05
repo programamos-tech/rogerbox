@@ -715,23 +715,17 @@ export default function PaymentDetailPage() {
                       Período
                     </p>
                     <p className="text-sm font-medium text-[#164151] dark:text-white">
-                      {new Date(payment.period_start).toLocaleDateString(
-                        'es-ES',
-                        {
-                          day: '2-digit',
-                          month: 'long',
-                          year: 'numeric',
-                        },
-                      )}{' '}
+                      {formatDateOnlyLocal(payment.period_start, {
+                        day: '2-digit',
+                        month: 'long',
+                        year: 'numeric',
+                      })}{' '}
                       -{' '}
-                      {new Date(payment.period_end).toLocaleDateString(
-                        'es-ES',
-                        {
-                          day: '2-digit',
-                          month: 'long',
-                          year: 'numeric',
-                        },
-                      )}
+                      {formatDateOnlyLocal(payment.period_end, {
+                        day: '2-digit',
+                        month: 'long',
+                        year: 'numeric',
+                      })}
                     </p>
                   </div>
                 </div>

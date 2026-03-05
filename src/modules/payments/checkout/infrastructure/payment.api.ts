@@ -1,4 +1,4 @@
-import { Buyer } from '@payments/checkout/domain/types';
+import type { Buyer } from '@payments/checkout/domain/types';
 
 export const createOrder = async ({
   courseId,

@@ -2058,7 +2058,9 @@ export default function UserDetailPage() {
                     if (endDate >= today || membership.status === 'cancelled')
                       return false;
                     // No mostrar en "necesitan renovación" si ya renovó (tiene otra membresía activa o próxima del mismo plan)
-                    const hasRenewedSamePlan = (userData.gym_memberships || []).some(
+                    const hasRenewedSamePlan = (
+                      userData.gym_memberships || []
+                    ).some(
                       (m: any) =>
                         m.id !== membership.id &&
                         m.plan_id === membership.plan_id &&

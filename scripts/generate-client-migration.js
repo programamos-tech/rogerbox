@@ -1,8 +1,8 @@
 /**
  * Script de Migración: Clientes y Membresías BigBoss → RogerBox
- * 
+ *
  * Genera SQL para importar todos los clientes y su historial de membresías.
- * 
+ *
  * Uso: node scripts/generate-client-migration.js
  */
 
@@ -10,7 +10,11 @@ const fs = require('fs');
 const path = require('path');
 
 // Configuración
-const INPUT_FILE = path.join(__dirname, '..', 'fileRpt_Vencimientos_2026_01_30_17_26_44.xls');
+const INPUT_FILE = path.join(
+  __dirname,
+  '..',
+  'fileRpt_Vencimientos_2026_01_30_17_26_44.xls',
+);
 const OUTPUT_SQL = path.join(__dirname, 'migration-clients.sql');
 
 // Mapeo de productos BigBoss → nombres de planes en RogerBox (EXACTOS de la DB)
@@ -61,21 +65,21 @@ function escapeSql(text) {
 function parseHtmlFile(filePath) {
   console.log('📂 Leyendo archivo:', filePath);
   const content = fs.readFileSync(filePath, 'utf-8');
-  
+
   const rowRegex = /<tr>\s*<td[^>]*>(?:(?!<\/tr>).)*<\/tr>/gs;
   const rows = content.match(rowRegex) || [];
-  
+
   console.log(`📊 Total de filas encontradas: ${rows.length}`);
-  
+
   const records = [];
-  
+
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
-    
+
     const cellRegex = /<td[^>]*>([\s\S]*?)<\/td>/g;
     const cells = [];
     let match;
-    
+
     while ((match = cellRegex.exec(row)) !== null) {
       let cellContent = match[1];
       const linkMatch = cellContent.match(/<a[^>]*>([^<]*)<\/a>/);
@@ -84,15 +88,15 @@ function parseHtmlFile(filePath) {
       }
       cells.push(cleanText(cellContent));
     }
-    
+
     if (cells.length < 15 || cells[0] === 'SEDE' || cells[1] === 'AFILIADO') {
       continue;
     }
-    
+
     if (!cells[0] || cells[0].includes('BigBoss')) {
       continue;
     }
-    
+
     const record = {
       sede: cells[0] || 'ROGERBOX',
       nombre: cells[1] || '',
@@ -109,12 +113,12 @@ function parseHtmlFile(filePath) {
       email: cells[16] || '',
       direccion: cells[17] || '',
     };
-    
+
     if (record.documento && record.nombre && /^\d+$/.test(record.documento)) {
       records.push(record);
     }
   }
-  
+
   console.log(`✅ Registros válidos parseados: ${records.length}`);
   return records;
 }
@@ -122,10 +126,10 @@ function parseHtmlFile(filePath) {
 // Agrupar por cliente único
 function groupByClient(records) {
   const clients = new Map();
-  
+
   for (const record of records) {
     const key = record.documento;
-    
+
     if (!clients.has(key)) {
       clients.set(key, {
         documento: record.documento,
@@ -137,14 +141,16 @@ function groupByClient(records) {
         transacciones: [],
       });
     }
-    
+
     // Actualizar datos del cliente si hay info más completa
     const client = clients.get(key);
     if (!client.email && record.email) client.email = record.email;
     if (!client.celular && record.celular) client.celular = record.celular;
-    if (!client.fechaNacimiento && record.fechaNacimiento) client.fechaNacimiento = record.fechaNacimiento;
-    if (!client.direccion && record.direccion) client.direccion = record.direccion;
-    
+    if (!client.fechaNacimiento && record.fechaNacimiento)
+      client.fechaNacimiento = record.fechaNacimiento;
+    if (!client.direccion && record.direccion)
+      client.direccion = record.direccion;
+
     // Agregar transacción
     client.transacciones.push({
       fechaFactura: record.fechaFactura,
@@ -156,7 +162,7 @@ function groupByClient(records) {
       tipo: record.tipo,
     });
   }
-  
+
   return Array.from(clients.values());
 }
 
@@ -170,30 +176,36 @@ function getMembershipStatus(fechaFin) {
 // Generar SQL
 function generateSQL(clients) {
   let sql = '';
-  
+
   sql += `-- =========================================\n`;
   sql += `-- MIGRACIÓN BIGBOSS → ROGERBOX\n`;
   sql += `-- Clientes: ${clients.length}\n`;
   sql += `-- Generado: ${new Date().toISOString()}\n`;
   sql += `-- =========================================\n\n`;
-  
+
   sql += `-- PASO 0: Verificar que existen los planes\n`;
   sql += `-- (Si falta algún plan, créalo primero en el admin)\n`;
   sql += `SELECT id, name FROM gym_plans WHERE name IN (\n`;
   sql += `  'cupo ROGERBOX', 'cupo ROGERBOX virtual', 'ASESORIA VIP - COACHING',\n`;
   sql += `  'BOX 15 DIAS', 'LINIMENTO', 'ASESORIA PLATA', 'BANDA BOX'\n`;
   sql += `);\n\n`;
-  
+
   sql += `-- =========================================\n`;
   sql += `-- PASO 1: INSERTAR CLIENTES\n`;
   sql += `-- =========================================\n\n`;
-  
+
   // Generar INSERTs para clientes
   for (const client of clients) {
-    const whatsapp = client.celular ? client.celular.replace(/\D/g, '') : '0000000000';
-    const birthDate = client.fechaNacimiento ? `'${client.fechaNacimiento}'` : 'NULL';
-    const notes = client.direccion ? `Dirección: ${escapeSql(client.direccion)}` : '';
-    
+    const whatsapp = client.celular
+      ? client.celular.replace(/\D/g, '')
+      : '0000000000';
+    const birthDate = client.fechaNacimiento
+      ? `'${client.fechaNacimiento}'`
+      : 'NULL';
+    const notes = client.direccion
+      ? `Dirección: ${escapeSql(client.direccion)}`
+      : '';
+
     sql += `INSERT INTO gym_client_info (document_id, name, email, whatsapp, birth_date, medical_restrictions)\n`;
     sql += `VALUES (\n`;
     sql += `  '${escapeSql(client.documento)}',\n`;
@@ -204,13 +216,13 @@ function generateSQL(clients) {
     sql += `  ${notes ? `'${notes}'` : 'NULL'}\n`;
     sql += `) ON CONFLICT (document_id) DO NOTHING;\n\n`;
   }
-  
+
   sql += `-- =========================================\n`;
   sql += `-- PASO 2: INSERTAR MEMBRESÍAS Y PAGOS\n`;
   sql += `-- =========================================\n\n`;
-  
+
   let membershipCount = 0;
-  
+
   for (const client of clients) {
     // Ordenar transacciones por fecha
     const sortedTx = client.transacciones.sort((a, b) => {
@@ -218,21 +230,21 @@ function generateSQL(clients) {
       const dateB = b.fechaInicio || b.fechaFactura || '';
       return dateA.localeCompare(dateB);
     });
-    
+
     for (const tx of sortedTx) {
       if (!tx.fechaInicio || !tx.fechaFin || !tx.producto) continue;
-      
+
       const planName = PLAN_MAPPING[tx.producto];
       if (!planName) {
         console.log(`⚠️  Producto no mapeado: "${tx.producto}"`);
         continue;
       }
-      
+
       const status = getMembershipStatus(tx.fechaFin);
       const paymentDate = tx.fechaFactura || tx.fechaInicio;
-      
+
       membershipCount++;
-      
+
       sql += `-- Cliente: ${client.nombre} (${client.documento}) - ${planName}\n`;
       sql += `DO $$\n`;
       sql += `DECLARE\n`;
@@ -259,40 +271,40 @@ function generateSQL(clients) {
       sql += `END $$;\n\n`;
     }
   }
-  
+
   sql += `-- =========================================\n`;
   sql += `-- VERIFICACIÓN FINAL\n`;
   sql += `-- =========================================\n\n`;
   sql += `SELECT 'Clientes migrados:' as info, COUNT(*) as total FROM gym_client_info;\n`;
   sql += `SELECT 'Membresías migradas:' as info, COUNT(*) as total FROM gym_memberships;\n`;
   sql += `SELECT 'Pagos migrados:' as info, COUNT(*) as total FROM gym_payments;\n`;
-  
+
   console.log(`\n📊 Estadísticas:`);
   console.log(`   - Clientes: ${clients.length}`);
   console.log(`   - Membresías/Pagos: ${membershipCount}`);
-  
+
   return sql;
 }
 
 // Función principal
 async function main() {
   console.log('🚀 Generando SQL de migración de clientes\n');
-  
+
   // 1. Parsear archivo
   const records = parseHtmlFile(INPUT_FILE);
-  
+
   if (records.length === 0) {
     console.log('❌ No se encontraron registros válidos.');
     return;
   }
-  
+
   // 2. Agrupar por cliente
   const clients = groupByClient(records);
   console.log(`\n👥 Clientes únicos: ${clients.length}`);
-  
+
   // 3. Generar SQL
   const sql = generateSQL(clients);
-  
+
   // 4. Guardar archivo
   fs.writeFileSync(OUTPUT_SQL, sql);
   console.log(`\n✅ SQL guardado en: ${OUTPUT_SQL}`);
