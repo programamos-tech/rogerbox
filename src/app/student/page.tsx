@@ -4,20 +4,16 @@ import Hls from 'hls.js';
 import {
   CalendarDays,
   CheckCircle,
-  ChevronDown,
   Clock,
-  Home,
   Lock,
-  LogOut,
   Play,
-  Settings,
   Sunrise,
-  User,
   XCircle,
 } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import DashboardNavbar from '@/components/DashboardNavbar';
 import Footer from '@/components/Footer';
 import InsightsSection from '@/components/InsightsSection';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
@@ -41,7 +37,6 @@ function StudentPageContent() {
   const [showIntro, setShowIntro] = useState(true);
   const [introEnded, setIntroEnded] = useState(false);
   const [showCourseImage, setShowCourseImage] = useState(false);
-  const [showUserMenu, setShowUserMenu] = useState(false);
   const [loading, setLoading] = useState(true);
   const [videoLoading, setVideoLoading] = useState(true);
   const [showNoCourses, setShowNoCourses] = useState(false);
@@ -693,20 +688,6 @@ function StudentPageContent() {
   }, [currentLesson?.id, showIntro, showCourseImage, introEnded, autoStart]);
 
   // Cerrar menú de usuario al hacer click fuera
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (showUserMenu) {
-        const target = event.target as Element;
-        if (!target.closest('.relative')) {
-          setShowUserMenu(false);
-        }
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showUserMenu]);
-
   // Limpiar HLS al desmontar
   useEffect(() => {
     return () => {
@@ -862,74 +843,7 @@ function StudentPageContent() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900">
-      {/* Header - Mismo estilo que dashboard */}
-      <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-gray-200 dark:border-white/20 sticky top-0 z-50">
-        <div className="max-w-full mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-14 sm:h-16">
-            {/* Logo - Alineado a la izquierda */}
-            <button
-              onClick={() => router.push('/dashboard')}
-              className="flex items-center hover:opacity-80 transition-opacity"
-            >
-              <h1 className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tight">
-                ROGER<span className="text-[#85ea10]">BOX</span>
-              </h1>
-            </button>
-
-            {/* User Menu - Alineado a la derecha */}
-            <div className="flex items-center space-x-2 sm:space-x-3">
-              {/* Icono Home */}
-              <button
-                onClick={() => router.push('/dashboard')}
-                className="w-7 h-7 sm:w-8 sm:h-8 bg-[#85ea10] rounded-full flex items-center justify-center hover:bg-[#7dd30f] transition-colors"
-                title="Ir al Dashboard"
-              >
-                <Home className="w-4 h-4 sm:w-5 sm:h-5 text-black" />
-              </button>
-
-              {/* User Menu */}
-              <div className="relative">
-                <button
-                  onClick={() => setShowUserMenu(!showUserMenu)}
-                  className="flex items-center space-x-2 sm:space-x-3 text-gray-700 dark:text-white hover:text-[#85ea10] transition-colors"
-                >
-                  <div className="w-7 h-7 sm:w-8 sm:h-8 bg-[#85ea10] rounded-full flex items-center justify-center">
-                    <User className="w-4 h-4 sm:w-5 sm:h-5 text-black" />
-                  </div>
-                  <div className="hidden sm:block text-left">
-                    <p className="text-sm font-medium">
-                      {userProfile?.name ||
-                        user?.email?.split('@')[0] ||
-                        'Usuario'}
-                    </p>
-                  </div>
-                  <ChevronDown className="w-3 h-3 sm:w-4 sm:h-4" />
-                </button>
-
-                {/* Dropdown Menu */}
-                {showUserMenu && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-white/20 py-1 z-50">
-                    <a
-                      href="/profile"
-                      className="flex items-center space-x-2 px-4 py-2 text-sm text-gray-700 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
-                    >
-                      <User className="w-4 h-4" />
-                      <span>Mi Perfil</span>
-                    </a>
-                    <button
-                      onClick={() => router.push('/signout')}
-                      className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-gray-700 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
-                    >
-                      <LogOut className="w-4 h-4" />
-                      <span>Cerrar sesión</span>
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
+      <DashboardNavbar notifications={[]} />
 
       <div className="w-full px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 md:py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8">

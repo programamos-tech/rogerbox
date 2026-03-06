@@ -2,21 +2,17 @@
 
 import {
   Award,
-  Bell,
   BookOpen,
   ChefHat,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Clock,
-  Dumbbell,
   Heart,
   Info,
-  LogOut,
+  MessageCircle,
   Play,
   RefreshCw,
   Search,
-  Settings,
   ShoppingCart,
   Sparkles,
   Star,
@@ -34,6 +30,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import ComplementSection from '@/components/ComplementSection';
 import CourseHeroCard from '@/components/CourseHeroCard';
+import DashboardNavbar from '@/components/DashboardNavbar';
 import CourseLoadingSkeleton from '@/components/CourseLoadingSkeleton';
 import Footer from '@/components/Footer';
 import GoalSuggestionCard from '@/components/GoalSuggestionCard';
@@ -111,8 +108,17 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [showUserMenu, setShowUserMenu] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(false);
+  const [apiNotifications, setApiNotifications] = useState<
+    Array<{
+      id: string;
+      type: string;
+      title: string;
+      message: string;
+      link: string | null;
+      post_id: string | null;
+      read_at: string | null;
+    }>
+  >([]);
   const isAdmin = useIsAdmin();
   // const isAdmin = useMemo(() => {
   //   if (!user) return false;
@@ -124,19 +130,25 @@ export default function DashboardPage() {
   //   const matchRole = user.user_metadata?.role === 'admin';
   //   return Boolean(matchId || matchEmail || matchRole);
   // }, [user]);
-  const displayName = userProfile?.name || user?.email || 'RogerBox';
-
   // Verificar si es viernes para notificación de peso
   const isFriday = new Date().getDay() === 5;
 
-  // Notificaciones activas
+  // Cargar notificaciones del servidor (feed bienvenida, etc.)
+  useEffect(() => {
+    if (!user?.id) return;
+    fetch('/api/notifications')
+      .then((res) => res.json())
+      .then((data) => setApiNotifications(data.notifications ?? []))
+      .catch(() => setApiNotifications([]));
+  }, [user?.id]);
+
+  // Notificaciones activas: peso (viernes) + notificaciones del feed (solo no leídas)
   const notifications = useMemo(() => {
     const notifs: Array<{
       id: string;
       type: string;
       title: string;
       message: string;
-      icon: string;
       action: () => void;
       actionText: string;
     }> = [];
@@ -148,33 +160,43 @@ export default function DashboardPage() {
         type: 'weight',
         title: '¡Es viernes!',
         message: 'Registra tu peso para ver tu progreso semanal',
-        icon: '⚖️',
         action: () => setShowWeeklyWeightReminder(true),
         actionText: 'Registrar peso',
       });
     }
 
+    // Notificaciones del feed (bienvenida, etc.): solo no leídas
+    const unread = apiNotifications.filter((n) => !n.read_at);
+    unread.forEach((n) => {
+      const link = n.link || '/feed';
+      notifs.push({
+        id: n.id,
+        type: n.type,
+        title: n.title,
+        message: n.message,
+        action: () => {
+          fetch('/api/notifications', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: n.id }),
+          }).then(() => {
+            setApiNotifications((prev) =>
+              prev.map((x) =>
+                x.id === n.id
+                  ? { ...x, read_at: new Date().toISOString() }
+                  : x,
+              ),
+            );
+          });
+          router.push(link);
+        },
+        actionText: 'Ver en el feed',
+      });
+    });
+
     return notifs;
-  }, [isFriday]);
+  }, [isFriday, apiNotifications, router]);
 
-  // Cerrar dropdowns al hacer clic fuera
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
-      if (
-        showNotifications &&
-        !target.closest('[data-notifications-dropdown]')
-      ) {
-        setShowNotifications(false);
-      }
-      if (showUserMenu && !target.closest('[data-user-menu]')) {
-        setShowUserMenu(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showNotifications, showUserMenu]);
   // Usar el hook simple para cursos
   const {
     courses: realCourses,
@@ -912,159 +934,7 @@ export default function DashboardPage() {
   return (
     <>
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
-        {/* Header */}
-        <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-gray-200 dark:border-white/20 sticky top-0 z-50">
-          <div className="max-w-full mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
-            <div className="flex items-center justify-between h-11 sm:h-14 md:h-16">
-              {/* Logo - más compacto en móvil */}
-              <button
-                onClick={() => router.push('/dashboard')}
-                className="flex items-center hover:opacity-80 transition-opacity"
-              >
-                <h1 className="text-base sm:text-xl md:text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tight">
-                  ROGER<span className="text-[#85ea10]">BOX</span>
-                </h1>
-              </button>
-
-              {/* User Menu - iconos más pequeños en móvil */}
-              <div className="flex items-center space-x-1.5 sm:space-x-2 md:space-x-3">
-                {/* Icono Mi Curso */}
-                <button
-                  onClick={() => router.push('/student')}
-                  className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 bg-[#85ea10] rounded-full flex items-center justify-center hover:bg-[#7dd30f] transition-colors"
-                  title="Mi Curso"
-                >
-                  <Dumbbell className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 text-black" />
-                </button>
-
-                {/* Notificaciones */}
-                <div className="relative" data-notifications-dropdown>
-                  <button
-                    onClick={() => setShowNotifications(!showNotifications)}
-                    className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors relative"
-                    title="Notificaciones"
-                  >
-                    <Bell className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 text-gray-700 dark:text-gray-300" />
-                    {notifications.length > 0 && (
-                      <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 sm:w-4 sm:h-4 bg-red-500 rounded-full flex items-center justify-center text-[9px] sm:text-[10px] text-white font-bold animate-pulse">
-                        {notifications.length}
-                      </span>
-                    )}
-                  </button>
-
-                  {/* Dropdown de notificaciones */}
-                  {showNotifications && (
-                    <div className="absolute right-0 mt-2 w-72 sm:w-80 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 py-2 z-50 overflow-hidden">
-                      <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
-                        <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                          <Bell className="w-4 h-4 text-[#85ea10]" />
-                          Notificaciones
-                        </h3>
-                      </div>
-
-                      {notifications.length === 0 ? (
-                        <div className="px-4 py-6 text-center">
-                          <Bell className="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
-                          <p className="text-sm text-gray-500 dark:text-gray-400">
-                            No tienes notificaciones
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="max-h-80 overflow-y-auto">
-                          {notifications.map((notif) => (
-                            <div
-                              key={notif.id}
-                              className="px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 border-b border-gray-100 dark:border-gray-700 last:border-0"
-                            >
-                              <div className="flex items-start gap-3">
-                                <span className="text-2xl">{notif.icon}</span>
-                                <div className="flex-1">
-                                  <p className="font-semibold text-gray-900 dark:text-white text-sm">
-                                    {notif.title}
-                                  </p>
-                                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                                    {notif.message}
-                                  </p>
-                                  <button
-                                    onClick={() => {
-                                      notif.action();
-                                      setShowNotifications(false);
-                                    }}
-                                    className="mt-2 text-xs font-semibold text-[#85ea10] hover:text-[#7dd30f] transition-colors"
-                                  >
-                                    {notif.actionText} →
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* User Menu */}
-                <div className="relative" data-user-menu>
-                  <button
-                    onClick={() => setShowUserMenu(!showUserMenu)}
-                    className="flex items-center space-x-1.5 sm:space-x-2 md:space-x-3 text-gray-700 dark:text-white hover:text-[#85ea10] transition-colors"
-                  >
-                    <div className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 bg-[#85ea10] rounded-full flex items-center justify-center flex-shrink-0">
-                      <User className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 text-black" />
-                    </div>
-                    <div className="hidden sm:block text-left min-w-0">
-                      <p className="text-xs sm:text-sm font-medium truncate max-w-[100px] md:max-w-none">
-                        {displayName}
-                      </p>
-                    </div>
-                    <ChevronDown className="w-3 h-3 flex-shrink-0" />
-                  </button>
-
-                  {/* Dropdown Menu */}
-                  {showUserMenu && (
-                    <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-white/20 py-1.5 z-50">
-                      <button
-                        onClick={() => {
-                          setShowUserMenu(false);
-                          router.push('/profile');
-                        }}
-                        className="flex items-center space-x-2 w-full px-4 py-2.5 text-sm text-gray-700 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                      >
-                        <User className="w-4 h-4 text-gray-400" />
-                        <span className="font-medium">Mi Perfil</span>
-                      </button>
-                      {isAdmin && (
-                        <button
-                          onClick={() => {
-                            setShowUserMenu(false);
-                            router.push('/admin');
-                          }}
-                          className="flex items-center space-x-2 w-full px-4 py-2.5 text-sm text-[#164151] dark:text-[#85ea10] hover:bg-[#85ea10]/10 dark:hover:bg-[#85ea10]/10 transition-colors border-t border-gray-100 dark:border-white/5"
-                        >
-                          <Settings className="w-4 h-4" />
-                          <span className="font-bold">
-                            Panel Administrativo
-                          </span>
-                        </button>
-                      )}
-                      <button
-                        onClick={() => {
-                          setShowUserMenu(false);
-                          router.push('/signout');
-                        }}
-                        className="flex items-center space-x-2 w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors border-t border-gray-100 dark:border-white/5"
-                      >
-                        <LogOut className="w-4 h-4" />
-                        <span className="font-medium">Cerrar sesión</span>
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </header>
+        <DashboardNavbar notifications={notifications} />
 
         {/* Main Content - Layout optimizado sin scroll */}
         <main className="max-w-full mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-3 sm:py-4 pb-20 relative">
@@ -1291,6 +1161,28 @@ export default function DashboardPage() {
                   );
                 })()}
               </div>
+            </div>
+
+            {/* Card Feed - Comunidad */}
+            <div className="mb-4 sm:mb-6">
+              <button
+                type="button"
+                onClick={() => router.push('/feed')}
+                className="w-full flex items-center gap-4 p-4 sm:p-5 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-white/10 shadow-sm hover:shadow-md hover:border-[#85ea10]/30 transition-all text-left group"
+              >
+                <div className="w-12 h-12 rounded-xl bg-[#85ea10]/20 flex items-center justify-center flex-shrink-0 group-hover:bg-[#85ea10]/30 transition-colors">
+                  <MessageCircle className="w-6 h-6 text-[#85ea10]" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
+                    Feed
+                  </h2>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Comunidad RogerBox — publica, comenta y da like
+                  </p>
+                </div>
+                <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-[#85ea10] flex-shrink-0" />
+              </button>
             </div>
           </div>
 

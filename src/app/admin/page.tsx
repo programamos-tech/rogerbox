@@ -2996,21 +2996,37 @@ function AdminDashboardContent() {
                                   </div>
                                 </td>
                                 <td className="px-3 md:px-4 py-3 md:py-4">
-                                  {user.phone || user.whatsapp ? (
-                                    <a
-                                      href={`https://wa.me/${(user.phone || user.whatsapp).replace(/\D/g, '')}`}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-colors"
-                                    >
-                                      <Phone className="w-3 h-3" />
-                                      {user.phone || user.whatsapp}
-                                    </a>
-                                  ) : (
-                                    <span className="text-xs text-gray-400 dark:text-white/40">
-                                      -
-                                    </span>
-                                  )}
+                                  {(() => {
+                                    const wa = user.phone || user.whatsapp;
+                                    const isPlaceholder =
+                                      wa &&
+                                      wa.replace(/\D/g, '') === '0000000000';
+                                    if (isPlaceholder) {
+                                      return (
+                                        <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                                          Pendiente
+                                        </span>
+                                      );
+                                    }
+                                    if (wa) {
+                                      return (
+                                        <a
+                                          href={`https://wa.me/${wa.replace(/\D/g, '')}`}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-colors"
+                                        >
+                                          <Phone className="w-3 h-3" />
+                                          {wa}
+                                        </a>
+                                      );
+                                    }
+                                    return (
+                                      <span className="text-xs text-gray-400 dark:text-white/40">
+                                        -
+                                      </span>
+                                    );
+                                  })()}
                                 </td>
                                 <td className="px-3 md:px-4 py-3 md:py-4">
                                   <div>

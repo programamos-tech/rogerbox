@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server';
+import { STORE_ID_FISICA } from '@/lib/logs-service';
 import { supabaseAdmin } from '@/lib/supabase';
 
 export async function POST(request: NextRequest) {
@@ -39,6 +40,11 @@ export async function POST(request: NextRequest) {
     }
 
     const userId = user.id;
+    const userEmail = (user?.email ?? '').trim().toLowerCase();
+    let linkedExistingClient = false;
+    let cedulaLinkedToAnotherAccount = false;
+    let cedulaAssociatedWithOtherEmail = false;
+
     // Verificar si el perfil existe
     const { data: existingProfile, error: selectError } = await supabaseAdmin
       .from('profiles')
@@ -98,49 +104,62 @@ export async function POST(request: NextRequest) {
 
       result = data;
 
-      // VINCULACIÓN AUTOMÁTICA: Si se actualizó document_id, buscar cliente físico y vincular
+      // VINCULACIÓN AUTOMÁTICA: Cédula es fuente de verdad. Solo vincular si mismo correo/persona.
       if (profile.document_id) {
         try {
-          // Buscar cliente físico por cédula
           const { data: gymClient, error: clientError } = await supabaseAdmin
             .from('gym_client_info')
-            .select('id, user_id')
+            .select('id, user_id, email')
             .eq('document_id', profile.document_id.trim())
             .maybeSingle();
 
           if (clientError) {
-          } else if (gymClient && !gymClient.user_id) {
-            // Cliente físico encontrado y no está vinculado
-            // Vincular user_id en gym_client_info
-            const { error: linkError } = await supabaseAdmin
-              .from('gym_client_info')
-              .update({ user_id: userId, updated_at: new Date().toISOString() })
-              .eq('id', gymClient.id);
-
-            if (linkError) {
+          } else if (gymClient?.user_id) {
+            // Cédula ya vinculada a otra cuenta: no vincular (fuente de verdad)
+            cedulaLinkedToAnotherAccount = true;
+          } else if (gymClient) {
+            const clientEmail = (gymClient.email ?? '').trim().toLowerCase();
+            if (clientEmail && userEmail && clientEmail !== userEmail) {
+              // Cédula en RogerBox físico con otro correo: no vincular
+              cedulaAssociatedWithOtherEmail = true;
             } else {
-              // Actualizar user_id en membresías relacionadas
-              await supabaseAdmin
-                .from('gym_memberships')
-                .update({
-                  user_id: userId,
-                  updated_at: new Date().toISOString(),
-                })
-                .eq('client_info_id', gymClient.id)
-                .is('user_id', null);
+              const { error: linkError } = await supabaseAdmin
+                .from('gym_client_info')
+                .update({ user_id: userId, updated_at: new Date().toISOString() })
+                .eq('id', gymClient.id);
 
-              // Actualizar user_id en pagos relacionados
-              await supabaseAdmin
-                .from('gym_payments')
-                .update({
-                  user_id: userId,
-                  updated_at: new Date().toISOString(),
-                })
-                .eq('client_info_id', gymClient.id)
-                .is('user_id', null);
+              if (!linkError) {
+                linkedExistingClient = true;
+                await supabaseAdmin
+                  .from('gym_memberships')
+                  .update({
+                    user_id: userId,
+                    updated_at: new Date().toISOString(),
+                  })
+                  .eq('client_info_id', gymClient.id)
+                  .is('user_id', null);
+                await supabaseAdmin
+                  .from('gym_payments')
+                  .update({
+                    user_id: userId,
+                    updated_at: new Date().toISOString(),
+                  })
+                  .eq('client_info_id', gymClient.id)
+                  .is('user_id', null);
+              }
             }
-          } else if (gymClient && gymClient.user_id) {
           } else {
+            // Cédula nueva: crear cliente en gym_client_info para que aparezca en Clientes (admin)
+            const doc = profile.document_id.trim();
+            const clientName = (profile.name || user?.user_metadata?.name || user?.email?.split('@')[0] || 'Usuario').trim();
+            await supabaseAdmin.from('gym_client_info').insert({
+              document_id: doc,
+              name: clientName,
+              email: user?.email?.trim() || null,
+              whatsapp: '0000000000',
+              user_id: userId,
+              store_id: STORE_ID_FISICA,
+            });
           }
         } catch (linkError) {}
       }
@@ -189,49 +208,60 @@ export async function POST(request: NextRequest) {
 
       result = data;
 
-      // VINCULACIÓN AUTOMÁTICA: Si se creó perfil con document_id, buscar cliente físico y vincular
+      // VINCULACIÓN AUTOMÁTICA: Cédula es fuente de verdad. Solo vincular si mismo correo/persona.
       if (profile.document_id) {
         try {
-          // Buscar cliente físico por cédula
           const { data: gymClient, error: clientError } = await supabaseAdmin
             .from('gym_client_info')
-            .select('id, user_id')
+            .select('id, user_id, email')
             .eq('document_id', profile.document_id.trim())
             .maybeSingle();
 
           if (clientError) {
-          } else if (gymClient && !gymClient.user_id) {
-            // Cliente físico encontrado y no está vinculado
-            // Vincular user_id en gym_client_info
-            const { error: linkError } = await supabaseAdmin
-              .from('gym_client_info')
-              .update({ user_id: userId, updated_at: new Date().toISOString() })
-              .eq('id', gymClient.id);
-
-            if (linkError) {
+          } else if (gymClient?.user_id) {
+            cedulaLinkedToAnotherAccount = true;
+          } else if (gymClient) {
+            const clientEmail = (gymClient.email ?? '').trim().toLowerCase();
+            if (clientEmail && userEmail && clientEmail !== userEmail) {
+              cedulaAssociatedWithOtherEmail = true;
             } else {
-              // Actualizar user_id en membresías relacionadas
-              await supabaseAdmin
-                .from('gym_memberships')
-                .update({
-                  user_id: userId,
-                  updated_at: new Date().toISOString(),
-                })
-                .eq('client_info_id', gymClient.id)
-                .is('user_id', null);
+              const { error: linkError } = await supabaseAdmin
+                .from('gym_client_info')
+                .update({ user_id: userId, updated_at: new Date().toISOString() })
+                .eq('id', gymClient.id);
 
-              // Actualizar user_id en pagos relacionados
-              await supabaseAdmin
-                .from('gym_payments')
-                .update({
-                  user_id: userId,
-                  updated_at: new Date().toISOString(),
-                })
-                .eq('client_info_id', gymClient.id)
-                .is('user_id', null);
+              if (!linkError) {
+                linkedExistingClient = true;
+                await supabaseAdmin
+                  .from('gym_memberships')
+                  .update({
+                    user_id: userId,
+                    updated_at: new Date().toISOString(),
+                  })
+                  .eq('client_info_id', gymClient.id)
+                  .is('user_id', null);
+                await supabaseAdmin
+                  .from('gym_payments')
+                  .update({
+                    user_id: userId,
+                    updated_at: new Date().toISOString(),
+                  })
+                  .eq('client_info_id', gymClient.id)
+                  .is('user_id', null);
+              }
             }
-          } else if (gymClient && gymClient.user_id) {
           } else {
+            // Cédula nueva: crear cliente en gym_client_info para que aparezca en Clientes (admin)
+            const doc = profile.document_id.trim();
+            const clientName = (profile.name || user?.user_metadata?.name || user?.email?.split('@')[0] || 'Usuario').trim();
+            await supabaseAdmin.from('gym_client_info').insert({
+              document_id: doc,
+              name: clientName,
+              email: user?.email?.trim() || null,
+              whatsapp: '0000000000',
+              user_id: userId,
+              store_id: STORE_ID_FISICA,
+            });
           }
         } catch (linkError) {}
       }
@@ -255,6 +285,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: result,
+      linkedExistingClient,
+      cedulaLinkedToAnotherAccount,
+      cedulaAssociatedWithOtherEmail,
     });
   } catch (error) {
     return NextResponse.json(

@@ -148,32 +148,11 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    // Ordenar clientes por relevancia:
-    // 1. Activos (membresía vigente) - por fecha de vencimiento más lejana
-    // 2. Por renovar (membresía vencida recientemente) - por fecha más reciente
-    // 3. Sin productos - por fecha de creación
-    processedClients.sort((a, b) => {
-      // Primero por prioridad (activos > renovar > sin productos)
-      if (a.sortPriority !== b.sortPriority) {
-        return a.sortPriority - b.sortPriority;
-      }
-
-      // Dentro de la misma prioridad, ordenar por fecha de membresía más reciente
-      if (a.latestMembershipDate && b.latestMembershipDate) {
-        return (
-          b.latestMembershipDate.getTime() - a.latestMembershipDate.getTime()
-        );
-      }
-
-      // Si uno tiene membresía y otro no, el que tiene va primero
-      if (a.latestMembershipDate && !b.latestMembershipDate) return -1;
-      if (!a.latestMembershipDate && b.latestMembershipDate) return 1;
-
-      // Sin membresías, ordenar por fecha de creación
-      return (
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      );
-    });
+    // Ordenar siempre por clientes más recientes primero (created_at descendente)
+    processedClients.sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    );
 
     // Aplicar filtro de estado después de procesar
     if (status === 'active') {

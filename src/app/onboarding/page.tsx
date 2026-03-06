@@ -12,6 +12,8 @@ export default function OnboardingPage() {
   const router = useRouter();
   const [isUpdating, setIsUpdating] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
+  const [showLinkedMessage, setShowLinkedMessage] = useState(false);
+  const [showOtherEmailMessage, setShowOtherEmailMessage] = useState(false);
 
   // Verificar autenticación y redirigir
   useEffect(() => {
@@ -77,7 +79,21 @@ export default function OnboardingPage() {
         return;
       }
 
-      // Redirigir al dashboard - usar window.location para forzar recarga completa
+      if (result.linkedExistingClient) {
+        setShowLinkedMessage(true);
+        setIsUpdating(false);
+        setTimeout(() => {
+          window.location.href = '/dashboard';
+        }, 2200);
+        return;
+      }
+
+      if (result.cedulaAssociatedWithOtherEmail) {
+        setShowOtherEmailMessage(true);
+        setIsUpdating(false);
+        return;
+      }
+
       window.location.href = '/dashboard';
     } catch (error) {
       alert('Error inesperado. Intenta de nuevo.');
@@ -98,6 +114,54 @@ export default function OnboardingPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
+      {showLinkedMessage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 sm:p-8 max-w-sm w-full border border-[#85ea10]/30 shadow-xl text-center">
+            <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-[#85ea10]/20 flex items-center justify-center">
+              <span className="text-3xl" aria-hidden>✓</span>
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+              ¡Te identificamos!
+            </h2>
+            <p className="text-gray-600 dark:text-white/80 text-sm">
+              Tu cuenta está vinculada con RogerBox físico. Ya puedes ver tus
+              membresías y cursos.
+            </p>
+            <p className="mt-3 text-xs text-gray-500 dark:text-white/50">
+              Redirigiendo al dashboard...
+            </p>
+          </div>
+        </div>
+      )}
+      {showOtherEmailMessage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 sm:p-8 max-w-sm w-full border border-amber-500/40 shadow-xl text-center">
+            <p className="text-gray-600 dark:text-white/80 text-sm mb-4">
+              Tu cédula está registrada en RogerBox físico con otro correo. Para
+              vincular tu cuenta, contacta a soporte{' '}
+              <a
+                href="https://wa.me/573002061711?text=Hola%20RogerBox.%20Reporto%3A%20Mi%20c%C3%A9dula%20est%C3%A1%20registrada%20en%20RogerBox%20con%20otro%20correo%20y%20quiero%20vincularla%20a%20esta%20cuenta."
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline font-medium text-amber-600 dark:text-amber-400"
+              >
+                3002061711
+              </a>{' '}
+              de RogerBox.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setShowOtherEmailMessage(false);
+                window.location.href = '/dashboard';
+              }}
+              className="bg-[#85ea10] hover:bg-[#7dd30f] text-black font-bold px-6 py-2.5 rounded-xl transition-colors"
+            >
+              Entendido
+            </button>
+          </div>
+        </div>
+      )}
       <Onboarding
         onComplete={handleComplete}
         isUpdating={isUpdating}

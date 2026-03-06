@@ -5,6 +5,7 @@ import {
   Calendar,
   ChevronLeft,
   ChevronRight,
+  FileDigit,
   Ruler,
   Target,
   TrendingDown,
@@ -22,6 +23,7 @@ interface OnboardingProps {
 }
 
 interface UserProfile {
+  document_id: string;
   name: string;
   height: number;
   gender: 'male' | 'female' | 'other';
@@ -52,6 +54,7 @@ export default function Onboarding({
   };
 
   const [profile, setProfile] = useState<UserProfile>({
+    document_id: '',
     name: formatName(userName),
     height: 170,
     gender: 'male',
@@ -60,6 +63,39 @@ export default function Onboarding({
     goals: [],
     dietaryHabits: [],
   });
+
+  const [cedulaAlreadyLinked, setCedulaAlreadyLinked] = useState(false);
+  const [cedulaLinkedEmailMasked, setCedulaLinkedEmailMasked] = useState<
+    string | null
+  >(null);
+  const [cedulaCheckLoading, setCedulaCheckLoading] = useState(false);
+
+  const checkCedulaLinked = async () => {
+    const doc = profile.document_id.trim().replace(/\D/g, '');
+    if (doc.length < 9) {
+      setCedulaAlreadyLinked(false);
+      setCedulaLinkedEmailMasked(null);
+      return;
+    }
+    setCedulaCheckLoading(true);
+    setCedulaAlreadyLinked(false);
+    setCedulaLinkedEmailMasked(null);
+    try {
+      const res = await fetch(
+        `/api/profile/check-cedula?document_id=${encodeURIComponent(doc)}`,
+      );
+      const data = await res.json();
+      if (data.alreadyLinked) {
+        setCedulaAlreadyLinked(true);
+        setCedulaLinkedEmailMasked(data.emailMasked || null);
+      }
+    } catch {
+      setCedulaAlreadyLinked(false);
+      setCedulaLinkedEmailMasked(null);
+    } finally {
+      setCedulaCheckLoading(false);
+    }
+  };
 
   // Calcular IMC según OMS
   const calculateBMI = (weight: number, height: number): number => {
@@ -151,6 +187,79 @@ export default function Onboarding({
   };
 
   const steps = [
+    {
+      title: '¿Cuál es tu número de cédula?',
+      icon: (
+        <FileDigit className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-[#85ea10] flex-shrink-0 mx-auto" />
+      ),
+      component: (
+        <div className="space-y-4 sm:space-y-6">
+          <div className="text-center">
+            <input
+              id="document_id"
+              type="text"
+              inputMode="numeric"
+              autoComplete="off"
+              placeholder=""
+              value={profile.document_id}
+              onChange={(e) => {
+                const value = e.target.value.replace(/\D/g, '');
+                setProfile({ ...profile, document_id: value });
+                setCedulaAlreadyLinked(false);
+                setCedulaLinkedEmailMasked(null);
+              }}
+              onBlur={checkCedulaLinked}
+              className="w-full text-center text-4xl sm:text-5xl lg:text-6xl font-black text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-white/30 bg-transparent border-none focus:outline-none focus:ring-0 py-2 rounded-lg"
+              maxLength={12}
+              aria-label="Número de cédula"
+            />
+            <div className="w-full h-2 bg-gray-200 dark:bg-white/20 rounded-lg mt-1" />
+            {cedulaCheckLoading && (
+              <p className="text-gray-500 dark:text-white/50 text-xs sm:text-sm mt-2">
+                Verificando...
+              </p>
+            )}
+            {cedulaAlreadyLinked && (
+              <div className="mt-2 px-2 space-y-1.5">
+                <p className="text-amber-600 dark:text-amber-400 font-semibold text-xs sm:text-sm">
+                  Esta cédula ya está vinculada a otra cuenta.
+                  {cedulaLinkedEmailMasked ? (
+                    <>
+                      {' '}
+                      Si es tuya, inicia sesión con{' '}
+                      <span className="underline">{cedulaLinkedEmailMasked}</span>.
+                    </>
+                  ) : (
+                    ' Si es tuya, inicia sesión con la cuenta que usaste al registrarte.'
+                  )}
+                </p>
+                <p className="text-gray-600 dark:text-white/70 text-xs">
+                  Si no tienes acceso a esa cuenta, contacta a soporte{' '}
+                  <a
+                    href="https://wa.me/573002061711?text=Hola%20RogerBox.%20Reporto%3A%20Mi%20c%C3%A9dula%20ya%20est%C3%A1%20vinculada%20a%20otra%20cuenta%20y%20no%20tengo%20acceso."
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline font-medium text-amber-600 dark:text-amber-400"
+                  >
+                    3002061711
+                  </a>{' '}
+                  de RogerBox.
+                </p>
+              </div>
+            )}
+            {!cedulaCheckLoading && !cedulaAlreadyLinked && (
+              <p className="text-gray-600 dark:text-white/60 text-xs sm:text-sm mt-3">
+                Con tu cédula te vinculamos con RogerBox físico si ya eres cliente
+              </p>
+            )}
+          </div>
+          <div className="flex justify-between text-gray-600 dark:text-white/60 text-xs sm:text-sm">
+            <span>Solo números</span>
+            <span>Sin guiones ni espacios</span>
+          </div>
+        </div>
+      ),
+    },
     {
       title: '¿Cuál es tu altura?',
       icon: (
@@ -492,9 +601,50 @@ export default function Onboarding({
     },
   ];
 
-  const handleNext = () => {
-    // Validaciones obligatorias antes de avanzar
-    if (currentStep === 4 && profile.goals.length === 0) {
+  const handleNext = async () => {
+    // Paso 0: cédula obligatoria; verificar siempre al hacer clic en Siguiente (no solo onBlur)
+    if (currentStep === 0) {
+      const doc = profile.document_id.trim().replace(/\D/g, '');
+      if (!doc) {
+        alert('Por favor ingresa tu número de cédula.');
+        return;
+      }
+      if (doc.length < 9) {
+        alert('La cédula debe tener al menos 9 dígitos.');
+        return;
+      }
+      // Revalidar con la API al hacer Siguiente por si no hicieron blur
+      if (!cedulaAlreadyLinked) {
+        setCedulaCheckLoading(true);
+        try {
+          const res = await fetch(
+            `/api/profile/check-cedula?document_id=${encodeURIComponent(doc)}`,
+          );
+          const data = await res.json();
+          if (data.alreadyLinked) {
+            setCedulaAlreadyLinked(true);
+            setCedulaLinkedEmailMasked(data.emailMasked || null);
+            setCedulaCheckLoading(false);
+            return;
+          }
+        } catch {
+          setCedulaCheckLoading(false);
+          return;
+        }
+        setCedulaCheckLoading(false);
+      }
+      if (cedulaAlreadyLinked) {
+        const msg = cedulaLinkedEmailMasked
+          ? `Esta cédula ya está vinculada a otra cuenta. Si es tuya, inicia sesión con ${cedulaLinkedEmailMasked}.`
+          : 'Esta cédula ya está vinculada a otra cuenta. Si es tuya, inicia sesión con la cuenta que usaste al registrarte.';
+        alert(`${msg} Si no tienes acceso a esa cuenta, contacta a soporte 3002061711 de RogerBox.`);
+        return;
+      }
+    }
+
+    // Paso de objetivos: al menos uno seleccionado
+    const goalsStepIndex = 5;
+    if (currentStep === goalsStepIndex && profile.goals.length === 0) {
       alert('Por favor selecciona al menos un objetivo para continuar.');
       return;
     }
@@ -515,9 +665,10 @@ export default function Onboarding({
       );
       const formattedName = formatName(userName);
 
-      // Asegurar que el targetWeight esté establecido
+      // Asegurar que el targetWeight y document_id estén en el perfil final
       const finalProfile = {
         ...profile,
+        document_id: profile.document_id.trim(),
         targetWeight: targetData.targetWeight,
         name: formattedName,
       };
@@ -585,7 +736,7 @@ export default function Onboarding({
             {steps[currentStep].component}
 
             {/* Aviso en paso de objetivos si no hay ninguno seleccionado */}
-            {currentStep === 4 && profile.goals.length === 0 && (
+            {currentStep === 5 && profile.goals.length === 0 && (
               <p className="text-center text-sm text-amber-600 dark:text-amber-400 mt-3">
                 Selecciona al menos un objetivo para continuar.
               </p>
@@ -609,7 +760,8 @@ export default function Onboarding({
                 onClick={handleNext}
                 disabled={
                   isUpdating ||
-                  (currentStep === 4 && profile.goals.length === 0)
+                  (currentStep === 0 && cedulaAlreadyLinked) ||
+                  (currentStep === 5 && profile.goals.length === 0)
                 }
                 className="bg-[#85ea10] hover:bg-[#7dd30f] disabled:bg-[#85ea10]/70 disabled:cursor-not-allowed text-black font-bold text-sm sm:text-base px-5 sm:px-8 py-2.5 sm:py-3 rounded-xl transition-all duration-300 flex items-center space-x-1.5 sm:space-x-2"
               >

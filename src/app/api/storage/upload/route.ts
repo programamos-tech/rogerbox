@@ -30,6 +30,7 @@ export async function POST(request: NextRequest) {
       'lesson-image',
       'lesson-images',
       'banners',
+      'feed-images',
     ];
     if (!validBuckets.includes(bucket)) {
       return NextResponse.json(

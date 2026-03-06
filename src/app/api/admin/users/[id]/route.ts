@@ -2,7 +2,15 @@ import { type NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getSession } from '@/lib/supabase-server';
 
-// GET - Obtener un usuario específico
+function isAdmin(session: { user?: { id?: string; email?: string; user_metadata?: any } } | null): boolean {
+  if (!session?.user) return false;
+  const u = session.user;
+  const envId = (process.env.NEXT_PUBLIC_ADMIN_USER_ID || '').trim();
+  const envEmail = (process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'rogerbox@admin.com').trim().toLowerCase();
+  return !!(envId && u.id === envId) || (u.email?.toLowerCase() === envEmail) || u.user_metadata?.role === 'admin';
+}
+
+// GET - Obtener un usuario específico (admin: cualquier id; usuario: solo el propio)
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -14,6 +22,11 @@ export async function GET(
     }
 
     const { id } = await params;
+    const currentUserId = session.user?.id;
+    const canAccessOther = isAdmin(session);
+    if (currentUserId !== id && !canAccessOther) {
+      return NextResponse.json({ error: 'No tienes permiso para ver este usuario' }, { status: 403 });
+    }
 
     // Intentar obtener desde profiles
     const { data: profile, error: profileError } = await supabaseAdmin
@@ -153,6 +166,8 @@ export async function GET(
           .select(`
             id,
             is_active,
+            purchase_price,
+            access_granted_at,
             course:courses(title)
           `)
           .eq('user_id', id);
@@ -193,6 +208,17 @@ export async function GET(
         }
       }
 
+      const hasGymMembership = gymMemberships.length > 0;
+      const hasOnlinePurchase = (coursePurchases?.length || 0) > 0;
+      const userType =
+        hasGymMembership && hasOnlinePurchase
+          ? 'both'
+          : hasGymMembership
+            ? 'physical'
+            : hasOnlinePurchase
+              ? 'online'
+              : 'none';
+
       return NextResponse.json({
         user: {
           ...profile,
@@ -201,6 +227,9 @@ export async function GET(
           activeCoursePurchases: activeCoursePurchases,
           activeGymMembership: activeMembership,
           hasActiveGymMembership: !!activeMembership,
+          hasGymMembership,
+          userType,
+          isUnregisteredClient: false,
           is_inactive: isInactive,
           client_info_id: clientInfoId,
           medical_restrictions:
@@ -277,24 +306,44 @@ export async function GET(
         (m: any) => m.status === 'active' && new Date(m.end_date) >= new Date(),
       );
 
-      // Si el cliente tiene user_id, obtener datos del perfil también
+      // Si el cliente tiene user_id, obtener datos del perfil y compras de cursos
       let profileData: any = null;
+      let coursePurchases: any[] = [];
       if (client.user_id) {
         try {
-          const { data: profile } = await supabaseAdmin
-            .from('profiles')
-            .select(
-              'height, gender, target_weight, goals, current_weight, weight_progress_percentage, streak_days, dietary_habits',
-            )
-            .eq('id', client.user_id)
-            .maybeSingle();
-          if (profile) {
-            profileData = profile;
-          }
+          const [profileRes, purchasesRes] = await Promise.all([
+            supabaseAdmin
+              .from('profiles')
+              .select(
+                'height, gender, target_weight, goals, current_weight, weight_progress_percentage, streak_days, dietary_habits',
+              )
+              .eq('id', client.user_id)
+              .maybeSingle(),
+            supabaseAdmin
+              .from('course_purchases')
+              .select('id, is_active, purchase_price, access_granted_at, course:courses(title)')
+              .eq('user_id', client.user_id),
+          ]);
+          if (profileRes.data) profileData = profileRes.data;
+          if (!purchasesRes.error && purchasesRes.data)
+            coursePurchases = purchasesRes.data;
         } catch (e) {
-          // Continuar sin datos del perfil si hay error
+          // Continuar sin datos del perfil/compras si hay error
         }
       }
+
+      const activeCoursePurchases =
+        coursePurchases.filter((p: any) => p.is_active) || [];
+      const hasGymMembership = gymMemberships.length > 0;
+      const hasOnlinePurchase = coursePurchases.length > 0;
+      const userType =
+        hasGymMembership && hasOnlinePurchase
+          ? 'both'
+          : hasGymMembership
+            ? 'physical'
+            : hasOnlinePurchase
+              ? 'online'
+              : 'none';
 
       return NextResponse.json({
         user: {
@@ -322,13 +371,13 @@ export async function GET(
           birth_date: client.birth_date,
           created_at: client.created_at,
           gym_memberships: gymMemberships,
-          course_purchases: [],
-          activeCoursePurchases: [],
+          course_purchases: coursePurchases,
+          activeCoursePurchases: activeCoursePurchases,
           activeGymMembership: activeMembership,
           hasActiveGymMembership: !!activeMembership,
-          hasGymMembership: gymMemberships.length > 0,
-          hasOnlinePurchase: false,
-          userType: 'physical',
+          hasGymMembership,
+          hasOnlinePurchase,
+          userType,
           isRegistered: !!client.user_id,
           isUnregisteredClient: !client.user_id,
           is_inactive: client.is_inactive || false,
@@ -351,7 +400,7 @@ export async function GET(
   }
 }
 
-// PUT - Actualizar un usuario
+// PUT - Actualizar un usuario (admin: cualquier id; usuario: solo el propio)
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -363,6 +412,12 @@ export async function PUT(
     }
 
     const { id } = await params;
+    const currentUserId = session.user?.id;
+    const canEditOther = isAdmin(session);
+    if (currentUserId !== id && !canEditOther) {
+      return NextResponse.json({ error: 'No tienes permiso para editar este usuario' }, { status: 403 });
+    }
+
     const body = await request.json();
 
     // Determinar si es un usuario registrado (profiles) o cliente físico (gym_client_info)

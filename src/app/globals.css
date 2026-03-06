@@ -75,6 +75,21 @@ body {
   animation: pulse-slow 3s ease-in-out infinite;
 }
 
+/* Barra de progreso al actualizar el feed */
+@keyframes feed-refresh-shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(400%);
+  }
+}
+
+.feed-refresh-progress {
+  width: 30%;
+  animation: feed-refresh-shimmer 1.2s ease-in-out infinite;
+}
+
 .font-semibold {
   font-weight: 600 !important;
 }
