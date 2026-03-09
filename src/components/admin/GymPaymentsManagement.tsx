@@ -23,7 +23,12 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
-import { formatDateOnlyLocal } from '@/lib/dateUtils';
+import {
+  addCalendarMonths,
+  durationDaysToMonths,
+  formatDateOnlyLocal,
+  parseLocalDate,
+} from '@/lib/dateUtils';
 import type {
   GymClientInfo,
   GymPayment,
@@ -155,8 +160,10 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
               // Establecer el plan directamente
               setSelectedPlan(plan);
               const startDate = new Date();
-              const endDate = new Date(startDate);
-              endDate.setDate(endDate.getDate() + plan.duration_days);
+              const endDate = addCalendarMonths(
+                startDate,
+                durationDaysToMonths(plan.duration_days),
+              );
 
               setFormData((prev) => ({
                 ...prev,
@@ -202,12 +209,14 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
       }
     }, [selectedPlan?.id, selectedClient?.id]);
 
-    // Mantener period_end en sync cuando cambia el plan (amount, duration)
+    // Mantener period_end en sync cuando cambia el plan (amount, duration) — mes a mes
     useEffect(() => {
       if (selectedPlan && formData.period_start) {
-        const startDate = new Date(formData.period_start);
-        const endDate = new Date(startDate);
-        endDate.setDate(endDate.getDate() + (selectedPlan.duration_days || 30));
+        const startDate = parseLocalDate(formData.period_start);
+        const endDate = addCalendarMonths(
+          startDate,
+          durationDaysToMonths(selectedPlan.duration_days || 30),
+        );
         setFormData((prev) => ({
           ...prev,
           plan_id: selectedPlan.id,
@@ -265,10 +274,12 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
             const newStartDate = new Date(latestEndDate);
             newStartDate.setDate(newStartDate.getDate() + 1);
 
-            // Calcular fecha de fin basada en la duración del plan seleccionado
+            // Calcular fecha de fin mes a mes (ej. 25 feb → 25 mar)
             const planDuration = selectedPlan?.duration_days || 30;
-            const newEndDate = new Date(newStartDate);
-            newEndDate.setDate(newEndDate.getDate() + planDuration - 1);
+            const newEndDate = addCalendarMonths(
+              newStartDate,
+              durationDaysToMonths(planDuration),
+            );
 
             // Actualizar las fechas del formulario automáticamente
             setFormData((prev) => ({
@@ -282,11 +293,13 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
             setHasActiveMembership(false);
             setError('');
           } else {
-            // No hay membresía activa para ESTE plan, fechas normales (desde hoy)
+            // No hay membresía activa para ESTE plan, fechas normales (desde hoy) — mes a mes
             const planDuration = selectedPlan?.duration_days || 30;
             const startDate = new Date();
-            const endDate = new Date(startDate);
-            endDate.setDate(endDate.getDate() + planDuration - 1);
+            const endDate = addCalendarMonths(
+              startDate,
+              durationDaysToMonths(planDuration),
+            );
 
             setFormData((prev) => ({
               ...prev,
@@ -519,8 +532,10 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
           if (plan) {
             setSelectedPlan(plan);
             const startDate = new Date();
-            const endDate = new Date(startDate);
-            endDate.setDate(endDate.getDate() + plan.duration_days);
+            const endDate = addCalendarMonths(
+              startDate,
+              durationDaysToMonths(plan.duration_days),
+            );
 
             setFormData((prev) => ({
               ...prev,
@@ -1103,11 +1118,13 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                           required
                           value={formData.period_start}
                           onChange={(e) => {
-                            const startDate = new Date(e.target.value);
-                            const endDate = new Date(startDate);
+                            const startDate = parseLocalDate(e.target.value);
                             if (selectedPlan) {
-                              endDate.setDate(
-                                endDate.getDate() + selectedPlan.duration_days,
+                              const endDate = addCalendarMonths(
+                                startDate,
+                                durationDaysToMonths(
+                                  selectedPlan.duration_days ?? 30,
+                                ),
                               );
                               setFormData({
                                 ...formData,

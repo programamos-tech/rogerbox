@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server';
+import { membershipEndDateFromStart, parseLocalDate } from '@/lib/dateUtils';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getUser } from '@/lib/supabase-server';
 import type { GymMembershipUpdate } from '@/types/gym';
@@ -113,10 +114,11 @@ export async function PUT(
             .eq('id', planIdToUse)
             .single();
           const durationDays = plan?.duration_days ?? 30;
-          const [y, m, d] = startDateStr.split('-').map(Number);
-          const endDateLocal = new Date(y, m - 1, d);
-          endDateLocal.setDate(endDateLocal.getDate() + durationDays - 1);
-          const endDateStr = `${endDateLocal.getFullYear()}-${String(endDateLocal.getMonth() + 1).padStart(2, '0')}-${String(endDateLocal.getDate()).padStart(2, '0')}`;
+          const startLocal = parseLocalDate(startDateStr);
+          const endDateStr = membershipEndDateFromStart(
+            startLocal,
+            durationDays,
+          );
           updateData.start_date = toNoonUTC(startDateStr);
           updateData.end_date = toNoonUTC(endDateStr);
         } else {

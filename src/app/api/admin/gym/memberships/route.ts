@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server';
+import { membershipEndDateFromStart, parseLocalDate } from '@/lib/dateUtils';
 import { insertLog, STORE_ID_FISICA } from '@/lib/logs-service';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getUser } from '@/lib/supabase-server';
@@ -177,12 +178,11 @@ export async function POST(request: NextRequest) {
         newStartDate.setDate(newStartDate.getDate() + 1);
         finalStartDate = newStartDate.toISOString().split('T')[0];
 
-        // Calcular fecha de fin basada en la duración del plan
-        const newEndDate = new Date(newStartDate);
-        newEndDate.setDate(
-          newEndDate.getDate() + (plan.duration_days || 30) - 1,
+        // Calcular fecha de fin mes a mes (ej. 25 feb → 25 mar)
+        finalEndDate = membershipEndDateFromStart(
+          newStartDate,
+          plan.duration_days || 30,
         );
-        finalEndDate = newEndDate.toISOString().split('T')[0];
       }
     }
 
@@ -191,11 +191,11 @@ export async function POST(request: NextRequest) {
       finalStartDate = today.toISOString().split('T')[0];
     }
     if (!finalEndDate) {
-      const endDateCalc = new Date(finalStartDate);
-      endDateCalc.setDate(
-        endDateCalc.getDate() + (plan.duration_days || 30) - 1,
+      const startLocal = parseLocalDate(finalStartDate!);
+      finalEndDate = membershipEndDateFromStart(
+        startLocal,
+        plan.duration_days || 30,
       );
-      finalEndDate = endDateCalc.toISOString().split('T')[0];
     }
 
     const { data, error } = await supabaseAdmin
