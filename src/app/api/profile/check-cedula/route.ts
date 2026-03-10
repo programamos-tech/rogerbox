@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const alreadyLinked = !!(client?.user_id);
+    const alreadyLinked = !!client?.user_id;
     let emailMasked: string | null = null;
 
     if (alreadyLinked && client?.user_id) {
@@ -48,7 +48,8 @@ export async function GET(request: NextRequest) {
       }
       if (email) {
         const [local, domain] = email.split('@');
-        const show = local && domain ? `${local.slice(0, 2)}***@${domain}` : email;
+        const show =
+          local && domain ? `${local.slice(0, 2)}***@${domain}` : email;
         emailMasked = show;
       }
     }

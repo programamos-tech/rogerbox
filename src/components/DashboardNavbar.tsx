@@ -12,11 +12,13 @@ import {
   Settings,
   User,
 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { useCallback, useEffect, useState } from 'react';
 import { useIsAdmin } from '@/hooks/auth/useIsAdmin';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useUserPurchases } from '@/hooks/useUserPurchases';
+
+const FEED_LAST_VISIT_KEY = 'rogerbox_feed_last_visit_at';
 
 export interface NavbarNotification {
   id: string;
@@ -36,9 +38,34 @@ export default function DashboardNavbar({
 }: DashboardNavbarProps) {
   const { user } = useSupabaseAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const isAdmin = useIsAdmin();
   const { hasActivePurchases } = useUserPurchases();
   const [showNotifications, setShowNotifications] = useState(false);
+  const [feedNewCount, setFeedNewCount] = useState(0);
+
+  const fetchFeedNewCount = useCallback(() => {
+    if (pathname === '/feed') return;
+    const since =
+      typeof window !== 'undefined'
+        ? localStorage.getItem(FEED_LAST_VISIT_KEY)
+        : null;
+    if (!since) return;
+    fetch(`/api/feed/new-count?since=${encodeURIComponent(since)}`)
+      .then((res) => res.json())
+      .then((data) => setFeedNewCount(Math.max(0, Number(data?.count) ?? 0)))
+      .catch(() => setFeedNewCount(0));
+  }, [pathname]);
+
+  useEffect(() => {
+    fetchFeedNewCount();
+  }, [fetchFeedNewCount]);
+
+  useEffect(() => {
+    const onFocus = () => fetchFeedNewCount();
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, [fetchFeedNewCount]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -54,8 +81,17 @@ export default function DashboardNavbar({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showNotifications]);
 
-  const navLinkClass =
-    'flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-[#85ea10] hover:bg-white/5 dark:hover:bg-white/5 transition-colors';
+  const getNavLinkClass = (path: string) => {
+    const isActive =
+      pathname === path ||
+      (path !== '/dashboard' && pathname.startsWith(path + '/'));
+    const base =
+      'flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2 rounded-lg text-sm font-medium transition-colors';
+    if (isActive) {
+      return `${base} text-[#85ea10] bg-[#85ea10]/10 dark:bg-[#85ea10]/20`;
+    }
+    return `${base} text-gray-600 dark:text-gray-300 hover:text-[#85ea10] hover:bg-white/5 dark:hover:bg-white/5`;
+  };
 
   return (
     <header className="bg-white/80 dark:bg-[#0a1628]/95 backdrop-blur-lg sticky top-0 z-50">
@@ -73,7 +109,7 @@ export default function DashboardNavbar({
           <nav className="flex items-center gap-0.5 sm:gap-1 md:gap-2 flex-1 justify-end">
             <button
               onClick={() => router.push('/dashboard')}
-              className={navLinkClass}
+              className={getNavLinkClass('/dashboard')}
               title="Inicio"
             >
               <Home className="w-4 h-4 sm:w-4 sm:h-4 flex-shrink-0" />
@@ -81,16 +117,25 @@ export default function DashboardNavbar({
             </button>
             <button
               onClick={() => router.push('/feed')}
-              className={navLinkClass}
-              title="Feed"
+              className={`${getNavLinkClass('/feed')} relative`}
+              title={
+                feedNewCount > 0
+                  ? `${feedNewCount} publicaciones nuevas`
+                  : 'Feed'
+              }
             >
               <Rss className="w-4 h-4 sm:w-4 sm:h-4 flex-shrink-0" />
               <span className="hidden sm:inline">Feed</span>
+              {feedNewCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-[#85ea10] text-[#164151] text-xs font-bold">
+                  {feedNewCount > 99 ? '99+' : feedNewCount}
+                </span>
+              )}
             </button>
             {hasActivePurchases && (
               <button
                 onClick={() => router.push('/student')}
-                className={navLinkClass}
+                className={getNavLinkClass('/student')}
                 title="Clases"
               >
                 <BookOpen className="w-4 h-4 sm:w-4 sm:h-4 flex-shrink-0" />
@@ -100,7 +145,7 @@ export default function DashboardNavbar({
             <div className="relative" data-notifications-dropdown>
               <button
                 onClick={() => setShowNotifications(!showNotifications)}
-                className={`${navLinkClass} relative`}
+                className={`${getNavLinkClass('/notifications')} relative`}
                 title="Notificaciones"
               >
                 <Bell className="w-4 h-4 sm:w-4 sm:h-4 flex-shrink-0" />
@@ -175,7 +220,7 @@ export default function DashboardNavbar({
             </div>
             <button
               onClick={() => router.push('/profile')}
-              className={navLinkClass}
+              className={getNavLinkClass('/profile')}
               title="Mi cuenta"
             >
               <User className="w-4 h-4 sm:w-4 sm:h-4 flex-shrink-0" />
@@ -184,7 +229,7 @@ export default function DashboardNavbar({
             {isAdmin && (
               <button
                 onClick={() => router.push('/admin')}
-                className={navLinkClass}
+                className={getNavLinkClass('/admin')}
                 title="Panel Administrativo"
               >
                 <Settings className="w-4 h-4 sm:w-4 sm:h-4 flex-shrink-0" />

@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase-server';
 import { supabaseAdmin } from '@/lib/supabase';
+import { createClient } from '@/lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,10 +52,9 @@ export async function POST(
         .select('name, username')
         .eq('id', user.id)
         .single();
-      const actorName =
-        profile?.username?.trim()
-          ? `@${profile.username.trim()}`
-          : profile?.name?.trim() || 'Alguien';
+      const actorName = profile?.username?.trim()
+        ? `@${profile.username.trim()}`
+        : profile?.name?.trim() || 'Alguien';
       await supabaseAdmin.from('user_notifications').insert({
         user_id: post.author_id,
         type: 'feed_post_like',

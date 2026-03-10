@@ -1,0 +1,101 @@
+---
+description: Convenciones de arquitectura, módulos y código del proyecto RogerBox
+alwaysApply: true
+---
+
+# Convenciones del proyecto (cursor_rules.md)
+
+Estas reglas se aplican siempre. El archivo fuente está en la raíz: `cursor_rules.md`.
+
+## 1. Screaming Architecture
+
+La arquitectura debe reflejar el negocio, no el framework.
+
+❌ Incorrecto: `components/`, `hooks/`, `utils/`
+
+✅ Correcto: `modules/` con `courses`, `payments`, `users`, `analytics`
+
+Cada módulo representa una funcionalidad del negocio.
+
+## 2. Feature Driven Architecture
+
+Toda funcionalidad debe vivir dentro de `src/modules`.
+
+Estructura obligatoria por módulo (ej. `src/modules/courses`):
+
+- `components`, `hooks`, `services`, `api`, `utils`, `types`, `constants`, `styles.ts`, `CoursesPage.tsx`
+- Cada módulo es autónomo. No mezclar lógica entre módulos. Compartir solo mediante `/shared`.
+
+## 3. Shared Layer
+
+Para reutilización global: `src/shared` con `components`, `hooks`, `utils`, `services`, `types`.
+
+## 4. Pages Rule (Muy importante)
+
+Las páginas solo importan el módulo. En `app/courses/page.tsx`:
+
+```tsx
+import { CoursesPage } from "@/modules/courses";
+export default function Page() {
+  return <CoursesPage />;
+}
+```
+
+No debe haber en la página: lógica, fetch, hooks ni estados.
+
+## 5. Clean Architecture (Light)
+
+Dentro del módulo: **components** (solo UI, sin fetch ni lógica compleja), **hooks** (lógica de negocio frontend), **services** (acceso a datos), **api** (endpoints backend).
+
+## 6. Data Fetching
+
+Siempre usar **TanStack Query**. Nunca `useEffect + fetch`.
+
+Ejemplo: `useQuery({ queryKey: ["courses"], queryFn: getCourses })`.
+
+## 7. Performance
+
+Usar React.memo, useMemo, useCallback, dynamic imports, lazy loading. Evitar re-renders y cálculos pesados en render.
+
+## 8. Styling
+
+Estilos en `styles.ts` (objeto con clases Tailwind). Usar Tailwind; no CSS ni inline styles.
+
+## 9. Security (APIs)
+
+Validar input, sanitizar, manejar errores, no exponer secrets, usar try/catch.
+
+## 10. Code Quality
+
+Clean Code (funciones pequeñas, nombres claros, sin duplicación). Principios SOLID.
+
+## 11. Design Patterns
+
+Preferir: Custom Hooks, Container/Presentational, Module Pattern; Service Layer, Adapter, Factory.
+
+## 12. Reusability
+
+Antes de crear algo nuevo revisar `shared/components`, `shared/hooks`, `shared/utils`.
+
+## 13. SEO
+
+Usar metadata, headings correctos, next/image, alt en imágenes, lazy loading cuando aplique.
+
+## 14. Naming
+
+- Componentes: PascalCase
+- Hooks: useSomething
+- Services: something.service.ts
+- Utils: something.util.ts
+
+## 15. Imports
+
+Siempre `@/modules`, `@/shared`, `@/lib`. Nunca rutas relativas largas (`../../..`).
+
+## 16. API Optimization
+
+Cachear respuestas, evitar queries pesadas, seleccionar solo campos necesarios, paginación.
+
+## 17. General
+
+Código escalable, reutilizable, optimizado, limpio y fácil de mantener.

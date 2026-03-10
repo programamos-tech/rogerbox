@@ -1,13 +1,12 @@
 'use client';
 
-import { Edit, LogOut, Save, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import DashboardNavbar from '@/components/DashboardNavbar';
 import QuickLoading from '@/components/QuickLoading';
-import { UserDetailContent } from '@/shared/components/UserDetailContent';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { supabase } from '@/lib/supabase';
+import { UserDetailContent } from '@/shared/components/UserDetailContent';
 
 /**
  * Mi Cuenta: misma vista que el detalle de usuario del admin,
@@ -62,6 +61,7 @@ export default function ProfilePage() {
           birth_date: u.birth_date || '',
           birth_year: u.birth_year || '',
           medical_restrictions: u.medical_restrictions || '',
+          avatar_url: u.avatar_url || '',
         });
         if (u.id && !u.isUnregisteredClient) {
           loadWeightRecords(u.id);
@@ -106,10 +106,16 @@ export default function ProfilePage() {
     setIsSaving(true);
     setSaveError('');
     try {
+      // Solo enviar nombre, correo y teléfono (la info fitness no es editable por el usuario)
+      const payload = {
+        name: (editForm.name ?? '').trim(),
+        email: (editForm.email ?? '').trim() || null,
+        phone: (editForm.phone ?? editForm.whatsapp ?? '').trim() || null,
+      };
       const response = await fetch(`/api/admin/users/${user.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editForm),
+        body: JSON.stringify(payload),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Error al actualizar');
@@ -119,6 +125,38 @@ export default function ProfilePage() {
       setSaveError(err.message || 'Error al guardar');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleSaveAvatar = async (avatarUrl: string) => {
+    if (!user?.id) return;
+    try {
+      const response = await fetch(`/api/admin/users/${user.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ avatar_url: avatarUrl }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Error al actualizar');
+      // Actualizar estado al instante con la nueva URL y updated_at (cache-bust)
+      if (data?.avatar_url !== undefined || data?.updated_at !== undefined) {
+        setUserData((prev: any) =>
+          prev
+            ? {
+                ...prev,
+                ...(data.avatar_url !== undefined && {
+                  avatar_url: data.avatar_url,
+                }),
+                ...(data.updated_at !== undefined && {
+                  updated_at: data.updated_at,
+                }),
+              }
+            : prev,
+        );
+      }
+      await loadUserData();
+    } catch (err: any) {
+      throw err;
     }
   };
 
@@ -175,52 +213,7 @@ export default function ProfilePage() {
       <DashboardNavbar notifications={[]} />
 
       <main className="flex-1 flex flex-col min-h-0">
-        <div className="flex-1 overflow-hidden flex flex-col">
-          {/* Controles sutiles: editar y cerrar sesión */}
-          <div className="flex-shrink-0 flex items-center justify-end gap-4 px-4 sm:px-6 lg:px-8 pt-4 pb-1">
-            {isEditing ? (
-              <>
-                <button
-                  onClick={() => {
-                    setIsEditing(false);
-                    setSaveError('');
-                    loadUserData();
-                  }}
-                  className="text-sm text-gray-500 dark:text-white/50 hover:text-gray-700 dark:hover:text-white/80 transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={handleSave}
-                  disabled={isSaving}
-                  className="text-sm font-medium text-[#164151] dark:text-cyan-400 hover:underline disabled:opacity-50 transition-colors"
-                >
-                  {isSaving ? 'Guardando…' : 'Guardar'}
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  onClick={() => setIsEditing(true)}
-                  className="text-sm text-gray-500 dark:text-white/50 hover:text-gray-700 dark:hover:text-white/80 transition-colors inline-flex items-center gap-1.5"
-                  title="Editar perfil"
-                >
-                  <Edit className="w-3.5 h-3.5" />
-                  Editar perfil
-                </button>
-                <button
-                  onClick={() => router.push('/signout')}
-                  className="text-sm text-gray-500 dark:text-white/50 hover:text-gray-700 dark:hover:text-white/80 transition-colors inline-flex items-center gap-1.5"
-                  title="Cerrar sesión"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                  Cerrar sesión
-                </button>
-              </>
-            )}
-          </div>
-
-          <div className="flex-1 overflow-y-auto min-h-0">
+        <div className="flex-1 overflow-y-auto min-h-0">
           <UserDetailContent
             userData={userData}
             isSelf={true}
@@ -233,8 +226,14 @@ export default function ProfilePage() {
             loadUserData={loadUserData}
             weightRecords={weightRecords}
             loadingWeightRecords={loadingWeightRecords}
+            onSaveAvatar={handleSaveAvatar}
+            isSaving={isSaving}
+            onCancelEdit={() => {
+              setIsEditing(false);
+              setSaveError('');
+              loadUserData();
+            }}
           />
-          </div>
         </div>
       </main>
     </div>

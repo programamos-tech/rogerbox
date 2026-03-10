@@ -179,27 +179,36 @@ function LoginForm() {
         }
       `}</style>
       <div className="min-h-screen flex">
-        {/* Left Side - Full Height Green */}
-        <div className="hidden lg:flex lg:w-1/2 bg-[#85ea10] items-center justify-center">
-          <div className="text-center text-white">
-            <h1 className="text-6xl font-black mb-8 tracking-tight uppercase">
-              <span className="text-gray-900 font-black">ROGER</span>
-              <span className="text-white font-black">BOX</span>
+        {/* Left Side - imagen con overlay, mismo estilo que registro */}
+        <div className="hidden lg:flex lg:w-1/2 min-h-screen relative items-center justify-center overflow-hidden">
+          <Image
+            src="/images/curso2.jpeg"
+            alt=""
+            fill
+            className="object-cover object-[50%_35%]"
+            priority
+            sizes="50vw"
+          />
+          <div className="absolute inset-0 bg-[#0a1628]/80" />
+          <div className="relative z-10 text-center px-10 max-w-md">
+            <h1 className="text-4xl font-black tracking-tight uppercase mb-6 text-white [text-shadow:none]">
+              <span className="text-white">ROGER</span>
+              <span className="text-[#85ea10]">BOX</span>
             </h1>
-            <div className="relative h-16 mb-8 overflow-hidden">
+            <div className="relative h-14 mb-6 overflow-hidden">
               <div
                 key={currentQuoteIndex}
-                className={`absolute inset-0 flex items-center justify-center text-xl font-medium opacity-90 ${
+                className={`absolute inset-0 flex items-center justify-center text-sm font-normal text-white/85 leading-relaxed ${
                   isAnimating ? 'animate-fade-out' : 'animate-fade-in'
                 }`}
               >
                 "{motivationalQuotes[currentQuoteIndex]}"
               </div>
             </div>
-            <div className="flex justify-center space-x-2">
-              <div className="w-3 h-3 bg-white rounded-full animate-bounce"></div>
-              <div className="w-3 h-3 bg-white rounded-full animate-bounce delay-200"></div>
-              <div className="w-3 h-3 bg-white rounded-full animate-bounce delay-400"></div>
+            <div className="flex justify-center gap-1.5">
+              <div className="w-1.5 h-1.5 bg-white/60 rounded-full animate-bounce" />
+              <div className="w-1.5 h-1.5 bg-white/60 rounded-full animate-bounce delay-200" />
+              <div className="w-1.5 h-1.5 bg-white/60 rounded-full animate-bounce delay-400" />
             </div>
           </div>
         </div>
@@ -209,17 +218,13 @@ function LoginForm() {
           <div className="w-full max-w-md">
             {/* Form Container */}
             <div className="bg-white dark:bg-gray-900 p-8 rounded-2xl shadow-2xl">
-              {/* Header */}
+              {/* Header - un solo logo a la izquierda; aquí solo título */}
               <div className="text-center mb-8">
-                <h1 className="text-3xl font-black text-gray-900 dark:text-white mb-2 uppercase tracking-tight">
-                  BIENVENIDO A{' '}
-                  <span className="text-gray-900 dark:text-white font-black">
-                    ROGER
-                  </span>
-                  <span className="text-[#85ea10] font-black">BOX</span>
-                </h1>
-                <p className="text-gray-600 dark:text-white text-lg">
-                  Inicia sesión para continuar
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                  Inicia sesión
+                </h2>
+                <p className="text-gray-600 dark:text-gray-400 text-base">
+                  Entra a tu cuenta para continuar
                 </p>
               </div>
 
@@ -267,7 +272,7 @@ function LoginForm() {
                       className={`w-full pl-12 pr-4 py-4 bg-gray-50 dark:bg-black/60 border rounded-xl text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 transition-all ${
                         errors.email
                           ? 'border-red-500 focus:ring-red-500'
-                          : 'border-gray-200 dark:border-white/30 focus:ring-[#85ea10] focus:border-[#85ea10]'
+                          : 'border-gray-200 dark:border-white/30 focus:ring-2 focus:ring-white/20 focus:border-white/50'
                       }`}
                       placeholder="tu@email.com"
                     />
@@ -296,7 +301,7 @@ function LoginForm() {
                       className={`w-full pl-12 pr-12 py-4 bg-gray-50 dark:bg-black/60 border rounded-xl text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 transition-all ${
                         errors.password
                           ? 'border-red-500 focus:ring-red-500'
-                          : 'border-gray-200 dark:border-white/30 focus:ring-[#85ea10] focus:border-[#85ea10]'
+                          : 'border-gray-200 dark:border-white/30 focus:ring-2 focus:ring-white/20 focus:border-white/50'
                       }`}
                       placeholder="Tu contraseña"
                     />
@@ -320,22 +325,22 @@ function LoginForm() {
                   )}
                 </div>
 
-                {/* Forgot Password Link */}
+                {/* Forgot Password Link - visible en light y dark */}
                 <div className="text-right">
                   <button
                     type="button"
                     onClick={() => router.push('/forgot-password')}
-                    className="text-[#85ea10] hover:text-[#7dd30f] text-sm font-medium transition-colors"
+                    className="text-gray-900 dark:text-white/80 hover:text-gray-700 dark:hover:text-white text-sm font-medium underline-offset-2 transition-colors"
                   >
                     ¿Olvidaste tu contraseña?
                   </button>
                 </div>
 
-                {/* Submit Button */}
+                {/* Submit Button - mismo estilo que registro */}
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full bg-[#85ea10] hover:bg-[#7dd30f] disabled:bg-[#85ea10]/50 disabled:opacity-70 text-black font-black py-4 rounded-xl transition-all duration-300 transform hover:scale-105 disabled:scale-100 disabled:cursor-not-allowed flex items-center justify-center space-x-3"
+                  className="w-full bg-white hover:bg-gray-100 dark:bg-white/95 dark:hover:bg-white text-gray-900 font-semibold py-4 rounded-lg border border-gray-200 dark:border-white/20 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-3 shadow-sm"
                 >
                   {isLoading ? (
                     <>
@@ -351,17 +356,18 @@ function LoginForm() {
                 </button>
               </form>
 
-              {/* Register Link */}
+              {/* Register Link - visible en light y dark */}
               <div className="text-center mt-6">
-                <p className="text-gray-600 dark:text-white">
+                <p className="text-gray-600 dark:text-white/80 text-sm">
                   ¿No tienes cuenta?{' '}
                   <button
+                    type="button"
                     onClick={() =>
                       router.push(
                         `/register?callbackUrl=${encodeURIComponent(callbackUrl)}`,
                       )
                     }
-                    className="text-[#85ea10] hover:text-[#7dd30f] font-bold transition-colors"
+                    className="text-gray-900 dark:text-white/80 hover:text-gray-700 dark:hover:text-white font-medium underline underline-offset-2 transition-colors"
                   >
                     Regístrate aquí
                   </button>

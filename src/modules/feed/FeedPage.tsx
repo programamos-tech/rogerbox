@@ -1,5 +1,6 @@
 'use client';
 
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ChevronDown,
   ChevronUp,
@@ -8,18 +9,13 @@ import {
   RefreshCw,
   X,
 } from 'lucide-react';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
-import { queryKeys } from '@/lib/query-keys';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { queryKeys } from '@/lib/query-keys';
 import CreatePost from './components/CreatePost';
 import PostCard from './components/PostCard';
-import {
-  createPost,
-  deletePost,
-  fetchPosts,
-} from './services/feed.service';
+import { createPost, deletePost, fetchPosts } from './services/feed.service';
 import type { FeedPost } from './types';
 
 export default function FeedPage() {
@@ -46,7 +42,9 @@ export default function FeedPage() {
   });
 
   const handleSuccess = () => {
-    queryClient.invalidateQueries({ queryKey: [...queryKeys.all, 'feed-posts'] });
+    queryClient.invalidateQueries({
+      queryKey: [...queryKeys.all, 'feed-posts'],
+    });
     setShowCreateModal(false);
   };
 
@@ -93,9 +91,7 @@ export default function FeedPage() {
       [...queryKeys.all, 'feed-posts'],
       (old) =>
         (old || []).map((p) =>
-          p.id === postId
-            ? { ...p, view_count: (p.view_count ?? 0) + 1 }
-            : p,
+          p.id === postId ? { ...p, view_count: (p.view_count ?? 0) + 1 } : p,
         ),
     );
   };
@@ -240,7 +236,9 @@ export default function FeedPage() {
               onCommentAdded={handleCommentAdded}
               onViewRecorded={handleViewRecorded}
               openCommentsAndScrollToComment={
-                postIdFromUrl === post.id ? commentIdFromUrl ?? undefined : undefined
+                postIdFromUrl === post.id
+                  ? (commentIdFromUrl ?? undefined)
+                  : undefined
               }
             />
           ))}

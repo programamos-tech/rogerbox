@@ -1,16 +1,14 @@
 import { notFound } from 'next/navigation';
 import { cache } from 'react';
+import DashboardNavbar from '@/components/DashboardNavbar';
 import Footer from '@/components/Footer';
-
 import {
   getCourseBySlug,
   getCourseLessons,
   getUserEnrollmentStatus,
 } from './actions/checkout.actions';
-
 import CourseCurriculum from './components/CourseCurriculum';
 import CourseDetails from './components/CourseDetails';
-import CourseHeader from './components/CourseHeader';
 import CourseIncludes from './components/CourseIncludes';
 import CourseVideo from './components/CourseVideo';
 import PurchaseCard from './components/PurchaseCard';
@@ -44,7 +42,7 @@ export default async function Checkout({ courseId }: CheckoutProps) {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
-      <CourseHeader />
+      <DashboardNavbar notifications={[]} />
 
       <div className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-4">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">

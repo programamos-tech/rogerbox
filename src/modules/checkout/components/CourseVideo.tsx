@@ -80,21 +80,23 @@ export default function CourseVideo({
   return (
     <>
       <div className="relative bg-gray-900 rounded-xl overflow-hidden shadow-lg">
-        {/* Logo RogerBox - esquina superior derecha, aparece después de 3s */}
-        <div
-          className={`absolute top-3 right-3 z-20 transition-all duration-500 ${showVideoLogo ? 'opacity-50' : 'opacity-0'}`}
-        >
-          <span className="text-white font-black text-sm tracking-tight">
-            ROGER<span className="text-[#85ea10]">BOX</span>
-          </span>
-        </div>
+        {/* Logo RogerBox - oculto cuando el modal de pago está abierto para que no se superponga */}
+        {!showPaymentWidget && (
+          <div
+            className={`absolute top-3 right-3 z-[1] transition-all duration-500 ${showVideoLogo ? 'opacity-50' : 'opacity-0'}`}
+          >
+            <span className="text-white font-black text-sm tracking-tight">
+              ROGER<span className="text-[#85ea10]">BOX</span>
+            </span>
+          </div>
+        )}
 
-        {/* Botón CTA flotante - derecha, arriba de controles */}
-        {!isEnrolled && (
+        {/* Botón CTA flotante - oculto cuando el modal está abierto */}
+        {!isEnrolled && !showPaymentWidget && (
           <button
             onClick={handlePurchase}
             disabled={isProcessing}
-            className="absolute bottom-16 right-3 z-10 flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-100 text-gray-900 text-sm font-bold rounded-full shadow-lg transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="absolute bottom-16 right-3 z-[1] flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-100 text-gray-900 text-sm font-bold rounded-full shadow-lg transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Zap className="w-4 h-4" />
             {isProcessing ? 'Procesando...' : '¡Lo quiero!'}

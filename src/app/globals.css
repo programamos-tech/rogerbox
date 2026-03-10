@@ -75,6 +75,21 @@ body {
   animation: pulse-slow 3s ease-in-out infinite;
 }
 
+@keyframes cursor-blink {
+  0%,
+  50% {
+    opacity: 1;
+  }
+  51%,
+  100% {
+    opacity: 0;
+  }
+}
+
+.animate-cursor-blink {
+  animation: cursor-blink 1s step-end infinite;
+}
+
 /* Barra de progreso al actualizar el feed */
 @keyframes feed-refresh-shimmer {
   0% {
@@ -191,11 +206,16 @@ a {
 
 button:focus-visible,
 a:focus-visible,
-input:focus-visible,
-select:focus-visible,
 [role="button"]:focus-visible {
   outline: 2px solid #85ea10;
   outline-offset: 2px;
+}
+
+/* inputs y select sin outline verde; cada formulario define su propio focus (ring/border) */
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: none;
 }
 
 input,

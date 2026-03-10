@@ -125,7 +125,10 @@ export async function POST(request: NextRequest) {
             } else {
               const { error: linkError } = await supabaseAdmin
                 .from('gym_client_info')
-                .update({ user_id: userId, updated_at: new Date().toISOString() })
+                .update({
+                  user_id: userId,
+                  updated_at: new Date().toISOString(),
+                })
                 .eq('id', gymClient.id);
 
               if (!linkError) {
@@ -151,7 +154,12 @@ export async function POST(request: NextRequest) {
           } else {
             // Cédula nueva: crear cliente en gym_client_info para que aparezca en Clientes (admin)
             const doc = profile.document_id.trim();
-            const clientName = (profile.name || user?.user_metadata?.name || user?.email?.split('@')[0] || 'Usuario').trim();
+            const clientName = (
+              profile.name ||
+              user?.user_metadata?.name ||
+              user?.email?.split('@')[0] ||
+              'Usuario'
+            ).trim();
             await supabaseAdmin.from('gym_client_info').insert({
               document_id: doc,
               name: clientName,
@@ -227,7 +235,10 @@ export async function POST(request: NextRequest) {
             } else {
               const { error: linkError } = await supabaseAdmin
                 .from('gym_client_info')
-                .update({ user_id: userId, updated_at: new Date().toISOString() })
+                .update({
+                  user_id: userId,
+                  updated_at: new Date().toISOString(),
+                })
                 .eq('id', gymClient.id);
 
               if (!linkError) {
@@ -253,7 +264,12 @@ export async function POST(request: NextRequest) {
           } else {
             // Cédula nueva: crear cliente en gym_client_info para que aparezca en Clientes (admin)
             const doc = profile.document_id.trim();
-            const clientName = (profile.name || user?.user_metadata?.name || user?.email?.split('@')[0] || 'Usuario').trim();
+            const clientName = (
+              profile.name ||
+              user?.user_metadata?.name ||
+              user?.email?.split('@')[0] ||
+              'Usuario'
+            ).trim();
             await supabaseAdmin.from('gym_client_info').insert({
               document_id: doc,
               name: clientName,

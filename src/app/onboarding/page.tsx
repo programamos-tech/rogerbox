@@ -118,7 +118,9 @@ export default function OnboardingPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 sm:p-8 max-w-sm w-full border border-[#85ea10]/30 shadow-xl text-center">
             <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-[#85ea10]/20 flex items-center justify-center">
-              <span className="text-3xl" aria-hidden>✓</span>
+              <span className="text-3xl" aria-hidden>
+                ✓
+              </span>
             </div>
             <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
               ¡Te identificamos!

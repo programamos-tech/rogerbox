@@ -1,15 +1,7 @@
 'use client';
 
-import {
-  CreditCard,
-  FileText,
-  Loader2,
-  Mail,
-  MapPin,
-  Shield,
-  User,
-  X,
-} from 'lucide-react';
+import { FileText, Loader2, Mail, MapPin, Shield, User, X } from 'lucide-react';
+import { createPortal } from 'react-dom';
 import { useWompi } from './useWompi';
 
 interface WompiCheckoutProps {
@@ -52,10 +44,10 @@ export default function WompiCheckout({
     },
   });
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-xl max-w-xl w-full mx-4 max-h-[90vh] overflow-y-auto relative">
-        {/* Close Button */}
+  const modalContent = (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      <div className="relative z-[10000] bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-xl max-w-xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+        {/* Close Button - solo X, sin logo */}
         <button
           onClick={onClose || (() => {})}
           className="absolute top-4 right-4 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors shadow-sm"
@@ -64,19 +56,19 @@ export default function WompiCheckout({
           <X className="w-5 h-5 text-gray-700 dark:text-gray-300" />
         </button>
 
-        {/* Header */}
-        <div className="text-center mb-6">
-          <div className="w-16 h-16 bg-[#85ea10] rounded-full flex items-center justify-center mx-auto mb-4">
-            <CreditCard className="w-8 h-8 text-black" />
-          </div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-            Completar Pago
+        {/* Header - título sin repetir con el botón */}
+        <div className="text-center mb-6 pt-2">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-1">
+            Confirmar compra
           </h2>
-          <p className="text-gray-600 dark:text-gray-400">{course.title}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            {course.title}
+          </p>
+          <div className="mt-4 h-px bg-gray-100 dark:bg-gray-700" />
         </div>
 
         {/* Precio */}
-        <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 mb-6">
+        <div className="bg-gray-50/80 dark:bg-gray-700/80 rounded-xl p-4 mb-6 border border-gray-100 dark:border-gray-600/50">
           <div className="flex items-center justify-between mb-2">
             <span className="text-gray-600 dark:text-gray-400">Subtotal</span>
             {course.original_price && course.original_price > course.price ? (
@@ -93,10 +85,10 @@ export default function WompiCheckout({
           {course.original_price && course.original_price > course.price && (
             <>
               <div className="flex items-center justify-between mb-2">
-                <span className="text-[#85ea10] font-semibold">
+                <span className="text-gray-700 dark:text-gray-300 font-medium">
                   Descuento ({course.discount_percentage}%)
                 </span>
-                <span className="text-[#85ea10] font-semibold">
+                <span className="text-gray-700 dark:text-gray-300 font-medium">
                   -$
                   {(course.original_price - course.price).toLocaleString(
                     'es-CO',
@@ -109,7 +101,7 @@ export default function WompiCheckout({
                   <span className="text-lg font-bold text-gray-900 dark:text-white">
                     Total
                   </span>
-                  <span className="text-2xl font-bold text-[#85ea10]">
+                  <span className="text-xl font-bold text-gray-900 dark:text-white">
                     ${course.price.toLocaleString('es-CO')} COP
                   </span>
                 </div>
@@ -155,7 +147,7 @@ export default function WompiCheckout({
                         })
                       }
                       placeholder="Juan Carlos"
-                      className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#85ea10] dark:bg-gray-700 dark:text-white text-sm"
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-300 dark:focus:ring-gray-500 dark:bg-gray-700 dark:text-white text-sm"
                       required
                     />
                   </div>
@@ -173,7 +165,7 @@ export default function WompiCheckout({
                         setBuyerData({ ...buyerData, lastName: e.target.value })
                       }
                       placeholder="Pérez García"
-                      className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#85ea10] dark:bg-gray-700 dark:text-white text-sm"
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-300 dark:focus:ring-gray-500 dark:bg-gray-700 dark:text-white text-sm"
                       required
                     />
                   </div>
@@ -198,7 +190,7 @@ export default function WompiCheckout({
                           | 'PP',
                       })
                     }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#85ea10] dark:bg-gray-700 dark:text-white text-sm"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-300 dark:focus:ring-gray-500 dark:bg-gray-700 dark:text-white text-sm"
                   >
                     <option value="CC">C.C.</option>
                     <option value="NIT">NIT</option>
@@ -223,7 +215,7 @@ export default function WompiCheckout({
                         })
                       }
                       placeholder="1234567890"
-                      className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#85ea10] dark:bg-gray-700 dark:text-white text-sm"
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-300 dark:focus:ring-gray-500 dark:bg-gray-700 dark:text-white text-sm"
                       required
                     />
                   </div>
@@ -244,7 +236,7 @@ export default function WompiCheckout({
                       setBuyerData({ ...buyerData, email: e.target.value })
                     }
                     placeholder="tu@email.com"
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#85ea10] dark:bg-gray-700 dark:text-white text-sm"
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-300 dark:focus:ring-gray-500 dark:bg-gray-700 dark:text-white text-sm"
                     required
                   />
                 </div>
@@ -265,7 +257,7 @@ export default function WompiCheckout({
                       setBuyerData({ ...buyerData, address: e.target.value })
                     }
                     placeholder="Calle 123 # 45-67, Barrio, Ciudad"
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#85ea10] dark:bg-gray-700 dark:text-white text-sm"
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-300 dark:focus:ring-gray-500 dark:bg-gray-700 dark:text-white text-sm"
                     required
                   />
                 </div>
@@ -279,34 +271,31 @@ export default function WompiCheckout({
           )}
         </div>
 
-        {/* Botón de pago */}
+        {/* Botón de pago - verde muy sutil (borde izquierdo) */}
         <button
           onClick={handlePayment}
           disabled={
             isLoading || !wompiPublicKey || !isFormValid() || isLoadingProfile
           }
-          className="w-full bg-[#85ea10] hover:bg-[#7dd30f] text-black font-bold py-4 px-6 rounded-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center shadow-lg"
+          className="w-full py-3.5 px-6 rounded-xl border-2 border-gray-900 dark:border-white bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-semibold text-sm transition-all duration-200 hover:bg-gray-800 dark:hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {isLoading ? (
             <>
-              <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+              <Loader2 className="w-4 h-4 animate-spin" />
               Procesando...
             </>
           ) : !wompiPublicKey ? (
             <>
-              <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-              Cargando configuración...
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Cargando...
             </>
           ) : isLoadingProfile ? (
             <>
-              <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+              <Loader2 className="w-4 h-4 animate-spin" />
               Cargando datos...
             </>
           ) : (
-            <>
-              <CreditCard className="w-5 h-5 mr-2" />
-              Completar Pago
-            </>
+            'Pagar ahora'
           )}
         </button>
 
@@ -323,4 +312,9 @@ export default function WompiCheckout({
       </div>
     </div>
   );
+
+  if (typeof document !== 'undefined') {
+    return createPortal(modalContent, document.body);
+  }
+  return modalContent;
 }

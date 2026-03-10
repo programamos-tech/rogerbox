@@ -49,10 +49,9 @@ export async function POST(
         .select('name, username')
         .eq('id', user.id)
         .single();
-      const actorName =
-        actorProfile?.username?.trim()
-          ? `@${actorProfile.username.trim()}`
-          : actorProfile?.name?.trim() || 'Alguien';
+      const actorName = actorProfile?.username?.trim()
+        ? `@${actorProfile.username.trim()}`
+        : actorProfile?.name?.trim() || 'Alguien';
       await supabaseAdmin.from('user_notifications').insert({
         user_id: comment.user_id,
         type: 'feed_comment_like',

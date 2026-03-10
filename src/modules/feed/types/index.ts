@@ -3,6 +3,7 @@ export interface FeedPost {
   author_id: string | null;
   author_name: string;
   author_username?: string | null;
+  author_avatar_url?: string | null;
   content: string;
   image_urls: string[];
   created_at: string;
@@ -20,6 +21,7 @@ export interface FeedComment {
   created_at: string;
   author_name: string;
   author_username?: string | null;
+  author_avatar_url?: string | null;
   like_count: number;
   user_has_liked: boolean;
 }

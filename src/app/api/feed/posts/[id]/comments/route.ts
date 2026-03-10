@@ -32,13 +32,10 @@ export async function GET(
     const commentIds = (comments || []).map((c) => c.id);
     const userIds = [...new Set((comments || []).map((c) => c.user_id))];
 
-    const [
-      { data: profiles },
-      { data: commentLikes },
-    ] = await Promise.all([
+    const [{ data: profiles }, { data: commentLikes }] = await Promise.all([
       supabaseAdmin
         .from('profiles')
-        .select('id, name, username')
+        .select('id, name, username, avatar_url')
         .in('id', userIds),
       commentIds.length > 0
         ? supabaseAdmin
@@ -49,14 +46,26 @@ export async function GET(
     ]);
 
     const nameByUserId = (profiles || []).reduce(
-      (acc, p) => {
+      (
+        acc,
+        p: {
+          id: string;
+          name?: string;
+          username?: string;
+          avatar_url?: string | null;
+        },
+      ) => {
         acc[p.id] = {
           name: p.name || 'Usuario',
           username: p.username?.trim() || null,
+          avatar_url: p.avatar_url?.trim() || null,
         };
         return acc;
       },
-      {} as Record<string, { name: string; username: string | null }>,
+      {} as Record<
+        string,
+        { name: string; username: string | null; avatar_url: string | null }
+      >,
     );
 
     const likeCountByComment: Record<string, number> = {};
@@ -73,6 +82,7 @@ export async function GET(
         ...c,
         author_name: profile?.name || 'Usuario',
         author_username: profile?.username ?? undefined,
+        author_avatar_url: profile?.avatar_url ?? null,
         like_count: likeCountByComment[c.id] || 0,
         user_has_liked: userLikedCommentIds.has(c.id),
       };
@@ -136,10 +146,9 @@ export async function POST(
         .select('name, username')
         .eq('id', user.id)
         .single();
-      const actorName =
-        actorProfile?.username?.trim()
-          ? `@${actorProfile.username.trim()}`
-          : actorProfile?.name?.trim() || 'Alguien';
+      const actorName = actorProfile?.username?.trim()
+        ? `@${actorProfile.username.trim()}`
+        : actorProfile?.name?.trim() || 'Alguien';
       await supabaseAdmin.from('user_notifications').insert({
         user_id: post.author_id,
         type: 'feed_comment',
@@ -153,7 +162,7 @@ export async function POST(
 
     const { data: profile } = await supabaseAdmin
       .from('profiles')
-      .select('name, username')
+      .select('name, username, avatar_url')
       .eq('id', user.id)
       .single();
 
@@ -168,6 +177,7 @@ export async function POST(
       ...comment,
       author_name: authorName,
       author_username: authorUsername,
+      author_avatar_url: profile?.avatar_url?.trim() || null,
       like_count: 0,
       user_has_liked: false,
     });

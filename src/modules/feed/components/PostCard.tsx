@@ -11,7 +11,6 @@ import {
   User,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import type { FeedComment, FeedPost } from '../types';
 import {
   addComment,
   fetchComments,
@@ -19,6 +18,7 @@ import {
   toggleCommentLike,
   toggleLike,
 } from '../services/feed.service';
+import type { FeedComment, FeedPost } from '../types';
 
 interface PostCardProps {
   post: FeedPost;
@@ -59,10 +59,7 @@ function renderContentWithMentions(content: string) {
   const parts = content.split(/(@[\w.]+)/g);
   return parts.map((part, i) =>
     part.startsWith('@') ? (
-      <span
-        key={i}
-        className="font-semibold text-sky-600 dark:text-sky-400"
-      >
+      <span key={i} className="font-semibold text-sky-600 dark:text-sky-400">
         {part}
       </span>
     ) : (
@@ -249,12 +246,18 @@ export default function PostCard({
             <div
               className={
                 isRogerBot
-                  ? 'w-10 h-10 rounded-full bg-sky-500/25 dark:bg-sky-400/20 flex items-center justify-center flex-shrink-0'
-                  : 'w-10 h-10 rounded-full bg-[#85ea10]/20 flex items-center justify-center flex-shrink-0'
+                  ? 'w-10 h-10 rounded-full bg-sky-500/25 dark:bg-sky-400/20 flex items-center justify-center flex-shrink-0 overflow-hidden'
+                  : 'w-10 h-10 rounded-full bg-[#85ea10]/20 flex items-center justify-center flex-shrink-0 overflow-hidden'
               }
             >
               {isRogerBot ? (
                 <Bot className="w-5 h-5 text-sky-600 dark:text-sky-400" />
+              ) : post.author_avatar_url ? (
+                <img
+                  src={post.author_avatar_url}
+                  alt=""
+                  className="w-full h-full object-cover"
+                />
               ) : (
                 <User className="w-5 h-5 text-[#85ea10]" />
               )}
@@ -398,8 +401,16 @@ export default function PostCard({
                     id={`comment-${c.id}`}
                     className="flex items-start gap-3 text-sm"
                   >
-                    <div className="w-8 h-8 rounded-full bg-[#85ea10]/15 flex items-center justify-center flex-shrink-0">
-                      <User className="w-4 h-4 text-[#85ea10]" />
+                    <div className="w-8 h-8 rounded-full bg-[#85ea10]/15 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                      {c.author_avatar_url ? (
+                        <img
+                          src={c.author_avatar_url}
+                          alt=""
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <User className="w-4 h-4 text-[#85ea10]" />
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
@@ -445,10 +456,7 @@ export default function PostCard({
             )}
           </div>
           <div className="px-4 sm:px-5 py-3 border-t border-gray-100 dark:border-white/5 bg-gray-50/30 dark:bg-gray-900/20">
-            <form
-              onSubmit={handleSubmitComment}
-              className="flex gap-2"
-            >
+            <form onSubmit={handleSubmitComment} className="flex gap-2">
               <input
                 type="text"
                 value={commentText}

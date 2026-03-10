@@ -1,11 +1,11 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
 import DashboardNavbar from '@/components/DashboardNavbar';
 import SimpleLoading from '@/components/SimpleLoading';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { FeedPage } from '@/modules/feed';
-import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
 
 export default function FeedRoute() {
   const { user, loading } = useSupabaseAuth();
@@ -28,6 +28,15 @@ export default function FeedRoute() {
       router.push('/login');
     }
   }, [loading, user, router]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(
+        'rogerbox_feed_last_visit_at',
+        new Date().toISOString(),
+      );
+    }
+  }, []);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -53,9 +62,7 @@ export default function FeedRoute() {
           }).then(() => {
             setApiNotifications((prev) =>
               prev.map((x) =>
-                x.id === n.id
-                  ? { ...x, read_at: new Date().toISOString() }
-                  : x,
+                x.id === n.id ? { ...x, read_at: new Date().toISOString() } : x,
               ),
             );
           });

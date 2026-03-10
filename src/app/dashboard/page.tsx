@@ -9,7 +9,6 @@ import {
   Clock,
   Heart,
   Info,
-  MessageCircle,
   Play,
   RefreshCw,
   Search,
@@ -30,8 +29,8 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import ComplementSection from '@/components/ComplementSection';
 import CourseHeroCard from '@/components/CourseHeroCard';
-import DashboardNavbar from '@/components/DashboardNavbar';
 import CourseLoadingSkeleton from '@/components/CourseLoadingSkeleton';
+import DashboardNavbar from '@/components/DashboardNavbar';
 import Footer from '@/components/Footer';
 import GoalSuggestionCard from '@/components/GoalSuggestionCard';
 import InsightsSection from '@/components/InsightsSection';
@@ -182,9 +181,7 @@ export default function DashboardPage() {
           }).then(() => {
             setApiNotifications((prev) =>
               prev.map((x) =>
-                x.id === n.id
-                  ? { ...x, read_at: new Date().toISOString() }
-                  : x,
+                x.id === n.id ? { ...x, read_at: new Date().toISOString() } : x,
               ),
             );
           });
@@ -940,10 +937,10 @@ export default function DashboardPage() {
         <main className="max-w-full mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-3 sm:py-4 pb-20 relative">
           {/* CURSOS COMPRADOS - Banner de ancho completo */}
           {hasActivePurchases && purchases.length > 0 && (
-            <div className="mb-4 sm:mb-6 md:mb-8 -mx-3 sm:-mx-4 md:-mx-6 lg:-mx-8">
-              <div className="px-3 sm:px-4 md:px-6 lg:px-8 mb-3 sm:mb-4">
-                <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                  <BookOpen className="w-4 h-4 sm:w-5 sm:h-5 text-[#85ea10]" />
+            <div className="mb-3 sm:mb-4 -mx-3 sm:-mx-4 md:-mx-6 lg:-mx-8">
+              <div className="px-3 sm:px-4 md:px-6 lg:px-8 mb-2">
+                <h2 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                  <BookOpen className="w-4 h-4 text-gray-500 dark:text-gray-400" />
                   Mi Curso
                 </h2>
               </div>
@@ -1008,94 +1005,72 @@ export default function DashboardPage() {
                   return (
                     <div
                       key={purchase.id}
-                      className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden mx-4 sm:mx-6 lg:mx-8"
+                      className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden mx-4 sm:mx-6 lg:mx-8"
                     >
                       {hasAvailableClass ? (
-                        /* Banner elegante y moderno con fondo blanco/dark */
-                        <div className="relative w-full min-h-[200px] sm:min-h-[240px] md:min-h-[280px] rounded-2xl shadow-lg overflow-hidden bg-white dark:bg-gray-800">
-                          {/* Contenido */}
-                          <div className="relative z-10 pl-4 pr-4 sm:pl-6 sm:pr-6 md:pl-8 md:pr-8 py-3 sm:py-4 md:py-5 h-full flex flex-col">
-                            <div className="flex-1">
-                              {/* Contenido izquierdo */}
-                              <div className="flex-1 min-w-0 w-full">
-                                <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4 flex-wrap">
-                                  <div className="inline-flex items-center gap-2 bg-[#85ea10] rounded-full px-3 py-1 sm:px-4 sm:py-1.5">
-                                    <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-                                    <span className="text-black text-[10px] sm:text-xs font-bold uppercase">
-                                      Nueva Clase Disponible
-                                    </span>
-                                  </div>
-                                  {timeLeft.hours > 0 && (
-                                    <div className="inline-flex items-center gap-2 bg-[#1e3a8a] rounded-full px-3 py-1 sm:px-4 sm:py-1.5">
-                                      <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-white" />
-                                      <span className="text-white text-[10px] sm:text-xs font-bold">
-                                        {timeLeft.hours}h {timeLeft.minutes}m
-                                        restantes
-                                      </span>
-                                    </div>
-                                  )}
+                        /* Banner compacto: menos altura y padding */
+                        <div className="relative w-full rounded-2xl overflow-hidden bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                          <div className="relative z-10 p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                                <div className="inline-flex items-center gap-1.5 bg-gray-100 dark:bg-gray-700 border border-[#85ea10]/30 rounded-full px-2 py-0.5 sm:px-2.5 sm:py-1">
+                                  <div className="w-1.5 h-1.5 bg-[#85ea10] rounded-full animate-pulse" />
+                                  <span className="text-gray-800 dark:text-white text-[10px] font-bold uppercase tracking-wide">
+                                    Nueva Clase Disponible
+                                  </span>
                                 </div>
-
-                                <h3 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-black text-gray-900 dark:text-white mb-2 sm:mb-3 leading-tight line-clamp-2 sm:line-clamp-none">
-                                  {purchase.course?.title || 'Nueva Clase'}
-                                </h3>
-
-                                <p className="text-gray-700 dark:text-gray-300 text-sm sm:text-base md:text-lg mb-4 sm:mb-5 line-clamp-1">
-                                  {purchase.course?.short_description ||
-                                    purchase.course?.description ||
-                                    '¡No te pierdas esta increíble clase!'}
-                                </p>
-
-                                <div className="flex flex-wrap items-center gap-3 sm:gap-4 mb-4 sm:mb-0">
-                                  <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-                                    <Clock className="w-3 h-3 sm:w-4 sm:h-4 text-[#85ea10]" />
-                                    <span className="font-semibold">
-                                      {purchase.course?.duration_days
-                                        ? `${purchase.course.duration_days} días`
-                                        : '30 días'}
+                                {timeLeft.hours > 0 && (
+                                  <div className="inline-flex items-center gap-1.5 bg-gray-200 dark:bg-gray-600 rounded-full px-2 py-0.5 sm:px-2.5 sm:py-1">
+                                    <Clock className="w-3 h-3 text-gray-600 dark:text-gray-300" />
+                                    <span className="text-gray-700 dark:text-gray-200 text-[10px] font-semibold">
+                                      {timeLeft.hours}h {timeLeft.minutes}m
+                                      restantes
                                     </span>
                                   </div>
-                                  <div className="flex items-center gap-2 text-[10px] sm:text-xs text-gray-500 dark:text-gray-500">
-                                    <Clock className="w-3 h-3" />
-                                    <span className="hidden sm:inline">
-                                      Se bloquea antes de las 12:00 AM
-                                    </span>
-                                    <span className="sm:hidden">
-                                      Bloquea a las 12:00 AM
-                                    </span>
-                                  </div>
-                                </div>
+                                )}
+                              </div>
+                              <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white leading-tight line-clamp-1">
+                                {purchase.course?.title || 'Nueva Clase'}
+                              </h3>
+                              <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5 line-clamp-1">
+                                {purchase.course?.short_description ||
+                                  purchase.course?.description ||
+                                  '¡No te pierdas esta increíble clase!'}
+                              </p>
+                              <div className="flex items-center gap-3 mt-1.5 text-[11px] text-gray-500 dark:text-gray-500">
+                                <span className="flex items-center gap-1">
+                                  <Clock className="w-3 h-3" />
+                                  {purchase.course?.duration_days
+                                    ? `${purchase.course.duration_days} días`
+                                    : '30 días'}
+                                </span>
+                                <span className="hidden sm:inline flex items-center gap-1">
+                                  <Clock className="w-3 h-3" />
+                                  Se bloquea antes de las 12:00 AM
+                                </span>
                               </div>
                             </div>
-
-                            {/* Botón CTA - Posicionado en la esquina inferior derecha */}
-                            <div className="flex justify-end mt-auto">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  router.push('/student?autoStart=true');
-                                }}
-                                className="bg-[#85ea10] hover:bg-[#7dd30f] text-black font-bold py-2 px-4 sm:py-2.5 sm:px-5 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-105 flex items-center justify-center gap-1.5 whitespace-nowrap text-xs sm:text-sm"
-                              >
-                                <Play
-                                  className="w-3 h-3 sm:w-4 sm:h-4"
-                                  fill="currentColor"
-                                />
-                                <span>Tomar Clase Ahora</span>
-                              </button>
-                            </div>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                router.push('/student?autoStart=true');
+                              }}
+                              className="bg-gray-900 hover:bg-gray-800 text-white font-semibold py-2 px-3 sm:py-2 sm:px-4 rounded-xl border border-gray-600 shadow-sm transition-all duration-200 hover:border-[#85ea10]/50 flex items-center justify-center gap-1.5 whitespace-nowrap text-xs shrink-0"
+                            >
+                              <Play className="w-3 h-3" fill="currentColor" />
+                              <span>Tomar Clase Ahora</span>
+                            </button>
                           </div>
                         </div>
                       ) : (
-                        /* Banner normal cuando no hay clase disponible - con fondo blanco/dark */
-                        <div className="relative w-full min-h-[200px] sm:min-h-[240px] md:min-h-[280px] rounded-2xl shadow-lg overflow-hidden bg-white dark:bg-gray-800">
-                          {/* Contenido */}
-                          <div className="relative z-10 p-4 sm:p-6 md:p-8 h-full flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                            <div className="flex-1">
-                              <h3 className="text-lg sm:text-xl md:text-2xl font-black text-gray-900 dark:text-white mb-2 line-clamp-2 sm:line-clamp-none">
+                        /* Banner sin clase disponible - compacto */
+                        <div className="relative w-full rounded-2xl overflow-hidden bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                          <div className="relative z-10 p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div className="flex-1 min-w-0">
+                              <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white line-clamp-1">
                                 {purchase.course?.title || 'Curso'}
                               </h3>
-                              <p className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm line-clamp-3 sm:line-clamp-none">
+                              <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
                                 Tu curso está en progreso
                               </p>
                             </div>
@@ -1104,9 +1079,9 @@ export default function DashboardPage() {
                                 e.stopPropagation();
                                 router.push('/student');
                               }}
-                              className="bg-[#85ea10] hover:bg-[#7dd30f] text-black font-black py-2.5 px-5 sm:py-3 sm:px-6 rounded-xl transition-all duration-300 text-xs sm:text-sm md:text-base shadow-lg hover:scale-105 flex items-center justify-center gap-2 w-full sm:w-auto"
+                              className="bg-gray-900 hover:bg-gray-800 text-white font-semibold py-2 px-4 rounded-xl border border-gray-600 shadow-sm transition-all duration-200 hover:border-[#85ea10]/50 flex items-center justify-center gap-1.5 text-xs shrink-0 w-full sm:w-auto"
                             >
-                              <Play className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5" />
+                              <Play className="w-3 h-3 sm:w-4 sm:h-4" />
                               <span>Continuar Curso</span>
                             </button>
                           </div>
@@ -1161,28 +1136,6 @@ export default function DashboardPage() {
                   );
                 })()}
               </div>
-            </div>
-
-            {/* Card Feed - Comunidad */}
-            <div className="mb-4 sm:mb-6">
-              <button
-                type="button"
-                onClick={() => router.push('/feed')}
-                className="w-full flex items-center gap-4 p-4 sm:p-5 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-white/10 shadow-sm hover:shadow-md hover:border-[#85ea10]/30 transition-all text-left group"
-              >
-                <div className="w-12 h-12 rounded-xl bg-[#85ea10]/20 flex items-center justify-center flex-shrink-0 group-hover:bg-[#85ea10]/30 transition-colors">
-                  <MessageCircle className="w-6 h-6 text-[#85ea10]" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h2 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
-                    Feed
-                  </h2>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Comunidad RogerBox — publica, comenta y da like
-                  </p>
-                </div>
-                <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-[#85ea10] flex-shrink-0" />
-              </button>
             </div>
           </div>
 

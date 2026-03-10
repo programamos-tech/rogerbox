@@ -2,12 +2,22 @@ import { type NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getSession } from '@/lib/supabase-server';
 
-function isAdmin(session: { user?: { id?: string; email?: string; user_metadata?: any } } | null): boolean {
+function isAdmin(
+  session: {
+    user?: { id?: string; email?: string; user_metadata?: any };
+  } | null,
+): boolean {
   if (!session?.user) return false;
   const u = session.user;
   const envId = (process.env.NEXT_PUBLIC_ADMIN_USER_ID || '').trim();
-  const envEmail = (process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'rogerbox@admin.com').trim().toLowerCase();
-  return !!(envId && u.id === envId) || (u.email?.toLowerCase() === envEmail) || u.user_metadata?.role === 'admin';
+  const envEmail = (process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'rogerbox@admin.com')
+    .trim()
+    .toLowerCase();
+  return (
+    !!(envId && u.id === envId) ||
+    u.email?.toLowerCase() === envEmail ||
+    u.user_metadata?.role === 'admin'
+  );
 }
 
 // GET - Obtener un usuario específico (admin: cualquier id; usuario: solo el propio)
@@ -25,7 +35,10 @@ export async function GET(
     const currentUserId = session.user?.id;
     const canAccessOther = isAdmin(session);
     if (currentUserId !== id && !canAccessOther) {
-      return NextResponse.json({ error: 'No tienes permiso para ver este usuario' }, { status: 403 });
+      return NextResponse.json(
+        { error: 'No tienes permiso para ver este usuario' },
+        { status: 403 },
+      );
     }
 
     // Intentar obtener desde profiles
@@ -321,7 +334,9 @@ export async function GET(
               .maybeSingle(),
             supabaseAdmin
               .from('course_purchases')
-              .select('id, is_active, purchase_price, access_granted_at, course:courses(title)')
+              .select(
+                'id, is_active, purchase_price, access_granted_at, course:courses(title)',
+              )
               .eq('user_id', client.user_id),
           ]);
           if (profileRes.data) profileData = profileRes.data;
@@ -415,7 +430,10 @@ export async function PUT(
     const currentUserId = session.user?.id;
     const canEditOther = isAdmin(session);
     if (currentUserId !== id && !canEditOther) {
-      return NextResponse.json({ error: 'No tienes permiso para editar este usuario' }, { status: 403 });
+      return NextResponse.json(
+        { error: 'No tienes permiso para editar este usuario' },
+        { status: 403 },
+      );
     }
 
     const body = await request.json();
@@ -465,6 +483,8 @@ export async function PUT(
       if (body.medical_restrictions !== undefined)
         updateData.medical_restrictions =
           body.medical_restrictions?.trim() || null;
+      if (body.avatar_url !== undefined)
+        updateData.avatar_url = body.avatar_url?.trim() || null;
 
       const { data, error } = await supabaseAdmin
         .from('profiles')

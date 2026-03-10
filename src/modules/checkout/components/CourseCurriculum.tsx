@@ -7,7 +7,7 @@ interface CourseCurriculumProps {
 
 export default function CourseCurriculum({ lessons }: CourseCurriculumProps) {
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-lg">
+    <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border border-gray-200 dark:border-gray-700">
       <h3 className="font-bold text-gray-900 dark:text-white mb-1">
         Contenido del programa
       </h3>
@@ -22,10 +22,10 @@ export default function CourseCurriculum({ lessons }: CourseCurriculumProps) {
           return (
             <div
               key={lesson.id}
-              className={`flex gap-3 p-3 rounded-lg border transition-all ${
+              className={`flex gap-3 p-3 rounded-xl border transition-all ${
                 isFirst
-                  ? 'bg-[#85ea10]/10 border-[#85ea10]/30'
-                  : 'bg-gray-50 dark:bg-gray-700/30 border-gray-200 dark:border-gray-600 opacity-60'
+                  ? 'bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600'
+                  : 'bg-gray-50/50 dark:bg-gray-700/30 border-gray-100 dark:border-gray-600/50 opacity-70'
               }`}
             >
               {/* Thumbnail */}

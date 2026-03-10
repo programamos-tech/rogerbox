@@ -42,15 +42,14 @@ export default function Onboarding({
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(0);
 
-  // Función para formatear el nombre
+  // Normalizar nombre completo: mantener todo el nombre, capitalizar cada palabra
   const formatName = (fullName: string) => {
     if (!fullName || fullName.trim() === '') return 'Usuario';
-
-    // Tomar solo el primer nombre
-    const firstName = fullName.trim().split(' ')[0];
-
-    // Convertir a camelCase: primera letra mayúscula, resto minúsculas
-    return firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
+    return fullName
+      .trim()
+      .split(/\s+/)
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
   };
 
   const [profile, setProfile] = useState<UserProfile>({
@@ -69,6 +68,9 @@ export default function Onboarding({
     string | null
   >(null);
   const [cedulaCheckLoading, setCedulaCheckLoading] = useState(false);
+  const [documentStepError, setDocumentStepError] = useState<string | null>(
+    null,
+  );
 
   const checkCedulaLinked = async () => {
     const doc = profile.document_id.trim().replace(/\D/g, '');
@@ -96,6 +98,14 @@ export default function Onboarding({
       setCedulaCheckLoading(false);
     }
   };
+
+  // Enfocar el input de documento al entrar o volver al paso 0
+  useEffect(() => {
+    if (currentStep === 0) {
+      const el = document.getElementById('document_id');
+      if (el && el instanceof HTMLInputElement) el.focus();
+    }
+  }, [currentStep]);
 
   // Calcular IMC según OMS
   const calculateBMI = (weight: number, height: number): number => {
@@ -188,7 +198,7 @@ export default function Onboarding({
 
   const steps = [
     {
-      title: '¿Cuál es tu número de cédula?',
+      title: 'Ingresa tu documento de identidad',
       icon: (
         <FileDigit className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-[#85ea10] flex-shrink-0 mx-auto" />
       ),
@@ -200,20 +210,26 @@ export default function Onboarding({
               type="text"
               inputMode="numeric"
               autoComplete="off"
-              placeholder=""
+              autoFocus
               value={profile.document_id}
               onChange={(e) => {
-                const value = e.target.value.replace(/\D/g, '');
+                const value = e.target.value.replace(/\D/g, '').slice(0, 10);
                 setProfile({ ...profile, document_id: value });
                 setCedulaAlreadyLinked(false);
                 setCedulaLinkedEmailMasked(null);
+                setDocumentStepError(null);
               }}
               onBlur={checkCedulaLinked}
-              className="w-full text-center text-4xl sm:text-5xl lg:text-6xl font-black text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-white/30 bg-transparent border-none focus:outline-none focus:ring-0 py-2 rounded-lg"
-              maxLength={12}
+              className="w-full text-center text-4xl sm:text-5xl lg:text-6xl font-black text-gray-900 dark:text-white bg-transparent border-none focus:outline-none focus:ring-0 py-2 rounded-lg"
+              maxLength={10}
               aria-label="Número de cédula"
             />
             <div className="w-full h-2 bg-gray-200 dark:bg-white/20 rounded-lg mt-1" />
+            {documentStepError && (
+              <p className="text-amber-600 dark:text-amber-400 text-xs sm:text-sm mt-2 font-medium">
+                {documentStepError}
+              </p>
+            )}
             {cedulaCheckLoading && (
               <p className="text-gray-500 dark:text-white/50 text-xs sm:text-sm mt-2">
                 Verificando...
@@ -227,7 +243,10 @@ export default function Onboarding({
                     <>
                       {' '}
                       Si es tuya, inicia sesión con{' '}
-                      <span className="underline">{cedulaLinkedEmailMasked}</span>.
+                      <span className="underline">
+                        {cedulaLinkedEmailMasked}
+                      </span>
+                      .
                     </>
                   ) : (
                     ' Si es tuya, inicia sesión con la cuenta que usaste al registrarte.'
@@ -249,13 +268,10 @@ export default function Onboarding({
             )}
             {!cedulaCheckLoading && !cedulaAlreadyLinked && (
               <p className="text-gray-600 dark:text-white/60 text-xs sm:text-sm mt-3">
-                Con tu cédula te vinculamos con RogerBox físico si ya eres cliente
+                Con tu documento de identidad te vinculamos con ROGERBOX sede
+                física si ya eres cliente
               </p>
             )}
-          </div>
-          <div className="flex justify-between text-gray-600 dark:text-white/60 text-xs sm:text-sm">
-            <span>Solo números</span>
-            <span>Sin guiones ni espacios</span>
           </div>
         </div>
       ),
@@ -606,13 +622,20 @@ export default function Onboarding({
     if (currentStep === 0) {
       const doc = profile.document_id.trim().replace(/\D/g, '');
       if (!doc) {
-        alert('Por favor ingresa tu número de cédula.');
+        setDocumentStepError('Por favor ingresa tu documento de identidad.');
         return;
       }
       if (doc.length < 9) {
-        alert('La cédula debe tener al menos 9 dígitos.');
+        setDocumentStepError(
+          'El documento debe tener al menos 9 dígitos. Máximo 10 dígitos.',
+        );
         return;
       }
+      if (doc.length > 10) {
+        setDocumentStepError('El documento no puede tener más de 10 dígitos.');
+        return;
+      }
+      setDocumentStepError(null);
       // Revalidar con la API al hacer Siguiente por si no hicieron blur
       if (!cedulaAlreadyLinked) {
         setCedulaCheckLoading(true);
@@ -634,10 +657,9 @@ export default function Onboarding({
         setCedulaCheckLoading(false);
       }
       if (cedulaAlreadyLinked) {
-        const msg = cedulaLinkedEmailMasked
-          ? `Esta cédula ya está vinculada a otra cuenta. Si es tuya, inicia sesión con ${cedulaLinkedEmailMasked}.`
-          : 'Esta cédula ya está vinculada a otra cuenta. Si es tuya, inicia sesión con la cuenta que usaste al registrarte.';
-        alert(`${msg} Si no tienes acceso a esa cuenta, contacta a soporte 3002061711 de RogerBox.`);
+        setDocumentStepError(
+          'Esta cédula ya está vinculada a otra cuenta. Si es tuya, inicia sesión con esa cuenta. Si no tienes acceso, contacta a soporte 3002061711 de RogerBox.',
+        );
         return;
       }
     }
@@ -690,18 +712,9 @@ export default function Onboarding({
         <div className="max-w-2xl w-full min-w-0">
           {/* Header - tamaños responsive para móviles pequeños */}
           <div className="text-center mb-3 sm:mb-4">
-            <h1 className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white mb-2">
+            <h1 className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white">
               ROGER<span className="text-[#85ea10]">BOX</span>
             </h1>
-            <div className="p-2.5 sm:p-3 bg-[#85ea10]/10 border border-[#85ea10]/30 rounded-lg">
-              <p className="text-[11px] sm:text-xs text-gray-700 dark:text-white/80 leading-snug">
-                <span className="font-semibold text-[#85ea10]">
-                  Importante:
-                </span>{' '}
-                Esta información es esencial para crear tu plan personalizado de
-                entrenamiento.
-              </p>
-            </div>
           </div>
 
           {/* Progress Bar */}

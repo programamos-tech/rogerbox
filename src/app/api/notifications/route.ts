@@ -90,10 +90,7 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
-    return NextResponse.json(
-      { error: 'Falta id o mark_all' },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: 'Falta id o mark_all' }, { status: 400 });
   } catch {
     return NextResponse.json(
       { error: 'Error al actualizar notificación' },

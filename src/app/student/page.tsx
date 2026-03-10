@@ -6,8 +6,12 @@ import {
   CheckCircle,
   Clock,
   Lock,
+  MessageCircle,
   Play,
+  Send,
+  Star,
   Sunrise,
+  ThumbsUp,
   XCircle,
 } from 'lucide-react';
 import Image from 'next/image';
@@ -44,6 +48,24 @@ function StudentPageContent() {
   const [completedLessonsList, setCompletedLessonsList] = useState<string[]>(
     [],
   );
+  const [lessonRating, setLessonRating] = useState<{
+    average_rating: number;
+    total_ratings: number;
+    user_rating: number | null;
+  }>({ average_rating: 0, total_ratings: 0, user_rating: null });
+  const [comments, setComments] = useState<
+    Array<{
+      id: string;
+      user_name: string;
+      user_avatar: string | null;
+      content: string;
+      created_at: string;
+      likes_count: number;
+      is_liked: boolean;
+    }>
+  >([]);
+  const [newComment, setNewComment] = useState('');
+  const [hoveredRating, setHoveredRating] = useState(0);
 
   // Detectar si viene con autoStart (desde el botón "Tomar Clase Ahora")
   const autoStart = searchParams?.get('autoStart') === 'true';
@@ -62,6 +84,177 @@ function StudentPageContent() {
       setCompletedLessonsList(effectivePurchase.completed_lessons);
     }
   }, [effectivePurchase?.completed_lessons]);
+
+  const loadLessonRating = useCallback(async (lessonId: string) => {
+    try {
+      const res = await fetch(`/api/lessons/${lessonId}/rating`);
+      if (res.ok) {
+        const data = await res.json();
+        setLessonRating({
+          average_rating: data.average_rating ?? 0,
+          total_ratings: data.total_ratings ?? 0,
+          user_rating: data.user_rating ?? null,
+        });
+      } else {
+        setLessonRating({
+          average_rating: 0,
+          total_ratings: 0,
+          user_rating: null,
+        });
+      }
+    } catch {
+      setLessonRating({
+        average_rating: 0,
+        total_ratings: 0,
+        user_rating: null,
+      });
+    }
+  }, []);
+
+  const loadComments = useCallback(async (lessonId: string) => {
+    try {
+      const { data: commentsData, error } = await supabase
+        .from('lesson_comments')
+        .select(
+          `
+          id,
+          content,
+          created_at,
+          likes_count,
+          is_liked,
+          profiles!inner(name, avatar_url)
+        `,
+        )
+        .eq('lesson_id', lessonId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        setComments([]);
+        return;
+      }
+      setComments(
+        (commentsData ?? []).map((c: any) => ({
+          id: c.id,
+          user_name: c.profiles?.name ?? 'Usuario',
+          user_avatar: c.profiles?.avatar_url ?? null,
+          content: c.content,
+          created_at: c.created_at,
+          likes_count: c.likes_count ?? 0,
+          is_liked: c.is_liked ?? false,
+        })),
+      );
+    } catch {
+      setComments([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (currentLesson?.id) {
+      loadLessonRating(currentLesson.id);
+      loadComments(currentLesson.id);
+    } else {
+      setLessonRating({
+        average_rating: 0,
+        total_ratings: 0,
+        user_rating: null,
+      });
+      setComments([]);
+    }
+  }, [currentLesson?.id, loadLessonRating, loadComments]);
+
+  const handleSetRating = useCallback(
+    async (rating: number) => {
+      if (!currentLesson?.id || !user?.id) return;
+      try {
+        const res = await fetch(`/api/lessons/${currentLesson.id}/rating`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ rating }),
+        });
+        if (res.ok && currentLesson?.id) {
+          loadLessonRating(currentLesson.id);
+        }
+      } catch {
+        /* ignore */
+      }
+    },
+    [currentLesson?.id, user?.id, loadLessonRating],
+  );
+
+  const formatTimeAgo = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInMinutes = Math.floor(
+      (now.getTime() - date.getTime()) / (1000 * 60),
+    );
+    if (diffInMinutes < 1) return 'Ahora mismo';
+    if (diffInMinutes < 60) return `Hace ${diffInMinutes} min`;
+    if (diffInMinutes < 1440) return `Hace ${Math.floor(diffInMinutes / 60)}h`;
+    return `Hace ${Math.floor(diffInMinutes / 1440)}d`;
+  };
+
+  const handleCommentSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newComment.trim() || !user?.id || !currentLesson?.id) return;
+    try {
+      const { data: newCommentData, error } = await supabase
+        .from('lesson_comments')
+        .insert({
+          lesson_id: currentLesson.id,
+          user_id: user.id,
+          content: newComment.trim(),
+          likes_count: 0,
+          is_liked: false,
+        })
+        .select(
+          `id, content, created_at, likes_count, is_liked, profiles!inner(name, avatar_url)`,
+        )
+        .single();
+
+      if (error) {
+        return;
+      }
+      setComments((prev) => [
+        {
+          id: newCommentData.id,
+          user_name: (newCommentData as any).profiles?.name ?? 'Usuario',
+          user_avatar: (newCommentData as any).profiles?.avatar_url ?? null,
+          content: newCommentData.content,
+          created_at: newCommentData.created_at,
+          likes_count: newCommentData.likes_count ?? 0,
+          is_liked: newCommentData.is_liked ?? false,
+        },
+        ...prev,
+      ]);
+      setNewComment('');
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const handleLikeComment = async (commentId: string) => {
+    const comment = comments.find((c) => c.id === commentId);
+    if (!comment) return;
+    const newLikeStatus = !comment.is_liked;
+    const newCount = newLikeStatus
+      ? comment.likes_count + 1
+      : comment.likes_count - 1;
+    try {
+      await supabase
+        .from('lesson_comments')
+        .update({ is_liked: newLikeStatus, likes_count: newCount })
+        .eq('id', commentId);
+      setComments((prev) =>
+        prev.map((c) =>
+          c.id === commentId
+            ? { ...c, likes_count: newCount, is_liked: newLikeStatus }
+            : c,
+        ),
+      );
+    } catch {
+      /* ignore */
+    }
+  };
 
   // Cargar perfil del usuario (de forma lazy, no bloquea la carga del curso)
   useEffect(() => {
@@ -773,13 +966,6 @@ function StudentPageContent() {
 
   // Solo mostrar "No tienes cursos" si realmente no hay compras después de esperar
   // También mostrar si no hay compras y las compras ya terminaron de cargar
-  console.log('effectivePurchase', effectivePurchase);
-  console.log('purchasesLoading', purchasesLoading);
-  console.log('showNoCourses', showNoCourses);
-  console.log('purchases', purchases);
-  console.log('purchases?.length', purchases?.length);
-  console.log('purchases?.length === 0', purchases?.length === 0);
-  console.log('!purchases', !purchases);
   if (
     !effectivePurchase &&
     !purchasesLoading &&
@@ -871,11 +1057,11 @@ function StudentPageContent() {
                   Tu navegador no soporta el elemento de video.
                 </video>
 
-                {/* Botón "Iniciar Clase Ahora" - Esquina inferior derecha */}
+                {/* Botón "Iniciar Clase Ahora" - Estilo marca */}
                 <div className="absolute bottom-3 right-3 sm:bottom-6 sm:right-6 z-10">
                   <button
                     onClick={handleStartLesson}
-                    className="bg-[#85ea10] hover:bg-[#7dd30f] text-black font-semibold px-3 py-2 sm:px-5 sm:py-2.5 rounded-lg shadow-lg flex items-center space-x-2 text-xs sm:text-sm transition-all duration-300 hover:scale-105"
+                    className="bg-gray-900 hover:bg-gray-800 text-white font-semibold px-3 py-2 sm:px-5 sm:py-2.5 rounded-xl border border-gray-600 shadow-sm flex items-center space-x-2 text-xs sm:text-sm transition-all duration-200 hover:border-[#85ea10]/50"
                   >
                     <Play className="w-3 h-3 sm:w-4 sm:h-4" />
                     <span className="hidden sm:inline">
@@ -927,11 +1113,11 @@ function StudentPageContent() {
                   );
                 })()}
 
-                {/* Botón "Iniciar Clase Ahora" - Esquina inferior derecha */}
+                {/* Botón "Iniciar Clase Ahora" - Estilo marca */}
                 <div className="absolute bottom-3 right-3 sm:bottom-6 sm:right-6 z-10">
                   <button
                     onClick={handleStartLesson}
-                    className="bg-[#85ea10] hover:bg-[#7dd30f] text-black font-semibold px-3 py-2 sm:px-5 sm:py-2.5 rounded-lg shadow-lg flex items-center space-x-2 text-xs sm:text-sm transition-all duration-300 hover:scale-105"
+                    className="bg-gray-900 hover:bg-gray-800 text-white font-semibold px-3 py-2 sm:px-5 sm:py-2.5 rounded-xl border border-gray-600 shadow-sm flex items-center space-x-2 text-xs sm:text-sm transition-all duration-200 hover:border-[#85ea10]/50"
                   >
                     <Play className="w-3 h-3 sm:w-4 sm:h-4" />
                     <span className="hidden sm:inline">
@@ -1019,29 +1205,147 @@ function StudentPageContent() {
               </div>
             )}
 
-            {/* Nombre y Descripción de la Clase - Siempre visible cuando hay una clase */}
+            {/* Nombre, descripción, valoración y comentarios - Estilo marca */}
             {currentLesson && (
-              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 sm:p-6">
-                <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-3 sm:mb-4 line-clamp-2 sm:line-clamp-none">
-                  {currentLesson.title}
-                </h1>
-                {currentLesson.description ? (
-                  <p className="text-sm sm:text-base md:text-lg text-gray-700 dark:text-gray-300 leading-relaxed line-clamp-3 sm:line-clamp-none">
-                    {currentLesson.description}
-                  </p>
-                ) : (
-                  <p className="text-sm sm:text-base md:text-lg text-gray-500 dark:text-gray-400 italic line-clamp-3 sm:line-clamp-none">
-                    No hay descripción disponible para esta clase.
-                  </p>
-                )}
-                {currentLesson.duration_minutes && (
-                  <div className="flex items-center space-x-2 mt-3 sm:mt-4 text-gray-600 dark:text-gray-400">
-                    <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
-                    <span className="font-medium">
-                      {currentLesson.duration_minutes} minutos
-                    </span>
+              <div className="space-y-4 sm:space-y-6">
+                <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 sm:p-6">
+                  <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-3 sm:mb-4 line-clamp-2 sm:line-clamp-none">
+                    {currentLesson.title}
+                  </h1>
+                  {currentLesson.description ? (
+                    <p className="text-sm sm:text-base md:text-lg text-gray-700 dark:text-gray-300 leading-relaxed line-clamp-3 sm:line-clamp-none">
+                      {currentLesson.description}
+                    </p>
+                  ) : (
+                    <p className="text-sm sm:text-base md:text-lg text-gray-500 dark:text-gray-400 italic line-clamp-3 sm:line-clamp-none">
+                      No hay descripción disponible para esta clase.
+                    </p>
+                  )}
+                  <div className="flex flex-wrap items-center gap-4 mt-3 sm:mt-4">
+                    {currentLesson.duration_minutes && (
+                      <div className="flex items-center space-x-2 text-gray-600 dark:text-gray-400">
+                        <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
+                        <span className="font-medium">
+                          {currentLesson.duration_minutes} minutos
+                        </span>
+                      </div>
+                    )}
+                    {/* Valoración de la clase */}
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="flex items-center gap-0.5"
+                        role="group"
+                        aria-label="Valorar clase"
+                      >
+                        {[1, 2, 3, 4, 5].map((star) => {
+                          const value =
+                            hoveredRating ||
+                            lessonRating.user_rating ||
+                            lessonRating.average_rating;
+                          const filled = star <= Math.round(value);
+                          return (
+                            <button
+                              key={star}
+                              type="button"
+                              onClick={() => handleSetRating(star)}
+                              onMouseEnter={() => setHoveredRating(star)}
+                              onMouseLeave={() => setHoveredRating(0)}
+                              className="p-0.5 rounded focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-1"
+                            >
+                              <Star
+                                className={`w-5 h-5 sm:w-6 sm:h-6 ${
+                                  filled
+                                    ? 'text-amber-500 fill-amber-500'
+                                    : 'text-gray-300 dark:text-gray-500'
+                                }`}
+                              />
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <span className="text-sm text-gray-500 dark:text-gray-400">
+                        {lessonRating.average_rating > 0
+                          ? `${lessonRating.average_rating} (${lessonRating.total_ratings} ${lessonRating.total_ratings === 1 ? 'valoración' : 'valoraciones'})`
+                          : 'Sin valoraciones'}
+                      </span>
+                    </div>
                   </div>
-                )}
+                </div>
+
+                {/* Comentarios de la clase */}
+                <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 sm:p-6">
+                  <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                    <MessageCircle className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                    Comentarios ({comments.length})
+                  </h3>
+                  <form onSubmit={handleCommentSubmit} className="mb-4">
+                    <div className="flex gap-2">
+                      <textarea
+                        value={newComment}
+                        onChange={(e) => setNewComment(e.target.value)}
+                        placeholder="Escribe tu comentario sobre la clase..."
+                        className="flex-1 px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 resize-none text-sm focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent"
+                        rows={2}
+                      />
+                      <button
+                        type="submit"
+                        disabled={!newComment.trim()}
+                        className={`px-3 py-2 rounded-xl font-medium transition-colors shrink-0 ${
+                          newComment.trim()
+                            ? 'bg-gray-900 hover:bg-gray-800 text-white border border-gray-600'
+                            : 'bg-gray-100 dark:bg-gray-700 text-gray-400 cursor-not-allowed border border-transparent'
+                        }`}
+                      >
+                        <Send className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </form>
+                  <div className="space-y-3 max-h-80 overflow-y-auto">
+                    {comments.length === 0 ? (
+                      <p className="text-sm text-gray-500 dark:text-gray-400 py-4">
+                        Aún no hay comentarios. ¡Sé el primero en comentar!
+                      </p>
+                    ) : (
+                      comments.map((comment) => (
+                        <div
+                          key={comment.id}
+                          className="border-b border-gray-100 dark:border-gray-700 pb-3 last:border-b-0 last:pb-0"
+                        >
+                          <div className="flex items-start gap-2">
+                            <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-gray-700 dark:text-gray-300 font-medium text-sm shrink-0">
+                              {comment.user_name.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-0.5">
+                                <span className="font-medium text-gray-900 dark:text-white text-sm">
+                                  {comment.user_name}
+                                </span>
+                                <span className="text-xs text-gray-500 dark:text-gray-400">
+                                  {formatTimeAgo(comment.created_at)}
+                                </span>
+                              </div>
+                              <p className="text-gray-700 dark:text-gray-300 text-sm mb-1">
+                                {comment.content}
+                              </p>
+                              <button
+                                type="button"
+                                onClick={() => handleLikeComment(comment.id)}
+                                className={`flex items-center gap-1 text-xs transition-colors ${
+                                  comment.is_liked
+                                    ? 'text-gray-700 dark:text-gray-300'
+                                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                                }`}
+                              >
+                                <ThumbsUp className="w-3 h-3" />
+                                <span>{comment.likes_count}</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
               </div>
             )}
 
@@ -1060,9 +1364,9 @@ function StudentPageContent() {
             )}
           </div>
 
-          {/* Sidebar - Lista de Clases (YouTube Style) */}
+          {/* Sidebar - Lista de Clases - Estilo marca */}
           <div className="lg:col-span-1">
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 sm:p-6 sticky top-20 sm:top-8">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 sm:p-6 sticky top-20 sm:top-8">
               <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-3 sm:mb-4">
                 Clases del Curso
               </h2>
@@ -1117,14 +1421,14 @@ function StudentPageContent() {
                                 }
                               }
                             }}
-                            className={`p-2.5 sm:p-3 rounded-xl transition-all relative ${
+                            className={`p-2.5 sm:p-3 rounded-2xl transition-all relative border ${
                               lessonStatus.status === 'completed'
-                                ? 'bg-white dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700/50 cursor-not-allowed hover:border-gray-200 dark:hover:border-gray-600'
+                                ? 'bg-white dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 cursor-not-allowed hover:border-gray-200 dark:hover:border-gray-600'
                                 : isCurrent
-                                  ? 'bg-[#85ea10]/5 border border-[#85ea10]/30 cursor-pointer hover:bg-[#85ea10]/10'
+                                  ? 'bg-gray-50 dark:bg-gray-700/50 border-[#85ea10]/40 cursor-pointer hover:border-[#85ea10]/50'
                                   : lessonStatus.status === 'available'
-                                    ? 'bg-white dark:bg-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800 border border-gray-200 dark:border-gray-700 cursor-pointer'
-                                    : 'bg-white/50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-700/30 opacity-50 cursor-not-allowed'
+                                    ? 'bg-white dark:bg-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800 border-gray-200 dark:border-gray-700 cursor-pointer'
+                                    : 'bg-white/50 dark:bg-gray-800/30 border-gray-200 dark:border-gray-700 opacity-60 cursor-not-allowed'
                             }`}
                           >
                             {/* Check visible para clases completadas - ultra sutil */}

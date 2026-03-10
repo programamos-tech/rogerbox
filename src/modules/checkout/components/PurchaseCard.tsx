@@ -73,31 +73,31 @@ export default function PurchaseCard({
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-lg border-2 border-[#85ea10]/20">
-      {/* Cómo funciona - arriba */}
-      <div className="mb-4 p-3 bg-[#85ea10]/10 rounded-lg border border-[#85ea10]/30">
-        <p className="text-sm font-bold text-[#85ea10] mb-1">
-          💪 ¿Cómo funciona?
+    <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-200 dark:border-gray-700">
+      {/* Cómo funciona - estilo landing */}
+      <div className="mb-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-100 dark:border-gray-600/50">
+        <p className="text-sm font-semibold text-gray-900 dark:text-white mb-1">
+          ¿Cómo funciona?
         </p>
-        <p className="text-xs text-gray-600 dark:text-gray-300">
+        <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
           Al comprar, eliges cuándo empezar. Cada día se desbloquea una nueva
           clase. ¡Mantén la constancia!
         </p>
       </div>
 
-      {/* Precios - horizontal */}
+      {/* Precios */}
       <div className="mb-4">
-        <div className="flex items-center justify-center gap-3">
+        <div className="flex items-center justify-center gap-3 flex-wrap">
           {discountPercentage > 0 && (
             <span className="text-lg text-gray-400 line-through">
               ${originalPrice?.toLocaleString('es-CO')}
             </span>
           )}
-          <span className="text-3xl font-bold text-gray-900 dark:text-white">
+          <span className="text-2xl font-bold text-gray-900 dark:text-white">
             ${finalPrice?.toLocaleString('es-CO')}
           </span>
           {discountPercentage > 0 && (
-            <span className="bg-[#85ea10] text-black text-xs font-bold px-2 py-0.5 rounded-full">
+            <span className="text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-md">
               -{discountPercentage}%
             </span>
           )}
@@ -110,32 +110,32 @@ export default function PurchaseCard({
       <button
         onClick={handlePurchase}
         disabled={isEnrolled || isProcessing}
-        className={`w-full py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 transition-all ${
+        className={`w-full py-3.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all ${
           isEnrolled || isProcessing
-            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-            : 'bg-[#85ea10] hover:bg-[#7dd30f] text-black shadow-lg hover:shadow-xl hover:scale-[1.02]'
+            ? 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
+            : 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 border-2 border-gray-900 dark:border-white border-l-[#85ea10] dark:border-l-[#85ea10]'
         }`}
       >
-        <ShoppingCart className="w-5 h-5" />
+        <ShoppingCart className="w-4 h-4" />
         {isProcessing
           ? 'Procesando...'
           : isEnrolled
             ? 'Ya tienes acceso'
-            : '¡COMPRAR AHORA!'}
+            : 'Comprar ahora'}
       </button>
 
-      {/* Info de pago - horizontal */}
-      <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 flex flex-wrap items-center justify-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+      {/* Info de pago */}
+      <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 flex flex-wrap items-center justify-center gap-3 text-xs text-gray-500 dark:text-gray-400">
         <span className="flex items-center gap-1">
-          <Shield className="w-3 h-3 text-[#85ea10]" />
+          <Shield className="w-3 h-3 text-gray-400" />
           Seguro
         </span>
         <span className="flex items-center gap-1">
-          <CheckCircle className="w-3 h-3 text-[#85ea10]" />
+          <CheckCircle className="w-3 h-3 text-gray-400" />
           Inmediato
         </span>
         <span className="flex items-center gap-1">
-          <CreditCard className="w-3 h-3 text-[#85ea10]" />
+          <CreditCard className="w-3 h-3 text-gray-400" />
           Nequi/PSE
         </span>
       </div>
