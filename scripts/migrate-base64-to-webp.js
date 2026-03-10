@@ -1,14 +1,14 @@
 /**
  * Script para migrar imágenes Base64 a WebP en Supabase Storage
- * 
+ *
  * Este script:
  * 1. Encuentra todas las imágenes Base64 en cursos y lecciones
  * 2. Las convierte a formato WebP usando Sharp
  * 3. Las sube a Supabase Storage
  * 4. Actualiza las URLs en la base de datos
- * 
+ *
  * Uso: node scripts/migrate-base64-to-webp.js
- * 
+ *
  * Requisitos:
  * - npm install sharp
  * - Variables de entorno: NEXT_PUBLIC_SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY
@@ -25,13 +25,16 @@ require('dotenv').config();
 
 // Configuración de Supabase
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 
-                    process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY ||
-                    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const supabaseKey =
+  process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY ||
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
   console.error('❌ Error: Variables de entorno faltantes');
-  console.error('Necesitas NEXT_PUBLIC_SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY');
+  console.error(
+    'Necesitas NEXT_PUBLIC_SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY',
+  );
   process.exit(1);
 }
 
@@ -44,11 +47,9 @@ async function base64ToWebP(base64String, outputPath) {
   // Remover el prefijo data:image/xxx;base64,
   const base64Data = base64String.replace(/^data:image\/\w+;base64,/, '');
   const buffer = Buffer.from(base64Data, 'base64');
-  
+
   // Convertir a WebP con Sharp
-  await sharp(buffer)
-    .webp({ quality: 85 })
-    .toFile(outputPath);
+  await sharp(buffer).webp({ quality: 85 }).toFile(outputPath);
 }
 
 /**
@@ -56,14 +57,14 @@ async function base64ToWebP(base64String, outputPath) {
  */
 async function uploadToStorage(filePath, bucket, storagePath) {
   const fileBuffer = fs.readFileSync(filePath);
-  
+
   // Subir archivo
   const { data, error } = await supabase.storage
     .from(bucket)
     .upload(storagePath, fileBuffer, {
       contentType: 'image/webp',
       cacheControl: '31536000',
-      upsert: true
+      upsert: true,
     });
 
   if (error) {
@@ -71,9 +72,9 @@ async function uploadToStorage(filePath, bucket, storagePath) {
   }
 
   // Obtener URL pública
-  const { data: { publicUrl } } = supabase.storage
-    .from(bucket)
-    .getPublicUrl(storagePath);
+  const {
+    data: { publicUrl },
+  } = supabase.storage.from(bucket).getPublicUrl(storagePath);
 
   return publicUrl;
 }
@@ -99,12 +100,15 @@ async function migrateCourses() {
   }
 
   // Filtrar solo los que tienen Base64
-  const coursesWithBase64 = courses.filter(course => 
-    (course.preview_image && course.preview_image.startsWith('data:image')) ||
-    (course.thumbnail_url && course.thumbnail_url.startsWith('data:image'))
+  const coursesWithBase64 = courses.filter(
+    (course) =>
+      (course.preview_image && course.preview_image.startsWith('data:image')) ||
+      (course.thumbnail_url && course.thumbnail_url.startsWith('data:image')),
   );
 
-  console.log(`📊 Encontrados ${coursesWithBase64.length} cursos con imágenes Base64\n`);
+  console.log(
+    `📊 Encontrados ${coursesWithBase64.length} cursos con imágenes Base64\n`,
+  );
 
   if (coursesWithBase64.length === 0) {
     console.log('✅ No hay cursos con imágenes Base64 para migrar');
@@ -121,7 +125,9 @@ async function migrateCourses() {
 
   for (const course of coursesWithBase64) {
     try {
-      console.log(`🔄 Procesando: ${course.title?.substring(0, 50) || course.id}...`);
+      console.log(
+        `🔄 Procesando: ${course.title?.substring(0, 50) || course.id}...`,
+      );
 
       // Determinar qué campo tiene la imagen Base64 (priorizar preview_image)
       let base64Image = null;
@@ -151,7 +157,11 @@ async function migrateCourses() {
 
       // Subir a Storage
       const storagePath = `courses/${course.id}.webp`;
-      const publicUrl = await uploadToStorage(tempWebPPath, 'course-images', storagePath);
+      const publicUrl = await uploadToStorage(
+        tempWebPPath,
+        'course-images',
+        storagePath,
+      );
 
       // Actualizar en la base de datos
       const { error: updateError } = await supabase
@@ -168,7 +178,6 @@ async function migrateCourses() {
 
       console.log(`✅ Migrado (${reduction}% reducción): ${publicUrl}`);
       successCount++;
-
     } catch (error) {
       console.error(`❌ Error procesando curso ${course.id}:`, error.message);
       errorCount++;
@@ -206,11 +215,14 @@ async function migrateLessons() {
   }
 
   // Filtrar solo las que tienen Base64
-  const lessonsWithBase64 = lessons.filter(lesson =>
-    (lesson.preview_image && lesson.preview_image.startsWith('data:image'))
+  const lessonsWithBase64 = lessons.filter(
+    (lesson) =>
+      lesson.preview_image && lesson.preview_image.startsWith('data:image'),
   );
 
-  console.log(`📊 Encontradas ${lessonsWithBase64.length} lecciones con imágenes Base64\n`);
+  console.log(
+    `📊 Encontradas ${lessonsWithBase64.length} lecciones con imágenes Base64\n`,
+  );
 
   if (lessonsWithBase64.length === 0) {
     console.log('✅ No hay lecciones con imágenes Base64 para migrar');
@@ -227,7 +239,9 @@ async function migrateLessons() {
 
   for (const lesson of lessonsWithBase64) {
     try {
-      console.log(`🔄 Procesando: ${lesson.title?.substring(0, 50) || lesson.id}...`);
+      console.log(
+        `🔄 Procesando: ${lesson.title?.substring(0, 50) || lesson.id}...`,
+      );
 
       // Determinar qué campo tiene la imagen Base64
       let base64Image = null;
@@ -254,7 +268,11 @@ async function migrateLessons() {
 
       // Subir a Storage
       const storagePath = `lessons/${lesson.id}.webp`;
-      const publicUrl = await uploadToStorage(tempWebPPath, 'lesson-images', storagePath);
+      const publicUrl = await uploadToStorage(
+        tempWebPPath,
+        'lesson-images',
+        storagePath,
+      );
 
       // Actualizar en la base de datos
       const { error: updateError } = await supabase
@@ -271,7 +289,6 @@ async function migrateLessons() {
 
       console.log(`✅ Migrado (${reduction}% reducción): ${publicUrl}`);
       successCount++;
-
     } catch (error) {
       console.error(`❌ Error procesando lección ${lesson.id}:`, error.message);
       errorCount++;
@@ -298,14 +315,14 @@ async function main() {
   try {
     // Verificar que los buckets existan
     const { data: buckets } = await supabase.storage.listBuckets();
-    const bucketNames = buckets?.map(b => b.name) || [];
+    const bucketNames = buckets?.map((b) => b.name) || [];
 
     if (!bucketNames.includes('course-images')) {
       console.log('📦 Creando bucket course-images...');
       const { error } = await supabase.storage.createBucket('course-images', {
         public: true,
         allowedMimeTypes: ['image/webp'],
-        fileSizeLimit: 5242880 // 5MB
+        fileSizeLimit: 5242880, // 5MB
       });
       if (error) {
         console.error('❌ Error creando bucket:', error.message);
@@ -319,7 +336,7 @@ async function main() {
       const { error } = await supabase.storage.createBucket('lesson-images', {
         public: true,
         allowedMimeTypes: ['image/webp'],
-        fileSizeLimit: 5242880 // 5MB
+        fileSizeLimit: 5242880, // 5MB
       });
       if (error) {
         console.error('❌ Error creando bucket:', error.message);
@@ -335,9 +352,10 @@ async function main() {
     await migrateLessons();
 
     console.log('\n🎉 ¡Migración completada!');
-    console.log('\n💡 Las imágenes ahora están en Supabase Storage en formato WebP');
+    console.log(
+      '\n💡 Las imágenes ahora están en Supabase Storage en formato WebP',
+    );
     console.log('💡 La carga de la página debería ser mucho más rápida ahora');
-
   } catch (error) {
     console.error('\n❌ Error fatal:', error);
     process.exit(1);
@@ -346,4 +364,3 @@ async function main() {
 
 // Ejecutar
 main();
-

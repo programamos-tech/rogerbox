@@ -1,48 +1,30 @@
 'use client';
 
-import { setRecoverySession } from '@auth/resetPassword/services/recovery-session.service.';
-import { useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabase';
 
 export function useRecoverySession() {
-  const params = useSearchParams();
   const [valid, setValid] = useState<boolean | null>(null);
 
   useEffect(() => {
-    function getTokens() {
-      let access = params.get('access_token');
-      let refresh = params.get('refresh_token');
+    async function checkSession() {
+      const { data } = await supabase.auth.getSession();
 
-      if (!access || !refresh) {
-        const hash = window.location.hash;
+      const session = data.session;
 
-        if (hash) {
-          const hashParams = new URLSearchParams(hash.substring(1));
-          access = hashParams.get('access_token');
-          refresh = hashParams.get('refresh_token');
-        }
-      }
-
-      return { access, refresh };
-    }
-
-    async function init() {
-      const { access, refresh } = getTokens();
-
-      if (!access || !refresh) {
+      if (!session) {
         setValid(false);
         return;
       }
 
-      await setRecoverySession(access, refresh);
+      const isRecovery =
+        session.user?.aud === 'authenticated' && session.user?.recovery_sent_at;
 
-      window.history.replaceState({}, document.title, window.location.pathname);
-
-      setValid(true);
+      setValid(!!isRecovery);
     }
 
-    init();
-  }, [params]);
+    checkSession();
+  }, []);
 
   return valid;
 }

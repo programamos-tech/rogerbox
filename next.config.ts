@@ -1,47 +1,46 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-
   images: {
     remotePatterns: [
       {
-        protocol: "https",
-        hostname: "**.supabase.co",
-        pathname: "/storage/v1/object/public/**",
+        protocol: 'https',
+        hostname: '**.supabase.co',
+        pathname: '/storage/v1/object/public/**',
       },
       {
-        protocol: "https",
-        hostname: "**.supabase.in",
-        pathname: "/storage/v1/object/public/**",
+        protocol: 'https',
+        hostname: '**.supabase.in',
+        pathname: '/storage/v1/object/public/**',
       },
       {
-        protocol: "https",
-        hostname: "img.youtube.com",
+        protocol: 'https',
+        hostname: 'img.youtube.com',
       },
       {
-        protocol: "https",
-        hostname: "i.ytimg.com",
+        protocol: 'https',
+        hostname: 'i.ytimg.com',
       },
       {
         protocol: "http",
         hostname: "127.0.0.1",
       },
     ],
-    formats: ["image/avif", "image/webp"],
+    formats: ['image/avif', 'image/webp'],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
     minimumCacheTTL: 60,
   },
 
   experimental: {
-    optimizePackageImports: ["@supabase/supabase-js", "@supabase/ssr"],
+    optimizePackageImports: ['@supabase/supabase-js', '@supabase/ssr'],
   },
-  
+
   // compiler: {
   //   removeConsole: true,
   // },
 
-  transpilePackages: ["pako", "fast-png"],
+  transpilePackages: ['pako', 'fast-png'],
 };
 
 export default nextConfig;

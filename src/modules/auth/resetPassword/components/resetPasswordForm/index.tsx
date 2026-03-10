@@ -1,8 +1,9 @@
 'use client';
 
+import PasswordField from '@auth/resetPassword/components/passwordField';
+import RecoveryWrapper from '@auth/resetPassword/components/wrapper';
+import { useResetPassword } from '@auth/resetPassword/hooks/useSetPAssword';
 import { useState } from 'react';
-import { useResetPassword } from '../../hooks/useSetPAssword';
-import PasswordField from '../passwordField';
 import { className as styles } from './styles';
 
 function ResetPasswordForm() {
@@ -12,40 +13,52 @@ function ResetPasswordForm() {
 
   if (success) {
     return (
-      <div className={styles.successContainer}>
-        Contraseña actualizada correctamente.
-      </div>
+      <RecoveryWrapper>
+        <h1 className={styles.title}>Contraseña actualizada</h1>
+
+        <p className={styles.successText}>
+          Tu contraseña fue cambiada correctamente.
+        </p>
+
+        <a href="/" className={styles.submitButton}>
+          Ir al inicio
+        </a>
+      </RecoveryWrapper>
     );
   }
 
   return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        reset(password, confirm);
-      }}
-      className={styles.form}
-    >
-      <PasswordField
-        label="Nueva contraseña"
-        value={password}
-        onChange={setPassword}
-        disabled={loading}
-      />
+    <RecoveryWrapper>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          reset(password, confirm);
+        }}
+        className={styles.form}
+      >
+        <h1 className={styles.title}>Crear nueva contraseña</h1>
 
-      <PasswordField
-        label="Confirmar contraseña"
-        value={confirm}
-        onChange={setConfirm}
-        disabled={loading}
-      />
+        <PasswordField
+          label="Nueva contraseña"
+          value={password}
+          onChange={setPassword}
+          disabled={loading}
+        />
 
-      {error && <p className={styles.errorText}>{error}</p>}
+        <PasswordField
+          label="Confirmar contraseña"
+          value={confirm}
+          onChange={setConfirm}
+          disabled={loading}
+        />
 
-      <button disabled={loading} className={styles.submitButton}>
-        {loading ? 'Actualizando...' : 'Actualizar contraseña'}
-      </button>
-    </form>
+        {error && <p className={styles.errorText}>{error}</p>}
+
+        <button disabled={loading} className={styles.submitButton}>
+          {loading ? 'Actualizando...' : 'Actualizar contraseña'}
+        </button>
+      </form>
+    </RecoveryWrapper>
   );
 }
 
