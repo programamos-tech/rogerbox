@@ -329,6 +329,7 @@ export interface UserDetailContentProps {
   setShowDeleteModal?: (v: boolean) => void;
   handleDelete?: () => void;
   deleteError?: string;
+  setDeleteError?: (value: string) => void;
   isDeleting?: boolean;
   showCancelMembershipModal?: boolean;
   setShowCancelMembershipModal?: (v: boolean) => void;
@@ -369,6 +370,7 @@ export function UserDetailContent({
   setShowDeleteModal = () => {},
   handleDelete = () => {},
   deleteError = '',
+  setDeleteError = () => {},
   isDeleting = false,
   showCancelMembershipModal = false,
   setShowCancelMembershipModal = () => {},

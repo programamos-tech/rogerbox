@@ -278,7 +278,7 @@ export default function CourseStartDateModal({
                   <button
                     key={day.toISOString()}
                     type="button"
-                    disabled={isDisabled}
+                    disabled={isDisabled === true}
                     onClick={() => {
                       if (isDisabled) return;
                       setSelectedDate(format(day, 'yyyy-MM-dd'));

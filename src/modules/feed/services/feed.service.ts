@@ -1,6 +1,6 @@
 import type { FeedComment, FeedPost } from '../types';
 
-const getAuthHeaders = () => {
+const getAuthHeaders = (): Record<string, string> => {
   if (typeof window === 'undefined') return {};
   // Session is cookie-based; fetch will send cookies with credentials
   return { 'Content-Type': 'application/json' };

@@ -784,6 +784,7 @@ export default function UserDetailPage() {
           setShowDeleteModal={setShowDeleteModal}
           handleDelete={handleDelete}
           deleteError={deleteError}
+          setDeleteError={setDeleteError}
           isDeleting={isDeleting}
           showCancelMembershipModal={showCancelMembershipModal}
           setShowCancelMembershipModal={setShowCancelMembershipModal}
