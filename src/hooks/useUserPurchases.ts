@@ -29,6 +29,8 @@ interface UserPurchase {
   is_active: boolean;
   start_date?: string;
   completed_lessons: string[];
+  /** Fecha (ISO) del día en que se completó la última lección; solo si el curso está 100% completado */
+  course_completed_at: string | null;
   course: Course | null;
 }
 
@@ -85,10 +87,26 @@ export const useUserPurchases = (): UseUserPurchasesReturn => {
         `)
         .in('id', courseIds);
 
-      const { data: completionsData } = await supabase
-        .from('user_lesson_completions')
-        .select('lesson_id, course_id')
-        .eq('user_id', user.id);
+      // Obtener completaciones vía API (incluye completed_at para saber el día de finalización)
+      type CompletionRow = {
+        lesson_id: string;
+        course_id: string;
+        completed_at?: string;
+      };
+      let completionsData: CompletionRow[] = [];
+      try {
+        const res = await fetch('/api/lessons/complete', {
+          credentials: 'include',
+        });
+        if (res.ok) {
+          const json = await res.json();
+          completionsData = Array.isArray(json.completions)
+            ? json.completions
+            : [];
+        }
+      } catch {
+        // Si falla la API, seguimos con completionsData vacío
+      }
 
       const purchasesWithCourses: UserPurchase[] = purchasesData.map(
         (purchase) => {
@@ -96,12 +114,28 @@ export const useUserPurchases = (): UseUserPurchasesReturn => {
             coursesData?.find(
               (c) => String(c.id) === String(purchase.course_id),
             ) || null;
-          const completedLessonIds =
-            completionsData
-              ?.filter(
-                (c) => String(c.course_id) === String(purchase.course_id),
-              )
-              .map((c) => c.lesson_id) || [];
+          const courseCompletions = completionsData.filter(
+            (c) => String(c.course_id) === String(purchase.course_id),
+          );
+          const completedLessonIds = courseCompletions.map((c) => c.lesson_id);
+          const lessons = (course as any)?.lessons ?? [];
+          const isFullyCompleted =
+            lessons.length > 0 &&
+            lessons.every((l: { id: string }) =>
+              completedLessonIds.includes(l.id),
+            );
+          const courseCompletedAt =
+            isFullyCompleted && courseCompletions.length > 0
+              ? courseCompletions.reduce<string | null>(
+                  (max, c) =>
+                    !c.completed_at
+                      ? max
+                      : max == null || c.completed_at > max
+                        ? c.completed_at
+                        : max,
+                  null,
+                )
+              : null;
 
           return {
             id: purchase.id,
@@ -112,6 +146,7 @@ export const useUserPurchases = (): UseUserPurchasesReturn => {
             start_date:
               purchase.start_date || purchase.created_at?.split('T')[0] || null,
             completed_lessons: completedLessonIds,
+            course_completed_at: courseCompletedAt || null,
             course,
           };
         },

@@ -13,7 +13,7 @@ export async function GET() {
     if (error) throw error;
 
     return NextResponse.json({ banners });
-  } catch (error) {
+  } catch (_error) {
     return NextResponse.json(
       { error: 'Error al obtener banners' },
       { status: 500 },
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
     if (error) throw error;
 
     return NextResponse.json({ banner: data });
-  } catch (error) {
+  } catch (_error) {
     return NextResponse.json(
       { error: 'Error al crear banner' },
       { status: 500 },

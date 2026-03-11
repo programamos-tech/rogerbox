@@ -3,6 +3,7 @@
 import {
   Award,
   BookOpen,
+  CheckCircle,
   ChefHat,
   ChevronLeft,
   ChevronRight,
@@ -51,6 +52,7 @@ import {
   generateGoalSuggestion,
 } from '@/lib/goalSuggestion';
 import { supabase } from '@/lib/supabase-browser';
+import { ShareCourseToFeedButton } from '@/shared/components/ShareCourseToFeedButton';
 
 interface UserProfile {
   id: string;
@@ -966,9 +968,28 @@ export default function DashboardPage() {
                   if (!purchase) return null;
 
                   // Debug: Verificar datos del purchase
+                  // Verificar si el curso está 100% completado
+                  const lessons = purchase.course?.lessons ?? [];
+                  const completedIds = purchase.completed_lessons ?? [];
+                  const isCourseFullyCompleted =
+                    lessons.length > 0 &&
+                    lessons.every((l: { id: string }) =>
+                      completedIds.includes(l.id),
+                    );
+                  const completionDate = (purchase as any).course_completed_at
+                    ? new Date((purchase as any).course_completed_at)
+                    : null;
+                  const today = new Date();
+                  const isCompletionDayToday =
+                    completionDate &&
+                    completionDate.getFullYear() === today.getFullYear() &&
+                    completionDate.getMonth() === today.getMonth() &&
+                    completionDate.getDate() === today.getDate();
+
                   // Verificar si hay clase disponible hoy
                   const hasAvailableClass = (() => {
-                    if (!purchase.start_date) return false;
+                    if (!purchase.start_date || isCourseFullyCompleted)
+                      return false;
                     const startDate = new Date(purchase.start_date);
                     const today = new Date();
                     today.setHours(0, 0, 0, 0);
@@ -1007,7 +1028,53 @@ export default function DashboardPage() {
                       key={purchase.id}
                       className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden mx-4 sm:mx-6 lg:mx-8"
                     >
-                      {hasAvailableClass ? (
+                      {isCourseFullyCompleted && isCompletionDayToday ? (
+                        /* Curso finalizado - alerta solo el último día de finalización */
+                        <div className="relative w-full rounded-2xl overflow-hidden bg-[#85ea10]/10 dark:bg-[#85ea10]/15 border border-[#85ea10]/40">
+                          <div className="relative z-10 p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+                            <div className="flex-1 min-w-0 flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-[#85ea10]/30 flex items-center justify-center shrink-0">
+                                <CheckCircle className="w-5 h-5 text-[#85ea10]" />
+                              </div>
+                              <div>
+                                <div className="inline-flex items-center gap-1.5 text-[#85ea10] font-bold text-[10px] uppercase tracking-wide mb-0.5">
+                                  Curso finalizado
+                                </div>
+                                <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white line-clamp-1">
+                                  {purchase.course?.title || 'Curso'}
+                                </h3>
+                                <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
+                                  Has completado todas las clases. ¡Felicidades!
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex flex-col sm:flex-row gap-2 shrink-0">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  router.push(
+                                    `/course/${(purchase.course as any)?.slug || purchase.course_id}`,
+                                  );
+                                }}
+                                className="bg-gray-900 hover:bg-gray-800 text-white font-semibold py-2 px-4 rounded-xl border border-gray-600 shadow-sm transition-all text-xs w-full sm:w-auto inline-flex items-center justify-center gap-1.5"
+                              >
+                                <ShoppingCart className="w-3 h-3" />
+                                Comprar de nuevo
+                              </button>
+                              <ShareCourseToFeedButton
+                                courseTitle={purchase.course?.title}
+                                courseImageUrl={purchase.course?.preview_image}
+                                onSuccess={(postId) =>
+                                  router.push(`/feed#post-${postId}`)
+                                }
+                                variant="primary"
+                                size="sm"
+                                className="w-full sm:w-auto"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ) : hasAvailableClass ? (
                         /* Banner compacto: menos altura y padding */
                         <div className="relative w-full rounded-2xl overflow-hidden bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
                           <div className="relative z-10 p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
@@ -1053,7 +1120,9 @@ export default function DashboardPage() {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                router.push('/student?autoStart=true');
+                                router.push(
+                                  `/student?courseId=${encodeURIComponent(purchase.course_id)}&autoStart=true`,
+                                );
                               }}
                               className="bg-gray-900 hover:bg-gray-800 text-white font-semibold py-2 px-3 sm:py-2 sm:px-4 rounded-xl border border-gray-600 shadow-sm transition-all duration-200 hover:border-[#85ea10]/50 flex items-center justify-center gap-1.5 whitespace-nowrap text-xs shrink-0"
                             >
@@ -1063,7 +1132,7 @@ export default function DashboardPage() {
                           </div>
                         </div>
                       ) : (
-                        /* Banner sin clase disponible - compacto */
+                        /* Banner sin clase disponible - compacto (o curso ya finalizado hace días) */
                         <div className="relative w-full rounded-2xl overflow-hidden bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
                           <div className="relative z-10 p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                             <div className="flex-1 min-w-0">
@@ -1071,18 +1140,37 @@ export default function DashboardPage() {
                                 {purchase.course?.title || 'Curso'}
                               </h3>
                               <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
-                                Tu curso está en progreso
+                                {isCourseFullyCompleted
+                                  ? 'Curso finalizado'
+                                  : 'Tu curso está en progreso'}
                               </p>
                             </div>
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                router.push('/student');
+                                if (isCourseFullyCompleted) {
+                                  router.push(
+                                    `/course/${(purchase.course as any)?.slug || purchase.course_id}`,
+                                  );
+                                } else {
+                                  router.push(
+                                    `/student?courseId=${encodeURIComponent(purchase.course_id)}`,
+                                  );
+                                }
                               }}
                               className="bg-gray-900 hover:bg-gray-800 text-white font-semibold py-2 px-4 rounded-xl border border-gray-600 shadow-sm transition-all duration-200 hover:border-[#85ea10]/50 flex items-center justify-center gap-1.5 text-xs shrink-0 w-full sm:w-auto"
                             >
-                              <Play className="w-3 h-3 sm:w-4 sm:h-4" />
-                              <span>Continuar Curso</span>
+                              {isCourseFullyCompleted ? (
+                                <>
+                                  <ShoppingCart className="w-3 h-3 sm:w-4 sm:h-4" />
+                                  <span>Comprar de nuevo</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Play className="w-3 h-3 sm:w-4 sm:h-4" />
+                                  <span>Continuar Curso</span>
+                                </>
+                              )}
                             </button>
                           </div>
                         </div>

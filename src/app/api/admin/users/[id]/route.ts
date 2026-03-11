@@ -178,6 +178,7 @@ export async function GET(
           .from('course_purchases')
           .select(`
             id,
+            course_id,
             is_active,
             purchase_price,
             access_granted_at,
@@ -186,14 +187,51 @@ export async function GET(
           .eq('user_id', id);
 
         if (!purchasesError && purchases) {
-          coursePurchases = purchases;
+          const courseIds = [
+            ...new Set(
+              (purchases as any[]).map((p) => p.course_id).filter(Boolean),
+            ),
+          ];
+          const totalLessonsByCourse: Record<string, number> = {};
+          const completedByCourse: Record<string, number> = {};
+
+          if (courseIds.length > 0) {
+            const [lessonsRes, completionsRes] = await Promise.all([
+              supabaseAdmin
+                .from('course_lessons')
+                .select('course_id')
+                .in('course_id', courseIds),
+              supabaseAdmin
+                .from('user_lesson_completions')
+                .select('course_id')
+                .eq('user_id', id)
+                .in('course_id', courseIds),
+            ]);
+            (lessonsRes.data || []).forEach((r: any) => {
+              totalLessonsByCourse[r.course_id] =
+                (totalLessonsByCourse[r.course_id] || 0) + 1;
+            });
+            (completionsRes.data || []).forEach((r: any) => {
+              completedByCourse[r.course_id] =
+                (completedByCourse[r.course_id] || 0) + 1;
+            });
+          }
+
+          coursePurchases = (purchases as any[]).map((p) => {
+            const total = totalLessonsByCourse[p.course_id] || 0;
+            const completed = completedByCourse[p.course_id] || 0;
+            const is_course_finished = total > 0 && completed >= total;
+            return { ...p, is_course_finished };
+          });
         }
       } catch (e: any) {
         // Continuar sin compras
       }
 
       const activeCoursePurchases =
-        coursePurchases.filter((p: any) => p.is_active) || [];
+        coursePurchases.filter(
+          (p: any) => p.is_active && !p.is_course_finished,
+        ) || [];
       const activeMembership = gymMemberships.find(
         (m: any) => m.status === 'active' && new Date(m.end_date) >= new Date(),
       );
@@ -335,20 +373,57 @@ export async function GET(
             supabaseAdmin
               .from('course_purchases')
               .select(
-                'id, is_active, purchase_price, access_granted_at, course:courses(title)',
+                'id, course_id, is_active, purchase_price, access_granted_at, course:courses(title)',
               )
               .eq('user_id', client.user_id),
           ]);
           if (profileRes.data) profileData = profileRes.data;
-          if (!purchasesRes.error && purchasesRes.data)
-            coursePurchases = purchasesRes.data;
+          if (!purchasesRes.error && purchasesRes.data) {
+            const purchases = purchasesRes.data as any[];
+            const courseIds = [
+              ...new Set(purchases.map((p) => p.course_id).filter(Boolean)),
+            ];
+            const totalLessonsByCourse: Record<string, number> = {};
+            const completedByCourse: Record<string, number> = {};
+            if (courseIds.length > 0) {
+              const [lessonsRes, completionsRes] = await Promise.all([
+                supabaseAdmin
+                  .from('course_lessons')
+                  .select('course_id')
+                  .in('course_id', courseIds),
+                supabaseAdmin
+                  .from('user_lesson_completions')
+                  .select('course_id')
+                  .eq('user_id', client.user_id)
+                  .in('course_id', courseIds),
+              ]);
+              (lessonsRes.data || []).forEach((r: any) => {
+                totalLessonsByCourse[r.course_id] =
+                  (totalLessonsByCourse[r.course_id] || 0) + 1;
+              });
+              (completionsRes.data || []).forEach((r: any) => {
+                completedByCourse[r.course_id] =
+                  (completedByCourse[r.course_id] || 0) + 1;
+              });
+            }
+            coursePurchases = purchases.map((p: any) => {
+              const total = totalLessonsByCourse[p.course_id] || 0;
+              const completed = completedByCourse[p.course_id] || 0;
+              return {
+                ...p,
+                is_course_finished: total > 0 && completed >= total,
+              };
+            });
+          }
         } catch (e) {
           // Continuar sin datos del perfil/compras si hay error
         }
       }
 
       const activeCoursePurchases =
-        coursePurchases.filter((p: any) => p.is_active) || [];
+        coursePurchases.filter(
+          (p: any) => p.is_active && !p.is_course_finished,
+        ) || [];
       const hasGymMembership = gymMemberships.length > 0;
       const hasOnlinePurchase = coursePurchases.length > 0;
       const userType =

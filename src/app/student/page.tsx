@@ -9,6 +9,7 @@ import {
   MessageCircle,
   Play,
   Send,
+  ShoppingCart,
   Star,
   Sunrise,
   ThumbsUp,
@@ -23,6 +24,7 @@ import InsightsSection from '@/components/InsightsSection';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useUserPurchases } from '@/hooks/useUserPurchases';
 import { supabase } from '@/lib/supabase';
+import { ShareCourseToFeedButton } from '@/shared/components/ShareCourseToFeedButton';
 
 function StudentPageContent() {
   const { user } = useSupabaseAuth();
@@ -44,6 +46,8 @@ function StudentPageContent() {
   const [loading, setLoading] = useState(true);
   const [videoLoading, setVideoLoading] = useState(true);
   const [showNoCourses, setShowNoCourses] = useState(false);
+  const [courseLoadError, setCourseLoadError] = useState<string | null>(null);
+  const [courseRefreshKey, setCourseRefreshKey] = useState(0);
   const [lessonVideoEnded, setLessonVideoEnded] = useState(false);
   const [completedLessonsList, setCompletedLessonsList] = useState<string[]>(
     [],
@@ -66,19 +70,57 @@ function StudentPageContent() {
   >([]);
   const [newComment, setNewComment] = useState('');
   const [hoveredRating, setHoveredRating] = useState(0);
+  const [failedThumbnailIds, setFailedThumbnailIds] = useState<Set<string>>(
+    new Set(),
+  );
 
   // Detectar si viene con autoStart (desde el botón "Tomar Clase Ahora")
   const autoStart = searchParams?.get('autoStart') === 'true';
+  // Curso a mostrar: si viene courseId en la URL, usar ese (el que eligió en el dashboard)
+  const courseIdFromUrl = searchParams?.get('courseId') || null;
 
   // Refs
   const introVideoRef = useRef<HTMLVideoElement>(null);
   const lessonVideoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
 
-  // Obtener compra efectiva
-  const effectivePurchase = purchases?.[0];
+  // Si hay courseId en la URL, usar esa compra; si no, no cargar ningún curso (mostraremos lista)
+  const selectedPurchase = courseIdFromUrl
+    ? (purchases?.find(
+        (p) => String(p.course_id) === String(courseIdFromUrl),
+      ) ?? null)
+    : null;
 
-  // Sincronizar completedLessonsList con effectivePurchase
+  // Para la vista de clase: solo hay "curso efectivo" cuando entramos a un curso concreto (courseId en URL)
+  const effectivePurchase = selectedPurchase;
+
+  // Saber si un curso está 100 % completado (para badges en la lista)
+  const isPurchaseFullyCompleted = useCallback(
+    (p: {
+      course?: { lessons?: { id: string }[] };
+      completed_lessons?: string[];
+    }) => {
+      const lessons = p?.course?.lessons ?? [];
+      const completed = p?.completed_lessons ?? [];
+      return (
+        lessons.length > 0 && lessons.every((l) => completed.includes(l.id))
+      );
+    },
+    [],
+  );
+
+  // Progreso por compra: { completed, total, percent }
+  const getProgress = useCallback(
+    (p: { course?: { lessons?: unknown[] }; completed_lessons?: string[] }) => {
+      const total = p?.course?.lessons?.length ?? 0;
+      const completed = p?.completed_lessons?.length ?? 0;
+      const percent = total ? Math.round((completed / total) * 100) : 0;
+      return { completed, total, percent };
+    },
+    [],
+  );
+
+  // Sincronizar completedLessonsList con la compra del curso en vista de clase
   useEffect(() => {
     if (effectivePurchase?.completed_lessons) {
       setCompletedLessonsList(effectivePurchase.completed_lessons);
@@ -296,6 +338,8 @@ function StudentPageContent() {
     const loadCourseWithLessons = async () => {
       if (!effectivePurchase) {
         if (isMounted) {
+          setCourseWithLessons(null);
+          setCurrentLesson(null);
           setLoading(false);
           setShowNoCourses(true);
         }
@@ -305,6 +349,8 @@ function StudentPageContent() {
       const courseId = effectivePurchase.course_id;
       if (!courseId) {
         if (isMounted) {
+          setCourseWithLessons(null);
+          setCurrentLesson(null);
           setLoading(false);
           setShowNoCourses(true);
         }
@@ -312,41 +358,42 @@ function StudentPageContent() {
       }
 
       try {
-        if (isMounted) setLoading(true);
-
-        // OPTIMIZACIÓN MÁXIMA: Usar JOIN para traer curso y lecciones en una sola query
-        const { data: courseData, error: courseError } = await supabase
-          .from('courses')
-          .select(`
-            *,
-            course_lessons (*)
-          `)
-          .eq('id', courseId)
-          .maybeSingle();
-
-        if (courseError) {
-          if (isMounted) setLoading(false);
-          return;
+        if (isMounted) {
+          setLoading(true);
+          setCourseLoadError(null);
+          // Limpiar datos previos para no mostrar nunca otro curso o datos quemados
+          setCourseWithLessons(null);
+          setCurrentLesson(null);
         }
 
-        if (!courseData) {
-          if (isMounted) setLoading(false);
-          return;
-        }
-
-        // Ordenar lecciones ya que el JOIN no respeta el order
-        const lessons = (courseData.course_lessons || []).sort(
-          (a: any, b: any) => (a.lesson_order || 0) - (b.lesson_order || 0),
+        // Cargar curso y lecciones comprados vía API (solo datos reales del curso comprado)
+        const res = await fetch(
+          `/api/student/course?courseId=${encodeURIComponent(courseId)}`,
+          { credentials: 'include' },
         );
+        const json = await res.json().catch(() => ({}));
 
-        // Preparar datos
+        if (!res.ok) {
+          if (isMounted) {
+            setLoading(false);
+            setCourseLoadError(json.error || 'No se pudo cargar el curso');
+          }
+          return;
+        }
+
+        const courseData = json.course;
+        if (!courseData || !courseData.lessons) {
+          if (isMounted) {
+            setLoading(false);
+            setCourseLoadError('El curso no tiene clases disponibles');
+          }
+          return;
+        }
+
         const courseWithLessons = {
           ...courseData,
-          lessons: lessons,
+          lessons: courseData.lessons || [],
         };
-
-        // Eliminar la propiedad course_lessons duplicada
-        delete (courseWithLessons as any).course_lessons;
 
         // Actualizar todos los estados en una sola operación para evitar múltiples renders
         const availableLesson = getAvailableLesson(
@@ -356,6 +403,7 @@ function StudentPageContent() {
 
         setCourseWithLessons(courseWithLessons);
         setCurrentLesson(availableLesson);
+        setFailedThumbnailIds(new Set());
         // Resetear el estado de video terminado cuando cambia la lección
         setLessonVideoEnded(false);
 
@@ -372,6 +420,56 @@ function StudentPageContent() {
           setShowCourseImage(false);
           setIntroEnded(false);
         }
+
+        // Sincronizar al backend lecciones que ya pasaron por fecha (para que la lista muestre progreso)
+        const startDateStr =
+          effectivePurchase.start_date || effectivePurchase.created_at;
+        if (startDateStr && courseWithLessons.lessons?.length) {
+          const startDateParts = startDateStr.split('T')[0].split('-');
+          const startDateLocal = new Date(
+            parseInt(startDateParts[0], 10),
+            parseInt(startDateParts[1], 10) - 1,
+            parseInt(startDateParts[2], 10),
+          );
+          const todayLocal = new Date(
+            new Date().getFullYear(),
+            new Date().getMonth(),
+            new Date().getDate(),
+          );
+          const daysDiff = Math.max(
+            0,
+            Math.floor(
+              (todayLocal.getTime() - startDateLocal.getTime()) /
+                (1000 * 60 * 60 * 24),
+            ),
+          );
+          const alreadyCompleted = new Set(
+            effectivePurchase.completed_lessons || [],
+          );
+          const toSync = courseWithLessons.lessons.filter(
+            (_: any, index: number) =>
+              index < daysDiff &&
+              !alreadyCompleted.has(courseWithLessons.lessons[index].id),
+          );
+          if (toSync.length > 0) {
+            Promise.all(
+              toSync.map((lesson: { id: string }) =>
+                fetch('/api/lessons/complete', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  credentials: 'include',
+                  body: JSON.stringify({
+                    lesson_id: lesson.id,
+                    course_id: courseId,
+                    duration_watched: 0,
+                  }),
+                }),
+              ),
+            )
+              .then(() => refreshPurchases())
+              .catch(() => {});
+          }
+        }
       } catch (error: any) {
         if (isMounted) setLoading(false);
       } finally {
@@ -386,7 +484,16 @@ function StudentPageContent() {
       }
     }, 5000);
 
-    // Solo iniciar la carga cuando las compras hayan terminado de cargar Y haya una compra efectiva
+    // No cargar curso cuando no hay courseId (se muestra lista "Cursos que he comprado")
+    if (!courseIdFromUrl) {
+      if (isMounted) setLoading(false);
+      return () => {
+        isMounted = false;
+        clearTimeout(safetyTimeout);
+      };
+    }
+
+    // Solo iniciar la carga cuando hay compra efectiva para el courseId de la URL
     if (!purchasesLoading) {
       if (effectivePurchase) {
         loadCourseWithLessons();
@@ -405,7 +512,7 @@ function StudentPageContent() {
       isMounted = false;
       clearTimeout(safetyTimeout);
     };
-  }, [effectivePurchase, purchasesLoading]);
+  }, [effectivePurchase, purchasesLoading, courseRefreshKey, courseIdFromUrl]);
 
   // Función para obtener la clase disponible
   const getAvailableLesson = (course: any, purchase: any) => {
@@ -933,12 +1040,14 @@ function StudentPageContent() {
   }, []);
 
   // Mostrar loading único mientras se cargan TODOS los datos (compras, curso, lecciones)
-  // Solo mostrar contenido cuando TODO esté listo
-  // Lógica mejorada: solo mostrar loading si realmente estamos cargando algo
+  // Solo mostrar contenido cuando TODO esté listo (datos del curso comprado desde la API)
   const isLoading =
     purchasesLoading ||
-    (loading && effectivePurchase) ||
-    (!courseWithLessons && effectivePurchase && !purchasesLoading);
+    (loading && effectivePurchase && !courseLoadError) ||
+    (!courseWithLessons &&
+      effectivePurchase &&
+      !purchasesLoading &&
+      !courseLoadError);
 
   // Debug: Log del estado de carga
   useEffect(() => {}, [
@@ -964,12 +1073,65 @@ function StudentPageContent() {
     );
   }
 
-  // Solo mostrar "No tienes cursos" si realmente no hay compras después de esperar
-  // También mostrar si no hay compras y las compras ya terminaron de cargar
+  // Error al cargar el curso comprado (ej. API falló o sin acceso)
+  if (courseLoadError && effectivePurchase && !courseWithLessons) {
+    return (
+      <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center p-4">
+        <div className="text-center max-w-md">
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+            No se pudo cargar tu curso
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 text-sm mb-4">
+            {courseLoadError}
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setCourseLoadError(null);
+              setCourseRefreshKey((k) => k + 1);
+            }}
+            className="bg-[#85ea10] hover:bg-[#7dd30f] text-black font-semibold px-4 py-2 rounded-xl"
+          >
+            Reintentar
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // URL tiene courseId pero el usuario no tiene compra de ese curso (enlace incorrecto o curso ajeno)
   if (
+    courseIdFromUrl &&
     !effectivePurchase &&
     !purchasesLoading &&
-    (showNoCourses || purchases?.length === 0 || !purchases)
+    purchases &&
+    purchases.length > 0
+  ) {
+    return (
+      <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center p-4">
+        <div className="text-center max-w-md">
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+            No tienes acceso a este curso
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 text-sm mb-4">
+            El curso que intentas ver no está en tus compras.
+          </p>
+          <button
+            type="button"
+            onClick={() => router.push('/student')}
+            className="bg-[#85ea10] hover:bg-[#7dd30f] text-black font-semibold px-4 py-2 rounded-xl"
+          >
+            Ver mis cursos
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Solo mostrar "No tienes cursos" si no hay compras
+  if (
+    !purchasesLoading &&
+    (showNoCourses || !purchases || purchases.length === 0)
   ) {
     const handleDebug = async () => {
       try {
@@ -1027,6 +1189,92 @@ function StudentPageContent() {
     );
   }
 
+  // Sin courseId en URL: mostrar lista "Cursos adquiridos" con progreso
+  if (!courseIdFromUrl && purchases && purchases.length > 0) {
+    return (
+      <div className="min-h-screen bg-white dark:bg-gray-900">
+        <DashboardNavbar notifications={[]} />
+        <div className="w-full px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 md:py-8">
+          <div className="max-w-3xl mx-auto">
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-2">
+              Cursos adquiridos
+            </h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+              Entra al curso para ver la clase del día y seguir tu avance.
+            </p>
+            <div className="space-y-4">
+              {purchases.map((purchase) => {
+                const course = purchase.course;
+                const title = course?.title || 'Curso';
+                const imageUrl =
+                  course?.preview_image || '/images/course-placeholder.jpg';
+                const progress = getProgress(purchase);
+                const completed = isPurchaseFullyCompleted(purchase);
+                return (
+                  <button
+                    type="button"
+                    key={purchase.id}
+                    onClick={() =>
+                      router.push(`/student?courseId=${purchase.course_id}`)
+                    }
+                    className="w-full text-left rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden shadow-sm hover:border-[#85ea10]/50 hover:shadow-md transition-all flex flex-col sm:flex-row"
+                  >
+                    <div className="sm:w-48 h-36 sm:h-auto sm:min-h-[140px] relative shrink-0 bg-gray-100 dark:bg-gray-700">
+                      <img
+                        src={imageUrl}
+                        alt={title}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.src =
+                            '/images/course-placeholder.jpg';
+                        }}
+                      />
+                      {completed && (
+                        <div className="absolute top-2 right-2 inline-flex items-center gap-1 bg-[#85ea10] text-black text-[10px] font-bold uppercase px-2 py-1 rounded-full">
+                          <CheckCircle className="w-3 h-3" />
+                          Finalizado
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-4 flex-1 flex flex-col gap-2 min-w-0">
+                      <h2 className="font-bold text-gray-900 dark:text-white text-base sm:text-lg line-clamp-2">
+                        {title}
+                      </h2>
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="h-2 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-[#85ea10] rounded-full transition-all"
+                              style={{ width: `${progress.percent}%` }}
+                            />
+                          </div>
+                        </div>
+                        <span className="text-sm font-medium text-gray-600 dark:text-gray-300 shrink-0">
+                          {progress.completed} de {progress.total} clases
+                          {progress.total > 0 && (
+                            <span className="text-gray-500 dark:text-gray-400">
+                              {' '}
+                              · {progress.percent}%
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                      <span className="text-xs text-[#85ea10] font-semibold">
+                        {completed
+                          ? 'Ver curso'
+                          : 'Entrar a la clase del día →'}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900">
       <DashboardNavbar notifications={[]} />
@@ -1035,189 +1283,257 @@ function StudentPageContent() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
           {/* Contenido Principal - Video Player (YouTube Style) */}
           <div className="lg:col-span-2 space-y-4 sm:space-y-6">
-            {/* Intro Video (estilo Netflix) - Mostrar si showIntro es true */}
-            {showIntro && (
-              <div className="relative w-full aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl">
-                <video
-                  ref={introVideoRef}
-                  className="w-full h-full object-cover"
-                  autoPlay
-                  muted
-                  playsInline
-                  onEnded={handleIntroEnd}
-                  onError={(e) => {
-                    // Si el video no se puede cargar, saltar directamente a mostrar la imagen del curso
-                    handleIntroEnd();
-                  }}
-                  onLoadStart={() => {}}
-                  onLoadedData={() => {}}
-                  onPlay={() => {}}
-                >
-                  <source src="/roger-hero.mp4" type="video/mp4" />
-                  Tu navegador no soporta el elemento de video.
-                </video>
-
-                {/* Botón "Iniciar Clase Ahora" - Estilo marca */}
-                <div className="absolute bottom-3 right-3 sm:bottom-6 sm:right-6 z-10">
-                  <button
-                    onClick={handleStartLesson}
-                    className="bg-gray-900 hover:bg-gray-800 text-white font-semibold px-3 py-2 sm:px-5 sm:py-2.5 rounded-xl border border-gray-600 shadow-sm flex items-center space-x-2 text-xs sm:text-sm transition-all duration-200 hover:border-[#85ea10]/50"
-                  >
-                    <Play className="w-3 h-3 sm:w-4 sm:h-4" />
-                    <span className="hidden sm:inline">
-                      Iniciar Clase Ahora
-                    </span>
-                    <span className="sm:hidden">Iniciar</span>
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Imagen del Curso - Después del teaser */}
             {(() => {
-              return null;
-            })()}
-            {showCourseImage && courseWithLessons && (
-              <div className="relative w-full aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl">
-                {(() => {
-                  // Intentar obtener la imagen del curso en este orden: image_url, preview_image, thumbnail_url
-                  const courseImage =
-                    courseWithLessons.image_url ||
-                    courseWithLessons.preview_image ||
-                    courseWithLessons.thumbnail_url;
-
-                  return courseImage ? (
-                    <Image
-                      src={courseImage}
-                      alt={courseWithLessons.title || 'Imagen del curso'}
-                      fill
-                      className="object-cover"
-                      sizes="(max-width: 768px) 100vw, 66vw"
-                      loading="lazy"
-                      quality={85}
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                      }}
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-white dark:bg-gray-800 flex items-center justify-center">
-                      <div className="text-center">
-                        <div className="w-24 h-24 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
-                          <Play className="w-12 h-12 text-gray-400 dark:text-gray-500" />
-                        </div>
-                        <p className="text-gray-600 dark:text-gray-400 text-sm mt-4">
-                          No hay imagen disponible
-                        </p>
-                      </div>
+              const lessons = courseWithLessons?.lessons ?? [];
+              const completed =
+                completedLessonsList.length > 0
+                  ? completedLessonsList
+                  : (effectivePurchase?.completed_lessons ?? []);
+              const isCourseFullyCompleted =
+                lessons.length > 0 &&
+                lessons.every((l: { id: string }) => completed.includes(l.id));
+              return isCourseFullyCompleted;
+            })() ? (
+              /* Curso finalizado: sin video, solo pantalla y acciones */
+              <>
+                <div className="rounded-2xl border border-[#85ea10]/40 bg-[#85ea10]/10 dark:bg-[#85ea10]/15 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-[#85ea10]/30 flex items-center justify-center shrink-0">
+                      <CheckCircle className="w-5 h-5 text-[#85ea10]" />
                     </div>
-                  );
-                })()}
-
-                {/* Botón "Iniciar Clase Ahora" - Estilo marca */}
-                <div className="absolute bottom-3 right-3 sm:bottom-6 sm:right-6 z-10">
+                    <div>
+                      <h3 className="font-bold text-gray-900 dark:text-white text-base sm:text-lg">
+                        ¡Curso finalizado!
+                      </h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
+                        Has completado todas las clases de este curso.
+                        Felicidades.
+                      </p>
+                    </div>
+                  </div>
+                  <ShareCourseToFeedButton
+                    courseTitle={courseWithLessons?.title}
+                    courseImageUrl={courseWithLessons?.preview_image}
+                    onSuccess={(postId) => router.push(`/feed#post-${postId}`)}
+                    className="shrink-0"
+                    size="md"
+                  />
                   <button
-                    onClick={handleStartLesson}
-                    className="bg-gray-900 hover:bg-gray-800 text-white font-semibold px-3 py-2 sm:px-5 sm:py-2.5 rounded-xl border border-gray-600 shadow-sm flex items-center space-x-2 text-xs sm:text-sm transition-all duration-200 hover:border-[#85ea10]/50"
+                    type="button"
+                    onClick={() =>
+                      router.push(
+                        `/course/${courseWithLessons?.slug ?? courseWithLessons?.id ?? ''}`,
+                      )
+                    }
+                    className="shrink-0 inline-flex items-center gap-2 bg-[#85ea10] hover:bg-[#7dd30f] text-black font-semibold py-2.5 px-4 rounded-xl transition-all"
                   >
-                    <Play className="w-3 h-3 sm:w-4 sm:h-4" />
-                    <span className="hidden sm:inline">
-                      Iniciar Clase Ahora
-                    </span>
-                    <span className="sm:hidden">Iniciar</span>
+                    <ShoppingCart className="w-4 h-4" />
+                    Comprar de nuevo
                   </button>
                 </div>
-              </div>
-            )}
-
-            {/* Contenedor del Video/Progreso - Mismo espacio siempre */}
-            {!showIntro && !showCourseImage && currentLesson && (
-              <div className="relative w-full aspect-video bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-2xl">
-                {/* Video de la Lección - Solo visible si el video no ha terminado */}
-                {!lessonVideoEnded ? (
-                  <>
+                <div className="w-full aspect-video bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-2xl flex items-center justify-center">
+                  <div className="text-center px-6">
+                    <div className="w-16 h-16 rounded-full bg-[#85ea10]/20 flex items-center justify-center mx-auto mb-4">
+                      <CheckCircle className="w-8 h-8 text-[#85ea10]" />
+                    </div>
+                    <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                      ¡Curso terminado!
+                    </h2>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 max-w-sm mx-auto">
+                      Has completado todas las clases. Puedes seguir valorando y
+                      comentando abajo.
+                    </p>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Intro Video (estilo Netflix) - Mostrar si showIntro es true */}
+                {showIntro && (
+                  <div className="relative w-full aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl">
                     <video
-                      ref={lessonVideoRef}
-                      className="w-full h-full"
-                      controls
+                      ref={introVideoRef}
+                      className="w-full h-full object-cover"
+                      autoPlay
+                      muted
                       playsInline
-                      preload="auto"
-                      key={currentLesson.id} // Forzar re-render cuando cambia la lección
-                    />
-                    {(() => {
-                      const playbackId =
-                        currentLesson.video_url ||
-                        currentLesson.playback_id ||
-                        currentLesson.mux_playback_id;
+                      onEnded={handleIntroEnd}
+                      onError={(e) => {
+                        // Si el video no se puede cargar, saltar directamente a mostrar la imagen del curso
+                        handleIntroEnd();
+                      }}
+                      onLoadStart={() => {}}
+                      onLoadedData={() => {}}
+                      onPlay={() => {}}
+                    >
+                      <source src="/roger-hero.mp4" type="video/mp4" />
+                      Tu navegador no soporta el elemento de video.
+                    </video>
 
-                      if (!playbackId) {
-                        return (
-                          <div className="absolute inset-0 flex items-center justify-center bg-red-900/50 z-50">
-                            <div className="text-center text-white p-6">
-                              <p className="text-xl font-bold mb-2">
-                                ⚠️ No hay video disponible
-                              </p>
-                              <p className="text-sm mb-4">
-                                Esta clase no tiene un playback_id configurado
-                              </p>
-                              <p className="text-xs opacity-75 mt-4">
-                                Campos disponibles:{' '}
-                                {Object.keys(currentLesson).join(', ')}
-                              </p>
+                    {/* Botón "Iniciar Clase Ahora" - Estilo marca */}
+                    <div className="absolute bottom-3 right-3 sm:bottom-6 sm:right-6 z-10">
+                      <button
+                        onClick={handleStartLesson}
+                        className="bg-gray-900 hover:bg-gray-800 text-white font-semibold px-3 py-2 sm:px-5 sm:py-2.5 rounded-xl border border-gray-600 shadow-sm flex items-center space-x-2 text-xs sm:text-sm transition-all duration-200 hover:border-[#85ea10]/50"
+                      >
+                        <Play className="w-3 h-3 sm:w-4 sm:h-4" />
+                        <span className="hidden sm:inline">
+                          Iniciar Clase Ahora
+                        </span>
+                        <span className="sm:hidden">Iniciar</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Imagen del Curso - Después del teaser */}
+                {(() => {
+                  return null;
+                })()}
+                {showCourseImage && courseWithLessons && (
+                  <div className="relative w-full aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl">
+                    {(() => {
+                      // Intentar obtener la imagen del curso en este orden: image_url, preview_image, thumbnail_url
+                      const courseImage =
+                        courseWithLessons.image_url ||
+                        courseWithLessons.preview_image ||
+                        courseWithLessons.thumbnail_url;
+
+                      return courseImage ? (
+                        <Image
+                          src={courseImage}
+                          alt={courseWithLessons.title || 'Imagen del curso'}
+                          fill
+                          className="object-cover"
+                          sizes="(max-width: 768px) 100vw, 66vw"
+                          loading="lazy"
+                          quality={85}
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-white dark:bg-gray-800 flex items-center justify-center">
+                          <div className="text-center">
+                            <div className="w-24 h-24 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                              <Play className="w-12 h-12 text-gray-400 dark:text-gray-500" />
                             </div>
+                            <p className="text-gray-600 dark:text-gray-400 text-sm mt-4">
+                              No hay imagen disponible
+                            </p>
                           </div>
-                        );
-                      }
-                      return null;
+                        </div>
+                      );
                     })()}
 
-                    {/* Indicador de carga */}
-                    {videoLoading &&
-                    (currentLesson.video_url ||
-                      currentLesson.playback_id ||
-                      currentLesson.mux_playback_id) ? (
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-40 pointer-events-none">
-                        <div className="text-center text-white">
-                          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#85ea10] mx-auto mb-4"></div>
-                          <p className="text-sm">Cargando video...</p>
-                        </div>
-                      </div>
-                    ) : null}
-                  </>
-                ) : (
-                  /* Tu Progreso - Se muestra cuando el video termina */
-                  userProfile && (
-                    <div className="w-full h-full overflow-hidden">
-                      <InsightsSection
-                        userProfile={userProfile}
-                        currentLesson={currentLesson}
-                        completedLessons={
-                          completedLessonsList.length > 0
-                            ? completedLessonsList
-                            : effectivePurchase?.completed_lessons || []
-                        }
-                        lessonVideoEnded={lessonVideoEnded}
-                        courseWithLessons={courseWithLessons}
-                        effectivePurchase={effectivePurchase}
-                      />
+                    {/* Botón "Iniciar Clase Ahora" - Estilo marca */}
+                    <div className="absolute bottom-3 right-3 sm:bottom-6 sm:right-6 z-10">
+                      <button
+                        onClick={handleStartLesson}
+                        className="bg-gray-900 hover:bg-gray-800 text-white font-semibold px-3 py-2 sm:px-5 sm:py-2.5 rounded-xl border border-gray-600 shadow-sm flex items-center space-x-2 text-xs sm:text-sm transition-all duration-200 hover:border-[#85ea10]/50"
+                      >
+                        <Play className="w-3 h-3 sm:w-4 sm:h-4" />
+                        <span className="hidden sm:inline">
+                          Iniciar Clase Ahora
+                        </span>
+                        <span className="sm:hidden">Iniciar</span>
+                      </button>
                     </div>
-                  )
+                  </div>
                 )}
-              </div>
+
+                {/* Contenedor del Video/Progreso - Mismo espacio siempre */}
+                {!showIntro && !showCourseImage && currentLesson && (
+                  <div className="relative w-full aspect-video bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-2xl">
+                    {/* Video de la Lección - Solo visible si el video no ha terminado */}
+                    {!lessonVideoEnded ? (
+                      <>
+                        <video
+                          ref={lessonVideoRef}
+                          className="w-full h-full"
+                          controls
+                          playsInline
+                          preload="auto"
+                          key={currentLesson.id} // Forzar re-render cuando cambia la lección
+                        />
+                        {(() => {
+                          const playbackId =
+                            currentLesson.video_url ||
+                            currentLesson.playback_id ||
+                            currentLesson.mux_playback_id;
+
+                          if (!playbackId) {
+                            return (
+                              <div className="absolute inset-0 flex items-center justify-center bg-red-900/50 z-50">
+                                <div className="text-center text-white p-6">
+                                  <p className="text-xl font-bold mb-2">
+                                    ⚠️ No hay video disponible
+                                  </p>
+                                  <p className="text-sm mb-4">
+                                    Esta clase no tiene un playback_id
+                                    configurado
+                                  </p>
+                                  <p className="text-xs opacity-75 mt-4">
+                                    Campos disponibles:{' '}
+                                    {Object.keys(currentLesson).join(', ')}
+                                  </p>
+                                </div>
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
+
+                        {/* Indicador de carga */}
+                        {videoLoading &&
+                        (currentLesson.video_url ||
+                          currentLesson.playback_id ||
+                          currentLesson.mux_playback_id) ? (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-40 pointer-events-none">
+                            <div className="text-center text-white">
+                              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#85ea10] mx-auto mb-4"></div>
+                              <p className="text-sm">Cargando video...</p>
+                            </div>
+                          </div>
+                        ) : null}
+                      </>
+                    ) : (
+                      /* Tu Progreso - Se muestra cuando el video termina */
+                      userProfile && (
+                        <div className="w-full h-full overflow-hidden">
+                          <InsightsSection
+                            userProfile={userProfile}
+                            currentLesson={currentLesson}
+                            completedLessons={
+                              completedLessonsList.length > 0
+                                ? completedLessonsList
+                                : effectivePurchase?.completed_lessons || []
+                            }
+                            lessonVideoEnded={lessonVideoEnded}
+                            courseWithLessons={courseWithLessons}
+                            effectivePurchase={effectivePurchase}
+                          />
+                        </div>
+                      )
+                    )}
+                  </div>
+                )}
+              </>
             )}
 
             {/* Nombre, descripción, valoración y comentarios - Estilo marca */}
             {currentLesson && (
               <div className="space-y-4 sm:space-y-6">
                 <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 sm:p-6">
-                  <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-3 sm:mb-4 line-clamp-2 sm:line-clamp-none">
+                  <h1 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white mb-2 sm:mb-3 line-clamp-2 sm:line-clamp-none">
                     {currentLesson.title}
                   </h1>
                   {currentLesson.description ? (
-                    <p className="text-sm sm:text-base md:text-lg text-gray-700 dark:text-gray-300 leading-relaxed line-clamp-3 sm:line-clamp-none">
+                    <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed line-clamp-3 sm:line-clamp-none">
                       {currentLesson.description}
                     </p>
                   ) : (
-                    <p className="text-sm sm:text-base md:text-lg text-gray-500 dark:text-gray-400 italic line-clamp-3 sm:line-clamp-none">
+                    <p className="text-sm text-gray-500 dark:text-gray-400 italic line-clamp-3 sm:line-clamp-none">
                       No hay descripción disponible para esta clase.
                     </p>
                   )}
@@ -1312,8 +1628,32 @@ function StudentPageContent() {
                           className="border-b border-gray-100 dark:border-gray-700 pb-3 last:border-b-0 last:pb-0"
                         >
                           <div className="flex items-start gap-2">
-                            <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-gray-700 dark:text-gray-300 font-medium text-sm shrink-0">
-                              {comment.user_name.charAt(0).toUpperCase()}
+                            <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-gray-700 dark:text-gray-300 font-medium text-sm shrink-0 overflow-hidden">
+                              {comment.user_avatar ? (
+                                <img
+                                  src={comment.user_avatar}
+                                  alt={comment.user_name}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = 'none';
+                                    const fallback =
+                                      e.currentTarget.nextElementSibling;
+                                    if (fallback)
+                                      (fallback as HTMLElement).style.display =
+                                        'flex';
+                                  }}
+                                />
+                              ) : null}
+                              <span
+                                className={
+                                  comment.user_avatar
+                                    ? 'hidden'
+                                    : 'flex items-center justify-center w-full h-full'
+                                }
+                                aria-hidden
+                              >
+                                {comment.user_name.charAt(0).toUpperCase()}
+                              </span>
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 mb-0.5">
@@ -1367,12 +1707,15 @@ function StudentPageContent() {
           {/* Sidebar - Lista de Clases - Estilo marca */}
           <div className="lg:col-span-1">
             <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 sm:p-6 sticky top-20 sm:top-8">
-              <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-3 sm:mb-4">
+              <h2 className="text-base font-bold text-gray-900 dark:text-white mb-1">
                 Clases del Curso
               </h2>
               {courseWithLessons && (
                 <>
-                  <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-3 sm:mb-4 line-clamp-2">
+                  <p className="text-xs text-[#85ea10] font-medium mb-1">
+                    Tu curso comprado
+                  </p>
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-3 sm:mb-4 line-clamp-2">
                     {courseWithLessons.title}
                   </p>
 
@@ -1431,17 +1774,6 @@ function StudentPageContent() {
                                     : 'bg-white/50 dark:bg-gray-800/30 border-gray-200 dark:border-gray-700 opacity-60 cursor-not-allowed'
                             }`}
                           >
-                            {/* Check visible para clases completadas - ultra sutil */}
-                            {lessonStatus.status === 'completed' && (
-                              <div className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 z-10">
-                                <CheckCircle
-                                  className="w-3 h-3 sm:w-4 sm:h-4 text-green-500/70"
-                                  strokeWidth={2}
-                                  fill="none"
-                                />
-                              </div>
-                            )}
-
                             {/* Badge "Mañana disponible" para la próxima clase */}
                             {isNextClass && (
                               <div className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 bg-gradient-to-r from-amber-400/95 to-orange-400/95 backdrop-blur-sm rounded-full px-1.5 py-0.5 sm:px-2 sm:py-1 z-10 shadow-sm border border-amber-300/30 flex items-center space-x-1">
@@ -1456,19 +1788,26 @@ function StudentPageContent() {
                             )}
 
                             <div className="flex items-start space-x-2 sm:space-x-3">
-                              {/* Thumbnail */}
+                              {/* Thumbnail: <img> nativo para evitar problemas con Next/Image en miniaturas */}
                               <div className="relative w-24 h-16 sm:w-32 sm:h-20 bg-gray-200 dark:bg-gray-600 rounded overflow-hidden flex-shrink-0">
-                                {lesson.preview_image || lesson.thumbnail ? (
-                                  <Image
+                                {!failedThumbnailIds.has(lesson.id) ? (
+                                  <img
                                     src={
-                                      lesson.preview_image || lesson.thumbnail
+                                      lesson.preview_image ||
+                                      lesson.thumbnail ||
+                                      courseWithLessons.preview_image ||
+                                      courseWithLessons.thumbnail_url ||
+                                      courseWithLessons.image_url ||
+                                      '/images/course-placeholder.jpg'
                                     }
                                     alt={lesson.title}
-                                    fill
-                                    className="object-cover"
-                                    sizes="128px"
+                                    className="absolute inset-0 w-full h-full object-cover"
                                     loading="lazy"
-                                    quality={75}
+                                    onError={() => {
+                                      setFailedThumbnailIds((prev) =>
+                                        new Set(prev).add(lesson.id),
+                                      );
+                                    }}
                                     style={{
                                       filter:
                                         lessonStatus.status === 'completed'
@@ -1481,24 +1820,13 @@ function StudentPageContent() {
                                     }}
                                   />
                                 ) : (
-                                  <div className="w-full h-full flex items-center justify-center">
+                                  <div className="w-full h-full flex items-center justify-center absolute inset-0">
                                     <Play className="w-8 h-8 text-gray-400" />
                                   </div>
                                 )}
                                 {lessonStatus.status === 'available' && (
                                   <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
                                     <Play className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
-                                  </div>
-                                )}
-                                {lessonStatus.status === 'completed' && (
-                                  <div className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 z-10 pointer-events-none">
-                                    <div className="bg-white/90 backdrop-blur-sm rounded-full p-1 sm:p-1.5 shadow-sm">
-                                      <CheckCircle
-                                        className="w-3 h-3 sm:w-4 sm:h-4 text-green-500"
-                                        strokeWidth={2.5}
-                                        fill="none"
-                                      />
-                                    </div>
                                   </div>
                                 )}
                               </div>
@@ -1529,7 +1857,7 @@ function StudentPageContent() {
                                       : lessonStatus.text}
                                   </span>
                                 </div>
-                                <h3 className="text-sm font-medium text-gray-800 dark:text-gray-200 line-clamp-2 leading-snug">
+                                <h3 className="text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-200 line-clamp-2 leading-snug">
                                   {lesson.title}
                                 </h3>
                                 {lesson.duration_minutes && (

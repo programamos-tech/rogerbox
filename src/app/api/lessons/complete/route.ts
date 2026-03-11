@@ -61,7 +61,7 @@ export async function GET(request: Request) {
 
     let query = supabaseAdmin
       .from('user_lesson_completions')
-      .select('*')
+      .select('lesson_id, course_id, completed_at')
       .eq('user_id', session.user.id);
 
     if (course_id) {
@@ -73,14 +73,13 @@ export async function GET(request: Request) {
     });
 
     if (error) {
-      throw error;
+      console.error('[GET /api/lessons/complete]', error.message);
+      return NextResponse.json({ completions: [] });
     }
 
     return NextResponse.json({ completions: data || [] });
   } catch (error) {
-    return NextResponse.json(
-      { error: 'Error al obtener completaciones' },
-      { status: 500 },
-    );
+    console.error('[GET /api/lessons/complete]', error);
+    return NextResponse.json({ completions: [] });
   }
 }

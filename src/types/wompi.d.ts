@@ -17,7 +17,7 @@ declare global {
         phoneNumberPrefix?: string;
       };
     }) => {
-      open: (callback: (result: any) => void) => void;
+      open: (callback: (result: unknown) => void) => void;
     };
   }
 }

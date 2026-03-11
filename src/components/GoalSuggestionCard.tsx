@@ -199,7 +199,7 @@ export default function GoalSuggestionCard({
       'FULL BODY EXPRESS ¡ENTRENA 12 MINUTOS EN VACACIONES!': '/course/3', // Fuerza y Músculo
     };
 
-    return courseMap[courseName] || '/courses';
+    return courseMap[courseName] || '/dashboard';
   };
 
   return (

@@ -38,32 +38,36 @@ export default function OnboardingPage() {
   }, [loading, user, router]);
 
   const handleComplete = async (profileData: any) => {
-    // Obtener el usuario actual directamente de Supabase
-    const {
-      data: { session: currentSession },
-    } = await supabase.auth.getSession();
-    const currentUser = currentSession?.user || user;
-
-    if (!currentUser?.id) {
-      alert('Error: No hay sesión activa. Por favor, inicia sesión de nuevo.');
-      router.push('/login');
-      return;
-    }
-
     setIsUpdating(true);
 
     try {
-      const accessToken = currentSession?.access_token;
+      // Refrescar sesión para tener un access_token válido (evita "token inválido" si expiró)
+      const { data: refreshData } = await supabase.auth.refreshSession();
+      const currentSession = refreshData?.session;
+      const currentUser = currentSession?.user ?? user;
 
-      if (!accessToken) {
-        alert('Error de autenticación. Por favor, recarga la página.');
+      if (!currentUser?.id) {
+        alert(
+          'Error: No hay sesión activa. Por favor, inicia sesión de nuevo.',
+        );
+        router.push('/login');
         setIsUpdating(false);
         return;
       }
 
-      // Llamar a la API para guardar el perfil
+      const accessToken = currentSession?.access_token;
+      if (!accessToken) {
+        alert(
+          'Error de autenticación. Por favor, recarga la página e intenta de nuevo.',
+        );
+        setIsUpdating(false);
+        return;
+      }
+
+      // Llamar a la API para guardar el perfil (envía cookies por si la API las usa como fallback)
       const response = await fetch('/api/profile/update', {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${accessToken}`,

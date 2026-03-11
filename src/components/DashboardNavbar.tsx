@@ -82,9 +82,10 @@ export default function DashboardNavbar({
   }, [showNotifications]);
 
   const getNavLinkClass = (path: string) => {
-    const isActive =
-      pathname === path ||
-      (path !== '/dashboard' && pathname.startsWith(path + '/'));
+    const isDashboard = path === '/dashboard';
+    const isActive = isDashboard
+      ? pathname === '/dashboard' || pathname.startsWith('/course/')
+      : pathname === path || pathname.startsWith(path + '/');
     const base =
       'flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2 rounded-lg text-sm font-medium transition-colors';
     if (isActive) {

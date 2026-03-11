@@ -123,12 +123,13 @@ export async function POST(request: NextRequest) {
 
 async function handleApprovedPayment(order: any, transaction: any) {
   try {
-    // Actualizar estado de la orden (usando admin para bypass RLS)
+    // Actualizar estado de la orden y guardar ID de transacción Wompi
     const { error: orderUpdateError } = await supabaseAdmin
       .from('orders')
       .update({
         status: 'approved',
         payment_method: transaction.payment_method_type,
+        wompi_transaction_id: transaction.id,
         updated_at: new Date(),
       })
       .eq('id', order.id);
@@ -185,6 +186,7 @@ async function handleDeclinedPayment(order: any, transaction: any) {
       .from('orders')
       .update({
         status: 'declined',
+        wompi_transaction_id: transaction.id,
         updated_at: new Date(),
       })
       .eq('id', order.id);
@@ -200,6 +202,7 @@ async function handleErrorPayment(order: any, transaction: any) {
       .from('orders')
       .update({
         status: 'error',
+        wompi_transaction_id: transaction.id,
         updated_at: new Date(),
       })
       .eq('id', order.id);

@@ -108,6 +108,13 @@ export default function FeedPage() {
     const postId =
       postIdFromUrl || (hash.startsWith('#post-') ? hash.slice(6) : null);
     if (!postId) return;
+    // Si el post no está en la lista (ej. recién creado desde "Compartir curso"), forzar refetch
+    if (!posts.some((p) => p.id === postId)) {
+      queryClient.invalidateQueries({
+        queryKey: [...queryKeys.all, 'feed-posts'],
+      });
+      return;
+    }
     const el = document.getElementById(`post-${postId}`);
     if (el) {
       const t = setTimeout(() => {
@@ -124,7 +131,7 @@ export default function FeedPage() {
         clearTimeout(cleanUrlTimeout);
       };
     }
-  }, [isLoading, posts.length, postIdFromUrl, commentIdFromUrl]);
+  }, [isLoading, posts.length, postIdFromUrl, commentIdFromUrl, queryClient]);
 
   // Mantener el indicador de actualización visible al menos un momento (evitar parpadeo tipo error)
   useEffect(() => {

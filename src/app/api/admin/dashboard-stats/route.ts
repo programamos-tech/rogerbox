@@ -11,7 +11,7 @@ export async function GET() {
 
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const last7Days = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const _last7Days = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
     // Ejecutar todas las consultas en paralelo para optimizar
     const [
@@ -188,7 +188,8 @@ export async function GET() {
       amount: s.amount,
       status: s.status,
       created_at: s.created_at,
-      course_title: (s.course as any)?.title || 'Curso eliminado',
+      course_title:
+        (s.course as { title?: string } | null)?.title || 'Curso eliminado',
     }));
 
     return NextResponse.json({

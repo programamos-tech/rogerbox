@@ -28,11 +28,14 @@ export default function CourseDetails({ course, lessons }: CourseDetailsProps) {
         </span>
         <span className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 dark:bg-gray-700 rounded-lg text-sm text-gray-700 dark:text-gray-300">
           <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
-          {course.rating || '4.8'}
+          {course.rating != null && course.rating > 0
+            ? course.rating
+            : 'Sin valoraciones'}
         </span>
         <span className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 dark:bg-gray-700 rounded-lg text-sm text-gray-700 dark:text-gray-300">
           <Users className="w-4 h-4 text-gray-500" />
-          {course.students_count || 0} estudiantes
+          {course.students_count != null ? course.students_count : 0}{' '}
+          estudiantes
         </span>
         <span className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 dark:bg-gray-700 rounded-lg text-sm text-gray-700 dark:text-gray-300 font-medium">
           <Play className="w-4 h-4 text-gray-500" />

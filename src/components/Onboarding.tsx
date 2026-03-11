@@ -755,28 +755,37 @@ export default function Onboarding({
               </p>
             )}
 
-            {/* Navigation - botones más compactos en móvil */}
-            <div className="flex justify-between items-center mt-6 sm:mt-8">
-              <div className="flex items-center">
-                {currentStep > 0 && (
+            {/* Navigation - área táctil mínima 44px para tablet/móvil (touch-action evita delay y conflictos con slider) */}
+            <div className="flex justify-between items-stretch gap-3 mt-6 sm:mt-8 touch-manipulation">
+              <div className="flex items-center min-h-[48px]">
+                {currentStep > 0 ? (
                   <button
+                    type="button"
                     onClick={handlePrevious}
-                    className="flex items-center space-x-1.5 sm:space-x-2 text-gray-600 dark:text-white/60 hover:text-gray-900 dark:hover:text-white transition-colors text-sm sm:text-base"
+                    className="flex items-center justify-center space-x-1.5 sm:space-x-2 text-gray-600 dark:text-white/60 hover:text-gray-900 dark:hover:text-white active:opacity-80 transition-colors text-sm sm:text-base min-h-[48px] min-w-[120px] sm:min-w-[140px] py-2.5 px-4 rounded-xl touch-manipulation select-none border border-transparent hover:border-gray-300 dark:hover:border-white/20"
+                    style={{ touchAction: 'manipulation' }}
                   >
                     <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
                     <span>Anterior</span>
                   </button>
+                ) : (
+                  <span
+                    className="min-w-[120px] sm:min-w-[140px] block"
+                    aria-hidden
+                  />
                 )}
               </div>
 
               <button
+                type="button"
                 onClick={handleNext}
                 disabled={
                   isUpdating ||
                   (currentStep === 0 && cedulaAlreadyLinked) ||
                   (currentStep === 5 && profile.goals.length === 0)
                 }
-                className="bg-[#85ea10] hover:bg-[#7dd30f] disabled:bg-[#85ea10]/70 disabled:cursor-not-allowed text-black font-bold text-sm sm:text-base px-5 sm:px-8 py-2.5 sm:py-3 rounded-xl transition-all duration-300 flex items-center space-x-1.5 sm:space-x-2"
+                className="bg-[#85ea10] hover:bg-[#7dd30f] disabled:bg-[#85ea10]/70 disabled:cursor-not-allowed text-black font-bold text-sm sm:text-base px-5 sm:px-8 min-h-[48px] py-2.5 sm:py-3 rounded-xl transition-all duration-300 flex items-center justify-center space-x-1.5 sm:space-x-2 touch-manipulation select-none"
+                style={{ touchAction: 'manipulation' }}
               >
                 {isUpdating ? (
                   <>

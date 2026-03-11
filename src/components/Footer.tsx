@@ -184,12 +184,6 @@ export default function Footer() {
             </h4>
             <div className="space-y-2 text-sm">
               <a
-                href="/courses"
-                className="block text-gray-500 dark:text-white/60 hover:text-[#85ea10] transition-colors"
-              >
-                Cursos
-              </a>
-              <a
                 href="/nutritional-plans"
                 className="block text-gray-500 dark:text-white/60 hover:text-[#85ea10] transition-colors"
               >

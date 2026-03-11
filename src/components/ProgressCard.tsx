@@ -57,7 +57,7 @@ export default function ProgressCard({
       'RUTINA HIIT ¡ENTRENA 12 MINUTOS EN VACACIONES!': '/course/2',
       'FULL BODY EXPRESS ¡ENTRENA 12 MINUTOS EN VACACIONES!': '/course/3',
     };
-    return courseMap[courseName] || '/courses';
+    return courseMap[courseName] || '/dashboard';
   };
 
   return (

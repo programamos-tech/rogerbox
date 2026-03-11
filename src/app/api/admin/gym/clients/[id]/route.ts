@@ -8,7 +8,11 @@ function normalizeEmail(val?: string | null) {
 }
 
 function isAdminUser(
-  user: { id?: string; email?: string; user_metadata?: any } | null,
+  user: {
+    id?: string;
+    email?: string;
+    user_metadata?: Record<string, unknown>;
+  } | null,
 ) {
   if (!user) return false;
   const envId = (process.env.NEXT_PUBLIC_ADMIN_USER_ID || '').trim();
@@ -23,7 +27,7 @@ function isAdminUser(
 
 // GET - Obtener un cliente por ID
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
@@ -55,7 +59,7 @@ export async function GET(
     }
 
     return NextResponse.json(data);
-  } catch (error) {
+  } catch (_error) {
     return NextResponse.json(
       { error: 'Error interno del servidor' },
       { status: 500 },
@@ -87,7 +91,7 @@ export async function PUT(
       user_id,
     } = body;
 
-    const updateData: any = {
+    const updateData: Record<string, unknown> = {
       updated_at: new Date().toISOString(),
     };
 
@@ -136,7 +140,7 @@ export async function PUT(
     }
 
     return NextResponse.json(data);
-  } catch (error) {
+  } catch (_error) {
     return NextResponse.json(
       { error: 'Error interno del servidor' },
       { status: 500 },
@@ -146,7 +150,7 @@ export async function PUT(
 
 // DELETE - Eliminar un cliente (solo si no tiene membresías activas)
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
@@ -199,7 +203,7 @@ export async function DELETE(
     }
 
     return NextResponse.json({ message: 'Cliente eliminado exitosamente' });
-  } catch (error) {
+  } catch (_error) {
     return NextResponse.json(
       { error: 'Error interno del servidor' },
       { status: 500 },

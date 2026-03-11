@@ -4,12 +4,22 @@ import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { className as styles } from './styles';
 
+const SESSION_KEY = 'rogerbox_news_modal_seen';
+
 function NewsModal() {
   const [isMounted, setIsMounted] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [shouldShow, setShouldShow] = useState(false);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const seen = sessionStorage.getItem(SESSION_KEY);
+    if (seen === '1') {
+      setShouldShow(false);
+      return;
+    }
+    setShouldShow(true);
     setIsMounted(true);
     requestAnimationFrame(() => {
       setIsVisible(true);
@@ -17,13 +27,16 @@ function NewsModal() {
   }, []);
 
   const handleClose = () => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem(SESSION_KEY, '1');
+    }
     setIsVisible(false);
     setTimeout(() => {
       setIsMounted(false);
     }, 300);
   };
 
-  if (!isMounted) return null;
+  if (!shouldShow || !isMounted) return null;
 
   return (
     <div className={styles.overlay}>

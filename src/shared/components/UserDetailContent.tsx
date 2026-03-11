@@ -2078,7 +2078,9 @@ export function UserDetailContent({
                             {purchase.course?.title || 'Curso'}
                           </p>
                           <p className="text-xs text-gray-500 dark:text-white/50">
-                            {purchase.is_active ? (
+                            {purchase.is_course_finished ? (
+                              <span>Finalizado</span>
+                            ) : purchase.is_active ? (
                               <span className="text-[#85ea10]">Activo</span>
                             ) : (
                               <span>Completado</span>

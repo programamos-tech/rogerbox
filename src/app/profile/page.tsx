@@ -3,7 +3,6 @@
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import DashboardNavbar from '@/components/DashboardNavbar';
-import QuickLoading from '@/components/QuickLoading';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { supabase } from '@/lib/supabase';
 import { UserDetailContent } from '@/shared/components/UserDetailContent';
@@ -162,8 +161,11 @@ export default function ProfilePage() {
 
   if (authLoading || (loading && !userData)) {
     return (
-      <div className="min-h-screen bg-gray-100 dark:bg-[#0a1628] flex items-center justify-center">
-        <QuickLoading message="Cargando tu cuenta..." duration={800} />
+      <div className="min-h-screen bg-gray-100 dark:bg-[#0a1628] flex flex-col items-center justify-center gap-3">
+        <div className="h-8 w-8 border-2 border-gray-200 dark:border-white/20 border-t-[#85ea10] rounded-full animate-spin" />
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          Cargando tu cuenta...
+        </p>
       </div>
     );
   }
@@ -202,8 +204,11 @@ export default function ProfilePage() {
 
   if (!userData) {
     return (
-      <div className="min-h-screen bg-gray-100 dark:bg-[#0a1628] flex items-center justify-center">
-        <QuickLoading message="Cargando tu cuenta..." duration={800} />
+      <div className="min-h-screen bg-gray-100 dark:bg-[#0a1628] flex flex-col items-center justify-center gap-3">
+        <div className="h-8 w-8 border-2 border-gray-200 dark:border-white/20 border-t-[#85ea10] rounded-full animate-spin" />
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          Cargando tu cuenta...
+        </p>
       </div>
     );
   }

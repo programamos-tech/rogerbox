@@ -2,7 +2,7 @@
 
 import { ArrowLeft } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import CourseCreator from '@/components/admin/CourseCreator';
 import QuickLoading from '@/components/QuickLoading';
@@ -14,11 +14,14 @@ export default function EditCoursePage() {
   const router = useRouter();
   const id = params.id as string;
   const { user, loading: authLoading } = useSupabaseAuth();
-  const [courseToEdit, setCourseToEdit] = useState<any>(null);
+  const [courseToEdit, setCourseToEdit] = useState<Record<
+    string,
+    unknown
+  > | null>(null);
   const [loadingCourse, setLoadingCourse] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const isAdmin = () => {
+  const isAdmin = useCallback(() => {
     if (!user) return false;
     const envId = process.env.NEXT_PUBLIC_ADMIN_USER_ID;
     const envEmail =
@@ -27,7 +30,7 @@ export default function EditCoursePage() {
     const matchEmail = envEmail && user.email === envEmail;
     const matchRole = user.user_metadata?.role === 'admin';
     return Boolean(matchId || matchEmail || matchRole);
-  };
+  }, [user]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -39,7 +42,7 @@ export default function EditCoursePage() {
       router.replace('/admin');
       return;
     }
-  }, [user, authLoading, router]);
+  }, [user, authLoading, router, isAdmin]);
 
   useEffect(() => {
     if (!id || !user) return;
@@ -111,6 +114,7 @@ export default function EditCoursePage() {
         activeTab="courses"
         headerRight={
           <button
+            type="button"
             onClick={() => router.push('/admin?tab=courses')}
             className="flex items-center gap-2 p-2 sm:px-4 sm:py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-[#164151]/80 dark:text-white/60"
           >
@@ -126,6 +130,7 @@ export default function EditCoursePage() {
             {error || 'Curso no encontrado'}
           </p>
           <button
+            type="button"
             onClick={() => router.push('/admin?tab=courses')}
             className="text-sm text-[#85ea10] hover:underline"
           >
@@ -143,6 +148,7 @@ export default function EditCoursePage() {
       activeTab="courses"
       headerRight={
         <button
+          type="button"
           onClick={handleClose}
           className="flex items-center gap-2 p-2 sm:px-4 sm:py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-[#164151]/80 dark:text-white/60 hover:text-[#164151] dark:hover:text-white transition-colors"
           title="Volver a Cursos"

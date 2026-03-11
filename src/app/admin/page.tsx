@@ -152,6 +152,7 @@ interface Sale {
   customer_email?: string | null;
   customer_name?: string | null;
   wompi_transaction_id?: string | null;
+  wompi_reference?: string | null;
   created_at: string;
   course?: {
     id: string;
@@ -1109,7 +1110,7 @@ function AdminDashboardContent() {
     try {
       setLoadingSales(true);
 
-      // Obtener órdenes con cursos y planes físicos
+      // Solo ventas en línea (cursos); no incluir tiendas físicas (planes gimnasio)
       const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
         .select(
@@ -1128,6 +1129,7 @@ function AdminDashboardContent() {
           )
         `,
         )
+        .not('course_id', 'is', null)
         .order('created_at', { ascending: false });
 
       if (ordersError) throw ordersError;
@@ -1163,12 +1165,64 @@ function AdminDashboardContent() {
           profile: order.user_id ? profilesMap[order.user_id] : null,
         })) || [];
 
+      // Enriquecer con wompi_transaction_id desde wompi_transactions (para órdenes que aún no lo tienen en orders)
+      const orderIds = salesWithProfiles.map((s) => s.id).filter(Boolean);
+      if (orderIds.length > 0) {
+        try {
+          const res = await fetch(
+            `/api/admin/orders/wompi-ids?ids=${orderIds.join(',')}`,
+            { credentials: 'include' },
+          );
+          if (res.ok) {
+            const { ids } = await res.json();
+            salesWithProfiles.forEach((sale) => {
+              if (ids[sale.id] && !sale.wompi_transaction_id) {
+                sale.wompi_transaction_id = ids[sale.id];
+              }
+            });
+          }
+        } catch {
+          // Si falla la API de IDs, mostramos lo que tenemos (orders.wompi_transaction_id)
+        }
+      }
+
       setSales(salesWithProfiles);
     } catch (error) {
     } finally {
       setLoadingSales(false);
     }
   };
+
+  // Filtrar por búsqueda y paginar (solo ventas en línea ya vienen de loadSales)
+  const filteredSales = useMemo(() => {
+    let list = [...sales];
+    const term = (salesSearchTerm || '').trim().toLowerCase();
+    if (term) {
+      list = list.filter((s) => {
+        const name = (s.profile?.name || s.customer_name || '').toLowerCase();
+        const email = (
+          s.profile?.email ||
+          s.customer_email ||
+          ''
+        ).toLowerCase();
+        return name.includes(term) || email.includes(term);
+      });
+    }
+    return list;
+  }, [sales, salesSearchTerm]);
+
+  const salesTotalPages = Math.max(
+    1,
+    Math.ceil(filteredSales.length / salesPerPage),
+  );
+  const paginatedSales = useMemo(
+    () =>
+      filteredSales.slice(
+        (salesCurrentPage - 1) * salesPerPage,
+        salesCurrentPage * salesPerPage,
+      ),
+    [filteredSales, salesCurrentPage, salesPerPage],
+  );
 
   const toggleCoursePublish = async (
     courseId: string,
@@ -1581,12 +1635,8 @@ function AdminDashboardContent() {
                       className="px-4 py-2 rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-gray-800 text-[#164151] dark:text-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#164151]/50"
                     >
                       <option value="fisica">Física</option>
-                      <option value="ambas" disabled className="text-gray-400">
-                        Ambas (deshabilitado)
-                      </option>
-                      <option value="online" disabled className="text-gray-400">
-                        En Línea (deshabilitado)
-                      </option>
+                      <option value="online">En Línea</option>
+                      <option value="ambas">Ambas</option>
                     </select>
                   </div>
 
@@ -1770,21 +1820,21 @@ function AdminDashboardContent() {
                     </div>
                   )}
 
-                  {/* Dashboard Sede En Línea */}
+                  {/* Dashboard Sede En Línea: solo Ingresos totales + gráfico por día (sin efectivo ni transferencia) */}
                   {sedeFilter === 'online' && revenueStats.online && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {/* Total */}
-                      <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 p-6 shadow-lg">
+                    <div className="grid grid-cols-1 gap-4">
+                      {/* Solo Total */}
+                      <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 p-6 shadow-lg max-w-md">
                         <div className="flex items-center gap-3 mb-4">
                           <div className="w-9 h-9 rounded-lg bg-[#164151]/10 dark:bg-white/10 flex items-center justify-center">
                             <TrendingUp className="w-4 h-4 text-[#164151] dark:text-white" />
                           </div>
                           <div>
                             <p className="text-xs font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide">
-                              Total
+                              Ingresos totales
                             </p>
                             <p className="text-[10px] text-gray-500 dark:text-white/50">
-                              Ingresos totales de la sede en línea
+                              Ingresos de la sede en línea
                             </p>
                           </div>
                         </div>
@@ -1792,50 +1842,6 @@ function AdminDashboardContent() {
                           {showRevenueNumbers
                             ? `$${revenueStats.online.total.toLocaleString('es-CO')}`
                             : '••••••'}
-                        </p>
-                      </div>
-
-                      {/* Pagos Online */}
-                      <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 p-6 shadow-lg">
-                        <div className="flex items-center gap-3 mb-4">
-                          <div className="w-9 h-9 rounded-lg bg-gray-100 dark:bg-white/10 flex items-center justify-center">
-                            <CreditCard className="w-4 h-4 text-[#164151]/70 dark:text-white/70" />
-                          </div>
-                          <div>
-                            <p className="text-xs font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide">
-                              Pagos Online
-                            </p>
-                            <p className="text-[10px] text-gray-500 dark:text-white/50">
-                              Pagos procesados electrónicamente
-                            </p>
-                          </div>
-                        </div>
-                        <p className="text-xl font-semibold text-[#164151] dark:text-white">
-                          {showRevenueNumbers
-                            ? `$${revenueStats.online.transfer.toLocaleString('es-CO')}`
-                            : '••••••'}
-                        </p>
-                      </div>
-
-                      {/* Transacciones */}
-                      <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 p-6 shadow-lg">
-                        <div className="flex items-center gap-3 mb-4">
-                          <div className="w-9 h-9 rounded-lg bg-gray-100 dark:bg-white/10 flex items-center justify-center">
-                            <ShoppingCart className="w-4 h-4 text-[#85ea10] dark:text-[#85ea10]" />
-                          </div>
-                          <div>
-                            <p className="text-xs font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide">
-                              Transacciones
-                            </p>
-                            <p className="text-[10px] text-gray-500 dark:text-white/50">
-                              Número total de ventas realizadas
-                            </p>
-                          </div>
-                        </div>
-                        <p className="text-xl font-semibold text-[#164151] dark:text-white">
-                          {showRevenueNumbers
-                            ? revenueStats.online.count
-                            : '•••'}
                         </p>
                       </div>
                     </div>
@@ -3837,13 +3843,184 @@ function AdminDashboardContent() {
             </div>
           )}
 
-          {/* Sales Tab */}
+          {/* Sales Tab - Historial de transacciones */}
           {activeTab === 'sales' && (
-            <UnderConstruction
-              title="Ventas Online"
-              icon={ShoppingCart}
-              description="El historial de transacciones online y pasarela de pagos se encuentra bajo revisión de seguridad y mejoras."
-            />
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-4">
+                <button
+                  onClick={() => loadSales()}
+                  disabled={loadingSales}
+                  className="bg-gray-100 dark:bg-white/10 text-[#164151] dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 font-semibold px-4 py-2.5 rounded-lg transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-50"
+                >
+                  <RefreshCw
+                    className={`w-4 h-4 ${loadingSales ? 'animate-spin' : ''}`}
+                  />
+                  Actualizar
+                </button>
+              </div>
+
+              <div className="bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl border border-gray-200 dark:border-white/10 p-4 shadow-sm">
+                <div className="flex flex-col sm:flex-row gap-4 mb-4">
+                  <div className="flex-1 relative">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-white/40" />
+                    <input
+                      type="text"
+                      placeholder="Buscar por nombre o correo..."
+                      value={salesSearchTerm}
+                      onChange={(e) => {
+                        setSalesSearchTerm(e.target.value);
+                        setSalesCurrentPage(1);
+                      }}
+                      className="w-full pl-12 pr-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-[#164151] dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50"
+                    />
+                  </div>
+                </div>
+
+                {loadingSales ? (
+                  <div className="py-12 flex items-center justify-center">
+                    <RefreshCw className="w-8 h-8 text-[#85ea10] animate-spin" />
+                  </div>
+                ) : paginatedSales.length === 0 ? (
+                  <div className="py-12 text-center text-gray-500 dark:text-white/50 text-sm">
+                    {filteredSales.length === 0 && sales.length === 0
+                      ? 'No hay transacciones.'
+                      : 'No hay transacciones que coincidan con el filtro.'}
+                  </div>
+                ) : (
+                  <>
+                    <div className="overflow-x-auto -mx-4 sm:mx-0">
+                      <table className="w-full min-w-[640px]">
+                        <thead>
+                          <tr className="border-b border-gray-200 dark:border-white/10">
+                            <th className="text-left px-3 md:px-4 py-3 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
+                              ID transacción Wompi
+                            </th>
+                            <th className="text-left px-3 md:px-4 py-3 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
+                              Cliente
+                            </th>
+                            <th className="text-left px-3 md:px-4 py-3 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
+                              Producto
+                            </th>
+                            <th className="text-right px-3 md:px-4 py-3 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
+                              Monto
+                            </th>
+                            <th className="text-left px-3 md:px-4 py-3 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
+                              Estado
+                            </th>
+                            <th className="text-left px-3 md:px-4 py-3 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
+                              Método
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100 dark:divide-white/5">
+                          {paginatedSales.map((sale: Sale) => (
+                            <tr
+                              key={sale.id}
+                              className="hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
+                            >
+                              <td className="px-3 md:px-4 py-3">
+                                <span className="text-sm font-mono text-[#164151] dark:text-white break-all">
+                                  {sale.wompi_transaction_id ||
+                                    sale.wompi_reference ||
+                                    '—'}
+                                </span>
+                              </td>
+                              <td className="px-3 md:px-4 py-3">
+                                <div>
+                                  <p className="text-sm font-medium text-[#164151] dark:text-white truncate max-w-[180px]">
+                                    {sale.profile?.name ||
+                                      sale.customer_name ||
+                                      '—'}
+                                  </p>
+                                  <p className="text-xs text-gray-500 dark:text-white/50 truncate max-w-[180px]">
+                                    {sale.profile?.email ||
+                                      sale.customer_email ||
+                                      '—'}
+                                  </p>
+                                </div>
+                              </td>
+                              <td className="px-3 md:px-4 py-3">
+                                <span className="text-sm text-[#164151] dark:text-white">
+                                  {sale.course
+                                    ? sale.course.title
+                                    : sale.gym_plan
+                                      ? sale.gym_plan.name
+                                      : '—'}
+                                </span>
+                              </td>
+                              <td className="px-3 md:px-4 py-3 text-right">
+                                <span className="text-sm font-semibold text-[#164151] dark:text-white">
+                                  ${(sale.amount || 0).toLocaleString('es-CO')}{' '}
+                                  {sale.currency === 'COP'
+                                    ? ''
+                                    : sale.currency || ''}
+                                </span>
+                              </td>
+                              <td className="px-3 md:px-4 py-3">
+                                <span
+                                  className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${
+                                    (sale.status || '').toLowerCase() ===
+                                    'approved'
+                                      ? 'bg-[#85ea10]/20 text-[#85ea10]'
+                                      : (sale.status || '').toLowerCase() ===
+                                          'pending'
+                                        ? 'bg-amber-500/20 text-amber-600 dark:text-amber-400'
+                                        : 'bg-gray-200 dark:bg-white/10 text-gray-600 dark:text-white/60'
+                                  }`}
+                                >
+                                  {sale.status || '—'}
+                                </span>
+                              </td>
+                              <td className="px-3 md:px-4 py-3 text-xs text-gray-600 dark:text-white/60">
+                                {sale.payment_method || '—'}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {salesTotalPages > 1 && (
+                      <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-200 dark:border-white/10">
+                        <p className="text-xs text-gray-500 dark:text-white/50">
+                          Mostrando {(salesCurrentPage - 1) * salesPerPage + 1}–
+                          {Math.min(
+                            salesCurrentPage * salesPerPage,
+                            filteredSales.length,
+                          )}{' '}
+                          de {filteredSales.length} transacciones
+                        </p>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() =>
+                              setSalesCurrentPage((p) => Math.max(1, p - 1))
+                            }
+                            disabled={salesCurrentPage <= 1}
+                            className="w-9 h-9 flex items-center justify-center rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-white/10"
+                          >
+                            <ChevronLeft className="w-4 h-4" />
+                          </button>
+                          <span className="px-3 text-sm text-[#164151] dark:text-white">
+                            {salesCurrentPage} / {salesTotalPages}
+                          </span>
+                          <button
+                            onClick={() =>
+                              setSalesCurrentPage((p) =>
+                                Math.min(salesTotalPages, p + 1),
+                              )
+                            }
+                            disabled={salesCurrentPage >= salesTotalPages}
+                            className="w-9 h-9 flex items-center justify-center rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-white/10"
+                          >
+                            <ChevronRight className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
           )}
 
           {/* Settings Tab */}

@@ -12,6 +12,7 @@ import {
   Pill,
   Play,
   Plus,
+  Share2,
   TrendingUp,
   Weight,
   X,
@@ -24,6 +25,7 @@ import WeeklyWeightReminder from '@/components/WeeklyWeightReminder';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { getBMIColor } from '@/lib/goalSuggestion';
 import { supabase } from '@/lib/supabase-browser';
+import { ShareCourseToFeedButton } from '@/shared/components/ShareCourseToFeedButton';
 
 interface UserProfile {
   weight: number;
@@ -266,7 +268,7 @@ export default function InsightsSection({
     return totalMinutes;
   }, [completedLessons, courseWithLessons, completedComplementsCount]);
 
-  // Calcular número total de clases + complementos completados
+  // Calcular número total de clases + complementos completados (para la tarjeta Racha)
   useEffect(() => {
     const allCompleted = [...(completedLessons || [])];
 
@@ -284,6 +286,19 @@ export default function InsightsSection({
     currentLesson,
     completedComplementsCount,
   ]);
+
+  // Días desde el registro (para el header "Días en Rogerbox")
+  const daysInRogerbox = useMemo(() => {
+    const createdAt = user?.created_at || userProfile?.created_at;
+    if (!createdAt) return null;
+    const created = new Date(createdAt);
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+    created.setHours(0, 0, 0, 0);
+    const diffMs = today.getTime() - created.getTime();
+    const days = Math.floor(diffMs / (24 * 60 * 60 * 1000));
+    return days >= 0 ? days : 0;
+  }, [user?.created_at, userProfile?.created_at]);
 
   // Obtener la próxima clase
   useEffect(() => {
@@ -688,14 +703,21 @@ export default function InsightsSection({
 
         {!nextLesson && (
           <div className="flex-1 p-3 flex items-center justify-center min-h-0">
-            <div className="text-center">
-              <Award className="w-8 h-8 text-gray-400 dark:text-gray-500 mx-auto mb-2" />
-              <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">
-                Has completado todas las clases
+            <div className="text-center max-w-xs">
+              <div className="w-12 h-12 rounded-full bg-[#85ea10]/20 flex items-center justify-center mx-auto mb-3">
+                <Award className="w-6 h-6 text-[#85ea10]" />
+              </div>
+              <p className="text-base font-bold text-gray-900 dark:text-white mb-0.5">
+                ¡Curso finalizado!
               </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Nos vemos mañana
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+                Compártelo en el feed y celebra con la comunidad.
               </p>
+              <ShareCourseToFeedButton
+                courseTitle={courseWithLessons?.title}
+                courseImageUrl={courseWithLessons?.preview_image}
+                onSuccess={(postId) => router.push(`/feed#post-${postId}`)}
+              />
             </div>
           </div>
         )}
@@ -722,10 +744,10 @@ export default function InsightsSection({
           </div>
           <div className="text-right flex-shrink-0">
             <div className="text-lg sm:text-xl font-bold text-[#85ea10]">
-              {classStreak}
+              {daysInRogerbox != null ? daysInRogerbox : '—'}
             </div>
             <div className="text-[11px] sm:text-xs text-gray-600 dark:text-gray-300">
-              {classStreak === 1 ? 'Sesión completada' : 'Sesiones completadas'}
+              {daysInRogerbox === 1 ? 'Día en ROGERBOX' : 'Días en ROGERBOX'}
             </div>
           </div>
         </div>

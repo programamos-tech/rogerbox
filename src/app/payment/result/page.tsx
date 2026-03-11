@@ -408,7 +408,7 @@ function PaymentResultContent() {
       // Redirigir al dashboard del estudiante después de pago exitoso
       router.push('/student');
     } else {
-      router.push('/courses');
+      router.push('/');
     }
   };
 
@@ -637,10 +637,10 @@ function PaymentResultContent() {
             {error || 'No se pudo cargar la información del pago'}
           </p>
           <button
-            onClick={() => router.push('/courses')}
+            onClick={() => router.push('/dashboard')}
             className="w-full bg-[#85ea10] text-black font-bold py-3 px-6 rounded-xl hover:bg-[#6bc20a] transition-colors"
           >
-            Volver a Cursos
+            Ir al inicio
           </button>
         </div>
       </div>
@@ -755,7 +755,7 @@ function PaymentResultContent() {
             onClick={handleContinue}
             className="w-full bg-[#85ea10] text-black font-bold py-3 px-6 rounded-xl hover:bg-[#6bc20a] transition-colors flex items-center justify-center gap-2"
           >
-            {order.status === 'approved' ? 'Ir al Dashboard' : 'Ver Cursos'}
+            {order.status === 'approved' ? 'Ir al Dashboard' : 'Ir al inicio'}
             <ChevronRight className="w-5 h-5" />
           </button>
         )}

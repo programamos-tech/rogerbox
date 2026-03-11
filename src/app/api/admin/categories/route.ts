@@ -8,7 +8,11 @@ function normalizeEmail(val?: string | null) {
 }
 
 function isAdminUser(
-  user: { id?: string; email?: string; user_metadata?: any } | null,
+  user: {
+    id?: string;
+    email?: string;
+    user_metadata?: Record<string, unknown>;
+  } | null,
 ) {
   if (!user) return false;
   const envId = (process.env.NEXT_PUBLIC_ADMIN_USER_ID || '').trim();
@@ -47,7 +51,7 @@ async function getSessionUser() {
     }
 
     return null;
-  } catch (err) {
+  } catch (_err) {
     return null;
   }
 }
@@ -60,7 +64,7 @@ async function extractAccessTokenFromCookies(): Promise<string | null> {
     if (!authCookie?.value) return null;
     const parsed = JSON.parse(authCookie.value);
     return parsed?.access_token || null;
-  } catch (err) {
+  } catch (_err) {
     return null;
   }
 }

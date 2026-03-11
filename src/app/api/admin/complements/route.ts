@@ -18,14 +18,14 @@ export async function GET(request: NextRequest) {
     const { data: complements, error } = await supabaseAdmin
       .from('weekly_complements')
       .select('*')
-      .eq('week_number', parseInt(week))
-      .eq('year', parseInt(year))
+      .eq('week_number', parseInt(week, 10))
+      .eq('year', parseInt(year, 10))
       .order('day_of_week', { ascending: true });
 
     if (error) throw error;
 
     return NextResponse.json({ complements });
-  } catch (error) {
+  } catch (_error) {
     return NextResponse.json(
       { error: 'Error al obtener complementos' },
       { status: 500 },
@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
     if (error) throw error;
 
     return NextResponse.json({ complement: data });
-  } catch (error) {
+  } catch (_error) {
     return NextResponse.json(
       { error: 'Error al crear complemento' },
       { status: 500 },

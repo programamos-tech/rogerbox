@@ -15,6 +15,7 @@ export default function AboutPage() {
           <div className="flex items-center justify-between h-20">
             <div className="flex items-center space-x-3">
               <button
+                type="button"
                 onClick={() => router.push('/')}
                 className="flex items-center space-x-3 hover:opacity-80 transition-opacity"
               >
@@ -52,12 +53,14 @@ export default function AboutPage() {
             {/* Auth Buttons */}
             <div className="flex items-center space-x-4">
               <button
+                type="button"
                 onClick={() => router.push('/login')}
                 className="text-gray-600 dark:text-white/80 hover:text-gray-900 dark:hover:text-white transition-colors"
               >
                 Iniciar Sesión
               </button>
               <button
+                type="button"
                 onClick={() => router.push('/register')}
                 className="bg-[#85ea10] hover:bg-[#7dd30f] text-black font-bold px-6 py-3 rounded-xl transition-all duration-300"
               >
@@ -283,12 +286,14 @@ export default function AboutPage() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <button
+                type="button"
                 onClick={() => router.push('/')}
                 className="bg-[#85ea10] hover:bg-[#7dd30f] text-black font-bold px-8 py-4 rounded-xl text-lg transition-all duration-300 hover:scale-105"
               >
                 Ver Cursos Disponibles
               </button>
               <button
+                type="button"
                 onClick={() => router.push('/register')}
                 className="border-2 border-[#85ea10] text-[#85ea10] hover:bg-[#85ea10] hover:text-black font-bold px-8 py-4 rounded-xl text-lg transition-all duration-300"
               >

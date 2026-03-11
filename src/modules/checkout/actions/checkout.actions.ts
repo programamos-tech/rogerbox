@@ -1,6 +1,7 @@
 'use server';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { supabaseAdmin } from '@/lib/supabase';
 import { createClient } from '@/lib/supabase-server';
 import type { Course, Lesson } from '../types';
 
@@ -112,7 +113,45 @@ async function fetchCourseBySlug(
     return { course: null, error: 'Curso no encontrado' };
   }
 
-  return { course: data as Course, error: null };
+  const course = data as Course;
+  const courseId = course.id;
+
+  // Valoración real: promedio de lesson_ratings de las lecciones del curso
+  let rating: number | null = null;
+  const { data: lessonIds } = await supabaseAdmin
+    .from('course_lessons')
+    .select('id')
+    .eq('course_id', courseId);
+  const ids = (lessonIds ?? []).map((r: { id: string }) => r.id);
+  if (ids.length > 0) {
+    const { data: ratings } = await supabaseAdmin
+      .from('lesson_ratings')
+      .select('rating')
+      .in('lesson_id', ids);
+    if (ratings && ratings.length > 0) {
+      const sum = ratings.reduce(
+        (a: number, r: { rating: number }) => a + Number(r.rating),
+        0,
+      );
+      rating = Math.round((sum / ratings.length) * 100) / 100;
+    }
+  }
+
+  // Número real de estudiantes: compras activas del curso
+  const { count: studentsCount } = await supabaseAdmin
+    .from('course_purchases')
+    .select('*', { count: 'exact', head: true })
+    .eq('course_id', courseId)
+    .eq('is_active', true);
+
+  return {
+    course: {
+      ...course,
+      rating: rating ?? course.rating ?? 0,
+      students_count: studentsCount ?? course.students_count ?? 0,
+    } as Course,
+    error: null,
+  };
 }
 
 async function fetchCourseLessons(

@@ -7,7 +7,11 @@ function normalizeEmail(val?: string | null) {
 }
 
 function isAdminUser(
-  user: { id?: string; email?: string; user_metadata?: any } | null,
+  user: {
+    id?: string;
+    email?: string;
+    user_metadata?: Record<string, unknown>;
+  } | null,
 ) {
   if (!user) return false;
   const envId = (process.env.NEXT_PUBLIC_ADMIN_USER_ID || '').trim();
@@ -67,7 +71,7 @@ export async function PATCH(
     }
 
     return NextResponse.json(data);
-  } catch (error) {
+  } catch (_error) {
     return NextResponse.json(
       { error: 'Error interno del servidor' },
       { status: 500 },

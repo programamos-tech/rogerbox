@@ -113,7 +113,7 @@ export default function PurchaseCard({
         className={`w-full py-3.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all ${
           isEnrolled || isProcessing
             ? 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
-            : 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 border-2 border-gray-900 dark:border-white border-l-[#85ea10] dark:border-l-[#85ea10]'
+            : 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 border-2 border-gray-900 dark:border-white'
         }`}
       >
         <ShoppingCart className="w-4 h-4" />
