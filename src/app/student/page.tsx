@@ -97,7 +97,7 @@ function StudentPageContent() {
   // Saber si un curso está 100 % completado (para badges en la lista)
   const isPurchaseFullyCompleted = useCallback(
     (p: {
-      course?: { lessons?: { id: string }[] };
+      course?: { lessons?: { id: string }[] } | null;
       completed_lessons?: string[];
     }) => {
       const lessons = p?.course?.lessons ?? [];
@@ -111,7 +111,7 @@ function StudentPageContent() {
 
   // Progreso por compra: { completed, total, percent }
   const getProgress = useCallback(
-    (p: { course?: { lessons?: unknown[] }; completed_lessons?: string[] }) => {
+    (p: { course?: { lessons?: unknown[] } | null; completed_lessons?: string[] }) => {
       const total = p?.course?.lessons?.length ?? 0;
       const completed = p?.completed_lessons?.length ?? 0;
       const percent = total ? Math.round((completed / total) * 100) : 0;
