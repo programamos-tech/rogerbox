@@ -132,6 +132,7 @@ export async function GET(request: NextRequest) {
         const { data } = await supabaseAdmin
           .from('gym_payments')
           .select('amount, payment_method, payment_date')
+          .or('status.eq.active,status.is.null')
           .gte('payment_date', start.toISOString())
           .lte('payment_date', end.toISOString());
         gymPayments = data || [];
@@ -207,6 +208,7 @@ export async function GET(request: NextRequest) {
       const { data: gymPayments, error: gymError } = await supabaseAdmin
         .from('gym_payments')
         .select('amount, payment_method, payment_date')
+        .or('status.eq.active,status.is.null')
         .gte('payment_date', start.toISOString())
         .lte('payment_date', end.toISOString());
 

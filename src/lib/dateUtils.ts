@@ -16,11 +16,36 @@ export function addCalendarMonths(date: Date, months: number): Date {
 }
 
 /**
+ * Suma N días a una fecha (para períodos por días, ej. plan 15 días).
+ */
+export function addDays(date: Date, days: number): Date {
+  const result = new Date(date);
+  result.setDate(result.getDate() + days);
+  return result;
+}
+
+/**
  * Convierte duration_days del plan a meses para cálculo mes a mes (30 → 1, 60 → 2, 90 → 3).
  */
 export function durationDaysToMonths(durationDays: number): number {
   if (!durationDays || durationDays <= 0) return 1;
   return Math.max(1, Math.round(durationDays / 30));
+}
+
+/**
+ * Fecha de fin de período de facturación: inicio + (duration_days - 1) días (inclusive).
+ * Ej: plan 15 días desde 12/03 → fin 26/03 (12 al 26 = 15 días).
+ */
+export function periodEndFromStart(
+  startDate: Date,
+  durationDays: number,
+): string {
+  const days = Math.max(1, Number(durationDays) || 30);
+  const end = addDays(startDate, days - 1);
+  const y = end.getFullYear();
+  const m = String(end.getMonth() + 1).padStart(2, '0');
+  const d = String(end.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 }
 
 /**

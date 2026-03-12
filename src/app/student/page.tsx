@@ -111,7 +111,10 @@ function StudentPageContent() {
 
   // Progreso por compra: { completed, total, percent }
   const getProgress = useCallback(
-    (p: { course?: { lessons?: unknown[] } | null; completed_lessons?: string[] }) => {
+    (p: {
+      course?: { lessons?: unknown[] } | null;
+      completed_lessons?: string[];
+    }) => {
       const total = p?.course?.lessons?.length ?? 0;
       const completed = p?.completed_lessons?.length ?? 0;
       const percent = total ? Math.round((completed / total) * 100) : 0;

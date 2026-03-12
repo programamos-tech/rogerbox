@@ -27,6 +27,8 @@ import {
   ShoppingCart,
   User,
   Users,
+  X,
+  XCircle,
 } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
@@ -127,6 +129,10 @@ export default function PaymentDetailPage() {
   const [loading, setLoading] = useState(true);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showVoidModal, setShowVoidModal] = useState(false);
+  const [voidReason, setVoidReason] = useState('');
+  const [voidError, setVoidError] = useState('');
+  const [isVoiding, setIsVoiding] = useState(false);
 
   const paymentId = params?.id as string;
 
@@ -187,6 +193,36 @@ export default function PaymentDetailPage() {
     } catch (error) {
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleVoidPayment = async () => {
+    if (!payment || !paymentId) return;
+    const reason = voidReason.trim();
+    if (reason.length < 10) {
+      setVoidError('El motivo debe tener al menos 10 caracteres.');
+      return;
+    }
+    setVoidError('');
+    try {
+      setIsVoiding(true);
+      const res = await fetch(
+        `/api/admin/gym/payments/${encodeURIComponent(paymentId)}`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'void', reason }),
+        },
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Error al anular');
+      setShowVoidModal(false);
+      setVoidReason('');
+      await loadPaymentData();
+    } catch (e: unknown) {
+      setVoidError(e instanceof Error ? e.message : 'Error al anular el pago');
+    } finally {
+      setIsVoiding(false);
     }
   };
 
@@ -544,18 +580,54 @@ export default function PaymentDetailPage() {
               </p>
             </div>
           </div>
-          <button
-            onClick={() => router.push('/admin?tab=gym-payments')}
-            className="px-4 py-2 rounded-lg bg-[#164151] dark:bg-white text-white dark:text-[#164151] hover:bg-[#1a4d5f] dark:hover:bg-gray-100 transition-colors flex items-center gap-2 text-sm font-semibold"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Volver
-          </button>
+          <div className="flex items-center gap-2">
+            {payment.status === 'voided' ? (
+              <span className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400 text-sm font-semibold">
+                <XCircle className="w-4 h-4" />
+                Anulado
+              </span>
+            ) : (
+              <button
+                onClick={() => {
+                  setVoidError('');
+                  setVoidReason('');
+                  setShowVoidModal(true);
+                }}
+                className="px-4 py-2 rounded-lg bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-500/30 transition-colors flex items-center gap-2 text-sm font-semibold"
+              >
+                <XCircle className="w-4 h-4" />
+                Anular factura
+              </button>
+            )}
+            <button
+              onClick={() => router.push('/admin?tab=gym-payments')}
+              className="px-4 py-2 rounded-lg bg-[#164151] dark:bg-white text-white dark:text-[#164151] hover:bg-[#1a4d5f] dark:hover:bg-gray-100 transition-colors flex items-center gap-2 text-sm font-semibold"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Volver
+            </button>
+          </div>
         </header>
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
           <div className="max-w-4xl mx-auto space-y-6">
+            {/* Anulación — primero para verse sin scroll */}
+            {payment.status === 'voided' && (
+              <div className="bg-red-50 dark:bg-red-500/10 rounded-2xl border border-red-200 dark:border-red-500/20 p-4">
+                <h2 className="text-sm font-semibold text-red-700 dark:text-red-400 uppercase tracking-wider mb-1 flex items-center gap-2">
+                  <XCircle className="w-4 h-4" />
+                  Factura anulada
+                </h2>
+                {payment.voided_reason && (
+                  <p className="text-sm text-red-800 dark:text-red-300">
+                    <span className="font-medium">Motivo:</span>{' '}
+                    {payment.voided_reason}
+                  </p>
+                )}
+              </div>
+            )}
+
             {/* Información de la Factura */}
             <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-white/10 p-6">
               <h2 className="text-sm font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider mb-4">
@@ -745,6 +817,80 @@ export default function PaymentDetailPage() {
             )}
           </div>
         </div>
+
+        {/* Modal anular factura */}
+        {showVoidModal && (
+          <div className="fixed inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-white/10 w-full max-w-md shadow-2xl p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-[#164151] dark:text-white">
+                  Anular factura
+                </h3>
+                <button
+                  onClick={() => {
+                    if (!isVoiding) {
+                      setShowVoidModal(false);
+                      setVoidReason('');
+                      setVoidError('');
+                    }
+                  }}
+                  className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-gray-500 dark:text-white/60"
+                  disabled={isVoiding}
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-white/60 mb-4">
+                Esta factura dejará de contar en los ingresos del dashboard.
+                Escribe el motivo de la anulación (mínimo 10 caracteres).
+              </p>
+              <label className="block text-sm font-medium text-[#164151] dark:text-white mb-2">
+                ¿Por qué se anula?
+              </label>
+              <textarea
+                value={voidReason}
+                onChange={(e) => {
+                  setVoidReason(e.target.value);
+                  setVoidError('');
+                }}
+                placeholder="Ej: Pago registrado por error, cliente canceló..."
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 text-[#164151] dark:text-white placeholder:text-gray-400 dark:placeholder:text-white/40 focus:ring-2 focus:ring-[#85ea10]/50 focus:border-[#85ea10] outline-none resize-none min-h-[100px]"
+                rows={3}
+                minLength={10}
+                maxLength={500}
+                disabled={isVoiding}
+              />
+              <p className="mt-1 text-xs text-gray-500 dark:text-white/40">
+                {voidReason.length}/500 (mín. 10)
+              </p>
+              {voidError && (
+                <p className="mt-2 text-sm text-red-600 dark:text-red-400">
+                  {voidError}
+                </p>
+              )}
+              <div className="mt-6 flex gap-3 justify-end">
+                <button
+                  onClick={() => {
+                    setShowVoidModal(false);
+                    setVoidReason('');
+                    setVoidError('');
+                  }}
+                  disabled={isVoiding}
+                  className="px-4 py-2 rounded-lg border border-gray-200 dark:border-white/10 text-[#164151] dark:text-white hover:bg-gray-50 dark:hover:bg-white/5 transition-colors text-sm font-medium disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleVoidPayment}
+                  disabled={isVoiding || voidReason.trim().length < 10}
+                  className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {isVoiding ? 'Anulando…' : 'Anular factura'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );

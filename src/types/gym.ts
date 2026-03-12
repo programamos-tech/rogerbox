@@ -123,6 +123,8 @@ export interface GymPayment {
   payment_date: string;
   period_start: string;
   period_end: string;
+  status?: 'active' | 'voided';
+  voided_reason?: string | null;
   invoice_required: boolean;
   invoice_number?: string | null;
   invoice_pdf_url?: string | null;

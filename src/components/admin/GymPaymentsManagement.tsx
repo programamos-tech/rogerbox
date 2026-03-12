@@ -20,14 +20,14 @@ import {
   Search,
   User,
   X,
+  XCircle,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 import {
-  addCalendarMonths,
-  durationDaysToMonths,
   formatDateOnlyLocal,
   parseLocalDate,
+  periodEndFromStart,
 } from '@/lib/dateUtils';
 import type {
   GymClientInfo,
@@ -88,6 +88,9 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
     const [error, setError] = useState('');
     const [paymentSearchTerm, setPaymentSearchTerm] = useState('');
     const [selectedPlanFilter, setSelectedPlanFilter] = useState<string>('all');
+    const [statusFilter, setStatusFilter] = useState<
+      'all' | 'active' | 'voided'
+    >('all');
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 20;
     const [hasActiveMembership, setHasActiveMembership] = useState(false);
@@ -160,17 +163,15 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
               // Establecer el plan directamente
               setSelectedPlan(plan);
               const startDate = new Date();
-              const endDate = addCalendarMonths(
-                startDate,
-                durationDaysToMonths(plan.duration_days),
-              );
+              const durationDays = plan.duration_days ?? 30;
+              const periodEndStr = periodEndFromStart(startDate, durationDays);
 
               setFormData((prev) => ({
                 ...prev,
                 plan_id: planId!,
                 amount: plan.price,
                 period_start: toLocalDateString(startDate),
-                period_end: toLocalDateString(endDate),
+                period_end: periodEndStr,
               }));
 
               // Verificar membresía activa para este plan si hay cliente seleccionado
@@ -209,19 +210,17 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
       }
     }, [selectedPlan?.id, selectedClient?.id]);
 
-    // Mantener period_end en sync cuando cambia el plan (amount, duration) — mes a mes
+    // Mantener period_end en sync cuando cambia el plan (amount, duration) — por días del plan
     useEffect(() => {
       if (selectedPlan && formData.period_start) {
         const startDate = parseLocalDate(formData.period_start);
-        const endDate = addCalendarMonths(
-          startDate,
-          durationDaysToMonths(selectedPlan.duration_days || 30),
-        );
+        const durationDays = selectedPlan.duration_days ?? 30;
+        const periodEndStr = periodEndFromStart(startDate, durationDays);
         setFormData((prev) => ({
           ...prev,
           plan_id: selectedPlan.id,
           amount: selectedPlan.price,
-          period_end: toLocalDateString(endDate),
+          period_end: periodEndStr,
         }));
         setDiscountPercent(0);
       }
@@ -274,18 +273,15 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
             const newStartDate = new Date(latestEndDate);
             newStartDate.setDate(newStartDate.getDate() + 1);
 
-            // Calcular fecha de fin mes a mes (ej. 25 feb → 25 mar)
-            const planDuration = selectedPlan?.duration_days || 30;
-            const newEndDate = addCalendarMonths(
-              newStartDate,
-              durationDaysToMonths(planDuration),
-            );
+            // Calcular fecha de fin según días del plan (ej. 15 días → inicio + 14)
+            const planDuration = selectedPlan?.duration_days ?? 30;
+            const periodEndStr = periodEndFromStart(newStartDate, planDuration);
 
             // Actualizar las fechas del formulario automáticamente
             setFormData((prev) => ({
               ...prev,
               period_start: toLocalDateString(newStartDate),
-              period_end: toLocalDateString(newEndDate),
+              period_end: periodEndStr,
             }));
 
             // Marcar como pago anticipado (permitido)
@@ -293,18 +289,15 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
             setHasActiveMembership(false);
             setError('');
           } else {
-            // No hay membresía activa para ESTE plan, fechas normales (desde hoy) — mes a mes
-            const planDuration = selectedPlan?.duration_days || 30;
+            // No hay membresía activa para ESTE plan, fechas normales (desde hoy) — por días del plan
+            const planDuration = selectedPlan?.duration_days ?? 30;
             const startDate = new Date();
-            const endDate = addCalendarMonths(
-              startDate,
-              durationDaysToMonths(planDuration),
-            );
+            const periodEndStr = periodEndFromStart(startDate, planDuration);
 
             setFormData((prev) => ({
               ...prev,
               period_start: toLocalDateString(startDate),
-              period_end: toLocalDateString(endDate),
+              period_end: periodEndStr,
             }));
 
             setError('');
@@ -532,17 +525,15 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
           if (plan) {
             setSelectedPlan(plan);
             const startDate = new Date();
-            const endDate = addCalendarMonths(
-              startDate,
-              durationDaysToMonths(plan.duration_days),
-            );
+            const durationDays = plan.duration_days ?? 30;
+            const periodEndStr = periodEndFromStart(startDate, durationDays);
 
             setFormData((prev) => ({
               ...prev,
               plan_id: planId,
               amount: plan.price,
               period_start: toLocalDateString(startDate),
-              period_end: toLocalDateString(endDate),
+              period_end: periodEndStr,
             }));
           }
         }
@@ -570,6 +561,12 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
         originalIndex: totalPayments - index - 1,
       }))
       .filter(({ payment, originalIndex }) => {
+        // Filtro por estado (anulados / vigentes)
+        if (statusFilter === 'voided' && payment.status !== 'voided')
+          return false;
+        if (statusFilter === 'active' && payment.status === 'voided')
+          return false;
+
         // Filtro por plan
         if (
           selectedPlanFilter !== 'all' &&
@@ -608,7 +605,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
     // Resetear a página 1 cuando cambian los filtros
     useEffect(() => {
       setCurrentPage(1);
-    }, [paymentSearchTerm, selectedPlanFilter]);
+    }, [paymentSearchTerm, selectedPlanFilter, statusFilter]);
 
     const handleDownloadInvoice = async (payment: GymPayment) => {
       // Crear un elemento temporal para renderizar la factura
@@ -1120,16 +1117,16 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                           onChange={(e) => {
                             const startDate = parseLocalDate(e.target.value);
                             if (selectedPlan) {
-                              const endDate = addCalendarMonths(
+                              const durationDays =
+                                selectedPlan.duration_days ?? 30;
+                              const periodEndStr = periodEndFromStart(
                                 startDate,
-                                durationDaysToMonths(
-                                  selectedPlan.duration_days ?? 30,
-                                ),
+                                durationDays,
                               );
                               setFormData({
                                 ...formData,
                                 period_start: e.target.value,
-                                period_end: toLocalDateString(endDate),
+                                period_end: periodEndStr,
                               });
                             } else {
                               setFormData({
@@ -1262,6 +1259,24 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                     ))}
                   </select>
                 </div>
+
+                {/* Filtro por estado (anulados / vigentes) */}
+                <div className="sm:w-52 relative">
+                  <Filter className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                  <select
+                    value={statusFilter}
+                    onChange={(e) =>
+                      setStatusFilter(
+                        e.target.value as 'all' | 'active' | 'voided',
+                      )
+                    }
+                    className="w-full pl-10 pr-4 py-2.5 sm:py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 focus:border-[#85ea10]/50 transition-all text-[11px] sm:text-sm appearance-none cursor-pointer"
+                  >
+                    <option value="all">Todos los pagos</option>
+                    <option value="active">Vigentes</option>
+                    <option value="voided">Anulados</option>
+                  </select>
+                </div>
               </div>
             </div>
           )}
@@ -1329,7 +1344,11 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                           onClick={() =>
                             router.push(`/admin/payments/${payment.id}`)
                           }
-                          className="hover:bg-gray-50 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                          className={`transition-colors cursor-pointer ${
+                            payment.status === 'voided'
+                              ? 'bg-red-50/60 dark:bg-red-500/5'
+                              : 'hover:bg-gray-50 dark:hover:bg-white/5'
+                          }`}
                         >
                           <td className="px-3 md:px-4 py-3 md:py-4">
                             <p className="text-sm font-semibold text-[#164151] dark:text-white">
@@ -1420,6 +1439,14 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                                     : 'Factura'}
                                 </span>
                               </button>
+                              {payment.status === 'voided' && (
+                                <span
+                                  className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-gray-200/80 dark:bg-white/10 text-gray-500 dark:text-white/50 flex-shrink-0"
+                                  title="Anulada"
+                                >
+                                  <XCircle className="w-4 h-4" />
+                                </span>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -1444,7 +1471,11 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                       onClick={() =>
                         router.push(`/admin/payments/${payment.id}`)
                       }
-                      className="p-4 bg-white dark:bg-gray-900 active:bg-gray-50 dark:active:bg-white/5 transition-colors cursor-pointer"
+                      className={`p-4 transition-colors cursor-pointer ${
+                        payment.status === 'voided'
+                          ? 'bg-red-50/70 dark:bg-red-500/5'
+                          : 'bg-white dark:bg-gray-900 active:bg-gray-50 dark:active:bg-white/5'
+                      }`}
                     >
                       <div className="flex justify-between items-start mb-3">
                         <div>
@@ -1515,6 +1546,14 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                             <Download className="w-3.5 h-3.5" />
                             <span>PDF</span>
                           </button>
+                          {payment.status === 'voided' && (
+                            <span
+                              className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-gray-200/80 dark:bg-white/10 text-gray-500 dark:text-white/50 flex-shrink-0"
+                              title="Anulada"
+                            >
+                              <XCircle className="w-4 h-4" />
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
