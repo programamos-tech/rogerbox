@@ -1,9 +1,9 @@
 'use client';
 
-import MuxPlayer from '@mux/mux-player-react';
+import Hls from 'hls.js';
 import { Play, Zap } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import WompiCheckout from '@/modules/payments/checkout/WompiCheckout';
 import { processCheckoutIntent } from '../actions/checkout.actions';
 
@@ -29,6 +29,8 @@ export default function CourseVideo({
   initialEnrolled,
 }: CourseVideoProps) {
   const router = useRouter();
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const hlsRef = useRef<Hls | null>(null);
   const [showVideoLogo, setShowVideoLogo] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showPaymentWidget, setShowPaymentWidget] = useState(false);
@@ -40,6 +42,73 @@ export default function CourseVideo({
       ? Math.round(originalPrice * (1 - discountPercentage / 100))
       : originalPrice;
   const posterUrl = courseImage || PLACEHOLDER_IMAGE;
+
+  const playbackId = muxPlaybackId?.trim() || '8wRPxlLcp01JrCKhEsyq00BPSrah1qkRY01aOvr01p4suEU';
+  const videoUrl = `https://stream.mux.com/${playbackId}.m3u8`;
+
+  const initVideo = useCallback(() => {
+    const video = videoRef.current;
+    if (!video || !videoStarted) return;
+
+    if (hlsRef.current) {
+      hlsRef.current.destroy();
+      hlsRef.current = null;
+    }
+
+    if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      video.src = videoUrl;
+      video.load();
+      video.play().catch(() => {});
+      return;
+    }
+
+    if (Hls.isSupported()) {
+      const hls = new Hls({ enableWorker: true, lowLatencyMode: false });
+      hls.on(Hls.Events.ERROR, (_, data) => {
+        if (data.fatal) {
+          switch (data.type) {
+            case Hls.ErrorTypes.NETWORK_ERROR:
+              try {
+                hls.startLoad();
+              } catch {
+                hls.destroy();
+              }
+              break;
+            case Hls.ErrorTypes.MEDIA_ERROR:
+              try {
+                hls.recoverMediaError();
+              } catch {
+                hls.destroy();
+              }
+              break;
+            default:
+              hls.destroy();
+              break;
+          }
+        }
+      });
+      hls.loadSource(videoUrl);
+      hls.attachMedia(video);
+      hlsRef.current = hls;
+      video.play().catch(() => {});
+    }
+  }, [videoStarted, videoUrl]);
+
+  useEffect(() => {
+    if (videoStarted && playbackId) {
+      const t = setTimeout(initVideo, 100);
+      return () => clearTimeout(t);
+    }
+  }, [videoStarted, playbackId, initVideo]);
+
+  useEffect(() => {
+    return () => {
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+        hlsRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -145,18 +214,12 @@ export default function CourseVideo({
               </button>
             </>
           ) : (
-            <MuxPlayer
-              playbackId={
-                muxPlaybackId ||
-                '8wRPxlLcp01JrCKhEsyq00BPSrah1qkRY01aOvr01p4suEU'
-              }
-              streamType="on-demand"
-              autoPlay
-              className="absolute inset-0 w-full h-full object-contain"
-              style={{
-                ['--media-accent-color' as string]: '#85ea10',
-              }}
-              onEnded={() => setVideoStarted(false)}
+            <video
+              ref={videoRef}
+              className="w-full h-full bg-black"
+              controls
+              playsInline
+              preload="auto"
             />
           )}
         </div>
