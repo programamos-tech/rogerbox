@@ -101,6 +101,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const docDigits = document_id.trim().replace(/\D/g, '');
+    if (docDigits.length < 7 || docDigits.length > 12) {
+      return NextResponse.json(
+        { error: 'La cédula debe tener entre 7 y 12 dígitos' },
+        { status: 400 },
+      );
+    }
+
     // Validar que el WhatsApp tenga al menos 10 dígitos
     const digitsOnly = whatsapp.replace(/\D/g, '');
     if (digitsOnly.length < 10) {

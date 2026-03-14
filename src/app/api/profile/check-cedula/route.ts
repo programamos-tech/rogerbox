@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
       ?.trim()
       .replace(/\D/g, '');
 
-    if (!documentId || documentId.length < 9) {
+    if (!documentId || documentId.length < 7 || documentId.length > 12) {
       return NextResponse.json(
         { alreadyLinked: false, error: 'Cédula inválida' },
         { status: 400 },

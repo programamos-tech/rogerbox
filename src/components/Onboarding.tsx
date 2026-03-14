@@ -74,7 +74,7 @@ export default function Onboarding({
 
   const checkCedulaLinked = async () => {
     const doc = profile.document_id.trim().replace(/\D/g, '');
-    if (doc.length < 9) {
+    if (doc.length < 7 || doc.length > 12) {
       setCedulaAlreadyLinked(false);
       setCedulaLinkedEmailMasked(null);
       return;
@@ -625,14 +625,8 @@ export default function Onboarding({
         setDocumentStepError('Por favor ingresa tu documento de identidad.');
         return;
       }
-      if (doc.length < 9) {
-        setDocumentStepError(
-          'El documento debe tener al menos 9 dígitos. Máximo 10 dígitos.',
-        );
-        return;
-      }
-      if (doc.length > 10) {
-        setDocumentStepError('El documento no puede tener más de 10 dígitos.');
+      if (doc.length < 7 || doc.length > 12) {
+        setDocumentStepError('El documento debe tener entre 7 y 12 dígitos.');
         return;
       }
       setDocumentStepError(null);

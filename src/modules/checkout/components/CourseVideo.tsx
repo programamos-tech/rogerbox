@@ -43,7 +43,8 @@ export default function CourseVideo({
       : originalPrice;
   const posterUrl = courseImage || PLACEHOLDER_IMAGE;
 
-  const playbackId = muxPlaybackId?.trim() || '8wRPxlLcp01JrCKhEsyq00BPSrah1qkRY01aOvr01p4suEU';
+  const playbackId =
+    muxPlaybackId?.trim() || '8wRPxlLcp01JrCKhEsyq00BPSrah1qkRY01aOvr01p4suEU';
   const videoUrl = `https://stream.mux.com/${playbackId}.m3u8`;
 
   const initVideo = useCallback(() => {

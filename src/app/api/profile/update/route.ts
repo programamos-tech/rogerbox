@@ -45,6 +45,16 @@ export async function POST(request: NextRequest) {
     let cedulaLinkedToAnotherAccount = false;
     let cedulaAssociatedWithOtherEmail = false;
 
+    if (profile.document_id) {
+      const docDigits = profile.document_id.trim().replace(/\D/g, '');
+      if (docDigits.length < 7 || docDigits.length > 12) {
+        return NextResponse.json(
+          { error: 'La cédula debe tener entre 7 y 12 dígitos' },
+          { status: 400 },
+        );
+      }
+    }
+
     // Verificar si el perfil existe
     const { data: existingProfile, error: selectError } = await supabaseAdmin
       .from('profiles')

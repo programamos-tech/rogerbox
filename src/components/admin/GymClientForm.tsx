@@ -48,6 +48,11 @@ export default function GymClientForm({
       setError('La cédula es obligatoria');
       return;
     }
+    const docDigits = formData.document_id.replace(/\D/g, '');
+    if (docDigits.length < 7 || docDigits.length > 12) {
+      setError('La cédula debe tener entre 7 y 12 dígitos');
+      return;
+    }
     if (!formData.name.trim()) {
       setError('El nombre es obligatorio');
       return;
