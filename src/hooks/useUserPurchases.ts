@@ -28,6 +28,8 @@ interface UserPurchase {
   created_at: string;
   is_active: boolean;
   start_date?: string;
+  /** Número de veces que se ha cambiado la fecha de inicio (máx. 3) */
+  start_date_edit_count?: number;
   completed_lessons: string[];
   /** Fecha (ISO) del día en que se completó la última lección; solo si el curso está 100% completado */
   course_completed_at: string | null;
@@ -61,7 +63,9 @@ export const useUserPurchases = (): UseUserPurchasesReturn => {
     try {
       const { data: purchasesData, error: fetchError } = await supabase
         .from('course_purchases')
-        .select('id, course_id, order_id, created_at, start_date, is_active')
+        .select(
+          'id, course_id, order_id, created_at, start_date, start_date_edit_count, is_active',
+        )
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
@@ -145,6 +149,10 @@ export const useUserPurchases = (): UseUserPurchasesReturn => {
             is_active: purchase.is_active,
             start_date:
               purchase.start_date || purchase.created_at?.split('T')[0] || null,
+            start_date_edit_count:
+              typeof (purchase as any).start_date_edit_count === 'number'
+                ? (purchase as any).start_date_edit_count
+                : 0,
             completed_lessons: completedLessonIds,
             course_completed_at: courseCompletedAt || null,
             course,

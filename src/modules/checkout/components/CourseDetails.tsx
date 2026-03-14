@@ -1,12 +1,23 @@
 import { Clock, Play, Star, Users } from 'lucide-react';
 import type { Course, Lesson } from '../types';
 
+function getDurationDisplay(course: Course, lessonsCount: number): string {
+  if (course.duration?.trim()) return course.duration;
+  if (lessonsCount === 0) return '—';
+  if (lessonsCount === 1) return '1 día';
+  if (lessonsCount <= 7) return `${lessonsCount} días`;
+  const weeks = Math.ceil(lessonsCount / 7);
+  return weeks === 1 ? '1 semana' : `${weeks} semanas`;
+}
+
 interface CourseDetailsProps {
   course: Course;
   lessons: Lesson[];
 }
 
 export default function CourseDetails({ course, lessons }: CourseDetailsProps) {
+  const durationText = getDurationDisplay(course, lessons.length);
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-200 dark:border-gray-700">
       <h1 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-2">
@@ -24,7 +35,7 @@ export default function CourseDetails({ course, lessons }: CourseDetailsProps) {
       <div className="flex flex-wrap items-center gap-2">
         <span className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 dark:bg-gray-700 rounded-lg text-sm text-gray-700 dark:text-gray-300">
           <Clock className="w-4 h-4 text-gray-500" />
-          {course.duration || '8 semanas'}
+          {durationText}
         </span>
         <span className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 dark:bg-gray-700 rounded-lg text-sm text-gray-700 dark:text-gray-300">
           <Star className="w-4 h-4 text-amber-500 fill-amber-500" />

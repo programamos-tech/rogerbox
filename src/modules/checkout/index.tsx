@@ -50,7 +50,9 @@ export default async function Checkout({ courseId }: CheckoutProps) {
             <CourseVideo
               courseId={course.id}
               courseTitle={course.title}
-              coursePrice={course.price}
+              originalPrice={course.price}
+              discountPercentage={course.discount_percentage}
+              courseImage={course.preview_image || course.thumbnail || ''}
               muxPlaybackId={course.mux_playback_id ?? ''}
               initialEnrolled={isEnrolled}
             />

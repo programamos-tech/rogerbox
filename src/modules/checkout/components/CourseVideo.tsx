@@ -1,15 +1,20 @@
 'use client';
 
-import { Zap } from 'lucide-react';
+import MuxPlayer from '@mux/mux-player-react';
+import { Play, Zap } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import WompiCheckout from '@/modules/payments/checkout/WompiCheckout';
 import { processCheckoutIntent } from '../actions/checkout.actions';
 
+const PLACEHOLDER_IMAGE = '/images/course-placeholder.jpg';
+
 interface CourseVideoProps {
   courseId: string;
   courseTitle: string;
-  coursePrice: number;
+  originalPrice: number;
+  discountPercentage?: number;
+  courseImage?: string;
   muxPlaybackId: string;
   initialEnrolled: boolean;
 }
@@ -17,7 +22,9 @@ interface CourseVideoProps {
 export default function CourseVideo({
   courseId,
   courseTitle,
-  coursePrice,
+  originalPrice,
+  discountPercentage = 0,
+  courseImage = '',
   muxPlaybackId,
   initialEnrolled,
 }: CourseVideoProps) {
@@ -26,6 +33,13 @@ export default function CourseVideo({
   const [isProcessing, setIsProcessing] = useState(false);
   const [showPaymentWidget, setShowPaymentWidget] = useState(false);
   const [isEnrolled, setIsEnrolled] = useState(initialEnrolled);
+  const [videoStarted, setVideoStarted] = useState(false);
+
+  const finalPrice =
+    discountPercentage > 0
+      ? Math.round(originalPrice * (1 - discountPercentage / 100))
+      : originalPrice;
+  const posterUrl = courseImage || PLACEHOLDER_IMAGE;
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -103,20 +117,61 @@ export default function CourseVideo({
           </button>
         )}
 
-        <div className="relative w-full aspect-video">
-          <iframe
-            src={`https://player.mux.com/${muxPlaybackId || '8wRPxlLcp01JrCKhEsyq00BPSrah1qkRY01aOvr01p4suEU'}?preload=auto`}
-            style={{ width: '100%', height: '100%', border: 'none' }}
-            allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture; fullscreen"
-            allowFullScreen
-            className="w-full h-full"
-          />
+        <div className="relative w-full aspect-video bg-gray-900 rounded-xl overflow-hidden">
+          {!videoStarted ? (
+            <>
+              {/* Imagen del curso como portada */}
+              <img
+                src={posterUrl}
+                alt={courseTitle}
+                className="absolute inset-0 w-full h-full object-cover"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  if (!target.src.endsWith(PLACEHOLDER_IMAGE)) {
+                    target.src = PLACEHOLDER_IMAGE;
+                  }
+                }}
+              />
+              {/* Botón de play para iniciar el video */}
+              <button
+                type="button"
+                onClick={() => setVideoStarted(true)}
+                className="absolute inset-0 flex items-center justify-center z-10 group"
+                aria-label="Reproducir video"
+              >
+                <span className="w-20 h-20 sm:w-24 sm:h-24 bg-black/70 hover:bg-black/90 rounded-full flex items-center justify-center shadow-2xl transition-all duration-200 group-hover:scale-110 border-2 border-white/30">
+                  <Play className="w-8 h-8 sm:w-10 sm:h-10 text-white ml-1 fill-white" />
+                </span>
+              </button>
+            </>
+          ) : (
+            <MuxPlayer
+              playbackId={
+                muxPlaybackId ||
+                '8wRPxlLcp01JrCKhEsyq00BPSrah1qkRY01aOvr01p4suEU'
+              }
+              streamType="on-demand"
+              autoPlay
+              className="absolute inset-0 w-full h-full object-contain"
+              style={{
+                ['--media-accent-color' as string]: '#85ea10',
+              }}
+              onEnded={() => setVideoStarted(false)}
+            />
+          )}
         </div>
       </div>
 
       {showPaymentWidget && (
         <WompiCheckout
-          course={{ id: courseId, title: courseTitle, price: coursePrice }}
+          course={{
+            id: courseId,
+            title: courseTitle,
+            price: finalPrice,
+            original_price: discountPercentage > 0 ? originalPrice : undefined,
+            discount_percentage:
+              discountPercentage > 0 ? discountPercentage : undefined,
+          }}
           onSuccess={handlePaymentSuccess}
           onClose={() => setShowPaymentWidget(false)}
         />

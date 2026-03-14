@@ -3,6 +3,8 @@
 import {
   Calendar,
   CheckCircle,
+  ChevronDown,
+  ChevronUp,
   Clock,
   DollarSign,
   Eye,
@@ -195,7 +197,18 @@ export default function CourseCreator({
         try {
           const draft = JSON.parse(saved);
           if (draft.courseData) setCourseData(draft.courseData);
-          if (draft.lessons) setLessons(draft.lessons);
+          if (draft.lessons && draft.lessons.length > 0) {
+            // Ordenar por lesson_order y normalizar números para que la lista sea consistente
+            const sorted = [...draft.lessons].sort(
+              (a, b) => (a.lesson_order ?? 0) - (b.lesson_order ?? 0),
+            );
+            const normalized = sorted.map((l, i) => ({
+              ...l,
+              lesson_number: i + 1,
+              lesson_order: i + 1,
+            }));
+            setLessons(normalized);
+          }
           if (draft.currentStep) setCurrentStep(draft.currentStep);
           if (draft.courseData?.price)
             setFormattedPrice(formatPrice(draft.courseData.price));
@@ -384,13 +397,8 @@ export default function CourseCreator({
       duration_minutes: 30,
       is_preview: false,
     };
-    // Actualizar los números de las lecciones existentes
-    const updatedLessons = lessons.map((l, i) => ({
-      ...l,
-      lesson_number: i + 2,
-      lesson_order: i + 2,
-    }));
-    setLessons([newLesson, ...updatedLessons]);
+    // Añadir la nueva clase al final para que conserve el orden (primera agregada = 1, segunda = 2, etc.)
+    setLessons([...lessons, newLesson]);
   };
 
   const removeLesson = (index: number) => {
@@ -401,6 +409,18 @@ export default function CourseCreator({
       lesson.lesson_order = i + 1;
     });
     setLessons(updatedLessons);
+  };
+
+  const moveLesson = (index: number, direction: 'up' | 'down') => {
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    if (newIndex < 0 || newIndex >= lessons.length) return;
+    const updated = [...lessons];
+    [updated[index], updated[newIndex]] = [updated[newIndex], updated[index]];
+    updated.forEach((l, i) => {
+      l.lesson_number = i + 1;
+      l.lesson_order = i + 1;
+    });
+    setLessons(updated);
   };
 
   const updateLesson = (index: number, field: keyof LessonData, value: any) => {
@@ -1350,8 +1370,8 @@ export default function CourseCreator({
                             is_preview: false,
                           });
                         }
-                        setLessons([...newLessons, ...lessons]);
-                        setExpandedLessons(new Set([0]));
+                        setLessons([...lessons, ...newLessons]);
+                        setExpandedLessons(new Set([lessons.length]));
                       }}
                       className="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-gray-100 dark:bg-white/10 text-[#164151] dark:text-white/80 hover:bg-gray-200 dark:hover:bg-white/20 border border-gray-200 dark:border-white/10"
                     >
@@ -1448,13 +1468,36 @@ export default function CourseCreator({
                             />
                           )}
                         </div>
-                        <div className="flex items-center gap-2 ml-2">
+                        <div className="flex items-center gap-1 ml-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              moveLesson(index, 'up');
+                            }}
+                            disabled={index === 0}
+                            className="p-1 text-[#164151]/60 dark:text-white/60 hover:text-[#164151] dark:hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
+                            title="Subir"
+                          >
+                            <ChevronUp className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              moveLesson(index, 'down');
+                            }}
+                            disabled={index === lessons.length - 1}
+                            className="p-1 text-[#164151]/60 dark:text-white/60 hover:text-[#164151] dark:hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
+                            title="Bajar"
+                          >
+                            <ChevronDown className="w-4 h-4" />
+                          </button>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               removeLesson(index);
                             }}
-                            className="text-red-500 hover:text-red-700 p-1"
+                            className="p-1 text-red-500 hover:text-red-700"
+                            title="Eliminar"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>

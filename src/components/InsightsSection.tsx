@@ -9,7 +9,6 @@ import {
   Clock,
   Edit,
   Info,
-  Pill,
   Play,
   Plus,
   Share2,
@@ -57,6 +56,8 @@ interface InsightsSectionProps {
   lessonVideoEnded?: boolean;
   courseWithLessons?: any;
   effectivePurchase?: any; // Para obtener start_date y calcular racha
+  /** Llamado cuando el usuario quiere ver la clase de nuevo el mismo día */
+  onWatchAgain?: () => void;
 }
 
 const formatDateLabel = (dateString?: string | null) => {
@@ -106,6 +107,7 @@ export default function InsightsSection({
   completedLessons = [],
   lessonVideoEnded = false,
   courseWithLessons,
+  onWatchAgain,
 }: InsightsSectionProps) {
   const router = useRouter();
   const { user } = useSupabaseAuth();
@@ -547,41 +549,44 @@ export default function InsightsSection({
   // Modo dashboard vs completion
   const isCompletionMode = lessonVideoEnded && currentLesson;
 
-  if (!userProfile) return null;
+  // En modo completion mostramos la vista aunque no haya perfil (para que siempre se vea "Clase completada" y próxima clase)
+  if (!userProfile && !isCompletionMode) return null;
 
   // Modo completion (cuando termina una clase)
   if (isCompletionMode) {
+    const nextLessonImage =
+      nextLesson?.preview_image ||
+      nextLesson?.thumbnail ||
+      courseWithLessons?.preview_image ||
+      courseWithLessons?.image_url ||
+      courseWithLessons?.thumbnail_url;
+
     return (
-      <div className="w-full h-full flex flex-row bg-white dark:bg-gray-800 rounded-xl shadow-lg min-h-0 overflow-hidden">
+      <div className="w-full h-full grid grid-cols-[1fr_1fr] bg-white dark:bg-gray-800 rounded-xl shadow-lg min-h-0 overflow-hidden">
         {nextLesson && (
-          <div className="w-1/2 flex-shrink-0 border-r border-gray-200 dark:border-gray-700">
-            <div className="relative w-full h-full rounded-l-xl overflow-hidden bg-white dark:bg-gray-900">
-              {nextLesson.preview_image || nextLesson.thumbnail ? (
-                <Image
-                  src={nextLesson.preview_image || nextLesson.thumbnail}
-                  alt={nextLesson.title}
-                  fill
-                  sizes="50vw"
-                  loading="lazy"
-                  quality={85}
-                  style={{
-                    objectFit: 'cover',
-                    objectPosition: 'center center',
-                    filter:
-                      'grayscale(20%) brightness(97%) contrast(99%) saturate(90%) opacity(0.85)',
-                  }}
-                />
+          <div className="min-w-0 min-h-0 border-r border-gray-200 dark:border-gray-700 flex flex-col">
+            <div className="relative w-full flex-1 min-h-[200px] rounded-l-xl overflow-hidden bg-gray-900 flex items-center justify-center">
+              {nextLessonImage ? (
+                <>
+                  <img
+                    src={nextLessonImage}
+                    alt={nextLesson.title}
+                    className="absolute inset-0 w-full h-full object-cover object-center"
+                    style={{
+                      filter:
+                        'grayscale(20%) brightness(97%) contrast(99%) saturate(90%) opacity(0.85)',
+                    }}
+                  />
+                </>
               ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <Play className="w-8 h-8 text-gray-400" />
-                </div>
+                <Play className="w-12 h-12 text-gray-500 flex-shrink-0" />
               )}
             </div>
           </div>
         )}
 
         {nextLesson && (
-          <div className="w-1/2 flex-shrink-0 flex flex-col p-5 min-h-0 h-full">
+          <div className="min-w-0 flex flex-col p-5 min-h-0 overflow-auto">
             <div className="space-y-2 mb-6 mt-2">
               <div className="flex items-center space-x-2">
                 <CheckCircle className="w-5 h-5 text-gray-600 dark:text-gray-400 flex-shrink-0" />
@@ -635,56 +640,21 @@ export default function InsightsSection({
               </div>
             </div>
 
-            <button
-              onClick={() => {
-                router.push('/dashboard');
-                setTimeout(() => {
-                  const complementSection = document.querySelector(
-                    '[data-section="complementos"]',
-                  );
-                  if (complementSection) {
-                    complementSection.scrollIntoView({
-                      behavior: 'smooth',
-                      block: 'start',
-                    });
-                  }
-                }, 300);
-              }}
-              className="w-full max-w-sm mx-auto bg-gradient-to-r from-[#85ea10] to-[#7dd30f] hover:from-[#7dd30f] hover:to-[#6bc00e] text-black font-bold py-3 px-4 rounded-lg transition-all duration-300 shadow-lg hover:shadow-[#85ea10]/50 hover:scale-[1.02] flex items-center justify-center space-x-2 group mt-2 mb-4"
-            >
-              <Pill className="w-5 h-5 group-hover:scale-110 transition-transform flex-shrink-0" />
-              <span>Toma tu complemento</span>
-              <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform flex-shrink-0" />
-            </button>
-
-            <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-4 mb-4">
-              Toma un plan nutricional y mira resultados un{' '}
-              <span className="font-bold text-gray-700 dark:text-gray-300">
-                40%
-              </span>{' '}
-              más rápido!
-            </p>
-
-            <button
-              onClick={() => {
-                router.push('/dashboard');
-                setTimeout(() => {
-                  const nutritionSection = document.querySelector(
-                    '[data-section="planes-nutricionales"]',
-                  );
-                  if (nutritionSection) {
-                    nutritionSection.scrollIntoView({
-                      behavior: 'smooth',
-                      block: 'start',
-                    });
-                  }
-                }, 300);
-              }}
-              className="w-full max-w-sm mx-auto bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 text-gray-700 dark:text-gray-200 font-medium py-2.5 px-4 rounded-lg transition-all duration-300 hover:bg-gray-50 dark:hover:bg-gray-600 flex items-center justify-center space-x-2 group mb-6"
-            >
-              <span>Ver planes nutricionales</span>
-              <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform flex-shrink-0" />
-            </button>
+            {onWatchAgain && (
+              <div className="mb-4">
+                <button
+                  type="button"
+                  onClick={onWatchAgain}
+                  className="w-full py-2.5 px-4 rounded-xl border-2 border-[#85ea10] bg-[#85ea10]/10 text-[#85ea10] font-semibold text-sm hover:bg-[#85ea10]/20 transition-colors flex items-center justify-center gap-2"
+                >
+                  <Play className="w-4 h-4" />
+                  Ver de nuevo
+                </button>
+                <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-1">
+                  Puedes repetir la clase todas las veces que quieras hoy
+                </p>
+              </div>
+            )}
 
             <div className="flex justify-center mb-6 mt-2">
               <h1 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">

@@ -5,6 +5,7 @@ import {
   CalendarDays,
   CheckCircle,
   Clock,
+  Heart,
   Lock,
   MessageCircle,
   Play,
@@ -12,12 +13,12 @@ import {
   ShoppingCart,
   Star,
   Sunrise,
-  ThumbsUp,
   XCircle,
 } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import CourseStartDateModal from '@/components/CourseStartDateModal';
 import DashboardNavbar from '@/components/DashboardNavbar';
 import Footer from '@/components/Footer';
 import InsightsSection from '@/components/InsightsSection';
@@ -73,6 +74,8 @@ function StudentPageContent() {
   const [failedThumbnailIds, setFailedThumbnailIds] = useState<Set<string>>(
     new Set(),
   );
+  const [showStartDateModal, setShowStartDateModal] = useState(true);
+  const [showEditStartDateModal, setShowEditStartDateModal] = useState(false);
 
   // Detectar si viene con autoStart (desde el botón "Tomar Clase Ahora")
   const autoStart = searchParams?.get('autoStart') === 'true';
@@ -93,6 +96,9 @@ function StudentPageContent() {
 
   // Para la vista de clase: solo hay "curso efectivo" cuando entramos a un curso concreto (courseId en URL)
   const effectivePurchase = selectedPurchase;
+
+  // Si el curso no tiene fecha de inicio, hay que mostrarla al entrar
+  const needStartDate = !!effectivePurchase && !effectivePurchase.start_date;
 
   // Saber si un curso está 100 % completado (para badges en la lista)
   const isPurchaseFullyCompleted = useCallback(
@@ -517,16 +523,15 @@ function StudentPageContent() {
     };
   }, [effectivePurchase, purchasesLoading, courseRefreshKey, courseIdFromUrl]);
 
-  // Función para obtener la clase disponible
+  // Función para obtener la clase disponible (solo con fecha de inicio elegida por el usuario)
   const getAvailableLesson = (course: any, purchase: any) => {
-    // Usar start_date si existe, sino usar created_at como fecha de inicio
-    let startDateStr = purchase?.start_date || purchase?.created_at;
+    const startDateStr = purchase?.start_date;
     if (!course?.lessons || !startDateStr) return null;
 
-    // Si created_at viene como timestamp ISO, convertir a YYYY-MM-DD
-    if (startDateStr.includes('T')) {
-      startDateStr = startDateStr.split('T')[0];
-    }
+    // Si viene como timestamp ISO, usar solo YYYY-MM-DD
+    const dateOnly = startDateStr.includes('T')
+      ? startDateStr.split('T')[0]
+      : startDateStr;
 
     // Crear fechas en hora local para evitar problemas de zona horaria
     const today = new Date();
@@ -537,7 +542,7 @@ function StudentPageContent() {
     );
 
     // Parsear start_date y crear fecha local
-    const startDateParts = startDateStr.split('-');
+    const startDateParts = dateOnly.split('-');
     const startDateLocal = new Date(
       parseInt(startDateParts[0]),
       parseInt(startDateParts[1]) - 1,
@@ -571,19 +576,17 @@ function StudentPageContent() {
     return selectedLesson;
   };
 
-  // Función para obtener estado de las clases
+  // Función para obtener estado de las clases (solo con fecha de inicio elegida)
   const getLessonStatus = (lesson: any, index: number) => {
-    // Usar start_date si existe, sino usar created_at como fecha de inicio
-    let startDateStr =
-      effectivePurchase?.start_date || effectivePurchase?.created_at;
+    const startDateStr = effectivePurchase?.start_date;
     if (!startDateStr) {
       return { status: 'locked', text: 'Bloqueada', icon: Lock };
     }
 
-    // Si created_at viene como timestamp ISO, convertir a YYYY-MM-DD
-    if (startDateStr.includes('T')) {
-      startDateStr = startDateStr.split('T')[0];
-    }
+    // Si viene como timestamp ISO, usar solo YYYY-MM-DD
+    const dateOnly = startDateStr.includes('T')
+      ? startDateStr.split('T')[0]
+      : startDateStr;
 
     // Crear fechas en hora local para evitar problemas de zona horaria
     const today = new Date();
@@ -594,7 +597,7 @@ function StudentPageContent() {
     );
 
     // Parsear start_date y crear fecha local
-    const startDateParts = startDateStr.split('-');
+    const startDateParts = dateOnly.split('-');
     const startDateLocal = new Date(
       parseInt(startDateParts[0]),
       parseInt(startDateParts[1]) - 1,
@@ -750,6 +753,14 @@ function StudentPageContent() {
       hlsRef.current = null;
     }
 
+    // Handler común cuando el video termina (HLS nativo y HLS.js)
+    const onVideoEnded = () => {
+      setLessonVideoEnded(true);
+      if (effectivePurchase && currentLesson) {
+        markLessonAsCompleted(currentLesson.id);
+      }
+    };
+
     // Verificar soporte HLS nativo
     if (video.canPlayType('application/vnd.apple.mpegurl')) {
       setVideoLoading(true);
@@ -763,6 +774,8 @@ function StudentPageContent() {
       video.addEventListener('error', () => {
         setVideoLoading(false);
       });
+
+      video.addEventListener('ended', onVideoEnded);
 
       video.play().catch((err) => {
         setVideoLoading(false);
@@ -856,14 +869,7 @@ function StudentPageContent() {
         });
 
         // Escuchar cuando el video termine para mostrar el progreso
-        video.addEventListener('ended', () => {
-          setLessonVideoEnded(true);
-
-          // Marcar la lección como completada en la base de datos
-          if (effectivePurchase && currentLesson) {
-            markLessonAsCompleted(currentLesson.id);
-          }
-        });
+        video.addEventListener('ended', onVideoEnded);
 
         // Cargar el source y adjuntar al video DESPUÉS de configurar todos los listeners
         hls.loadSource(videoUrl);
@@ -875,7 +881,7 @@ function StudentPageContent() {
     } else {
       setVideoLoading(false);
     }
-  }, [currentLesson]);
+  }, [currentLesson, effectivePurchase]);
 
   // Manejar click en "Iniciar Clase Ahora"
   const handleStartLesson = () => {
@@ -990,7 +996,6 @@ function StudentPageContent() {
     }
   }, [currentLesson?.id, showIntro, showCourseImage, introEnded, autoStart]);
 
-  // Cerrar menú de usuario al hacer click fuera
   // Limpiar HLS al desmontar
   useEffect(() => {
     return () => {
@@ -1282,6 +1287,42 @@ function StudentPageContent() {
     <div className="min-h-screen bg-white dark:bg-gray-900">
       <DashboardNavbar notifications={[]} />
 
+      {/* Modal de fecha de inicio: si no tiene fecha, mostrarlo al entrar al curso */}
+      {needStartDate && showStartDateModal && effectivePurchase && (
+        <CourseStartDateModal
+          courseId={effectivePurchase.course_id}
+          purchaseId={effectivePurchase.id}
+          onClose={() => setShowStartDateModal(false)}
+        />
+      )}
+
+      {/* Modal para editar fecha de inicio (desde el botón en la ficha de la clase) */}
+      {showEditStartDateModal && effectivePurchase && (
+        <CourseStartDateModal
+          courseId={effectivePurchase.course_id}
+          purchaseId={effectivePurchase.id}
+          initialDate={effectivePurchase.start_date ?? undefined}
+          onClose={() => setShowEditStartDateModal(false)}
+        />
+      )}
+
+      {/* Si cerró el modal sin confirmar: banner para volver a abrirlo */}
+      {needStartDate && !showStartDateModal && (
+        <div className="mx-3 sm:mx-4 md:mx-6 lg:mx-8 mt-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-4 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-amber-800 dark:text-amber-200 font-medium">
+            Selecciona tu fecha de inicio para desbloquear las clases.
+          </p>
+          <button
+            type="button"
+            onClick={() => setShowStartDateModal(true)}
+            className="shrink-0 inline-flex items-center gap-2 bg-amber-600 hover:bg-amber-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+          >
+            <CalendarDays className="w-4 h-4" />
+            Elegir fecha de inicio
+          </button>
+        </div>
+      )}
+
       <div className="w-full px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 md:py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
           {/* Contenido Principal - Video Player (YouTube Style) */}
@@ -1351,8 +1392,8 @@ function StudentPageContent() {
               </>
             ) : (
               <>
-                {/* Intro Video (estilo Netflix) - Mostrar si showIntro es true */}
-                {showIntro && (
+                {/* Intro Video (estilo Netflix) - Solo cuando hay clase disponible hoy */}
+                {showIntro && currentLesson && (
                   <div className="relative w-full aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl">
                     <video
                       ref={introVideoRef}
@@ -1393,7 +1434,8 @@ function StudentPageContent() {
                 {(() => {
                   return null;
                 })()}
-                {showCourseImage && courseWithLessons && (
+                {/* Imagen del curso + "Iniciar Clase Ahora" solo cuando hay clase disponible hoy */}
+                {showCourseImage && courseWithLessons && currentLesson && (
                   <div className="relative w-full aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl">
                     {(() => {
                       // Intentar obtener la imagen del curso en este orden: image_url, preview_image, thumbnail_url
@@ -1486,38 +1528,24 @@ function StudentPageContent() {
                           }
                           return null;
                         })()}
-
-                        {/* Indicador de carga */}
-                        {videoLoading &&
-                        (currentLesson.video_url ||
-                          currentLesson.playback_id ||
-                          currentLesson.mux_playback_id) ? (
-                          <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-40 pointer-events-none">
-                            <div className="text-center text-white">
-                              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#85ea10] mx-auto mb-4"></div>
-                              <p className="text-sm">Cargando video...</p>
-                            </div>
-                          </div>
-                        ) : null}
                       </>
                     ) : (
-                      /* Tu Progreso - Se muestra cuando el video termina */
-                      userProfile && (
-                        <div className="w-full h-full overflow-hidden">
-                          <InsightsSection
-                            userProfile={userProfile}
-                            currentLesson={currentLesson}
-                            completedLessons={
-                              completedLessonsList.length > 0
-                                ? completedLessonsList
-                                : effectivePurchase?.completed_lessons || []
-                            }
-                            lessonVideoEnded={lessonVideoEnded}
-                            courseWithLessons={courseWithLessons}
-                            effectivePurchase={effectivePurchase}
-                          />
-                        </div>
-                      )
+                      /* Tu Progreso - Se muestra cuando el video termina (Clase completada, próxima clase, Nos vemos mañana) */
+                      <div className="w-full h-full overflow-hidden">
+                        <InsightsSection
+                          userProfile={userProfile}
+                          currentLesson={currentLesson}
+                          completedLessons={
+                            completedLessonsList.length > 0
+                              ? completedLessonsList
+                              : effectivePurchase?.completed_lessons || []
+                          }
+                          lessonVideoEnded={lessonVideoEnded}
+                          courseWithLessons={courseWithLessons}
+                          effectivePurchase={effectivePurchase}
+                          onWatchAgain={() => setLessonVideoEnded(false)}
+                        />
+                      </div>
                     )}
                   </div>
                 )}
@@ -1589,6 +1617,37 @@ function StudentPageContent() {
                       </span>
                     </div>
                   </div>
+                  {effectivePurchase && (
+                    <div className="mt-4 pt-3 border-t border-gray-200 dark:border-gray-700">
+                      {(effectivePurchase.start_date_edit_count ?? 0) < 3 ? (
+                        <>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                            Puedes cambiar la fecha de inicio (te quedan{' '}
+                            {3 - (effectivePurchase.start_date_edit_count ?? 0)}{' '}
+                            {3 -
+                              (effectivePurchase.start_date_edit_count ?? 0) ===
+                            1
+                              ? 'cambio'
+                              : 'cambios'}
+                            ).
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => setShowEditStartDateModal(true)}
+                            className="inline-flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+                          >
+                            <CalendarDays className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                            Editar fecha de inicio del curso
+                          </button>
+                        </>
+                      ) : (
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          Has alcanzado el máximo de 3 cambios de fecha de
+                          inicio para este curso.
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Comentarios de la clase */}
@@ -1675,11 +1734,17 @@ function StudentPageContent() {
                                 onClick={() => handleLikeComment(comment.id)}
                                 className={`flex items-center gap-1 text-xs transition-colors ${
                                   comment.is_liked
-                                    ? 'text-gray-700 dark:text-gray-300'
-                                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                                    ? 'text-red-500 hover:text-red-600'
+                                    : 'text-gray-500 dark:text-gray-400 hover:text-red-500'
                                 }`}
                               >
-                                <ThumbsUp className="w-3 h-3" />
+                                <Heart
+                                  className="w-3.5 h-3.5"
+                                  fill={
+                                    comment.is_liked ? 'currentColor' : 'none'
+                                  }
+                                  strokeWidth={2}
+                                />
                                 <span>{comment.likes_count}</span>
                               </button>
                             </div>
@@ -1692,17 +1757,49 @@ function StudentPageContent() {
               </div>
             )}
 
-            {/* Sin lección disponible */}
-            {!showIntro && !currentLesson && (
+            {/* Sin clase activada: mostrar siempre que no haya clase disponible hoy */}
+            {!currentLesson && (
               <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 sm:p-12 text-center">
                 <Lock className="w-12 h-12 sm:w-16 sm:h-16 text-gray-400 mx-auto mb-3 sm:mb-4" />
                 <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-2">
-                  No hay clases disponibles hoy
+                  No hay clase activada
                 </h2>
-                <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300">
+                <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300 mb-4">
                   Tu próxima clase se desbloqueará según la fecha de inicio de
                   tu curso.
                 </p>
+                {effectivePurchase && (
+                  <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
+                    {(effectivePurchase.start_date_edit_count ?? 0) < 3 ? (
+                      <>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                          ¿Te equivocaste de fecha? Puedes cambiarla (máx. 3
+                          veces). Te quedan{' '}
+                          {3 - (effectivePurchase.start_date_edit_count ?? 0)}{' '}
+                          {3 -
+                            (effectivePurchase.start_date_edit_count ?? 0) ===
+                          1
+                            ? 'cambio'
+                            : 'cambios'}
+                          .
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setShowEditStartDateModal(true)}
+                          className="inline-flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+                        >
+                          <CalendarDays className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                          Editar fecha de inicio del curso
+                        </button>
+                      </>
+                    ) : (
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        Has alcanzado el máximo de 3 cambios de fecha de inicio
+                        para este curso.
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -1715,9 +1812,6 @@ function StudentPageContent() {
               </h2>
               {courseWithLessons && (
                 <>
-                  <p className="text-xs text-[#85ea10] font-medium mb-1">
-                    Tu curso comprado
-                  </p>
                   <p className="text-xs text-gray-600 dark:text-gray-400 mb-3 sm:mb-4 line-clamp-2">
                     {courseWithLessons.title}
                   </p>
@@ -1866,6 +1960,11 @@ function StudentPageContent() {
                                 {lesson.duration_minutes && (
                                   <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 font-normal">
                                     {lesson.duration_minutes} min
+                                  </p>
+                                )}
+                                {lesson.description && (
+                                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2 leading-snug">
+                                    {lesson.description}
                                   </p>
                                 )}
                               </div>

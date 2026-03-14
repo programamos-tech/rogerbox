@@ -142,7 +142,14 @@ export default function PurchaseCard({
 
       {showPaymentWidget && (
         <WompiCheckout
-          course={{ id: courseId, title: courseTitle, price: finalPrice }}
+          course={{
+            id: courseId,
+            title: courseTitle,
+            price: finalPrice,
+            original_price: discountPercentage > 0 ? originalPrice : undefined,
+            discount_percentage:
+              discountPercentage > 0 ? discountPercentage : undefined,
+          }}
           onSuccess={handlePaymentSuccess}
           onClose={() => setShowPaymentWidget(false)}
         />

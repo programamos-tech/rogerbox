@@ -12,7 +12,6 @@ import {
   Send,
   Share2,
   Target,
-  ThumbsUp,
   Timer,
   TrendingUp,
   Users,
@@ -802,11 +801,15 @@ export default function LessonPage({
                             onClick={() => handleLikeComment(comment.id)}
                             className={`flex items-center space-x-1 text-xs transition-colors ${
                               comment.is_liked
-                                ? 'text-[#85ea10]'
-                                : 'text-gray-500 dark:text-gray-400 hover:text-[#85ea10]'
+                                ? 'text-red-500 hover:text-red-600'
+                                : 'text-gray-500 dark:text-gray-400 hover:text-red-500'
                             }`}
                           >
-                            <ThumbsUp className="w-3 h-3" />
+                            <Heart
+                              className="w-3.5 h-3.5"
+                              fill={comment.is_liked ? 'currentColor' : 'none'}
+                              strokeWidth={2}
+                            />
                             <span>{comment.likes_count}</span>
                           </button>
                           <button className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">

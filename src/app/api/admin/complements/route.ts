@@ -60,24 +60,33 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabaseAdmin
       .from('weekly_complements')
       .insert({
-        week_number,
-        year,
-        day_of_week,
-        title,
-        description,
-        mux_playback_id,
+        week_number: Number(week_number),
+        year: Number(year),
+        day_of_week: Number(day_of_week),
+        title: String(title).trim(),
+        description:
+          description != null ? String(description).trim() || null : null,
+        mux_playback_id: String(mux_playback_id).trim(),
         is_published: false,
       })
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('[admin/complements POST] Supabase error:', error);
+      return NextResponse.json(
+        { error: error.message || 'Error al crear complemento' },
+        { status: 500 },
+      );
+    }
 
     return NextResponse.json({ complement: data });
-  } catch (_error) {
-    return NextResponse.json(
-      { error: 'Error al crear complemento' },
-      { status: 500 },
-    );
+  } catch (err: unknown) {
+    const message =
+      err && typeof err === 'object' && 'message' in err
+        ? String((err as { message: string }).message)
+        : 'Error al crear complemento';
+    console.error('[admin/complements POST]', err);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -165,15 +165,16 @@ export async function POST(request: NextRequest) {
       store_id: STORE_ID_FISICA,
     });
 
-    // Bot RogerBox: anuncia al nuevo miembro en el feed (estilo Discord)
-    const memberName = data.name.trim() || 'nuevo miembro';
-    await supabaseAdmin.from('feed_posts').insert({
-      author_id: null,
-      author_name: 'RogerBox Bot',
-      content: `¡Bienvenido/a @${memberName} a la casa de la alta intensidad! 🎉 ¡Que empiece el reto!`,
-      image_urls: [],
-      is_published: true,
-    });
+    // ROGERBOT desactivado: generaba mucho spam en el feed (bienvenida por cada nuevo usuario/cliente).
+    // Para reactivar: descomentar el bloque y ejecutar la migración que vuelve a crear el trigger.
+    // const memberName = data.name.trim() || 'nuevo miembro';
+    // await supabaseAdmin.from('feed_posts').insert({
+    //   author_id: null,
+    //   author_name: 'RogerBox Bot',
+    //   content: `¡Bienvenido/a @${memberName} a la casa de la alta intensidad! 🎉 ¡Que empiece el reto!`,
+    //   image_urls: [],
+    //   is_published: true,
+    // });
 
     return NextResponse.json(data, { status: 201 });
   } catch (error) {
