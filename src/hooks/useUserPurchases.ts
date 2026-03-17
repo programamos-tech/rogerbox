@@ -147,8 +147,8 @@ export const useUserPurchases = (): UseUserPurchasesReturn => {
             order_id: purchase.order_id || '',
             created_at: purchase.created_at || '',
             is_active: purchase.is_active,
-            start_date:
-              purchase.start_date || purchase.created_at?.split('T')[0] || null,
+            // Sin fallback: si no eligió fecha, debe ser null hasta que guarde en el modal
+            start_date: purchase.start_date ?? null,
             start_date_edit_count:
               typeof (purchase as any).start_date_edit_count === 'number'
                 ? (purchase as any).start_date_edit_count

@@ -56,11 +56,11 @@ export async function PATCH(request: NextRequest) {
     }
 
     const editCount = Number(purchase.start_date_edit_count) || 0;
-    if (editCount >= 3) {
+    if (editCount >= 1) {
       return NextResponse.json(
         {
           error:
-            'Has alcanzado el máximo de 3 cambios de fecha de inicio para este curso.',
+            'Solo puedes cambiar la fecha de inicio una vez para este curso.',
         },
         { status: 403 },
       );

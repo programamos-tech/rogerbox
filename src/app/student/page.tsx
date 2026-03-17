@@ -404,15 +404,19 @@ function StudentPageContent() {
           lessons: courseData.lessons || [],
         };
 
-        // Actualizar todos los estados en una sola operación para evitar múltiples renders
-        const availableLesson = getAvailableLesson(
-          courseWithLessons,
-          effectivePurchase,
-        );
+        // Si acaba de editar la fecha de inicio, mostrar siempre la primera clase del nuevo inicio
+        const fromStartDateEdit =
+          searchParams?.get('fromStartDateEdit') === '1';
+        const availableLesson = fromStartDateEdit
+          ? (courseWithLessons.lessons?.[0] ?? null)
+          : getAvailableLesson(courseWithLessons, effectivePurchase);
 
         setCourseWithLessons(courseWithLessons);
         setCurrentLesson(availableLesson);
         setFailedThumbnailIds(new Set());
+        if (fromStartDateEdit && courseId) {
+          router.replace(`/student?courseId=${courseId}`, { scroll: false });
+        }
         // Resetear el estado de video terminado cuando cambia la lección
         setLessonVideoEnded(false);
 
@@ -430,9 +434,8 @@ function StudentPageContent() {
           setIntroEnded(false);
         }
 
-        // Sincronizar al backend lecciones que ya pasaron por fecha (para que la lista muestre progreso)
-        const startDateStr =
-          effectivePurchase.start_date || effectivePurchase.created_at;
+        // Sincronizar al backend lecciones que ya pasaron por fecha (solo si eligió fecha de inicio)
+        const startDateStr = effectivePurchase.start_date;
         if (startDateStr && courseWithLessons.lessons?.length) {
           const startDateParts = startDateStr.split('T')[0].split('-');
           const startDateLocal = new Date(
@@ -1287,11 +1290,12 @@ function StudentPageContent() {
     <div className="min-h-screen bg-white dark:bg-gray-900">
       <DashboardNavbar notifications={[]} />
 
-      {/* Modal de fecha de inicio: si no tiene fecha, mostrarlo al entrar al curso */}
+      {/* Modal de fecha de inicio: obligatorio hasta que seleccione fecha */}
       {needStartDate && showStartDateModal && effectivePurchase && (
         <CourseStartDateModal
           courseId={effectivePurchase.course_id}
           purchaseId={effectivePurchase.id}
+          required
           onClose={() => setShowStartDateModal(false)}
         />
       )}
@@ -1619,17 +1623,10 @@ function StudentPageContent() {
                   </div>
                   {effectivePurchase && (
                     <div className="mt-4 pt-3 border-t border-gray-200 dark:border-gray-700">
-                      {(effectivePurchase.start_date_edit_count ?? 0) < 3 ? (
+                      {(effectivePurchase.start_date_edit_count ?? 0) < 1 ? (
                         <>
                           <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                            Puedes cambiar la fecha de inicio (te quedan{' '}
-                            {3 - (effectivePurchase.start_date_edit_count ?? 0)}{' '}
-                            {3 -
-                              (effectivePurchase.start_date_edit_count ?? 0) ===
-                            1
-                              ? 'cambio'
-                              : 'cambios'}
-                            ).
+                            Puedes cambiar la fecha de inicio una sola vez.
                           </p>
                           <button
                             type="button"
@@ -1642,8 +1639,8 @@ function StudentPageContent() {
                         </>
                       ) : (
                         <p className="text-xs text-gray-500 dark:text-gray-400">
-                          Has alcanzado el máximo de 3 cambios de fecha de
-                          inicio para este curso.
+                          Solo puedes cambiar la fecha de inicio una vez para
+                          este curso.
                         </p>
                       )}
                     </div>
@@ -1770,18 +1767,11 @@ function StudentPageContent() {
                 </p>
                 {effectivePurchase && (
                   <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
-                    {(effectivePurchase.start_date_edit_count ?? 0) < 3 ? (
+                    {(effectivePurchase.start_date_edit_count ?? 0) < 1 ? (
                       <>
                         <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                          ¿Te equivocaste de fecha? Puedes cambiarla (máx. 3
-                          veces). Te quedan{' '}
-                          {3 - (effectivePurchase.start_date_edit_count ?? 0)}{' '}
-                          {3 -
-                            (effectivePurchase.start_date_edit_count ?? 0) ===
-                          1
-                            ? 'cambio'
-                            : 'cambios'}
-                          .
+                          ¿Te equivocaste de fecha? Puedes cambiarla una sola
+                          vez.
                         </p>
                         <button
                           type="button"
@@ -1794,8 +1784,8 @@ function StudentPageContent() {
                       </>
                     ) : (
                       <p className="text-xs text-gray-500 dark:text-gray-400">
-                        Has alcanzado el máximo de 3 cambios de fecha de inicio
-                        para este curso.
+                        Solo puedes cambiar la fecha de inicio una vez para este
+                        curso.
                       </p>
                     )}
                   </div>

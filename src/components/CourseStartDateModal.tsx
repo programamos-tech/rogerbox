@@ -29,6 +29,8 @@ interface CourseStartDateModalProps {
   orderId?: string | null; // Opcional: puede ser null si viene de searchParams
   purchaseId?: string; // Opcional: si se pasa, se usa directamente sin buscar
   initialDate?: string | null; // Opcional: fecha actual (YYYY-MM-DD) para modo edición
+  /** Si true, el usuario debe elegir fecha para continuar; no se muestra el botón cerrar */
+  required?: boolean;
   onClose?: () => void;
 }
 
@@ -37,6 +39,7 @@ export default function CourseStartDateModal({
   orderId,
   purchaseId,
   initialDate,
+  required = false,
   onClose,
 }: CourseStartDateModalProps) {
   useUserPurchases();
@@ -164,8 +167,8 @@ export default function CourseStartDateModal({
       }
 
       setIsSubmitting(false);
-      // Recarga completa para que la vista de clases use la nueva fecha y active las clases
-      window.location.href = `/student?courseId=${courseId}`;
+      // Recarga y vuelve a la primera clase del nuevo inicio (fromStartDateEdit=1)
+      window.location.href = `/student?courseId=${courseId}&fromStartDateEdit=1`;
     } catch (err: any) {
       setError(err.message || 'Error al guardar la fecha de inicio');
       setIsSubmitting(false);
@@ -195,8 +198,8 @@ export default function CourseStartDateModal({
         className="relative bg-white dark:bg-gray-800 rounded-2xl p-4 md:p-6 shadow-sm border border-gray-200 dark:border-gray-700 max-w-lg w-full max-h-[95vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Close Button */}
-        {onClose && (
+        {/* Close Button: solo si no es obligatorio elegir fecha (required) */}
+        {onClose && !required && (
           <button
             type="button"
             onClick={onClose}

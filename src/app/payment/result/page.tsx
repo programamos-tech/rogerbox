@@ -771,18 +771,17 @@ function PaymentResultContent() {
         )}
       </div>
 
-      {/* Modal de selección de fecha de inicio */}
+      {/* Modal de selección de fecha de inicio: obligatorio hasta que seleccione fecha */}
       {showStartDateModal && courseId && (purchaseId || orderId) && (
         <CourseStartDateModal
           courseId={courseId}
           orderId={orderId}
           purchaseId={purchaseId || undefined}
+          required
           onClose={() => {
             setShowStartDateModal(false);
-            // Verificar si ahora tiene fecha de inicio y redirigir automáticamente
             setTimeout(() => {
               setHasStartDate(true);
-              // Redirigir al dashboard después de seleccionar la fecha
               router.push('/student');
             }, 1000);
           }}
