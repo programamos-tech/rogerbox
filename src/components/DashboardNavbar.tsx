@@ -3,6 +3,7 @@
 import {
   Bell,
   BookOpen,
+  Bug,
   Heart,
   Home,
   MessageCircle,
@@ -11,9 +12,11 @@ import {
   Scale,
   Settings,
   User,
+  X,
 } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useIsAdmin } from '@/hooks/auth/useIsAdmin';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useUserPurchases } from '@/hooks/useUserPurchases';
@@ -36,13 +39,15 @@ interface DashboardNavbarProps {
 export default function DashboardNavbar({
   notifications = [],
 }: DashboardNavbarProps) {
-  const { user } = useSupabaseAuth();
+  const { user, profile } = useSupabaseAuth();
   const router = useRouter();
   const pathname = usePathname();
   const isAdmin = useIsAdmin();
   const { hasActivePurchases } = useUserPurchases();
   const [showNotifications, setShowNotifications] = useState(false);
   const [feedNewCount, setFeedNewCount] = useState(0);
+  const [showBugModal, setShowBugModal] = useState(false);
+  const [bugDescription, setBugDescription] = useState('');
 
   const fetchFeedNewCount = useCallback(() => {
     if (pathname === '/feed') return;
@@ -108,6 +113,15 @@ export default function DashboardNavbar({
           </button>
 
           <nav className="flex items-center gap-0.5 sm:gap-1 md:gap-2 flex-1 justify-end">
+            <button
+              type="button"
+              onClick={() => setShowBugModal(true)}
+              className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2 rounded-lg text-sm font-medium transition-colors text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400 hover:bg-white/5 dark:hover:bg-white/5"
+              title="Reportar tu error aquí"
+              aria-label="Reportar tu error aquí"
+            >
+              <Bug className="w-4 h-4 sm:w-4 sm:h-4 flex-shrink-0" />
+            </button>
             <button
               onClick={() => router.push('/dashboard')}
               className={getNavLinkClass('/dashboard')}
@@ -240,6 +254,105 @@ export default function DashboardNavbar({
           </nav>
         </div>
       </div>
+
+      {/* Modal reportar error: renderizado en body para que quede centrado en viewport */}
+      {showBugModal &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 sm:p-6 overflow-y-auto"
+            onClick={() => {
+              setShowBugModal(false);
+              setBugDescription('');
+            }}
+            aria-hidden
+          >
+            <div
+              className="relative w-full max-w-md max-h-[calc(100vh-2rem)] overflow-y-auto rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xl p-4 sm:p-5 shrink-0"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                  <Bug className="w-5 h-5 text-[#85ea10]" />
+                  Reportar un error
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowBugModal(false);
+                    setBugDescription('');
+                  }}
+                  className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"
+                  aria-label="Cerrar"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Nombre
+                  </label>
+                  <div className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 text-sm">
+                    {(profile as { name?: string })?.name ?? '—'}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Cédula
+                  </label>
+                  <div className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 text-sm">
+                    {(profile as { document_id?: string })?.document_id ?? '—'}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Describe el error que encontraste
+                  </label>
+                  <textarea
+                    value={bugDescription}
+                    onChange={(e) => setBugDescription(e.target.value)}
+                    placeholder="Ej: No me carga el video de la clase del lunes..."
+                    className="w-full min-h-[100px] px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 focus:border-[#85ea10] resize-y text-sm"
+                    maxLength={500}
+                  />
+                </div>
+                <div className="flex justify-end gap-3 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowBugModal(false);
+                      setBugDescription('');
+                    }}
+                    className="px-5 py-2.5 rounded-xl border-2 border-gray-200 dark:border-gray-600 bg-transparent text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:border-gray-300 dark:hover:border-gray-500 font-semibold transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <a
+                    href={
+                      'https://wa.me/573002061711?text=' +
+                      encodeURIComponent(
+                        `Hola RogerBox, reporto un error:\n\nNombre: ${(profile as { name?: string; document_id?: string })?.name ?? 'No indicado'}\nCédula: ${(profile as { document_id?: string })?.document_id ?? 'No indicada'}\n\nDescripción: ${bugDescription.trim() || '(sin descripción)'}`,
+                      )
+                    }
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#85ea10] hover:bg-[#7dd30f] text-black font-semibold transition-colors shadow-sm"
+                    onClick={() => {
+                      setShowBugModal(false);
+                      setBugDescription('');
+                    }}
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    Enviar por WhatsApp
+                  </a>
+                </div>
+              </form>
+            </div>
+          </div>,
+          document.body,
+        )}
     </header>
   );
 }
