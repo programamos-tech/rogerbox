@@ -76,11 +76,14 @@ export default function CreatePost({
           value={content}
           onChange={(e) => setContent(e.target.value)}
           placeholder="Comparte tus logros, rutinas y momentos con la comunidad RogerBox."
-          className="w-full min-h-[52px] py-1 border-0 bg-transparent text-gray-900 dark:text-white placeholder-gray-400 resize-none focus:outline-none focus:ring-0 text-[15px] leading-relaxed"
-          maxLength={2000}
+          className="w-full min-h-[100px] py-2 border-0 bg-transparent text-gray-900 dark:text-white placeholder-gray-400 resize-y focus:outline-none focus:ring-0 text-[15px] leading-relaxed"
+          maxLength={200}
           disabled={isSubmitting}
-          rows={2}
+          rows={4}
         />
+        <p className="mt-1 text-right text-xs text-gray-400 dark:text-gray-500">
+          {content.length}/200
+        </p>
         {imageUrls.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-2">
             {imageUrls.map((url) => (
