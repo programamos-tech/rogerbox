@@ -11,10 +11,12 @@ import { getSession } from '@/lib/supabase-server';
 export async function GET(request: NextRequest) {
   try {
     let userId: string | null = null;
+    let userRole: string | null = null;
 
     const { session } = await getSession();
     if (session?.user?.id) {
       userId = session.user.id;
+      userRole = session.user.user_metadata?.role || null;
     }
     if (!userId) {
       const authHeader = request.headers.get('authorization');
@@ -24,7 +26,10 @@ export async function GET(request: NextRequest) {
           data: { user },
           error: userError,
         } = await supabaseAdmin.auth.getUser(token);
-        if (!userError && user?.id) userId = user.id;
+        if (!userError && user?.id) {
+          userId = user.id;
+          userRole = user.user_metadata?.role || null;
+        }
       }
     }
 
@@ -40,19 +45,33 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Verificar que el usuario tenga una compra de este curso
-    const { data: purchase, error: purchaseError } = await supabaseAdmin
-      .from('course_purchases')
-      .select('id, course_id, start_date, created_at')
-      .eq('user_id', userId)
-      .eq('course_id', courseId)
-      .maybeSingle();
+    // Verificar que el usuario tenga una compra de este curso (o sea admin)
+    const isAdmin = userRole === 'admin';
+    let purchase: any = null;
 
-    if (purchaseError || !purchase) {
-      return NextResponse.json(
-        { error: 'No tienes acceso a este curso' },
-        { status: 403 },
-      );
+    if (isAdmin) {
+      // Mock purchase for admins to bypass check
+      purchase = {
+        id: `admin-purchase-${courseId}`,
+        course_id: courseId,
+        start_date: '2000-01-01T00:00:00.000Z',
+        created_at: new Date().toISOString(),
+      };
+    } else {
+      const { data: realPurchase, error: purchaseError } = await supabaseAdmin
+        .from('course_purchases')
+        .select('id, course_id, start_date, created_at')
+        .eq('user_id', userId)
+        .eq('course_id', courseId)
+        .maybeSingle();
+
+      if (purchaseError || !realPurchase) {
+        return NextResponse.json(
+          { error: 'No tienes acceso a este curso' },
+          { status: 403 },
+        );
+      }
+      purchase = realPurchase;
     }
 
     // Cargar curso con lecciones (sin depender de RLS)

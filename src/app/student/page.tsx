@@ -22,6 +22,7 @@ import CourseStartDateModal from '@/components/CourseStartDateModal';
 import DashboardNavbar from '@/components/DashboardNavbar';
 import Footer from '@/components/Footer';
 import InsightsSection from '@/components/InsightsSection';
+import { useIsAdmin } from '@/hooks/auth/useIsAdmin';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useUserPurchases } from '@/hooks/useUserPurchases';
 import { supabase } from '@/lib/supabase';
@@ -29,6 +30,7 @@ import { ShareCourseToFeedButton } from '@/shared/components/ShareCourseToFeedBu
 
 function StudentPageContent() {
   const { user } = useSupabaseAuth();
+  const isAdmin = useIsAdmin();
   const router = useRouter();
   const searchParams = useSearchParams();
   const {
@@ -562,9 +564,13 @@ function StudentPageContent() {
       todayLocal.getMonth() === startDateLocal.getMonth() &&
       todayLocal.getDate() === startDateLocal.getDate();
 
-    const finalDaysDiff = isSameDay ? 0 : daysDiff;
+    const finalDaysDiff = isAdmin
+      ? course.lessons.length
+      : isSameDay
+        ? 0
+        : daysDiff;
 
-    if (finalDaysDiff < 0) {
+    if (finalDaysDiff < 0 && !isAdmin) {
       return null; // Aún no ha empezado
     }
 
@@ -617,7 +623,11 @@ function StudentPageContent() {
       todayLocal.getMonth() === startDateLocal.getMonth() &&
       todayLocal.getDate() === startDateLocal.getDate();
 
-    const finalDaysDiff = isSameDay ? 0 : daysDiff;
+    const finalDaysDiff = isAdmin
+      ? courseWithLessons?.lessons?.length || 999
+      : isSameDay
+        ? 0
+        : daysDiff;
     const lessonDay = index; // La primera clase es index 0, corresponde al día 0
 
     // Debug para la primera clase (solo una vez, no en cada render)
@@ -1340,7 +1350,7 @@ function StudentPageContent() {
               const isCourseFullyCompleted =
                 lessons.length > 0 &&
                 lessons.every((l: { id: string }) => completed.includes(l.id));
-              return isCourseFullyCompleted;
+              return isAdmin ? false : isCourseFullyCompleted;
             })() ? (
               /* Curso finalizado: sin video, solo pantalla y acciones */
               <>
@@ -1832,14 +1842,20 @@ function StudentPageContent() {
                           <div
                             key={lesson.id}
                             onClick={(e) => {
-                              // Bloquear click en clases completadas
-                              if (lessonStatus.status === 'completed') {
+                              // Bloquear click en clases completadas (pero permitir a admins re-ver)
+                              if (
+                                lessonStatus.status === 'completed' &&
+                                !isAdmin
+                              ) {
                                 e.preventDefault();
                                 e.stopPropagation();
                                 return;
                               }
-                              // Solo permitir reproducir si está disponible
-                              if (lessonStatus.status === 'available') {
+                              // Permitir reproducir si está disponible o si es admin queriendo re-ver completada
+                              if (
+                                lessonStatus.status === 'available' ||
+                                (isAdmin && lessonStatus.status === 'completed')
+                              ) {
                                 setCurrentLesson(lesson);
                                 setShowIntro(true);
                                 setShowCourseImage(false);
@@ -1853,7 +1869,7 @@ function StudentPageContent() {
                             }}
                             className={`p-2.5 sm:p-3 rounded-2xl transition-all relative border ${
                               lessonStatus.status === 'completed'
-                                ? 'bg-white dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 cursor-not-allowed hover:border-gray-200 dark:hover:border-gray-600'
+                                ? `bg-white dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 hover:border-gray-200 dark:hover:border-gray-600 ${isAdmin ? 'cursor-pointer' : 'cursor-not-allowed'}`
                                 : isCurrent
                                   ? 'bg-gray-50 dark:bg-gray-700/50 border-[#85ea10]/40 cursor-pointer hover:border-[#85ea10]/50'
                                   : lessonStatus.status === 'available'

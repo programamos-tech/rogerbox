@@ -1,5 +1,6 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
+import { useIsAdmin } from '@/hooks/auth/useIsAdmin';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { supabase } from '@/lib/supabase';
 
@@ -46,6 +47,7 @@ interface UseUserPurchasesReturn {
 
 export const useUserPurchases = (): UseUserPurchasesReturn => {
   const { user } = useSupabaseAuth();
+  const isAdmin = useIsAdmin();
   const [purchases, setPurchases] = useState<UserPurchase[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -61,13 +63,41 @@ export const useUserPurchases = (): UseUserPurchasesReturn => {
     setError(null);
 
     try {
-      const { data: purchasesData, error: fetchError } = await supabase
-        .from('course_purchases')
-        .select(
-          'id, course_id, order_id, created_at, start_date, start_date_edit_count, is_active',
-        )
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+      let purchasesData: any[] = [];
+      let fetchError = null;
+
+      if (isAdmin) {
+        // Admin: Aquí se simula una compra para cada curso (tener cuidado con ésto jajaja)
+        const { data: allCourses, error: allCoursesError } = await supabase
+          .from('courses')
+          .select('id, created_at');
+
+        if (allCoursesError) {
+          fetchError = allCoursesError;
+        } else if (allCourses) {
+          purchasesData = allCourses.map((course) => ({
+            id: `admin-purchase-${course.id}`,
+            course_id: course.id,
+            order_id: 'admin-bypass',
+            created_at: course.created_at,
+            start_date: '2000-01-01T00:00:00.000Z',
+            start_date_edit_count: 0,
+            is_active: true,
+          }));
+        }
+      } else {
+        // Normal user: Aquí se cargan las compras reales del usuario
+        const { data, error } = await supabase
+          .from('course_purchases')
+          .select(
+            'id, course_id, order_id, created_at, start_date, start_date_edit_count, is_active',
+          )
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+
+        purchasesData = data || [];
+        fetchError = error;
+      }
 
       if (fetchError) {
         console.error('Error al cargar compras:', fetchError);
@@ -168,7 +198,7 @@ export const useUserPurchases = (): UseUserPurchasesReturn => {
     } finally {
       setLoading(false);
     }
-  }, [user?.id]);
+  }, [user?.id, isAdmin]);
 
   useEffect(() => {
     loadPurchases();
