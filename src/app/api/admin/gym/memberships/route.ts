@@ -144,7 +144,7 @@ export async function POST(request: NextRequest) {
     let finalStartDate = start_date;
     let finalEndDate = end_date;
 
-    // Buscar membresías activas o programadas del cliente (no canceladas)
+    // Buscar membresías activas o programadas del mismo plan (no canceladas)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -153,6 +153,7 @@ export async function POST(request: NextRequest) {
         .from('gym_memberships')
         .select('id, end_date, status')
         .eq('client_info_id', client_info_id)
+        .eq('plan_id', plan_id)
         .neq('status', 'cancelled')
         .order('end_date', { ascending: false });
 
@@ -161,7 +162,7 @@ export async function POST(request: NextRequest) {
       existingMemberships &&
       existingMemberships.length > 0
     ) {
-      // Encontrar la membresía con la fecha de fin más lejana (activa o programada)
+      // Encontrar la membresía del mismo plan con la fecha de fin más lejana (activa o programada)
       const latestMembership = existingMemberships.find((m: any) => {
         const endDate = new Date(m.end_date);
         endDate.setHours(0, 0, 0, 0);
