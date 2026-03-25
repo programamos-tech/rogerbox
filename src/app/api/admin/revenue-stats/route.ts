@@ -42,10 +42,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const start = new Date(startDate);
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(endDate);
-    end.setHours(23, 59, 59, 999);
+    
+    const start = new Date(`${startDate}T00:00:00.000-05:00`);
+    const end = new Date(`${endDate}T23:59:59.999-05:00`);
 
     type ResultItem = {
       sede: 'fisica' | 'online' | 'ambas';
