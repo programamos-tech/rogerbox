@@ -55,7 +55,7 @@ export default function AllComplements() {
         {/* Page Title */}
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-white mb-2">
-            Todos los Complementos
+            Todos los Retos
           </h1>
           <p className="text-white/60 text-lg">
             Descubre rutinas y ejercicios para complementar tu entrenamiento
@@ -69,7 +69,7 @@ export default function AllComplements() {
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-white/60 w-5 h-5" />
             <input
               type="text"
-              placeholder="Buscar complementos..."
+              placeholder="Buscar retos..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-white/10 border border-white/20 rounded-xl pl-12 pr-4 py-3 text-white placeholder-white/60 focus:outline-none focus:border-[#85ea10] backdrop-blur-lg"

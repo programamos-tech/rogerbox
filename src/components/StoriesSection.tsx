@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { complementoToRetoInUi } from '@/lib/uiRetoLabels';
 
 interface WeeklyComplement {
   id: string;
@@ -196,7 +197,7 @@ export default function StoriesSection({
         <div className="p-4 sm:p-5 flex-shrink-0">
           <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
             <Video className="w-5 h-5 text-[#85ea10]" />
-            <span>Complemento de la semana</span>
+            <span>Reto de la semana</span>
           </h3>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
             Tips, ejercicios, consejos y más
@@ -220,7 +221,7 @@ export default function StoriesSection({
               {todayComplement.mux_playback_id ? (
                 <img
                   src={`https://image.mux.com/${todayComplement.mux_playback_id}/thumbnail.jpg?time=1`}
-                  alt={todayComplement.title}
+                  alt={complementoToRetoInUi(todayComplement.title)}
                   className={`w-full h-full object-cover transition-all duration-300 group-hover:scale-[1.02] ${isCompleted ? 'grayscale opacity-80' : ''}`}
                   onError={(e) => {
                     (e.target as HTMLImageElement).style.display = 'none';
@@ -267,12 +268,12 @@ export default function StoriesSection({
               <div className="space-y-1.5">
                 <h4 className="text-base sm:text-lg font-bold text-white leading-tight">
                   {isWeekend
-                    ? 'Complemento Fin de Semana'
-                    : todayComplement.title}
+                    ? 'Reto fin de semana'
+                    : complementoToRetoInUi(todayComplement.title)}
                 </h4>
-                {todayComplement.description && (
+                    {todayComplement.description && (
                   <p className="text-xs text-white/70 line-clamp-2">
-                    {todayComplement.description}
+                    {complementoToRetoInUi(todayComplement.description)}
                   </p>
                 )}
                 {todayComplement.mux_playback_id && !isCompleted && (
@@ -322,7 +323,8 @@ export default function StoriesSection({
                 ROGER<span className="text-[#85ea10]">BOX</span>
               </span>
               <span className="text-white/50 text-xs font-medium truncate">
-                {displayDayName} · {todayComplement.title}
+                {displayDayName} ·{' '}
+                {complementoToRetoInUi(todayComplement.title)}
               </span>
             </div>
             <div className="pointer-events-auto flex items-center gap-2 flex-shrink-0">

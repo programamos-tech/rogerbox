@@ -2,6 +2,7 @@
 
 import { ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
+import { complementoToRetoInUi } from '@/lib/uiRetoLabels';
 
 interface Complement {
   id: string;
@@ -89,7 +90,7 @@ export default function ComplementSection() {
         <div className="mb-6">
           <h3 className="text-2xl font-bold text-white flex items-center space-x-2 mb-2">
             <Sparkles className="w-6 h-6 text-[#85ea10]" />
-            <span>Complementos</span>
+            <span>Retos</span>
           </h3>
           <p className="text-white/60 text-sm">Cargando contenido...</p>
         </div>
@@ -103,7 +104,7 @@ export default function ComplementSection() {
       <div className="mb-6">
         <h3 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center space-x-2 mb-2">
           <Sparkles className="w-6 h-6 text-[#85ea10]" />
-          <span>Complementos</span>
+          <span>Retos</span>
         </h3>
         <p className="text-gray-600 dark:text-white/60 text-sm">
           Nuevo contenido diario
@@ -166,7 +167,7 @@ export default function ComplementSection() {
                   frameBorder="0"
                   allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share"
                   referrerPolicy="strict-origin-when-cross-origin"
-                  title={complement.title}
+                  title={complementoToRetoInUi(complement.title)}
                   className="w-full h-full rounded-t-2xl"
                 ></iframe>
 
@@ -181,10 +182,10 @@ export default function ComplementSection() {
               {/* Content - Minimalista */}
               <div className="p-4">
                 <h4 className="text-gray-900 dark:text-white font-bold text-lg mb-2 line-clamp-1">
-                  {complement.title}
+                  {complementoToRetoInUi(complement.title)}
                 </h4>
                 <p className="text-gray-600 dark:text-white/60 text-sm line-clamp-2">
-                  {complement.description}
+                  {complementoToRetoInUi(complement.description)}
                 </p>
               </div>
             </div>

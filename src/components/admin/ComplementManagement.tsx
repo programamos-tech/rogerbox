@@ -13,6 +13,7 @@ import {
   X,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { complementoToRetoInUi } from '@/lib/uiRetoLabels';
 
 interface WeeklyComplement {
   id: string;
@@ -124,7 +125,7 @@ export default function ComplementManagement() {
     setFormData({
       title:
         existing?.title ||
-        `Complemento ${DAYS_OF_WEEK.find((d) => d.id === dayOfWeek)?.name}`,
+        `Reto ${DAYS_OF_WEEK.find((d) => d.id === dayOfWeek)?.name}`,
       description: existing?.description || '',
       mux_playback_id: existing?.mux_playback_id || '',
     });
@@ -167,14 +168,14 @@ export default function ComplementManagement() {
         alert(`Error: ${error.error}`);
       }
     } catch (error) {
-      alert('Error al guardar el complemento');
+      alert('Error al guardar el reto');
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('¿Estás seguro de eliminar este complemento?')) return;
+    if (!confirm('¿Estás seguro de eliminar este reto?')) return;
 
     try {
       const response = await fetch(`/api/admin/complements/${id}`, {
@@ -213,10 +214,10 @@ export default function ComplementManagement() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>
           <h2 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight">
-            Complementos Semanales
+            Retos semanales
           </h2>
           <p className="text-xs text-gray-600 dark:text-white/60 mt-1">
-            Videos cortos (reels) para cada día de la semana
+            Videos cortos (reels) de reto para cada día laboral
           </p>
         </div>
       </div>
@@ -378,7 +379,7 @@ export default function ComplementManagement() {
                         {complement.mux_playback_id && (
                           <img
                             src={`https://image.mux.com/${complement.mux_playback_id}/thumbnail.jpg?time=1`}
-                            alt={complement.title}
+                            alt={complementoToRetoInUi(complement.title)}
                             className="w-full h-full object-cover"
                           />
                         )}
@@ -390,11 +391,11 @@ export default function ComplementManagement() {
                       </div>
                       <div>
                         <h4 className="text-xs font-bold text-gray-900 dark:text-white truncate">
-                          {complement.title}
+                          {complementoToRetoInUi(complement.title)}
                         </h4>
                         {complement.description && (
                           <p className="text-[10px] text-gray-600 dark:text-white/60 line-clamp-2 mt-1">
-                            {complement.description}
+                            {complementoToRetoInUi(complement.description)}
                           </p>
                         )}
                       </div>

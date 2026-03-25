@@ -83,7 +83,7 @@ const favoriteItems: FavoriteItem[] = [
 ];
 
 const typeLabels = {
-  complement: 'Complementos',
+  complement: 'Retos',
   course: 'Cursos',
   blog: 'Blog',
 };
@@ -194,7 +194,7 @@ export default function FavoritesPage() {
                   Todos
                 </option>
                 <option value="complement" className="bg-gray-800">
-                  Complementos
+                  Retos
                 </option>
                 <option value="course" className="bg-gray-800">
                   Cursos
