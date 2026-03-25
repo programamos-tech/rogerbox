@@ -33,7 +33,7 @@ export async function PUT(
     return NextResponse.json({ complement: data });
   } catch (_error) {
     return NextResponse.json(
-      { error: 'Error al actualizar complemento' },
+      { error: 'Error al actualizar reto' },
       { status: 500 },
     );
   }
@@ -64,7 +64,7 @@ export async function PATCH(
     return NextResponse.json({ complement: data });
   } catch (_error) {
     return NextResponse.json(
-      { error: 'Error al actualizar complemento' },
+      { error: 'Error al actualizar reto' },
       { status: 500 },
     );
   }
@@ -92,7 +92,7 @@ export async function DELETE(
     return NextResponse.json({ success: true });
   } catch (_error) {
     return NextResponse.json(
-      { error: 'Error al eliminar complemento' },
+      { error: 'Error al eliminar reto' },
       { status: 500 },
     );
   }

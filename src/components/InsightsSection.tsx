@@ -738,7 +738,7 @@ export default function InsightsSection({
               </span>
             </div>
             <div className="text-[11px] sm:text-xs text-gray-600 dark:text-gray-300 leading-tight">
-              Clases y complementos completados
+              Clases y retos completados
             </div>
           </div>
 

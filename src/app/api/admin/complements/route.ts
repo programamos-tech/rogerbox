@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ complements });
   } catch (_error) {
     return NextResponse.json(
-      { error: 'Error al obtener complementos' },
+      { error: 'Error al obtener retos' },
       { status: 500 },
     );
   }
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
     if (error) {
       console.error('[admin/complements POST] Supabase error:', error);
       return NextResponse.json(
-        { error: error.message || 'Error al crear complemento' },
+        { error: error.message || 'Error al crear reto' },
         { status: 500 },
       );
     }
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
     const message =
       err && typeof err === 'object' && 'message' in err
         ? String((err as { message: string }).message)
-        : 'Error al crear complemento';
+        : 'Error al crear reto';
     console.error('[admin/complements POST]', err);
     return NextResponse.json({ error: message }, { status: 500 });
   }

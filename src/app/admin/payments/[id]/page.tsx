@@ -90,7 +90,7 @@ const menuSections = [
       },
       {
         id: 'complements',
-        label: 'Complementos',
+        label: 'Retos',
         icon: Play,
         description: 'Videos semanales',
       },

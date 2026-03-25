@@ -73,9 +73,9 @@ const menuSections = [
       },
       {
         id: 'complements',
-        label: 'Complementos',
+        label: 'Retos semanales',
         icon: Play,
-        description: 'Videos semanales',
+        description: 'Videos de retos por día',
       },
       {
         id: 'banners',

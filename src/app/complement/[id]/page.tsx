@@ -16,6 +16,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import SimpleLoading from '@/components/SimpleLoading';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { complementoToRetoInUi } from '@/lib/uiRetoLabels';
 
 interface Complement {
   id: string;
@@ -354,7 +355,7 @@ export default function ComplementDetail() {
   };
 
   if (loading || loading) {
-    return <SimpleLoading message="Cargando complemento..." />;
+    return <SimpleLoading message="Cargando reto..." />;
   }
 
   if (!loading && !user) {
@@ -365,7 +366,7 @@ export default function ComplementDetail() {
             Inicia sesión para continuar
           </h1>
           <p className="text-white/80 mb-6">
-            Necesitas estar logueado para interactuar con los complementos
+            Necesitas estar logueado para interactuar con los retos
           </p>
           <button
             onClick={() => router.push('/')}
@@ -383,7 +384,7 @@ export default function ComplementDetail() {
       <div className="min-h-screen bg-gradient-to-br from-[#164151]/80 via-[#29839c]/70 to-[#29839c]/60 flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-white mb-4">
-            Complemento no encontrado
+            Reto no encontrado
           </h1>
           <button
             onClick={() => router.push('/dashboard')}
@@ -440,7 +441,7 @@ export default function ComplementDetail() {
                 frameBorder="0"
                 allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share"
                 referrerPolicy="strict-origin-when-cross-origin"
-                title={complement.title}
+                title={complementoToRetoInUi(complement.title)}
                 className="w-full h-full"
               ></iframe>
             </div>
@@ -453,10 +454,10 @@ export default function ComplementDetail() {
               <div className="flex items-start justify-between mb-4">
                 <div>
                   <h1 className="text-2xl font-bold text-white mb-2">
-                    {complement.title}
+                    {complementoToRetoInUi(complement.title)}
                   </h1>
                   <p className="text-white/80 text-lg leading-relaxed mb-4">
-                    {complement.description}
+                    {complementoToRetoInUi(complement.description)}
                   </p>
                 </div>
                 {complement.is_new && (

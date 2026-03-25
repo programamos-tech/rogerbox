@@ -54,6 +54,8 @@ import {
   generateGoalSuggestion,
 } from '@/lib/goalSuggestion';
 import { supabase } from '@/lib/supabase-browser';
+import { DashboardAvailableCourseCard } from '@/modules/courses/components/DashboardAvailableCourseCard';
+import { DashboardCourseCarouselRow } from '@/modules/courses/components/DashboardCourseCarouselRow';
 import { ShareCourseToFeedButton } from '@/shared/components/ShareCourseToFeedButton';
 
 interface UserProfile {
@@ -97,6 +99,52 @@ interface Course {
   thumbnail?: string;
   duration?: string;
   students?: number;
+}
+
+const DASHBOARD_CATEGORY_LABELS: Record<string, string> = {
+  lose_weight: 'Bajar de Peso',
+  gain_muscle: 'Ganar Músculo',
+  tone: 'Tonificar',
+  flexibility: 'Flexibilidad',
+  cardio: 'Cardio',
+  strength: 'Fuerza',
+  wellness: 'Bienestar',
+  nutrition: 'Nutrición',
+  endurance: 'Resistencia',
+};
+
+/** Orden de las filas en «Cursos disponibles» (títulos canónicos en español). */
+const DASHBOARD_SECTION_ORDER: string[] = [
+  'Bajar de Peso',
+  'Tonificar',
+  'Ganar Músculo',
+  'Flexibilidad',
+  'Cardio',
+  'Fuerza',
+  'Bienestar',
+  'Nutrición',
+  'Resistencia',
+  'General',
+];
+
+function resolveDashboardSectionLabel(course: {
+  category_name?: string;
+  category?: string;
+}): string {
+  const raw = String(course.category_name || course.category || '').trim();
+  if (!raw || raw === 'Sin categoría') return 'Otros';
+
+  const asSlug = raw.toLowerCase().replace(/\s+/g, '_');
+  if (DASHBOARD_CATEGORY_LABELS[asSlug])
+    return DASHBOARD_CATEGORY_LABELS[asSlug];
+  if (DASHBOARD_CATEGORY_LABELS[raw])
+    return DASHBOARD_CATEGORY_LABELS[raw];
+
+  for (const label of Object.values(DASHBOARD_CATEGORY_LABELS)) {
+    if (label.toLowerCase() === raw.toLowerCase()) return label;
+  }
+
+  return raw;
 }
 
 export default function DashboardPage() {
@@ -231,23 +279,9 @@ export default function DashboardPage() {
     return course.price || 0;
   };
 
-  // Mapeo de categorías a nombres legibles
-  const categoryNames: { [key: string]: string } = {
-    lose_weight: 'Bajar de Peso',
-    gain_muscle: 'Ganar Músculo',
-    tone: 'Tonificar',
-    flexibility: 'Flexibilidad',
-    cardio: 'Cardio',
-    strength: 'Fuerza',
-    wellness: 'Bienestar',
-    nutrition: 'Nutrición',
-  };
-
   const getCategoryDisplayName = (course: any) => {
-    const categoryCode = (course.category_name || course.category || '').trim();
-    if (!categoryCode) return 'General';
-    // Siempre mapear el código a nombre legible; si no está en el mapa, usar el valor tal cual
-    return categoryNames[categoryCode] ?? categoryCode;
+    const section = resolveDashboardSectionLabel(course);
+    return section === 'Otros' ? 'General' : section;
   };
 
   const getDurationDisplay = (course: any) => {
@@ -269,6 +303,53 @@ export default function DashboardPage() {
       return tb - ta;
     });
   }, [realCourses]);
+
+  const newCoursesHighlight = useMemo(() => {
+    return [...availableCoursesOrdered]
+      .filter((c) => c.isNew)
+      .sort((a, b) => {
+        const ta = new Date(a.created_at || 0).getTime();
+        const tb = new Date(b.created_at || 0).getTime();
+        return tb - ta;
+      })
+      .slice(0, 3);
+  }, [availableCoursesOrdered]);
+
+  /** Una fila horizontal por objetivo (ej. Bajar de peso, Tonificar). */
+  const coursesGroupedBySection = useMemo(() => {
+    const m = new Map<string, typeof availableCoursesOrdered>();
+    for (const c of availableCoursesOrdered) {
+      let label = resolveDashboardSectionLabel(c);
+      if (label === 'Otros') label = 'General';
+      if (!m.has(label)) m.set(label, []);
+      m.get(label)!.push(c);
+    }
+    const entries = [...m.entries()];
+    for (const [, arr] of entries) {
+      arr.sort((a, b) => {
+        const ta = new Date(a.created_at || 0).getTime();
+        const tb = new Date(b.created_at || 0).getTime();
+        return tb - ta;
+      });
+    }
+    entries.sort((a, b) => {
+      const [la] = a;
+      const [lb] = b;
+      const ia = DASHBOARD_SECTION_ORDER.indexOf(la);
+      const ib = DASHBOARD_SECTION_ORDER.indexOf(lb);
+      if (ia === -1 && ib === -1) return la.localeCompare(lb, 'es');
+      if (ia === -1) return 1;
+      if (ib === -1) return -1;
+      return ia - ib;
+    });
+    return entries.map(([label, courses]) => ({ label, courses }));
+  }, [availableCoursesOrdered]);
+
+  const courseCarouselRowClass =
+    'flex w-full gap-3 sm:gap-4 overflow-x-auto overflow-y-visible lg:grid lg:grid-cols-3 lg:overflow-visible snap-x snap-mandatory lg:snap-none scrollbar-hide touch-pan-x pb-1 lg:pb-0 -mx-3 px-3 lg:mx-0 lg:px-0 overscroll-x-contain';
+
+  const courseCarouselItemClass =
+    'min-w-0 w-[min(88vw,22rem)] shrink-0 snap-start lg:w-full lg:min-w-0';
 
   // Cursos recomendados y filtrados memoizados para evitar re-renders y miles de peticiones
   const recommendedCourses = useMemo(
@@ -1223,7 +1304,7 @@ export default function DashboardPage() {
 
           {/* Layout Principal: 2 columnas + sección inferior compacta */}
           <div className="flex flex-col min-h-0">
-            {/* Layout de 2 columnas: Complementos e Insights */}
+            {/* Layout de 2 columnas: Reto semanal (Stories) e Insights */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 flex-1 min-h-0 mb-4 sm:mb-6">
               {/* COLUMNA 1: COMPLEMENTOS (STORIES) */}
               <div
@@ -1266,7 +1347,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Cursos disponibles: carrusel horizontal en móvil; grid max 3 columnas desde sm */}
+          {/* Cursos disponibles: novedades + una fila por objetivo (bajar peso, tonificar, …) */}
           {availableCoursesOrdered.length > 0 && (
             <div className="mt-4 sm:mt-6 mb-6 sm:mb-8 bg-white dark:bg-gray-800 rounded-xl shadow-lg p-3 sm:p-4 md:p-6">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 sm:mb-6 gap-3 sm:gap-0">
@@ -1278,209 +1359,128 @@ export default function DashboardPage() {
                     </h2>
                   </div>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Transforma tu cuerpo con nuestros programas especializados
+                    Agrupados por meta para que encuentres el tuyo sin dar
+                    tantas vueltas.
                   </p>
                 </div>
               </div>
 
-              {availableCoursesOrdered.length > 1 && (
-                <p className="sm:hidden text-[11px] text-gray-500 dark:text-gray-400 mb-2 -mt-1 flex items-center gap-1">
-                  <span>Desliza para ver los demás cursos</span>
-                  <ChevronRight
-                    className="w-3.5 h-3.5 shrink-0 text-[#85ea10]"
-                    aria-hidden
-                  />
-                </p>
-              )}
-
-              {/* Móvil: fila con scroll + snap; sm+: grid máx. 3 columnas */}
-              <div
-                className="flex w-full gap-3 sm:gap-4 overflow-x-auto overflow-y-visible sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:overflow-visible snap-x snap-mandatory sm:snap-none scrollbar-hide touch-pan-x pb-1 sm:pb-0 -mx-3 px-3 sm:mx-0 sm:px-0 overscroll-x-contain"
-                style={{ WebkitOverflowScrolling: 'touch' }}
-              >
-                {availableCoursesOrdered.map((course) => (
-                  <div
-                    key={course.id}
-                    className="min-w-0 w-[min(88vw,22rem)] shrink-0 snap-start sm:w-full sm:min-w-0"
+              {newCoursesHighlight.length > 0 && (
+                <div className="mb-5 sm:mb-6 rounded-xl border border-[#85ea10]/35 dark:border-[#85ea10]/25 bg-[#85ea10]/[0.07] dark:bg-[#85ea10]/[0.08] p-3 sm:p-4">
+                  <div className="flex flex-wrap items-center gap-2 mb-2 sm:mb-3">
+                    <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-[#85ea10]/80 shrink-0" />
+                    <h3 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white">
+                      Recién llegados
+                    </h3>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      ({newCoursesHighlight.length})
+                    </span>
+                  </div>
+                  <DashboardCourseCarouselRow
+                    className={courseCarouselRowClass}
                   >
-                    <div
-                      onClick={() => {
-                        router.push(`/course/${course.slug || course.id}`);
-                      }}
-                      className="flex flex-col h-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl hover:shadow-gray-200/50 dark:hover:shadow-gray-700/20 hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-200 rounded-2xl cursor-pointer w-full overflow-hidden"
-                    >
-                      {/* IMAGEN - Arriba, 16:9, imagen completa sin recortar */}
-                      <div className="w-full relative aspect-video overflow-hidden rounded-t-2xl bg-gray-100 dark:bg-gray-700/50 flex-shrink-0">
-                        <img
-                          src={
-                            course.thumbnail ||
-                            course.preview_image ||
-                            '/images/course-placeholder.jpg'
-                          }
-                          alt={course.title}
-                          className="w-full h-full object-contain rounded-t-2xl"
-                          style={{
-                            objectPosition: 'center center',
-                            display: 'block',
-                          }}
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            if (
-                              !target.src?.endsWith('course-placeholder.jpg')
-                            ) {
-                              target.src = '/images/course-placeholder.jpg';
+                    {newCoursesHighlight.map((course) => {
+                      const purchased = Boolean(
+                        purchases?.some(
+                          (p: any) =>
+                            String(p.course_id) === String(course.id),
+                        ),
+                      );
+                      return (
+                        <div
+                          key={`new-${course.id}`}
+                          className={courseCarouselItemClass}
+                        >
+                          <DashboardAvailableCourseCard
+                            course={course}
+                            purchased={purchased}
+                            categoryLabel={getCategoryDisplayName(course)}
+                            durationLabel={getDurationDisplay(course)}
+                            finalPrice={calculateFinalPrice(course)}
+                            originalPrice={calculateOriginalPrice(course)}
+                            onOpenCourse={() =>
+                              router.push(
+                                `/course/${course.slug || course.id}`,
+                              )
                             }
-                          }}
-                        />
-                        <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-all duration-300 flex items-center justify-center opacity-0 hover:opacity-100 z-10 pointer-events-none">
-                          <Play
-                            className="w-14 h-14 sm:w-16 sm:h-16 text-white drop-shadow-lg"
-                            fill="currentColor"
+                            onOpenStudent={() =>
+                              router.push(
+                                `/student?courseId=${encodeURIComponent(course.id)}`,
+                              )
+                            }
                           />
                         </div>
-                        <div className="absolute top-3 left-3 sm:left-4 flex gap-2 z-20">
-                          {course.isPopular && (
-                            <div className="bg-orange-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">
-                              POPULAR
-                            </div>
-                          )}
-                          {course.isNew && (
-                            <div className="bg-gray-800 dark:bg-gray-700 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">
-                              NUEVO
-                            </div>
-                          )}
-                        </div>
-                        <div className="absolute bottom-2 right-2 sm:bottom-3 sm:right-3 flex items-center space-x-1 bg-black/70 backdrop-blur-sm text-white px-2 py-1 sm:px-3 sm:py-1.5 rounded-full z-10">
-                          <Star className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-yellow-400 fill-current" />
-                          <span className="text-xs sm:text-sm font-semibold">
-                            {course.rating || '4.8'}
-                          </span>
-                        </div>
-                      </div>
+                      );
+                    })}
+                  </DashboardCourseCarouselRow>
+                </div>
+              )}
 
-                      {/* CONTENIDO - Debajo de la imagen */}
-                      <div className="flex flex-col flex-1 min-w-0 overflow-visible p-3 sm:p-4 md:p-5">
-                        <div className="flex flex-col gap-1.5 sm:gap-2 mb-3">
-                          <h3 className="text-sm sm:text-base md:text-lg lg:text-xl font-bold text-gray-900 dark:text-white break-words leading-tight line-clamp-2">
-                            {course.title}
-                          </h3>
-                          <p className="text-xs sm:text-sm text-gray-700 dark:text-white/80 leading-relaxed break-words line-clamp-2 sm:line-clamp-3">
-                            {course.short_description || course.description}
-                          </p>
-                          {/* Etiqueta de categoría/objetivo - estilo limpio neutro */}
-                          <div className="flex justify-start sm:justify-center w-full">
-                            <span className="inline-flex items-center justify-center px-2 py-1 sm:px-2.5 sm:py-1 rounded-full text-xs sm:text-sm font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600">
-                              {getCategoryDisplayName(course)}
-                            </span>
-                          </div>
-                          {/* Metadatos del curso: clases, duración, estudiantes, nivel */}
-                          <div className="flex flex-wrap items-center justify-start sm:justify-center gap-x-2 gap-y-1 sm:gap-3 mb-2 sm:mb-3 min-h-[1.25rem]">
-                            <div className="flex items-center gap-1 flex-shrink-0">
-                              <Play className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-500 dark:text-gray-400" />
-                              <span className="text-xs sm:text-sm text-gray-600 dark:text-white/80 whitespace-nowrap">
-                                {course.lessons_count || 0} clases
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-1 flex-shrink-0">
-                              <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-500 dark:text-gray-400" />
-                              <span className="text-xs sm:text-sm text-gray-600 dark:text-white/80 whitespace-nowrap">
-                                {getDurationDisplay(course)}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-1 flex-shrink-0">
-                              <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-500 dark:text-gray-400" />
-                              <span className="text-xs sm:text-sm text-gray-600 dark:text-white/80 whitespace-nowrap">
-                                {course.students_count || 0} est.
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-1 flex-shrink-0">
-                              <Zap className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-500 dark:text-gray-400" />
-                              <span className="text-xs sm:text-sm text-gray-600 dark:text-white/80 whitespace-nowrap">
-                                <span className="md:hidden">
-                                  {course.level === 'Principiante'
-                                    ? 'Princ.'
-                                    : course.level === 'Intermedio'
-                                      ? 'Inter.'
-                                      : course.level === 'Avanzado'
-                                        ? 'Avanz.'
-                                        : course.level || 'Todos'}
-                                </span>
-                                <span className="hidden md:inline">
-                                  {course.level || 'Todos'}
-                                </span>
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="pt-3 sm:pt-4 border-t border-gray-200 dark:border-gray-700 mt-auto">
-                          {purchases?.some(
-                            (p: any) =>
-                              String(p.course_id) === String(course.id),
-                          ) ? (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                router.push(
-                                  `/student?courseId=${encodeURIComponent(course.id)}`,
-                                );
-                              }}
-                              className="w-full bg-gray-900 hover:bg-gray-800 text-white font-bold py-2.5 sm:py-3 text-sm sm:text-base rounded-lg transition-all duration-200 flex items-center justify-center gap-2 border border-gray-700"
+              <div className="flex flex-col gap-6 sm:gap-8">
+                {coursesGroupedBySection.map(({ label, courses }) => {
+                  const sectionDomId = `dash-sec-${label
+                    .normalize('NFD')
+                    .replace(/\p{M}/gu, '')
+                    .replace(/[^a-zA-Z0-9]+/g, '-')
+                    .replace(/^-|-$/g, '')
+                    .toLowerCase()}`;
+                  return (
+                    <section
+                      key={label}
+                      aria-labelledby={sectionDomId}
+                      className="min-w-0"
+                    >
+                      <div className="mb-2 sm:mb-3">
+                        <h3
+                          id={sectionDomId}
+                          className="text-sm sm:text-base font-bold text-gray-900 dark:text-white"
+                        >
+                          {label}
+                        </h3>
+                      </div>
+                      <DashboardCourseCarouselRow
+                        className={courseCarouselRowClass}
+                      >
+                        {courses.map((course) => {
+                          const purchased = Boolean(
+                            purchases?.some(
+                              (p: any) =>
+                                String(p.course_id) === String(course.id),
+                            ),
+                          );
+                          return (
+                            <div
+                              key={course.id}
+                              className={courseCarouselItemClass}
                             >
-                              <Play className="w-4 h-4" fill="currentColor" />
-                              <span>Entrar al curso</span>
-                            </button>
-                          ) : (
-                            <>
-                              <div className="flex items-center justify-center flex-wrap gap-1.5 sm:gap-2 mb-2 sm:mb-3">
-                                {(course.discount_percentage ?? 0) > 0 ? (
-                                  <>
-                                    <span className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-white">
-                                      $
-                                      {calculateFinalPrice(
-                                        course,
-                                      ).toLocaleString('es-CO')}
-                                    </span>
-                                    <span className="text-sm sm:text-base md:text-lg text-gray-500 dark:text-white/50 line-through">
-                                      $
-                                      {calculateOriginalPrice(
-                                        course,
-                                      ).toLocaleString('es-CO')}
-                                    </span>
-                                    <span className="text-[10px] sm:text-xs text-gray-900 dark:text-white font-bold bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-lg">
-                                      {course.discount_percentage ?? 0}% de
-                                      descuento
-                                    </span>
-                                  </>
-                                ) : (
-                                  <span className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-white">
-                                    $
-                                    {calculateFinalPrice(course).toLocaleString(
-                                      'es-CO',
-                                    )}
-                                  </span>
-                                )}
-                              </div>
-                              <button
-                                onClick={async (e) => {
-                                  e.stopPropagation();
+                              <DashboardAvailableCourseCard
+                                course={course}
+                                purchased={purchased}
+                                categoryLabel={getCategoryDisplayName(course)}
+                                durationLabel={getDurationDisplay(course)}
+                                finalPrice={calculateFinalPrice(course)}
+                                originalPrice={calculateOriginalPrice(course)}
+                                onOpenCourse={() =>
                                   router.push(
                                     `/course/${course.slug || course.id}`,
-                                  );
-                                }}
-                                className="w-full bg-gray-900 hover:bg-gray-800 text-white font-bold py-2.5 sm:py-3 text-sm sm:text-base rounded-lg transition-all duration-200 flex items-center justify-center gap-2 border border-gray-700"
-                              >
-                                <ShoppingCart className="w-4 h-4" />
-                                <span>¡Comenzar Ahora!</span>
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                                  )
+                                }
+                                onOpenStudent={() =>
+                                  router.push(
+                                    `/student?courseId=${encodeURIComponent(course.id)}`,
+                                  )
+                                }
+                              />
+                            </div>
+                          );
+                        })}
+                      </DashboardCourseCarouselRow>
+                    </section>
+                  );
+                })}
               </div>
-              <p className="mt-3 text-center text-xs text-gray-500 dark:text-gray-400">
+
+              <p className="mt-4 text-center text-xs text-gray-500 dark:text-gray-400">
                 Próximamente sumaremos más programas a RogerBox.
               </p>
             </div>

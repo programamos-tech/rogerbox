@@ -17,6 +17,7 @@ import {
   ChevronsRight,
   ClipboardList,
   Code,
+  Copy,
   CreditCard,
   DollarSign,
   Dumbbell,
@@ -154,6 +155,7 @@ interface Sale {
   wompi_transaction_id?: string | null;
   wompi_reference?: string | null;
   created_at: string;
+  updated_at?: string | null;
   course?: {
     id: string;
     title: string;
@@ -171,6 +173,40 @@ interface Sale {
     email: string;
     phone: string;
   } | null;
+}
+
+function formatSaleDateTime(iso: string | null | undefined): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleString('es-CO', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+/** Últimos 5 dígitos numéricos del ID Wompi (para tabla); si no hay dígitos, últimos 5 caracteres. */
+function wompiIdLastFiveDigits(id: string | null | undefined): string {
+  const s = (id || '').trim();
+  if (!s) return '—';
+  const digits = s.replace(/\D/g, '');
+  if (digits.length >= 5) return digits.slice(-5);
+  if (digits.length > 0) return digits;
+  return s.length <= 5 ? s : s.slice(-5);
+}
+
+function fullWompiOrderId(sale: {
+  wompi_transaction_id?: string | null;
+  wompi_reference?: string | null;
+}): string {
+  return (
+    (sale.wompi_transaction_id || '').trim() ||
+    (sale.wompi_reference || '').trim() ||
+    ''
+  );
 }
 
 // Definición de las secciones del sidebar
@@ -214,9 +250,10 @@ const menuSections = [
     items: [
       {
         id: 'sales',
-        label: 'Ventas',
+        label: 'Ventas en línea',
         icon: ShoppingCart,
-        description: 'Historial de compras',
+        description:
+          'Historial de compras online (pasarela Wompi — cursos, no sede física)',
       },
       {
         id: 'courses',
@@ -226,9 +263,9 @@ const menuSections = [
       },
       {
         id: 'complements',
-        label: 'Complementos',
+        label: 'Retos semanales',
         icon: Play,
-        description: 'Videos semanales',
+        description: 'Videos de retos por día (semana)',
       },
       {
         id: 'banners',
@@ -330,6 +367,11 @@ function AdminDashboardContent() {
   const [loadingSales, setLoadingSales] = useState(false);
   const [salesSearchTerm, setSalesSearchTerm] = useState('');
   const [salesTypeFilter, setSalesTypeFilter] = useState<string>('all'); // 'all', 'online', 'physical'
+  /** Filtro de estado de orden Wompi (pestaña Ventas) */
+  const [salesStatusFilter, setSalesStatusFilter] = useState<string>('all');
+  const [copiedWompiSaleId, setCopiedWompiSaleId] = useState<string | null>(
+    null,
+  );
   const [salesCurrentPage, setSalesCurrentPage] = useState(1);
   const salesPerPage = 10;
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -758,48 +800,90 @@ function AdminDashboardContent() {
         }
       }
 
-      // Cargar orders de sede online si el filtro lo permite
+      // Cargar orders (pasarela Wompi) si el filtro incluye tienda en línea.
+      // Nota: no usar embed user:profiles — orders.user_id apunta a auth.users y PostgREST
+      // no expone esa relación hacia public.profiles; la query fallaba y la lista quedaba vacía.
       if (sedeFilter === 'online' || sedeFilter === 'ambas') {
         const { data: orders, error: ordersError } = await supabaseAdmin
           .from('orders')
           .select(`
             *,
-            user:profiles(
-              id,
-              name,
-              email
-            ),
             course:courses(
               id,
               title
+            ),
+            gym_plan:gym_plans(
+              id,
+              name
             )
           `)
           .eq('status', 'approved')
+          .not('wompi_transaction_id', 'is', null)
           .gte('created_at', startISO)
           .lte('created_at', endISO)
           .order('created_at', { ascending: false });
 
         if (ordersError) {
-        } else if (orders) {
-          // Transformar orders a formato similar a payments
+          console.error(
+            '[admin] loadDailyPayments orders:',
+            ordersError.message,
+          );
+        } else if (orders?.length) {
+          const userIds = [
+            ...new Set(orders.map((o: { user_id: string }) => o.user_id)),
+          ];
+          let profilesMap: Record<
+            string,
+            { name: string | null; email: string | null; document_id: string | null }
+          > = {};
+          if (userIds.length > 0) {
+            const { data: profilesData } = await supabaseAdmin
+              .from('profiles')
+              .select('id, name, email, document_id')
+              .in('id', userIds);
+            if (profilesData) {
+              profilesMap = Object.fromEntries(
+                profilesData.map((p) => [p.id, p]),
+              );
+            }
+          }
+
           orders.forEach((order: any) => {
+            const prof = profilesMap[order.user_id];
+            const clientName =
+              prof?.name ||
+              order.customer_name ||
+              order.customer_email ||
+              'Cliente online';
+            const clientEmail =
+              prof?.email || order.customer_email || null;
+            const productName =
+              order.course?.title ||
+              order.gym_plan?.name ||
+              'Producto online';
+
             allPayments.push({
               id: order.id,
               amount: order.amount,
-              payment_method: 'transfer', // Orders siempre son transferencia
-              payment_date: order.created_at.split('T')[0],
+              payment_method: order.payment_method || 'transfer',
+              payment_date: String(order.created_at || '').split('T')[0],
               created_at: order.created_at,
               invoice_number: null,
+              wompi_transaction_id: order.wompi_transaction_id,
+              user: prof
+                ? { name: prof.name, email: prof.email }
+                : undefined,
               client_info: {
-                name: order.user?.name || 'Cliente online',
-                document_id: null,
-                email: order.user?.email || null,
+                name: clientName,
+                document_id: prof?.document_id ?? null,
+                email: clientEmail,
               },
               plan: {
-                name: order.course?.title || 'Curso online',
+                name: productName,
                 price: order.amount,
                 duration_days: null,
               },
+              course: order.course,
               sede: 'online',
             });
           });
@@ -1193,9 +1277,15 @@ function AdminDashboardContent() {
     }
   };
 
-  // Filtrar por búsqueda y paginar (solo ventas en línea ya vienen de loadSales)
+  // Filtrar por búsqueda, estado y paginar (solo ventas en línea ya vienen de loadSales)
   const filteredSales = useMemo(() => {
     let list = [...sales];
+    if (salesStatusFilter !== 'all') {
+      const st = salesStatusFilter.toLowerCase();
+      list = list.filter(
+        (s) => (s.status || '').toLowerCase() === st,
+      );
+    }
     const term = (salesSearchTerm || '').trim().toLowerCase();
     if (term) {
       list = list.filter((s) => {
@@ -1209,7 +1299,7 @@ function AdminDashboardContent() {
       });
     }
     return list;
-  }, [sales, salesSearchTerm]);
+  }, [sales, salesSearchTerm, salesStatusFilter]);
 
   const salesTotalPages = Math.max(
     1,
@@ -1510,7 +1600,11 @@ function AdminDashboardContent() {
               <h1 className="text-xl font-black text-[#164151] dark:text-white uppercase tracking-tight">
                 {activeItem.label}
               </h1>
-              <p className="text-xs text-[#164151]/80 dark:text-white/60 hidden sm:block font-medium">
+              <p
+                className={`text-xs text-[#164151]/80 dark:text-white/60 font-medium ${
+                  activeTab === 'sales' ? '' : 'hidden sm:block'
+                }`}
+              >
                 {activeItem.description}
               </p>
             </div>
@@ -2120,7 +2214,10 @@ function AdminDashboardContent() {
                                 'Cliente sin nombre';
                           const clientDoc =
                             payment.sede === 'online'
-                              ? payment.user?.email || 'Sin documento'
+                              ? payment.client_info?.document_id ||
+                                payment.user?.email ||
+                                payment.client_info?.email ||
+                                'Sin documento'
                               : payment.client_info?.document_id ||
                                 'Sin documento';
                           const planName =
@@ -2215,7 +2312,7 @@ function AdminDashboardContent() {
                                             )}
                                       </p>
                                     </div>
-                                    {payment.invoice_number && (
+                                    {payment.invoice_number ? (
                                       <div>
                                         <p className="text-xs text-gray-500 dark:text-white/50 mb-1">
                                           Factura
@@ -2224,7 +2321,17 @@ function AdminDashboardContent() {
                                           #{payment.invoice_number}
                                         </p>
                                       </div>
-                                    )}
+                                    ) : payment.sede === 'online' &&
+                                      payment.wompi_transaction_id ? (
+                                      <div>
+                                        <p className="text-xs text-gray-500 dark:text-white/50 mb-1">
+                                          Pasarela (Wompi)
+                                        </p>
+                                        <p className="text-sm font-mono font-medium text-[#164151] dark:text-white truncate max-w-[140px]">
+                                          {String(payment.wompi_transaction_id).slice(0, 12)}…
+                                        </p>
+                                      </div>
+                                    ) : null}
                                   </div>
                                 </div>
 
@@ -3843,7 +3950,7 @@ function AdminDashboardContent() {
             </div>
           )}
 
-          {/* Sales Tab - Historial de transacciones */}
+          {/* Sales Tab - Historial de transacciones (solo online / Wompi) */}
           {activeTab === 'sales' && (
             <div className="space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-4">
@@ -3874,6 +3981,27 @@ function AdminDashboardContent() {
                       className="w-full pl-12 pr-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-[#164151] dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50"
                     />
                   </div>
+                  <div className="sm:w-52 shrink-0">
+                    <label className="sr-only" htmlFor="sales-status-filter">
+                      Estado del pago
+                    </label>
+                    <select
+                      id="sales-status-filter"
+                      value={salesStatusFilter}
+                      onChange={(e) => {
+                        setSalesStatusFilter(e.target.value);
+                        setSalesCurrentPage(1);
+                      }}
+                      className="w-full py-3 px-4 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-sm text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50"
+                    >
+                      <option value="all">Todos los estados</option>
+                      <option value="approved">Aprobado</option>
+                      <option value="pending">Pendiente</option>
+                      <option value="declined">Rechazado</option>
+                      <option value="error">Error</option>
+                      <option value="expired">Expirado</option>
+                    </select>
+                  </div>
                 </div>
 
                 {loadingSales ? (
@@ -3889,7 +4017,7 @@ function AdminDashboardContent() {
                 ) : (
                   <>
                     <div className="overflow-x-auto -mx-4 sm:mx-0">
-                      <table className="w-full min-w-[640px]">
+                      <table className="w-full min-w-[860px]">
                         <thead>
                           <tr className="border-b border-gray-200 dark:border-white/10">
                             <th className="text-left px-3 md:px-4 py-3 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
@@ -3900,6 +4028,9 @@ function AdminDashboardContent() {
                             </th>
                             <th className="text-left px-3 md:px-4 py-3 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
                               Producto
+                            </th>
+                            <th className="text-left px-3 md:px-4 py-3 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
+                              Fecha
                             </th>
                             <th className="text-right px-3 md:px-4 py-3 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
                               Monto
@@ -3913,17 +4044,57 @@ function AdminDashboardContent() {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100 dark:divide-white/5">
-                          {paginatedSales.map((sale: Sale) => (
+                          {paginatedSales.map((sale: Sale) => {
+                            const fullWompi = fullWompiOrderId(sale);
+                            return (
                             <tr
                               key={sale.id}
                               className="hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
                             >
                               <td className="px-3 md:px-4 py-3">
-                                <span className="text-sm font-mono text-[#164151] dark:text-white break-all">
-                                  {sale.wompi_transaction_id ||
-                                    sale.wompi_reference ||
-                                    '—'}
-                                </span>
+                                {!fullWompi ? (
+                                  <span className="text-sm text-gray-400 dark:text-white/40">
+                                    —
+                                  </span>
+                                ) : (
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <span
+                                      className="text-sm font-mono font-semibold text-[#164151] dark:text-white tabular-nums"
+                                      title={fullWompi}
+                                    >
+                                      …{wompiIdLastFiveDigits(fullWompi)}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={async () => {
+                                        try {
+                                          await navigator.clipboard.writeText(
+                                            fullWompi,
+                                          );
+                                          setCopiedWompiSaleId(sale.id);
+                                          setTimeout(
+                                            () =>
+                                              setCopiedWompiSaleId((cur) =>
+                                                cur === sale.id ? null : cur,
+                                              ),
+                                            2000,
+                                          );
+                                        } catch {
+                                          /* ignore */
+                                        }
+                                      }}
+                                      className="shrink-0 p-1.5 rounded-lg border border-gray-200 dark:border-white/15 text-gray-500 dark:text-white/60 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-[#164151] dark:hover:text-white transition-colors"
+                                      title="Copiar ID completo"
+                                      aria-label="Copiar ID completo de Wompi"
+                                    >
+                                      {copiedWompiSaleId === sale.id ? (
+                                        <Check className="w-4 h-4 text-[#85ea10]" />
+                                      ) : (
+                                        <Copy className="w-4 h-4" />
+                                      )}
+                                    </button>
+                                  </div>
+                                )}
                               </td>
                               <td className="px-3 md:px-4 py-3">
                                 <div>
@@ -3948,6 +4119,21 @@ function AdminDashboardContent() {
                                       : '—'}
                                 </span>
                               </td>
+                              <td className="px-3 md:px-4 py-3">
+                                <p className="text-sm font-medium text-[#164151] dark:text-white whitespace-nowrap">
+                                  {formatSaleDateTime(
+                                    sale.updated_at || sale.created_at,
+                                  )}
+                                </p>
+                                {sale.updated_at &&
+                                  sale.created_at &&
+                                  sale.updated_at !== sale.created_at && (
+                                    <p className="text-[10px] text-gray-500 dark:text-white/45 mt-0.5">
+                                      Orden:{' '}
+                                      {formatSaleDateTime(sale.created_at)}
+                                    </p>
+                                  )}
+                              </td>
                               <td className="px-3 md:px-4 py-3 text-right">
                                 <span className="text-sm font-semibold text-[#164151] dark:text-white">
                                   ${(sale.amount || 0).toLocaleString('es-CO')}{' '}
@@ -3965,17 +4151,37 @@ function AdminDashboardContent() {
                                       : (sale.status || '').toLowerCase() ===
                                           'pending'
                                         ? 'bg-amber-500/20 text-amber-600 dark:text-amber-400'
-                                        : 'bg-gray-200 dark:bg-white/10 text-gray-600 dark:text-white/60'
+                                        : (sale.status || '').toLowerCase() ===
+                                            'declined'
+                                          ? 'bg-red-500/15 text-red-600 dark:text-red-400'
+                                          : (sale.status || '').toLowerCase() ===
+                                              'expired'
+                                            ? 'bg-gray-300/30 text-gray-600 dark:text-white/50'
+                                            : (sale.status || '').toLowerCase() ===
+                                                'error'
+                                              ? 'bg-rose-600/20 text-rose-700 dark:text-rose-300'
+                                              : 'bg-gray-200 dark:bg-white/10 text-gray-600 dark:text-white/60'
                                   }`}
                                 >
-                                  {sale.status || '—'}
+                                  {(sale.status || '—') === 'approved'
+                                    ? 'Aprobado'
+                                    : (sale.status || '') === 'pending'
+                                      ? 'Pendiente'
+                                      : (sale.status || '') === 'declined'
+                                        ? 'Rechazado'
+                                        : (sale.status || '') === 'expired'
+                                          ? 'Expirado'
+                                          : (sale.status || '') === 'error'
+                                            ? 'Error'
+                                            : sale.status || '—'}
                                 </span>
                               </td>
                               <td className="px-3 md:px-4 py-3 text-xs text-gray-600 dark:text-white/60">
                                 {sale.payment_method || '—'}
                               </td>
                             </tr>
-                          ))}
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
