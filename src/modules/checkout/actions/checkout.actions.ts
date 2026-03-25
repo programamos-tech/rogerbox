@@ -209,7 +209,9 @@ async function fetchEnrollmentStatus(
   }
 
   // Parsear fecha localmente (misma lógica que en student page)
-  const dateOnly = startDateStr.includes('T') ? startDateStr.split('T')[0] : startDateStr;
+  const dateOnly = startDateStr.includes('T')
+    ? startDateStr.split('T')[0]
+    : startDateStr;
   const startDateParts = dateOnly.split('-');
   const startDateLocal = new Date(
     parseInt(startDateParts[0], 10),
@@ -218,7 +220,11 @@ async function fetchEnrollmentStatus(
   );
 
   const today = new Date();
-  const todayLocal = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const todayLocal = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate(),
+  );
 
   const timeDiff = todayLocal.getTime() - startDateLocal.getTime();
   const daysDiff = Math.floor(timeDiff / (1000 * 60 * 60 * 24));

@@ -155,18 +155,24 @@ async function handleApprovedPayment(order: any, transaction: any) {
       const durationDays = (existingPurchase.courses as any)?.duration_days;
 
       if (startDateStr && typeof durationDays === 'number') {
-        const dateOnly = startDateStr.includes('T') ? startDateStr.split('T')[0] : startDateStr;
+        const dateOnly = startDateStr.includes('T')
+          ? startDateStr.split('T')[0]
+          : startDateStr;
         const startDateParts = dateOnly.split('-');
         const startDateLocal = new Date(
           parseInt(startDateParts[0], 10),
           parseInt(startDateParts[1], 10) - 1,
-          parseInt(startDateParts[2], 10)
+          parseInt(startDateParts[2], 10),
         );
         const today = new Date();
-        const todayLocal = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        const todayLocal = new Date(
+          today.getFullYear(),
+          today.getMonth(),
+          today.getDate(),
+        );
         const timeDiff = todayLocal.getTime() - startDateLocal.getTime();
         const daysDiff = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
-        
+
         if (daysDiff >= durationDays) {
           isExpired = true;
         }
