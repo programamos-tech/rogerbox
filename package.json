@@ -16,6 +16,9 @@
   },
   "dependencies": {
     "@tailwindcss/postcss": "4",
+    "@types/node": "20",
+    "@types/react": "19",
+    "@types/react-dom": "19",
     "@mux/mux-player": "3.6.1",
     "@mux/mux-player-react": "3.6.1",
     "@supabase/ssr": "0.5.2",
@@ -44,9 +47,6 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.4",
-    "@types/node": "20",
-    "@types/react": "19",
-    "@types/react-dom": "19",
     "caniuse-lite": "1.0.30001770"
   }
 }
