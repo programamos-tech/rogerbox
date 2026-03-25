@@ -958,7 +958,7 @@ export default function DashboardPage() {
         {/* Main Content - Layout optimizado sin scroll */}
         <main className="max-w-full mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-3 sm:py-4 pb-20 relative">
           {/* CURSOS COMPRADOS - Banner de ancho completo */}
-          {hasActivePurchases && purchases.length > 0 && (
+          {!isAdmin && hasActivePurchases && purchases.length > 0 && (
             <div className="mb-3 sm:mb-4 -mx-3 sm:-mx-4 md:-mx-6 lg:-mx-8">
               <div className="px-3 sm:px-4 md:px-6 lg:px-8 mb-2">
                 <h2 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
