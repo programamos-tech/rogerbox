@@ -42,7 +42,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    
     const start = new Date(`${startDate}T00:00:00.000-05:00`);
     const end = new Date(`${endDate}T23:59:59.999-05:00`);
 
