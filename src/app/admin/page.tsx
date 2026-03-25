@@ -775,6 +775,7 @@ function AdminDashboardContent() {
             )
           `)
           .eq('status', 'approved')
+          .not('course_id', 'is', null)
           .gte('created_at', startISO)
           .lte('created_at', endISO)
           .order('created_at', { ascending: false });

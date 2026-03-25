@@ -140,6 +140,7 @@ export async function GET(request: NextRequest) {
           .from('orders')
           .select('amount, created_at')
           .eq('status', 'approved')
+          .not('course_id', 'is', null)
           .gte('created_at', start.toISOString())
           .lte('created_at', end.toISOString());
         orders = data || [];
@@ -244,6 +245,7 @@ export async function GET(request: NextRequest) {
         .from('orders')
         .select('amount, status, created_at')
         .eq('status', 'approved')
+        .not('course_id', 'is', null)
         .gte('created_at', start.toISOString())
         .lte('created_at', end.toISOString());
 
