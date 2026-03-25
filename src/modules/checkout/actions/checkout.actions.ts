@@ -181,13 +181,52 @@ async function fetchEnrollmentStatus(
 
   if (!session?.user?.id) return false;
 
+  const isAdmin = session.user.user_metadata?.role === 'admin';
+  if (isAdmin) return true; // Admins always have access
+
   const { data } = await supabase
     .from('course_purchases')
-    .select('id')
+    .select('id, start_date, is_active, courses!inner(duration_days)')
     .eq('user_id', session.user.id)
     .eq('course_id', courseId)
     .eq('is_active', true)
+    .order('created_at', { ascending: false })
+    .limit(1)
     .maybeSingle();
 
-  return !!data;
+  if (!data) return false;
+
+  const startDateStr = data.start_date;
+  if (!startDateStr) {
+    // Si no ha elegido fecha de inicio, aún tiene el acceso pendiente por usar
+    return true;
+  }
+
+  const durationDays = (data.courses as any)?.duration_days;
+  if (typeof durationDays !== 'number') {
+    // Si no hay duración configurada, se asume acceso vitalicio
+    return true;
+  }
+
+  // Parsear fecha localmente (misma lógica que en student page)
+  const dateOnly = startDateStr.includes('T') ? startDateStr.split('T')[0] : startDateStr;
+  const startDateParts = dateOnly.split('-');
+  const startDateLocal = new Date(
+    parseInt(startDateParts[0], 10),
+    parseInt(startDateParts[1], 10) - 1,
+    parseInt(startDateParts[2], 10),
+  );
+
+  const today = new Date();
+  const todayLocal = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+  const timeDiff = todayLocal.getTime() - startDateLocal.getTime();
+  const daysDiff = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
+
+  // Si los días transcurridos superan la duración, el curso finalizó
+  if (daysDiff >= durationDays) {
+    return false;
+  }
+
+  return true;
 }

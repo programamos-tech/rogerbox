@@ -138,17 +138,49 @@ async function handleApprovedPayment(order: any, transaction: any) {
       return;
     }
 
-    // Verificar si ya existe una compra activa (usando admin para bypass RLS)
+    // Verificar si ya existe una compra activa y no expirada
     const { data: existingPurchase } = await supabaseAdmin
       .from('course_purchases')
-      .select('id')
+      .select('id, start_date, courses!inner(duration_days)')
       .eq('user_id', order.user_id)
       .eq('course_id', order.course_id)
       .eq('is_active', true)
+      .order('created_at', { ascending: false })
+      .limit(1)
       .maybeSingle();
 
     if (existingPurchase) {
-      return;
+      let isExpired = false;
+      const startDateStr = existingPurchase.start_date;
+      const durationDays = (existingPurchase.courses as any)?.duration_days;
+
+      if (startDateStr && typeof durationDays === 'number') {
+        const dateOnly = startDateStr.includes('T') ? startDateStr.split('T')[0] : startDateStr;
+        const startDateParts = dateOnly.split('-');
+        const startDateLocal = new Date(
+          parseInt(startDateParts[0], 10),
+          parseInt(startDateParts[1], 10) - 1,
+          parseInt(startDateParts[2], 10)
+        );
+        const today = new Date();
+        const todayLocal = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        const timeDiff = todayLocal.getTime() - startDateLocal.getTime();
+        const daysDiff = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
+        
+        if (daysDiff >= durationDays) {
+          isExpired = true;
+        }
+      }
+
+      if (!isExpired) {
+        return; // Aún tiene acceso
+      } else {
+        // Ya expiró, la marcamos como inactiva para limpiar
+        await supabaseAdmin
+          .from('course_purchases')
+          .update({ is_active: false })
+          .eq('id', existingPurchase.id);
+      }
     }
 
     // Crear compra del curso (usando admin para bypass RLS)

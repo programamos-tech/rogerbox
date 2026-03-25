@@ -63,6 +63,9 @@ export async function GET(request: NextRequest) {
         .select('id, course_id, start_date, created_at')
         .eq('user_id', userId)
         .eq('course_id', courseId)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+        .limit(1)
         .maybeSingle();
 
       if (purchaseError || !realPurchase) {
