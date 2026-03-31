@@ -119,6 +119,14 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
       useState<any>(null);
     const [discountPercent, setDiscountPercent] = useState<number>(0);
     const [isAdvancePayment, setIsAdvancePayment] = useState(false);
+    /** Membresía vigente del mismo plan que encadena el pago anticipado (para verificar fechas en pantalla). */
+    const [advanceMembershipSnapshot, setAdvanceMembershipSnapshot] = useState<{
+      id: string;
+      planName: string;
+      startDate: string;
+      endDate: string;
+      status: string;
+    } | null>(null);
     const [amountFieldFocused, setAmountFieldFocused] = useState(false);
     const [urlParamsProcessed, setUrlParamsProcessed] = useState(false);
     /** Si viene en la URL (ej. ficha cliente → Renovar), no pisar inicio con pago anticipado. */
@@ -274,6 +282,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
       setHasActiveMembership(false);
       setExpiredMembershipToPay(null);
       setIsAdvancePayment(false);
+      setAdvanceMembershipSnapshot(null);
 
       const planForCalc = planForDuration ?? selectedPlan;
 
@@ -312,8 +321,8 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
           const today = new Date();
           today.setHours(0, 0, 0, 0);
 
-          // Buscar membresía activa SOLO para el MISMO plan que se está pagando
-          const activeMembershipForThisPlan = memberships.find((m: any) => {
+          // Misma lógica que el POST de membresías: período no vencido del mismo plan (el de fin más lejano primero).
+          const candidates = (memberships as any[]).filter((m) => {
             const endDate = new Date(m.end_date);
             endDate.setHours(0, 0, 0, 0);
             return (
@@ -322,6 +331,10 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
               endDate >= today
             );
           });
+          const activeMembershipForThisPlan = candidates.sort(
+            (a, b) =>
+              new Date(b.end_date).getTime() - new Date(a.end_date).getTime(),
+          )[0];
 
           // Si hay membresía activa para ESTE MISMO plan, es pago anticipado
           if (activeMembershipForThisPlan) {
@@ -350,6 +363,27 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
               period_end: periodEndStr,
             }));
 
+            const planNested = activeMembershipForThisPlan.plan;
+            const planNameFromMem =
+              (Array.isArray(planNested) ? planNested[0]?.name : planNested?.name) ||
+              planForCalc?.name ||
+              'Plan';
+
+            setAdvanceMembershipSnapshot({
+              id: String(activeMembershipForThisPlan.id),
+              planName: String(planNameFromMem),
+              startDate: String(
+                String(activeMembershipForThisPlan.start_date || '').slice(
+                  0,
+                  10,
+                ),
+              ),
+              endDate: String(
+                String(activeMembershipForThisPlan.end_date || '').slice(0, 10),
+              ),
+              status: String(activeMembershipForThisPlan.status || ''),
+            });
+
             // Marcar como pago anticipado (permitido)
             setIsAdvancePayment(true);
             setHasActiveMembership(false);
@@ -370,6 +404,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
             setHasActiveMembership(false);
             setExpiredMembershipToPay(null);
             setIsAdvancePayment(false);
+            setAdvanceMembershipSnapshot(null);
           }
         }
       } catch (error) {
@@ -555,6 +590,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
       setCheckingMembership(false);
       setExpiredMembershipToPay(null);
       setIsAdvancePayment(false);
+      setAdvanceMembershipSnapshot(null);
       setUrlParamsProcessed(false);
       setDiscountPercent(0);
       setAmountFieldFocused(false);
@@ -903,32 +939,70 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                   </div>
                 )}
 
-                {/* Mensaje de pago anticipado */}
-                {isAdvancePayment && !error && (
-                  <div className="p-3 sm:p-3.5 bg-slate-50 dark:bg-white/[0.03] border border-slate-200/90 dark:border-white/[0.08] rounded-xl">
+                {/* Pago anticipado: plan vigente + nuevo período */}
+                {isAdvancePayment && !error && advanceMembershipSnapshot && (
+                  <div className="p-3.5 sm:p-4 bg-slate-50 dark:bg-white/[0.03] border border-slate-200/90 dark:border-white/[0.08] rounded-xl space-y-3">
                     <div className="flex items-start gap-3">
-                      <div className="w-7 h-7 rounded-full bg-slate-200/80 dark:bg-white/[0.06] flex items-center justify-center flex-shrink-0">
-                        <svg
-                          className="w-4 h-4 text-slate-600 dark:text-white/50"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                          />
-                        </svg>
+                      <div className="w-8 h-8 rounded-full bg-slate-200/80 dark:bg-white/[0.06] flex items-center justify-center flex-shrink-0">
+                        <Calendar className="w-4 h-4 text-slate-600 dark:text-white/50" />
                       </div>
-                      <div className="min-w-0">
-                        <p className="text-xs font-medium text-[#164151]/90 dark:text-white/80">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-semibold text-[#164151] dark:text-white/90">
                           Pago anticipado
                         </p>
-                        <p className="text-xs text-[#164151]/70 dark:text-white/55 mt-0.5 leading-relaxed">
-                          Este cliente tiene un plan activo. El nuevo plan
-                          iniciará el{' '}
+                        <p className="text-[11px] text-[#164151]/65 dark:text-white/50 mt-0.5 leading-relaxed">
+                          Revisa el período que ya tiene cubierto y el que se
+                          creará con este pago (mismo plan). Puedes corregir el
+                          inicio del nuevo período abajo si hace falta.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-slate-200/80 dark:border-white/[0.06]">
+                      <div className="rounded-lg bg-white/70 dark:bg-white/[0.04] border border-slate-200/70 dark:border-white/[0.07] px-3 py-2.5">
+                        <p className="text-[10px] font-medium uppercase tracking-wide text-[#164151]/55 dark:text-white/45 mb-1.5">
+                          Plan actual (vigente)
+                        </p>
+                        <p className="text-sm font-medium text-[#164151] dark:text-white/95 leading-snug">
+                          {advanceMembershipSnapshot.planName}
+                        </p>
+                        <p className="text-[11px] text-[#164151]/75 dark:text-white/60 mt-1.5 tabular-nums">
+                          <span className="text-[#164151]/55 dark:text-white/45">
+                            Desde{' '}
+                          </span>
+                          {formatDateOnlyLocal(advanceMembershipSnapshot.startDate, {
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric',
+                          })}
+                          <span className="mx-1 text-[#164151]/40 dark:text-white/35">
+                            →
+                          </span>
+                          <span className="text-[#164151]/55 dark:text-white/45">
+                            hasta{' '}
+                          </span>
+                          {formatDateOnlyLocal(advanceMembershipSnapshot.endDate, {
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric',
+                          })}
+                        </p>
+                        <p className="text-[10px] text-[#164151]/50 dark:text-white/40 mt-1">
+                          Estado: {advanceMembershipSnapshot.status}
+                        </p>
+                      </div>
+
+                      <div className="rounded-lg bg-[#85ea10]/[0.07] dark:bg-[#85ea10]/[0.08] border border-[#85ea10]/20 dark:border-[#85ea10]/15 px-3 py-2.5">
+                        <p className="text-[10px] font-medium uppercase tracking-wide text-[#164151]/60 dark:text-white/50 mb-1.5">
+                          Nuevo período (este pago)
+                        </p>
+                        <p className="text-sm font-medium text-[#164151] dark:text-white/95 leading-snug">
+                          {selectedPlan?.name ?? advanceMembershipSnapshot.planName}
+                        </p>
+                        <p className="text-[11px] text-[#164151]/80 dark:text-white/65 mt-1.5 tabular-nums">
+                          <span className="text-[#164151]/55 dark:text-white/45">
+                            Inicio{' '}
+                          </span>
                           <strong>
                             {formatDateOnlyLocal(formData.period_start, {
                               day: '2-digit',
@@ -936,10 +1010,34 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                               year: 'numeric',
                             })}
                           </strong>
-                          . Puedes ajustar la fecha abajo si lo necesitas.
+                        </p>
+                        <p className="text-[11px] text-[#164151]/75 dark:text-white/60 mt-0.5 tabular-nums">
+                          Fin{' '}
+                          {formatDateOnlyLocal(formData.period_end, {
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric',
+                          })}{' '}
+                          <span className="text-[#164151]/50 dark:text-white/40">
+                            ({selectedPlan?.duration_days ?? 30} días del plan)
+                          </span>
                         </p>
                       </div>
                     </div>
+
+                    <p className="text-[10px] text-[#164151]/55 dark:text-white/45 leading-relaxed">
+                      El nuevo período empieza el día{' '}
+                      <strong className="font-medium text-[#164151]/75 dark:text-white/55">
+                        siguiente
+                      </strong>{' '}
+                      al último día del período actual (
+                      {formatDateOnlyLocal(advanceMembershipSnapshot.endDate, {
+                        day: '2-digit',
+                        month: 'short',
+                        year: 'numeric',
+                      })}
+                      ).
+                    </p>
                   </div>
                 )}
 
