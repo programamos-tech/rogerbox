@@ -1,8 +1,15 @@
 import { type NextRequest, NextResponse } from 'next/server';
+import {
+  enrichCoursePurchaseFromCalendarDays,
+  getTodayYmdForCourseEnrich,
+} from '@/lib/enrichCoursePurchase';
 import { getTodayYmdColombia, parseLocalDate } from '@/lib/dateUtils';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getSession } from '@/lib/supabase-server';
-import { partitionGymMembershipsLikeOverview } from '@/shared/utils/gym-membership-admin.util';
+import {
+  getMixRenewalFilterCategory,
+  partitionGymMembershipsLikeOverview,
+} from '@/shared/utils/gym-membership-admin.util';
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,7 +24,8 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '50');
     const search = searchParams.get('search') || '';
-    const status = searchParams.get('status') || 'all'; // all, active, renewal, no-products, inactive
+    const status = searchParams.get('status') || 'all'; // all, active, renewal, no-products, inactive, mix-pending, mix-dismissed
+    const userType = searchParams.get('userType') || 'all'; // all, physical, online, both
     const offset = (page - 1) * limit;
 
     // Query principal: obtener clientes físicos con sus membresías más recientes
@@ -115,6 +123,57 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    const profileUserIdsForPurchases = profileUserIds;
+    const purchasesByUserId = new Map<string, any[]>();
+    if (profileUserIdsForPurchases.length > 0) {
+      const { data: purchaseRows } = await supabaseAdmin
+        .from('course_purchases')
+        .select(
+          `
+          id,
+          user_id,
+          course_id,
+          is_active,
+          purchase_price,
+          access_granted_at,
+          course:courses(title, preview_image, thumbnail_url, duration_days)
+        `,
+        )
+        .in('user_id', profileUserIdsForPurchases);
+
+      const courseIds = [
+        ...new Set(
+          (purchaseRows || [])
+            .map((p: any) => p.course_id)
+            .filter(Boolean),
+        ),
+      ] as string[];
+      const totalLessonsByCourse: Record<string, number> = {};
+      if (courseIds.length > 0) {
+        const { data: lessonsRows } = await supabaseAdmin
+          .from('course_lessons')
+          .select('course_id')
+          .in('course_id', courseIds);
+        (lessonsRows || []).forEach((r: any) => {
+          totalLessonsByCourse[r.course_id] =
+            (totalLessonsByCourse[r.course_id] || 0) + 1;
+        });
+      }
+      const todayYmd = getTodayYmdForCourseEnrich();
+      for (const row of purchaseRows || []) {
+        const p = row as any;
+        const enriched = enrichCoursePurchaseFromCalendarDays(
+          p,
+          totalLessonsByCourse,
+          todayYmd,
+        );
+        const uid = p.user_id as string;
+        const arr = purchasesByUserId.get(uid) || [];
+        arr.push(enriched);
+        purchasesByUserId.set(uid, arr);
+      }
+    }
+
     // Procesar clientes para agregar estados calculados (fechas locales, misma regla que overview de plan)
     const today = parseLocalDate(getTodayYmdColombia());
     today.setHours(0, 0, 0, 0);
@@ -170,6 +229,32 @@ export async function GET(request: NextRequest) {
         ? avatarByUserId.get(client.user_id)
         : undefined;
 
+      const coursePurchases = client.user_id
+        ? purchasesByUserId.get(client.user_id) || []
+        : [];
+      const activeCoursePurchases =
+        coursePurchases.filter(
+          (p: any) => p.is_active && !p.is_course_finished,
+        ) || [];
+      const hasGymMembership = memberships.length > 0;
+      const hasOnlinePurchase = coursePurchases.length > 0;
+      const userType =
+        hasGymMembership && hasOnlinePurchase
+          ? 'both'
+          : hasGymMembership
+            ? 'physical'
+            : hasOnlinePurchase
+              ? 'online'
+              : 'none';
+
+      const dismissedIds = dismissalsByClient.get(client.id) ?? [];
+      const mixRenewalCategory = getMixRenewalFilterCategory(
+        memberships,
+        activeCoursePurchases,
+        dismissedIds,
+        today,
+      );
+
       return {
         id: client.id,
         name: client.name,
@@ -184,8 +269,7 @@ export async function GET(request: NextRequest) {
         weight: client.weight,
         created_at: client.created_at,
         is_inactive: client.is_inactive || false,
-        renewal_followup_dismissed_plan_ids:
-          dismissalsByClient.get(client.id) ?? [],
+        renewal_followup_dismissed_plan_ids: dismissedIds,
         medical_restrictions: client.medical_restrictions,
         user_id: client.user_id,
         isRegistered: !!client.user_id,
@@ -193,12 +277,13 @@ export async function GET(request: NextRequest) {
         gym_memberships: memberships,
         hasActiveGymMembership: active.length > 0,
         activeGymMembership: activeMembership,
-        hasGymMembership: memberships.length > 0,
+        hasGymMembership,
         hasExpiredOnly,
-        hasOnlinePurchase: false,
-        userType: 'physical',
-        activeCoursePurchases: [],
-        course_purchases: [],
+        hasOnlinePurchase,
+        userType,
+        activeCoursePurchases,
+        course_purchases: coursePurchases,
+        mixRenewalCategory,
         // Campos para ordenamiento
         latestMembershipDate,
         sortPriority,
@@ -211,6 +296,22 @@ export async function GET(request: NextRequest) {
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
     );
 
+    const counts = {
+      total: processedClients.length,
+      active: processedClients.filter((c) => c.hasActiveGymMembership).length,
+      renewal: processedClients.filter(
+        (c) => c.hasExpiredOnly && !c.is_inactive,
+      ).length,
+      noProducts: processedClients.filter((c) => !c.hasGymMembership).length,
+      inactive: processedClients.filter((c) => c.is_inactive).length,
+      mixPending: processedClients.filter(
+        (c) => c.mixRenewalCategory === 'pending',
+      ).length,
+      mixDismissed: processedClients.filter(
+        (c) => c.mixRenewalCategory === 'dismissed',
+      ).length,
+    };
+
     // Aplicar filtro de estado después de procesar
     if (status === 'active') {
       processedClients = processedClients.filter(
@@ -222,39 +323,21 @@ export async function GET(request: NextRequest) {
       );
     } else if (status === 'no-products') {
       processedClients = processedClients.filter((c) => !c.hasGymMembership);
+    } else if (status === 'mix-pending') {
+      processedClients = processedClients.filter(
+        (c) => c.mixRenewalCategory === 'pending',
+      );
+    } else if (status === 'mix-dismissed') {
+      processedClients = processedClients.filter(
+        (c) => c.mixRenewalCategory === 'dismissed',
+      );
     }
 
-    // Calcular totales para los contadores
-    const allClientsForCount = (clients || []).map((client: any) => {
-      const memberships = client.gym_memberships || [];
-      const { active, expired } = partitionGymMembershipsLikeOverview(
-        memberships,
-        today,
+    if (userType !== 'all') {
+      processedClients = processedClients.filter(
+        (c) => c.userType === userType,
       );
-      const nonCancelledCount = memberships.filter(
-        (m: any) => m.status !== 'cancelled',
-      ).length;
-      const hasExpiredOnly =
-        nonCancelledCount > 0 &&
-        active.length === 0 &&
-        expired.length === nonCancelledCount;
-      return {
-        hasActiveGymMembership: active.length > 0,
-        hasExpiredOnly,
-        hasGymMembership: memberships.length > 0,
-        is_inactive: client.is_inactive || false,
-      };
-    });
-
-    const counts = {
-      total: count || 0,
-      active: allClientsForCount.filter((c) => c.hasActiveGymMembership).length,
-      renewal: allClientsForCount.filter(
-        (c) => c.hasExpiredOnly && !c.is_inactive,
-      ).length,
-      noProducts: allClientsForCount.filter((c) => !c.hasGymMembership).length,
-      inactive: allClientsForCount.filter((c) => c.is_inactive).length,
-    };
+    }
 
     // Obtener estadísticas globales de pagos
     const stats = {

@@ -1,32 +1,8 @@
 import { type NextRequest, NextResponse } from 'next/server';
-import {
-  calendarDaysElapsedSinceStart,
-  getTodayYmdColombia,
-} from '@/lib/dateUtils';
+import { enrichCoursePurchaseFromCalendarDays } from '@/lib/enrichCoursePurchase';
+import { getTodayYmdColombia } from '@/lib/dateUtils';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getSession } from '@/lib/supabase-server';
-
-function enrichCoursePurchaseFromCalendarDays(
-  p: any,
-  totalLessonsByCourse: Record<string, number>,
-  todayYmd: string,
-) {
-  const total = totalLessonsByCourse[p.course_id] || 0;
-  const startYmd = p.access_granted_at
-    ? String(p.access_granted_at).slice(0, 10)
-    : null;
-  const daysElapsed = startYmd
-    ? calendarDaysElapsedSinceStart(startYmd, todayYmd)
-    : 0;
-  const completed = total > 0 ? Math.min(daysElapsed, total) : 0;
-  const is_course_finished = total > 0 && daysElapsed >= total;
-  return {
-    ...p,
-    is_course_finished,
-    total_lessons: total,
-    completed_lessons: completed,
-  };
-}
 
 function isAdmin(
   session: {

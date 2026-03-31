@@ -402,7 +402,10 @@ function AdminDashboardContent() {
     renewal: 0,
     noProducts: 0,
     inactive: 0,
+    mixPending: 0,
+    mixDismissed: 0,
   });
+  const [usersListTotal, setUsersListTotal] = useState(0);
   const usersPerPage = 20;
   const [showClientForm, setShowClientForm] = useState(false);
   const [editingClient, setEditingClient] = useState<any | null>(null);
@@ -582,7 +585,7 @@ function AdminDashboardContent() {
       ); // Debounce solo para búsqueda
       return () => clearTimeout(timeoutId);
     }
-  }, [userSearchTerm, paymentStatusFilter, currentPage]);
+  }, [userSearchTerm, paymentStatusFilter, userTypeFilter, currentPage]);
 
   useEffect(() => {
     if (!renewalFollowupMenuClientId) {
@@ -1233,6 +1236,7 @@ function AdminDashboardContent() {
         limit: String(usersPerPage),
         search: search ?? userSearchTerm,
         status: status ?? paymentStatusFilter,
+        userType: userTypeFilter,
       });
 
       const response = await fetch(`/api/admin/users?${params}`);
@@ -1244,6 +1248,7 @@ function AdminDashboardContent() {
 
       setUsers(data.users || []);
       setTotalPages(data.pagination?.totalPages || 1);
+      setUsersListTotal(data.pagination?.total ?? 0);
       setUserCounts(
         data.counts || {
           total: 0,
@@ -1251,6 +1256,8 @@ function AdminDashboardContent() {
           renewal: 0,
           noProducts: 0,
           inactive: 0,
+          mixPending: 0,
+          mixDismissed: 0,
         },
       );
     } catch (error) {
@@ -2743,6 +2750,12 @@ function AdminDashboardContent() {
                         <option value="all">Estado: Todos</option>
                         <option value="active">Al día</option>
                         <option value="renewal">Renovar</option>
+                        <option value="mix-pending">
+                          Activo + renov. pendiente
+                        </option>
+                        <option value="mix-dismissed">
+                          Activo + renov. descartada
+                        </option>
                         <option value="no-products">Sin productos</option>
                         <option value="inactive">Inactivos</option>
                       </select>
@@ -4073,12 +4086,12 @@ function AdminDashboardContent() {
                         <span className="text-[#164151] dark:text-white font-medium">
                           {Math.min(
                             currentPage * usersPerPage,
-                            userCounts.total,
+                            usersListTotal,
                           )}
                         </span>{' '}
                         de{' '}
                         <span className="text-[#164151] dark:text-white font-medium">
-                          {userCounts.total}
+                          {usersListTotal}
                         </span>{' '}
                         clientes
                       </div>

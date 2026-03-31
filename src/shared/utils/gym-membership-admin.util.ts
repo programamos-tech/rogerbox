@@ -194,3 +194,47 @@ export function getCalendarExpiredNonCancelled(
     return end < today;
   });
 }
+
+/** Categoría de “activo + renovación” alineada con badges del listado admin. */
+export type MixRenewalCategory = 'none' | 'pending' | 'dismissed';
+
+export function getMixRenewalFilterCategory(
+  memberships: any[],
+  activeCoursePurchases: any[],
+  dismissedPlanIds: string[] | undefined | null,
+  today?: Date,
+): MixRenewalCategory {
+  const t = today ?? getGymAdminToday();
+  const courses = activeCoursePurchases || [];
+  const nonCancelled = (memberships || []).filter(
+    (m: any) => m.status !== 'cancelled',
+  );
+  if (nonCancelled.length === 0) return 'none';
+
+  const ctx = buildGymRenewalAdminContext(memberships, t);
+  if (ctx.expiredNeedingRenewal.length === 0) return 'none';
+
+  const pendingIds = renewalPendingPlanIdsFromMemberships(
+    ctx.expiredNeedingRenewal,
+  );
+  if (!pendingIds.length) return 'none';
+
+  // Solo membresía física (sin cursos): mezcla activa + vencida
+  if (courses.length === 0) {
+    if (ctx.active.length === 0 || ctx.expired.length === 0) return 'none';
+    if (allRenewalPlansDismissed(pendingIds, dismissedPlanIds)) {
+      return 'dismissed';
+    }
+    return 'pending';
+  }
+
+  // Físico + cursos online: hay vencidos que piden renovación
+  if (nonCancelled.length > 0 && courses.length > 0 && ctx.expired.length > 0) {
+    if (allRenewalPlansDismissed(pendingIds, dismissedPlanIds)) {
+      return 'dismissed';
+    }
+    return 'pending';
+  }
+
+  return 'none';
+}
