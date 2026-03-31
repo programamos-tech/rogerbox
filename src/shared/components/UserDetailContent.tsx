@@ -7,10 +7,9 @@ import {
   Calendar,
   CheckCircle,
   CreditCard,
-  Dumbbell,
+  DollarSign,
   Edit,
   FileText,
-  Globe,
   LogOut,
   Mail,
   MapPin,
@@ -21,13 +20,89 @@ import {
   Scale,
   Target,
   Trash2,
-  TrendingUp,
   User,
+  Users,
   X,
 } from 'lucide-react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { formatDateOnlyLocal } from '@/lib/dateUtils';
+import { isPlaceholderGymWhatsapp } from '@/lib/gymClientDisplay';
+import {
+  formatDateOnlyLocal,
+  periodEndFromStart,
+} from '@/lib/dateUtils';
+import { DatePickerField } from '@/shared/components/DatePickerField';
+import { GymSeededAvatar } from '@/shared/components/GymSeededAvatar';
+import { pickLatestExpiredMembershipPerPlan } from '@/shared/utils/gym-membership-admin.util';
+/** Nombre en ficha admin: full_name y name de perfil (y sede física) antes que first/last sueltos. */
+function resolveAdminClientDisplayName(u: {
+  full_name?: string | null;
+  name?: string | null;
+  gym_client_name?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+}): string {
+  const full = typeof u.full_name === 'string' ? u.full_name.trim() : '';
+  const n = typeof u.name === 'string' ? u.name.trim() : '';
+  const gym = typeof u.gym_client_name === 'string' ? u.gym_client_name.trim() : '';
+  const first = typeof u.first_name === 'string' ? u.first_name.trim() : '';
+  const last = typeof u.last_name === 'string' ? u.last_name.trim() : '';
+  const combined = [first, last].filter(Boolean).join(' ').trim();
+  if (full) return full;
+  if (n) return n;
+  if (gym) return gym;
+  if (combined) return combined;
+  return 'Sin nombre';
+}
+
+const COURSE_IMAGE_PLACEHOLDER = '/images/course-placeholder.jpg';
+
+/** URL absoluta, ruta local o placeholder; evita valores sueltos que rompan <img>. */
+function resolveCourseImageSrc(
+  course: { preview_image?: string | null; thumbnail_url?: string | null } | null,
+): string {
+  const raw = [course?.preview_image, course?.thumbnail_url]
+    .map((s) => (typeof s === 'string' ? s.trim() : ''))
+    .find(Boolean);
+  if (!raw) return COURSE_IMAGE_PLACEHOLDER;
+  if (raw.startsWith('//')) return `https:${raw}`;
+  if (
+    raw.startsWith('https://') ||
+    raw.startsWith('http://') ||
+    raw.startsWith('/')
+  ) {
+    return raw;
+  }
+  return COURSE_IMAGE_PLACEHOLDER;
+}
+
+function MembershipInvoiceLink({
+  payment,
+}: {
+  payment?: {
+    id?: string;
+    invoice_number?: string | number;
+  } | null;
+}) {
+  if (!payment?.invoice_number) return null;
+  const label = `Factura #${payment.invoice_number}`;
+  if (payment.id) {
+    return (
+      <Link
+        href={`/admin/payments/${payment.id}`}
+        className="mt-2 inline-flex text-xs font-medium text-gray-600 underline-offset-2 hover:text-[#85ea10] hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20 rounded-sm dark:text-white/70 dark:hover:text-[#85ea10]"
+      >
+        {label}
+      </Link>
+    );
+  }
+  return (
+    <p className="mt-2 text-xs font-medium text-[#164151] dark:text-white">
+      {label}
+    </p>
+  );
+}
 
 function ProfilePhotoAndNameCard({
   avatarUrl,
@@ -104,7 +179,7 @@ function ProfilePhotoAndNameCard({
   };
 
   return (
-    <div className="mb-6 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-white/10 p-6">
+    <div className="mb-6 pb-8 border-b border-gray-200/70 dark:border-white/[0.07]">
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-6">
         <label
           htmlFor={`avatar-upload-${userId}`}
@@ -292,6 +367,123 @@ const parseLocalDate = (dateStr: string): Date => {
   return new Date(y, m - 1, d);
 };
 
+const MS_PER_DAY = 86400000;
+
+function getMembershipPeriodProgress(
+  startStr: string,
+  endStr: string,
+  todayRef: Date,
+): {
+  pct: number;
+  daysLeft: number;
+  daysToStart: number;
+  totalDays: number;
+  notStarted: boolean;
+  endingSoon: boolean;
+} {
+  const start = parseLocalDate(startStr);
+  start.setHours(0, 0, 0, 0);
+  const end = parseLocalDate(endStr);
+  end.setHours(0, 0, 0, 0);
+  const now = new Date(todayRef);
+  now.setHours(0, 0, 0, 0);
+
+  const totalMs = end.getTime() - start.getTime();
+  const totalDays = Math.max(1, Math.round(totalMs / MS_PER_DAY));
+
+  if (now < start) {
+    const daysToStart = Math.ceil(
+      (start.getTime() - now.getTime()) / MS_PER_DAY,
+    );
+    const daysLeft = Math.ceil(
+      (end.getTime() - now.getTime()) / MS_PER_DAY,
+    );
+    return {
+      pct: 0,
+      daysLeft,
+      daysToStart,
+      totalDays,
+      notStarted: true,
+      endingSoon: false,
+    };
+  }
+
+  if (now > end) {
+    return {
+      pct: 100,
+      daysLeft: 0,
+      daysToStart: 0,
+      totalDays,
+      notStarted: false,
+      endingSoon: false,
+    };
+  }
+
+  const elapsedMs = now.getTime() - start.getTime();
+  const pct =
+    totalMs > 0
+      ? Math.min(100, Math.max(0, (elapsedMs / totalMs) * 100))
+      : 100;
+  const daysLeft = Math.ceil((end.getTime() - now.getTime()) / MS_PER_DAY);
+
+  return {
+    pct,
+    daysLeft,
+    daysToStart: 0,
+    totalDays,
+    notStarted: false,
+    endingSoon: daysLeft <= 7 && daysLeft >= 0,
+  };
+}
+
+function getCourseLessonProgressPct(
+  completed: number,
+  total: number,
+): { pct: number; label: string } {
+  const safeTotal = Math.max(0, total);
+  const safeCompleted = Math.max(0, completed);
+  if (safeTotal <= 0) {
+    return { pct: 0, label: 'Sin lecciones en el curso' };
+  }
+  const pct = Math.min(
+    100,
+    Math.round((safeCompleted / safeTotal) * 100),
+  );
+  const label = `${safeCompleted} de ${safeTotal} lecciones`;
+  return { pct, label };
+}
+
+/** Cupo de acceso al curso: desde access_granted hasta inicio + (duration_days - 1) días (misma regla que el webhook). */
+function getCourseAccessPeriodProgress(
+  accessGrantedAtIso: string | null | undefined,
+  durationDays: number,
+  todayRef: Date,
+): (ReturnType<typeof getMembershipPeriodProgress> & {
+  accessEndDateStr: string;
+  accessDurationDays: number;
+}) | null {
+  const accessDurationDays = Math.max(1, Number(durationDays) || 30);
+  if (!accessGrantedAtIso) return null;
+  const startStr = String(accessGrantedAtIso).slice(0, 10);
+  const accessEndDateStr = periodEndFromStart(
+    parseLocalDate(startStr),
+    accessDurationDays,
+  );
+  return {
+    ...getMembershipPeriodProgress(startStr, accessEndDateStr, todayRef),
+    accessEndDateStr,
+    accessDurationDays,
+  };
+}
+
+function formatMembershipDayLabel(d: Date) {
+  return d.toLocaleDateString('es-ES', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+}
+
 const formatGoals = (goals: string | string[] | null | undefined): string => {
   if (!goals) return 'No especificada';
   if (typeof goals === 'string') {
@@ -396,7 +588,7 @@ export function UserDetailContent({
   return (
     <>
       <div className="flex-1 overflow-y-auto">
-        <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
+        <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Un solo card: foto + nombre (solo cuando el usuario ve su propio perfil) */}
           {isSelf && onSaveAvatar && (
             <ProfilePhotoAndNameCard
@@ -425,7 +617,7 @@ export function UserDetailContent({
             />
           )}
 
-          {/* Client Stats Dashboard - datos internos, no mostrar al usuario */}
+          {/* Ficha estilo comprobante (admin) */}
           {!isSelf &&
             (() => {
               const memberships = userData.gym_memberships || [];
@@ -435,328 +627,170 @@ export function UserDetailContent({
               const totalPaid = memberships.reduce((sum: number, m: any) => {
                 return sum + (m.payment?.amount || 0);
               }, 0);
-              const lastPayment = memberships
-                .filter((m: any) => m.payment?.payment_date)
-                .sort(
-                  (a: any, b: any) =>
-                    new Date(b.payment.payment_date).getTime() -
-                    new Date(a.payment.payment_date).getTime(),
-                )[0];
-              const averageTicket =
-                totalMemberships > 0
-                  ? Math.round(totalPaid / totalMemberships)
-                  : 0;
 
-              // Meses en RogerBox = meses transcurridos desde la primera membresía (no cantidad de productos)
-              const sortedByStart = [...memberships]
-                .filter((m: any) => m.start_date)
-                .sort(
-                  (a: any, b: any) =>
-                    new Date(a.start_date).getTime() -
-                    new Date(b.start_date).getTime(),
-                );
+              const displayName = resolveAdminClientDisplayName(userData);
 
-              let monthsTraining = 0;
-              if (sortedByStart.length > 0) {
-                const firstStart = new Date(sortedByStart[0].start_date);
-                const today = new Date();
-                firstStart.setHours(0, 0, 0, 0);
-                today.setHours(0, 0, 0, 0);
-                let months =
-                  (today.getFullYear() - firstStart.getFullYear()) * 12 +
-                  (today.getMonth() - firstStart.getMonth());
-                if (today.getDate() < firstStart.getDate()) months--;
-                monthsTraining = Math.max(0, months);
-              }
+              const avatarSeed = String(
+                userData.client_info_id ||
+                  userData.gym_client_id ||
+                  userData.gym_memberships?.[0]?.client_info_id ||
+                  userData.id ||
+                  'client',
+              );
 
-              // Preparar datos para la gráfica: una barra por día (sumando todos los pagos de ese día)
-              const paymentsByDate = new Map<string, number>();
-              memberships
-                .filter(
-                  (m: any) =>
-                    m.payment?.payment_date && m.payment?.amount != null,
-                )
-                .forEach((m: any) => {
-                  const dateStr = m.payment.payment_date;
-                  const amount = Number(m.payment.amount);
-                  paymentsByDate.set(
-                    dateStr,
-                    (paymentsByDate.get(dateStr) || 0) + amount,
-                  );
-                });
-              const chartData = [...paymentsByDate.entries()]
-                .sort(
-                  ([a], [b]) => new Date(a).getTime() - new Date(b).getTime(),
-                )
-                .map(([dateStr, totalAmount]) => ({
-                  date: formatDateOnlyLocal(
-                    dateStr,
-                    { day: 'numeric', month: 'short' },
-                    'es-CO',
-                  ),
-                  weekday: formatDateOnlyLocal(
-                    dateStr,
-                    { weekday: 'long' },
-                    'es-CO',
-                  ),
-                  amount: totalAmount,
-                }));
+              const displayAvatarUrl =
+                userData.avatar_url && String(userData.avatar_url).trim()
+                  ? `${String(userData.avatar_url)}${String(userData.avatar_url).includes('?') ? '&' : '?'}v=${userData.updated_at || ''}`
+                  : null;
 
-              return (
-                <div className="mb-6 space-y-4">
-                  {/* Stats Cards */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    <div className="bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-xl border border-gray-200 dark:border-white/10 p-4 text-center">
-                      <div className="text-2xl font-bold text-[#164151] dark:text-white">
-                        {totalMemberships}
-                      </div>
-                      <div className="text-xs text-gray-500 dark:text-white/50 flex items-center justify-center gap-1">
-                        <CreditCard className="w-3 h-3" /> Membresías
-                      </div>
-                    </div>
-                    <div className="bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-xl border border-gray-200 dark:border-white/10 p-4 text-center">
-                      <div className="text-2xl font-bold text-[#164151] dark:text-white">
-                        ${totalPaid.toLocaleString('es-CO')}
-                      </div>
-                      <div className="text-xs text-gray-500 dark:text-white/50 flex items-center justify-center gap-1">
-                        <TrendingUp className="w-3 h-3" /> Total Pagado
-                      </div>
-                    </div>
-                    <div className="bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-xl border border-gray-200 dark:border-white/10 p-4 text-center">
-                      <div className="text-2xl font-bold text-[#164151] dark:text-white">
-                        {monthsTraining}
-                      </div>
-                      <div className="text-xs text-gray-500 dark:text-white/50 flex items-center justify-center gap-1">
-                        <Dumbbell className="w-3 h-3" /> Meses en RogerBox
-                      </div>
-                    </div>
-                    <div className="bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-xl border border-gray-200 dark:border-white/10 p-4 text-center">
-                      <div className="text-2xl font-bold text-[#164151] dark:text-white">
-                        {lastPayment?.payment?.payment_date
-                          ? formatDateOnlyLocal(
-                              lastPayment.payment.payment_date,
-                              { day: 'numeric', month: 'short' },
-                              'es-CO',
-                            )
-                          : '-'}
-                      </div>
-                      <div className="text-xs text-gray-500 dark:text-white/50 flex items-center justify-center gap-1">
-                        <Calendar className="w-3 h-3" /> Último Pago
+              const userTypeLabel =
+                userData.userType === 'both'
+                  ? 'Físico + Online'
+                  : userData.userType === 'physical'
+                    ? 'Sede física'
+                    : userData.userType === 'online'
+                      ? 'Sede en línea'
+                      : 'Sin productos';
+
+              const waRaw = userData.phone || userData.whatsapp;
+              const waHero =
+                waRaw && isPlaceholderGymWhatsapp(String(waRaw))
+                  ? null
+                  : waRaw
+                    ? String(waRaw)
+                    : null;
+              const waPending =
+                waRaw && isPlaceholderGymWhatsapp(String(waRaw));
+
+                      return (
+                <div className="mb-2 space-y-4">
+                  <div
+                    className="relative overflow-hidden text-[#164151] dark:text-white"
+                    role="article"
+                    aria-label="Resumen del cliente"
+                  >
+                    <div className="relative z-10">
+                      <div className="border-b border-gray-200/80 pb-6 dark:border-white/[0.08]">
+                        <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between lg:gap-10">
+                          <div className="flex min-w-0 flex-1 items-start gap-4 sm:gap-5">
+                            {displayAvatarUrl ? (
+                              <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-full ring-2 ring-gray-200/80 shadow-sm dark:ring-white/12 sm:h-[88px] sm:w-[88px]">
+                                <img
+                                  src={displayAvatarUrl}
+                                  alt=""
+                                  className="h-full w-full object-cover"
+                                />
+                              </div>
+                            ) : (
+                              <GymSeededAvatar
+                                seed={avatarSeed}
+                                size={88}
+                                className="shrink-0 rounded-full ring-2 ring-gray-200/80 shadow-sm dark:ring-white/12"
+                                alt=""
+                              />
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-white/40">
+                                Quién compró
+                              </p>
+                              <p className="text-2xl font-bold leading-tight tracking-tight text-[#164151] dark:text-white sm:text-3xl break-words">
+                                {displayName}
+                              </p>
+                              <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-gray-600 dark:text-white/60">
+                                {userData.document_id ? (
+                                  <span className="tabular-nums">
+                                    Doc. {userData.document_id}
+                                  </span>
+                                ) : null}
+                                {userData.email ? (
+                                  <span className="break-all">
+                                    {userData.email}
+                                  </span>
+                                ) : null}
+                                {waHero ? (
+                                  <span className="tabular-nums">
+                                    WhatsApp {waHero}
+                                  </span>
+                                ) : null}
+                                {waPending ? (
+                                  <span className="text-xs italic text-gray-500 dark:text-white/45">
+                                    WhatsApp pendiente
+                                  </span>
+                                ) : null}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="grid w-full grid-cols-2 gap-x-6 gap-y-4 border-t border-gray-200/60 pt-5 sm:grid-cols-4 lg:w-auto lg:min-w-0 lg:max-w-xl lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0 dark:border-white/[0.08]">
+                            <div className="min-w-0">
+                              <div className="mb-1 flex items-center gap-1.5">
+                                <Users className="h-3.5 w-3.5 shrink-0 text-[#85ea10]" />
+                                <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:text-white/45">
+                                  Tipo
+                                </span>
+                              </div>
+                              <p className="text-sm font-semibold leading-snug text-[#164151] dark:text-white">
+                                {userTypeLabel}
+                              </p>
+                            </div>
+                            <div className="min-w-0">
+                              <div className="mb-1 flex items-center gap-1.5">
+                                <FileText className="h-3.5 w-3.5 shrink-0 text-[#85ea10]" />
+                                <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:text-white/45">
+                                  Membresías
+                                </span>
+                              </div>
+                              <p className="text-sm font-semibold tabular-nums text-[#164151] dark:text-white">
+                                {totalMemberships}
+                              </p>
+                            </div>
+                            <div className="min-w-0">
+                              <div className="mb-1 flex items-center gap-1.5">
+                                <DollarSign className="h-3.5 w-3.5 shrink-0 text-[#85ea10]" />
+                                <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:text-white/45">
+                                  Total abonado
+                                </span>
+                              </div>
+                              <p className="text-sm font-semibold tabular-nums text-[#164151] dark:text-white">
+                                ${totalPaid.toLocaleString('es-CO')}
+                              </p>
+                            </div>
+                            <div className="min-w-0">
+                              <div className="mb-1 flex items-center gap-1.5">
+                                <CheckCircle className="h-3.5 w-3.5 shrink-0 text-[#85ea10]" />
+                                <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:text-white/45">
+                                  Estado
+                                </span>
+                              </div>
+                              <p className="mt-0.5">
+                                {userData.is_inactive ? (
+                                  <span className="inline-flex items-center rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:text-amber-300">
+                                    Inactivo
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center rounded-full bg-[#85ea10]/15 px-2 py-0.5 text-xs font-semibold text-[#85ea10]">
+                                    Activo
+                                  </span>
+                                )}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
-
-                  {/* Historial de pagos - barras simples (sin recharts para evitar error de build d3-array) */}
-                  {chartData.length > 0 &&
-                    (() => {
-                      const amounts = chartData.map((d: { amount: number }) =>
-                        Number(d.amount),
-                      );
-                      const maxAmount = Math.max(...amounts, 1);
-                      return (
-                        <div className="bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-xl border border-gray-200 dark:border-white/10 p-4">
-                          <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-sm font-semibold text-gray-500 dark:text-white/50 flex items-center gap-2">
-                              <TrendingUp className="w-4 h-4" /> Historial de
-                              Pagos
-                            </h3>
-                          </div>
-                          <div className="h-40 flex items-end gap-1">
-                            {chartData.map(
-                              (
-                                d: {
-                                  date: string;
-                                  weekday: string;
-                                  amount: number;
-                                },
-                                i: number,
-                              ) => {
-                                const value = Number(d.amount);
-                                const pct =
-                                  maxAmount > 0
-                                    ? Math.max((value / maxAmount) * 100, 8)
-                                    : 8;
-                                return (
-                                  <div
-                                    key={i}
-                                    className="flex-1 flex flex-col items-center gap-1 group relative min-w-0 self-stretch"
-                                  >
-                                    <div
-                                      className="w-full flex-1 min-h-0 flex flex-col justify-end"
-                                      style={{ minHeight: 0 }}
-                                    >
-                                      <div
-                                        className="w-full rounded-t bg-[#85ea10]/30 hover:bg-[#85ea10]/50 transition-colors flex-shrink-0"
-                                        style={{
-                                          height: `${pct}%`,
-                                          minHeight: '4px',
-                                        }}
-                                        title={`${d.date} (total): $${value.toLocaleString('es-CO')}`}
-                                      />
-                                    </div>
-                                    <span className="text-[9px] text-gray-500 dark:text-white/50 truncate max-w-full flex-shrink-0 capitalize">
-                                      {d.weekday}
-                                    </span>
-                                  </div>
-                                );
-                              },
-                            )}
-                          </div>
-                          <div className="flex justify-between mt-1 text-[10px] text-gray-500 dark:text-white/50">
-                            <span>$0</span>
-                            <span>${(maxAmount / 1000).toFixed(0)}k</span>
-                          </div>
-                        </div>
-                      );
-                    })()}
                 </div>
               );
             })()}
 
           <div
-            className={`grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 ${userData.is_inactive ? 'opacity-75' : ''}`}
+            className={`grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-y-10 ${userData.is_inactive ? 'opacity-75' : ''}`}
           >
-            {/* Left Column - Información Personal y Fitness */}
-            <div className="lg:col-span-2 space-y-4 md:space-y-6">
-              {/* Estado y Tipo - datos internos, no mostrar al usuario */}
-              {!isSelf && (
-                <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-white/10 p-6">
-                  <h2 className="text-sm font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider mb-4">
-                    Estado del Cliente
-                  </h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-xs text-gray-500 dark:text-white/40 mb-1">
-                        Estado
-                      </p>
-                      <div>
-                        {(() => {
-                          // Si tiene membresía vencida, mostrar estado apropiado
-                          if (
-                            userData.hasGymMembership &&
-                            !userData.hasActiveGymMembership
-                          ) {
-                            // Si está marcado como inactivo en la BD, mostrar "Inactivo"
-                            if (userData.is_inactive) {
-                              return (
-                                <p className="text-sm font-medium text-[#164151] dark:text-white">
-                                  <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400">
-                                    <X className="w-5 h-5" />
-                                    Inactivo
-                                  </span>
-                                </p>
-                              );
-                            }
-
-                            // Siempre mostrar "Renovar" cuando está vencido (no importa cuántos días)
-                            return (
-                              <p className="text-sm font-medium text-[#164151] dark:text-white">
-                                <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-orange-100 dark:bg-orange-500/20 text-orange-700 dark:text-orange-400">
-                                  <AlertTriangle className="w-5 h-5" />
-                                  Renovar
-                                </span>
-                              </p>
-                            );
-                          }
-
-                          if (
-                            userData.hasActiveGymMembership ||
-                            userData.hasOnlinePurchase
-                          ) {
-                            return (
-                              <p className="text-sm font-medium text-[#164151] dark:text-white">
-                                <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#85ea10]/20 text-[#164151] dark:bg-[#85ea10]/30 dark:text-[#85ea10]">
-                                  <CheckCircle className="w-5 h-5" />
-                                  Al día
-                                </span>
-                              </p>
-                            );
-                          }
-
-                          // Si no está registrado y no tiene membresías, mostrar "Nuevo cliente"
-                          if (userData.isUnregisteredClient) {
-                            return (
-                              <p className="text-sm font-medium text-[#164151] dark:text-white">
-                                <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400">
-                                  <User className="w-5 h-5" />
-                                  Nuevo cliente
-                                </span>
-                              </p>
-                            );
-                          }
-
-                          // Cliente registrado pero sin compras
-                          return (
-                            <p className="text-sm font-medium text-[#164151] dark:text-white">
-                              <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400">
-                                <User className="w-5 h-5" />
-                                Nuevo cliente
-                              </span>
-                            </p>
-                          );
-                        })()}
-                      </div>
-                    </div>
-
-                    <div>
-                      <p className="text-xs text-gray-500 dark:text-white/40 mb-1">
-                        Tipo de Cliente
-                      </p>
-                      {(() => {
-                        const hasGym =
-                          (userData.gym_memberships?.length ?? 0) > 0;
-                        const hasOnline =
-                          (userData.course_purchases?.length ?? 0) > 0 ||
-                          userData.hasOnlinePurchase;
-                        const type: string =
-                          userData.userType ??
-                          (hasGym && hasOnline
-                            ? 'both'
-                            : hasGym
-                              ? 'physical'
-                              : hasOnline
-                                ? 'online'
-                                : 'none');
-                        return (
-                          <>
-                            {type === 'both' && (
-                              <p className="text-sm font-medium text-[#164151] dark:text-white">
-                                <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-400">
-                                  Físico + Online
-                                </span>
-                              </p>
-                            )}
-                            {type === 'physical' && (
-                              <p className="text-sm font-medium text-[#164151] dark:text-white">
-                                <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-400">
-                                  <Dumbbell className="w-5 h-5" />
-                                  Físico
-                                </span>
-                              </p>
-                            )}
-                            {type === 'online' && (
-                              <p className="text-sm font-medium text-[#164151] dark:text-white">
-                                <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-cyan-100 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-400">
-                                  <Globe className="w-5 h-5" />
-                                  Online
-                                </span>
-                              </p>
-                            )}
-                            {type === 'none' && (
-                              <p className="text-sm font-medium text-gray-400 dark:text-white/40">
-                                -
-                              </p>
-                            )}
-                          </>
-                        );
-                      })()}
-                    </div>
-                  </div>
-
-                  {/* Botón Inactivar/Activar - solo admin */}
-                  {!isSelf && (
-                    <div className="mt-4 pt-4 border-t border-gray-200 dark:border-white/10">
-                      {(() => {
+            {/* Información personal y fitness — al final (menos prioridad); en móvil va debajo del comercial por order */}
+            <div className="order-2 space-y-4 md:space-y-6 lg:order-2 lg:col-span-12 lg:row-start-2 w-full min-w-0 pt-8 lg:pt-10">
+              {/* Inactivar / Activar — solo si aplica (info de estado ya está en la ficha superior) */}
+              {!isSelf &&
+                (() => {
                         const clientInfoId = userData.isUnregisteredClient
                           ? userData.id
                           : userData.client_info_id ||
@@ -766,8 +800,6 @@ export function UserDetailContent({
                         if (!clientInfoId) return null;
 
                         const isInactive = userData.is_inactive || false;
-
-                        // Calcular si tiene planes vencidos (estado "Renovar")
                         const today = new Date();
                         today.setHours(0, 0, 0, 0);
                         const allMemberships = userData.gym_memberships || [];
@@ -785,8 +817,6 @@ export function UserDetailContent({
                             return endDate < today && m.status !== 'cancelled';
                           },
                         );
-
-                        // Solo puede inactivarse si tiene estado "Renovar" (todos vencidos, sin activos, excluyendo cancelados)
                         const hasOnlyExpiredMemberships =
                           expiredMemberships.length > 0 &&
                           activeMemberships.length === 0;
@@ -808,7 +838,8 @@ export function UserDetailContent({
                           : 0;
                         const hasExpiredMoreThan30Days = daysSinceExpired > 30;
 
-                        // Botón Inactivar - solo si tiene estado "Renovar" (todos vencidos) y más de 30 días PERO NO está inactivo
+                  let action: React.ReactNode = null;
+
                         if (
                           hasOnlyExpiredMemberships &&
                           hasExpiredMoreThan30Days &&
@@ -817,7 +848,10 @@ export function UserDetailContent({
                           const handleInactivate = async () => {
                             if (
                               !confirm(
-                                `¿Estás seguro de inactivar a ${userData.name || userData.full_name || 'este usuario'}?`,
+                                `¿Estás seguro de inactivar a ${(() => {
+                                  const dn = resolveAdminClientDisplayName(userData);
+                                  return dn !== 'Sin nombre' ? dn : 'este usuario';
+                                })()}?`,
                               )
                             ) {
                               return;
@@ -839,27 +873,24 @@ export function UserDetailContent({
                                 throw new Error('Error al actualizar estado');
                               }
 
-                              // Recargar datos del usuario usando la función existente
                               await loadUserData();
                             } catch (error) {
                               alert('Error al inactivar el usuario');
                             }
                           };
 
-                          return (
+                    action = (
                             <button
+                        type="button"
                               onClick={handleInactivate}
-                              className="w-full px-4 py-2.5 rounded-lg bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-500/30 transition-colors flex items-center justify-center gap-2 text-sm font-semibold"
+                        className="flex w-full items-center justify-center gap-2 rounded-lg bg-red-100 px-4 py-2.5 text-sm font-semibold text-red-700 transition-colors hover:bg-red-200 dark:bg-red-500/20 dark:text-red-400 dark:hover:bg-red-500/30"
                               title="Inactivar usuario (30 días sin pagar)"
                             >
-                              <Ban className="w-5 h-5" />
+                        <Ban className="h-5 w-5" />
                               Inactivar Usuario
                             </button>
                           );
-                        }
-
-                        // Botón Activar - solo si está inactivo
-                        if (isInactive) {
+                  } else if (isInactive) {
                           const handleActivate = async () => {
                             try {
                               const response = await fetch(
@@ -877,38 +908,40 @@ export function UserDetailContent({
                                 throw new Error('Error al actualizar estado');
                               }
 
-                              // Recargar datos del usuario usando la función existente
                               await loadUserData();
                             } catch (error) {
                               alert('Error al activar el usuario');
                             }
                           };
 
-                          return (
+                    action = (
                             <button
+                        type="button"
                               onClick={handleActivate}
-                              className="w-full px-4 py-2.5 rounded-lg bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-500/30 transition-colors flex items-center justify-center gap-2 text-sm font-semibold"
+                        className="flex w-full items-center justify-center gap-2 rounded-lg bg-green-100 px-4 py-2.5 text-sm font-semibold text-green-700 transition-colors hover:bg-green-200 dark:bg-green-500/20 dark:text-green-400 dark:hover:bg-green-500/30"
                               title="Activar usuario"
                             >
-                              <CheckCircle className="w-5 h-5" />
+                        <CheckCircle className="h-5 w-5" />
                               Activar Usuario
                             </button>
                           );
                         }
 
-                        return null;
-                      })()}
-                    </div>
-                  )}
-                </div>
-              )}
+                  if (!action) return null;
 
-              {/* Información Personal - solo para vista admin (no mostrar al usuario en Mi cuenta) */}
+                  return (
+                    <div className="pb-8 border-b border-gray-200/60 dark:border-white/[0.06]">
+                      <h2 className="mb-4 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-white/40">
+                        Acciones
+                      </h2>
+                      {action}
+                    </div>
+                  );
+                })()}
+
+              {/* Datos de contacto — solo admin (sin encabezado de sección) */}
               {!isSelf && (
-                <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-white/10 p-6">
-                  <h2 className="text-sm font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider mb-4">
-                    Información Personal
-                  </h2>
+                <div className="pb-8 border-b border-gray-200/60 dark:border-white/[0.06]">
                   {saveError && (
                     <div className="mb-4 p-3 bg-red-50 dark:bg-red-500/20 border border-red-200 dark:border-red-500/30 rounded-lg">
                       <p className="text-sm text-red-600 dark:text-red-400">
@@ -916,41 +949,35 @@ export function UserDetailContent({
                       </p>
                     </div>
                   )}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
-                      <User className="w-5 h-5 text-gray-400" />
-                      <div className="flex-1">
-                        <p className="text-xs text-gray-500 dark:text-white/40 mb-1">
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    {isEditing && (
+                      <>
+                        <div className="flex items-center gap-3 py-2">
+                          <User className="h-5 w-5 shrink-0 text-gray-400" />
+                          <div className="min-w-0 flex-1">
+                            <p className="mb-1 text-xs text-gray-500 dark:text-white/40">
                           Nombre completo
                         </p>
-                        {isEditing ? (
                           <input
                             type="text"
                             value={editForm.name || ''}
                             onChange={(e) =>
-                              setEditForm({ ...editForm, name: e.target.value })
-                            }
-                            className="w-full px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded-lg text-sm text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50"
-                          />
-                        ) : (
-                          <p className="text-sm font-medium text-[#164151] dark:text-white">
-                            {userData.first_name && userData.last_name
-                              ? `${userData.first_name} ${userData.last_name}`
-                              : userData.name ||
-                                userData.full_name ||
-                                'No especificado'}
-                          </p>
-                        )}
+                                setEditForm({
+                                  ...editForm,
+                                  name: e.target.value,
+                                })
+                              }
+                              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-[#164151] focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 dark:border-white/20 dark:bg-gray-800 dark:text-white"
+                            />
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
-                      <Mail className="w-5 h-5 text-gray-400" />
-                      <div className="flex-1">
-                        <p className="text-xs text-gray-500 dark:text-white/40 mb-1">
+                        <div className="flex items-center gap-3 py-2">
+                          <Mail className="h-5 w-5 shrink-0 text-gray-400" />
+                          <div className="min-w-0 flex-1">
+                            <p className="mb-1 text-xs text-gray-500 dark:text-white/40">
                           Email
                         </p>
-                        {isEditing ? (
                           <input
                             type="email"
                             value={editForm.email || ''}
@@ -960,23 +987,17 @@ export function UserDetailContent({
                                 email: e.target.value,
                               })
                             }
-                            className="w-full px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded-lg text-sm text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50"
+                              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-[#164151] focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 dark:border-white/20 dark:bg-gray-800 dark:text-white"
                           />
-                        ) : (
-                          <p className="text-sm font-medium text-[#164151] dark:text-white">
-                            {userData.email || 'No especificado'}
-                          </p>
-                        )}
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
-                      <Phone className="w-5 h-5 text-gray-400" />
-                      <div className="flex-1">
-                        <p className="text-xs text-gray-500 dark:text-white/40 mb-1">
+                        <div className="flex items-center gap-3 py-2">
+                          <Phone className="h-5 w-5 shrink-0 text-gray-400" />
+                          <div className="min-w-0 flex-1">
+                            <p className="mb-1 text-xs text-gray-500 dark:text-white/40">
                           Teléfono / WhatsApp
                         </p>
-                        {isEditing ? (
                           <input
                             type="text"
                             value={editForm.phone || editForm.whatsapp || ''}
@@ -987,25 +1008,17 @@ export function UserDetailContent({
                                 whatsapp: e.target.value,
                               })
                             }
-                            className="w-full px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded-lg text-sm text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50"
-                          />
-                        ) : (
-                          <p className="text-sm font-medium text-[#164151] dark:text-white">
-                            {userData.phone ||
-                              userData.whatsapp ||
-                              'No especificado'}
-                          </p>
-                        )}
+                              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-[#164151] focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 dark:border-white/20 dark:bg-gray-800 dark:text-white"
+                            />
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
-                      <CreditCard className="w-5 h-5 text-gray-400" />
-                      <div className="flex-1">
-                        <p className="text-xs text-gray-500 dark:text-white/40 mb-1">
+                        <div className="flex items-center gap-3 py-2">
+                          <CreditCard className="h-5 w-5 shrink-0 text-gray-400" />
+                          <div className="min-w-0 flex-1">
+                            <p className="mb-1 text-xs text-gray-500 dark:text-white/40">
                           Documento
                         </p>
-                        {isEditing ? (
                           <div className="flex gap-2">
                             <select
                               value={editForm.document_type || 'CC'}
@@ -1015,7 +1028,7 @@ export function UserDetailContent({
                                   document_type: e.target.value,
                                 })
                               }
-                              className="px-2 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded-lg text-sm text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50"
+                                className="rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm text-[#164151] focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 dark:border-white/20 dark:bg-gray-800 dark:text-white"
                             >
                               <option value="CC">CC</option>
                               <option value="CE">CE</option>
@@ -1032,52 +1045,16 @@ export function UserDetailContent({
                                 })
                               }
                               disabled={userData.isUnregisteredClient}
-                              className="flex-1 px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded-lg text-sm text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed"
+                                className="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-[#164151] focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 disabled:cursor-not-allowed disabled:bg-gray-100 dark:border-white/20 dark:bg-gray-800 dark:text-white dark:disabled:bg-gray-800"
                             />
                           </div>
-                        ) : (
-                          <p className="text-sm font-medium text-[#164151] dark:text-white">
-                            {userData.document_id
-                              ? `${userData.document_type || 'CC'}: ${userData.document_id}`
-                              : 'No especificado'}
-                          </p>
-                        )}
                       </div>
                     </div>
-
-                    {/* Historial Clínico / Restricciones Médicas - solo admin */}
-                    {!isSelf && (
-                      <div className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl md:col-span-2">
-                        <FileText className="w-5 h-5 text-gray-400 mt-0.5" />
-                        <div className="flex-1">
-                          <p className="text-xs text-gray-500 dark:text-white/40 mb-1">
-                            Historial Clínico / Restricciones Médicas
-                          </p>
-                          {isEditing ? (
-                            <textarea
-                              value={editForm.medical_restrictions || ''}
-                              onChange={(e) =>
-                                setEditForm({
-                                  ...editForm,
-                                  medical_restrictions: e.target.value,
-                                })
-                              }
-                              rows={3}
-                              className="w-full px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded-lg text-sm text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 resize-none"
-                              placeholder="Restricciones médicas o historial clínico..."
-                            />
-                          ) : (
-                            <p className="text-sm font-medium text-[#164151] dark:text-white">
-                              {userData.medical_restrictions ||
-                                'No especificado'}
-                            </p>
-                          )}
-                        </div>
-                      </div>
+                      </>
                     )}
 
                     {userData.address && !isEditing && (
-                      <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
+                      <div className="flex items-center gap-3 py-3">
                         <MapPin className="w-5 h-5 text-gray-400" />
                         <div>
                           <p className="text-xs text-gray-500 dark:text-white/40">
@@ -1093,7 +1070,7 @@ export function UserDetailContent({
 
                     {isEditing && (
                       <>
-                        <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
+                        <div className="flex items-center gap-3 py-3">
                           <MapPin className="w-5 h-5 text-gray-400" />
                           <div className="flex-1">
                             <p className="text-xs text-gray-500 dark:text-white/40 mb-1">
@@ -1112,7 +1089,7 @@ export function UserDetailContent({
                             />
                           </div>
                         </div>
-                        <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
+                        <div className="flex items-center gap-3 py-3">
                           <MapPin className="w-5 h-5 text-gray-400" />
                           <div className="flex-1">
                             <p className="text-xs text-gray-500 dark:text-white/40 mb-1">
@@ -1136,7 +1113,7 @@ export function UserDetailContent({
 
                     {!isEditing &&
                       (userData.birth_date || userData.birth_year) && (
-                        <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
+                        <div className="flex items-center gap-3 py-3">
                           <Calendar className="w-5 h-5 text-gray-400" />
                           <div>
                             <p className="text-xs text-gray-500 dark:text-white/40">
@@ -1172,7 +1149,7 @@ export function UserDetailContent({
                       )}
 
                     {isEditing && (
-                      <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
+                      <div className="flex items-center gap-3 py-3">
                         <Calendar className="w-5 h-5 text-gray-400" />
                         <div className="flex-1">
                           <p className="text-xs text-gray-500 dark:text-white/40 mb-1">
@@ -1201,39 +1178,18 @@ export function UserDetailContent({
                       </div>
                     )}
 
-                    {!isSelf && (
-                      <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
-                        <Calendar className="w-5 h-5 text-gray-400" />
-                        <div>
-                          <p className="text-xs text-gray-500 dark:text-white/40">
-                            Fecha de registro
-                          </p>
-                          <p className="text-sm font-medium text-[#164151] dark:text-white">
-                            {new Date(userData.created_at).toLocaleDateString(
-                              'es-ES',
-                              {
-                                year: 'numeric',
-                                month: 'long',
-                                day: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              },
-                            )}
-                          </p>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </div>
               )}
 
-              {/* Información Fitness - Mostrar para todos los usuarios */}
-              <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-white/10 p-6">
-                <h2 className="text-sm font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider mb-4">
-                  Información Fitness
+              {/* Información fitness — solo en Mi cuenta (no en vista admin) */}
+              {isSelf && (
+              <div className="pb-8 border-b border-gray-200/60 dark:border-white/[0.06]">
+                <h2 className="mb-4 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-white/40">
+                  Información fitness
                 </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1">
+                  <div className="flex items-center gap-3 py-3">
                     <Scale className="w-5 h-5 text-gray-400" />
                     <div className="flex-1">
                       <p className="text-xs text-gray-500 dark:text-white/40 mb-1">
@@ -1270,7 +1226,7 @@ export function UserDetailContent({
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
+                  <div className="flex items-center gap-3 py-3">
                     <Target className="w-5 h-5 text-gray-400" />
                     <div className="flex-1">
                       <p className="text-xs text-gray-500 dark:text-white/40 mb-1">
@@ -1302,7 +1258,7 @@ export function UserDetailContent({
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
+                  <div className="flex items-center gap-3 py-3">
                     <Ruler className="w-5 h-5 text-gray-400" />
                     <div className="flex-1">
                       <p className="text-xs text-gray-500 dark:text-white/40 mb-1">
@@ -1333,7 +1289,7 @@ export function UserDetailContent({
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
+                  <div className="flex items-center gap-3 py-3">
                     <User className="w-5 h-5 text-gray-400" />
                     <div className="flex-1">
                       <p className="text-xs text-gray-500 dark:text-white/40 mb-1">
@@ -1369,7 +1325,7 @@ export function UserDetailContent({
                     </div>
                   </div>
 
-                  <div className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl md:col-span-2">
+                  <div className="flex items-start gap-3 py-3 md:col-span-2">
                     <Target className="w-5 h-5 text-gray-400 mt-0.5" />
                     <div className="flex-1">
                       <p className="text-xs text-gray-500 dark:text-white/40 mb-1">
@@ -1436,7 +1392,7 @@ export function UserDetailContent({
                   {userData.dietary_habits &&
                     userData.dietary_habits.length > 0 &&
                     !isEditing && (
-                      <div className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl md:col-span-2">
+                      <div className="flex items-start gap-3 py-3 md:col-span-2">
                         <BookOpen className="w-5 h-5 text-gray-400 mt-0.5" />
                         <div>
                           <p className="text-xs text-gray-500 dark:text-white/40">
@@ -1449,22 +1405,22 @@ export function UserDetailContent({
                       </div>
                     )}
 
-                  {/* Estadísticas de actividad */}
+                  {/* Estadísticas de actividad: dos columnas simétricas + línea central */}
                   {!isEditing && (
-                    <div className="grid grid-cols-2 gap-3 md:col-span-2">
-                      <div className="p-4 bg-gray-100 dark:bg-white/10 rounded-xl text-center">
-                        <p className="text-2xl font-bold text-[#164151] dark:text-white">
-                          {userData.streak_days || 0}
+                    <div className="grid grid-cols-2 md:col-span-2 pt-4 mt-1 divide-x divide-gray-200/70 dark:divide-white/[0.08] border-t border-gray-200/50 dark:border-white/[0.06]">
+                      <div className="flex min-h-[4.5rem] flex-col items-center justify-center gap-1.5 px-3 py-2 sm:px-4">
+                        <p className="text-2xl font-bold tabular-nums leading-none text-[#164151] dark:text-white">
+                          {userData.streak_days ?? 0}
                         </p>
-                        <p className="text-xs text-gray-500 dark:text-white/40">
+                        <p className="text-center text-xs leading-tight text-gray-500 dark:text-white/40">
                           Días de racha
                         </p>
                       </div>
-                      <div className="p-4 bg-blue-500/10 rounded-xl text-center">
-                        <p className="text-2xl font-bold text-blue-500">
-                          {userData.weight_progress_percentage || 0}%
+                      <div className="flex min-h-[4.5rem] flex-col items-center justify-center gap-1.5 px-3 py-2 sm:px-4">
+                        <p className="text-2xl font-bold tabular-nums leading-none text-[#164151] dark:text-white">
+                          {userData.weight_progress_percentage ?? 0}%
                         </p>
-                        <p className="text-xs text-gray-500 dark:text-white/40">
+                        <p className="text-center text-xs leading-tight text-gray-500 dark:text-white/40">
                           Progreso peso
                         </p>
                       </div>
@@ -1472,10 +1428,13 @@ export function UserDetailContent({
                   )}
                 </div>
               </div>
+              )}
             </div>
 
-            {/* Right Column - Productos y Negocio */}
-            <div className="space-y-6">
+            {/* Resumen comercial + historiales — ancho completo; dos columnas internas en lg */}
+            <div className="order-1 space-y-6 lg:order-1 lg:col-span-12 lg:row-start-1 w-full min-w-0">
+              <div className="grid grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-6 xl:gap-8 lg:items-start">
+                <div className="min-w-0 space-y-6 lg:space-y-8 lg:border-r lg:border-gray-200/60 lg:pr-6 xl:pr-8 dark:lg:border-white/[0.08]">
               {/* Productos Activos - Solo para usuarios "Al día" o "Parcial" */}
               {(() => {
                 const today = new Date();
@@ -1499,72 +1458,67 @@ export function UserDetailContent({
                   activeMemberships.length > 0 || hasActiveCourses;
 
                 return (
-                  <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-white/10 p-6">
-                    <h2 className="text-sm font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider mb-4">
-                      Productos Activos
-                    </h2>
-                    <div className="space-y-3">
+                  <div className="pb-8 sm:pb-10 border-b border-gray-200/60 dark:border-white/[0.06]">
+                    {!isSelf && (
+                      <h2 className="mb-4 text-xs font-semibold uppercase tracking-normal text-gray-500 dark:text-white/40">
+                        Resumen comercial
+                      </h2>
+                    )}
+                    <div className="space-y-6">
                       {!hasActiveProducts ? (
-                        <p className="text-sm text-gray-500 dark:text-white/50 py-4">
-                          No tienes productos activos (membresías ni cursos en
-                          línea).
+                        <p className="py-6 text-sm text-gray-500 dark:text-white/50">
+                          Sin membresías de gimnasio ni cursos en línea activos.
                         </p>
                       ) : (
                         <>
-                          {/* Membresías activas y programadas */}
-                          {activeMemberships
-                            .sort(
-                              (a: any, b: any) =>
-                                new Date(a.start_date).getTime() -
-                                new Date(b.start_date).getTime(),
-                            )
-                            .map((membership: any) => {
-                              // Determinar si es membresía actual o programada (pago anticipado)
-                              const startDate = parseLocalDate(
-                                membership.start_date,
-                              );
-                              const isScheduled = startDate > today;
+                          {/* Planes sede física — card único con barra de progreso */}
+                          {activeMemberships.length > 0 && (
+                            <div className="overflow-hidden rounded-xl border border-gray-200/80 bg-gray-50/50 dark:border-white/[0.08] dark:bg-white/[0.02]">
+                              <div className="divide-y divide-gray-200/70 dark:divide-white/[0.08]">
+                                {activeMemberships
+                                  .sort(
+                                    (a: any, b: any) =>
+                                      new Date(a.start_date).getTime() -
+                                      new Date(b.start_date).getTime(),
+                                  )
+                                  .map((membership: any) => {
+                                    const startDate = parseLocalDate(
+                                      membership.start_date,
+                                    );
+                                    const isScheduled = startDate > today;
+                                    const period = getMembershipPeriodProgress(
+                                      membership.start_date,
+                                      membership.end_date,
+                                      today,
+                                    );
 
-                              return (
-                                <div
-                                  key={membership.id}
-                                  className={`p-4 rounded-xl border ${
-                                    isScheduled
-                                      ? 'bg-cyan-50 dark:bg-cyan-500/10 border-cyan-200 dark:border-cyan-500/20'
-                                      : 'bg-gray-50 dark:bg-white/5 border-gray-200 dark:border-white/10'
-                                  }`}
-                                >
-                                  <div className="flex items-center gap-3 mb-3">
-                                    <div
-                                      className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                                        isScheduled
-                                          ? 'bg-cyan-100 dark:bg-cyan-500/20'
-                                          : 'bg-[#85ea10]/30 dark:bg-[#85ea10]/40'
-                                      }`}
-                                    >
-                                      <Dumbbell
-                                        className={`w-5 h-5 ${
-                                          isScheduled
-                                            ? 'text-cyan-600 dark:text-cyan-400'
-                                            : 'text-[#164151] dark:text-[#85ea10]'
-                                        }`}
-                                      />
-                                    </div>
-                                    <div className="flex-1">
-                                      <div className="flex items-center justify-between mb-1">
-                                        <p className="text-sm font-medium text-[#164151] dark:text-white">
+                                    return (
+                                      <div
+                                        key={membership.id}
+                                        className="px-4 py-6 sm:px-5"
+                                      >
+                                  <div className="min-w-0">
+                                      <div className="flex flex-wrap items-start justify-between gap-2">
+                                        <div className="min-w-0">
+                                          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-white/40">
+                                            Plan sede física
+                                          </p>
+                                          <p className="text-base font-semibold leading-snug text-[#164151] dark:text-white">
                                           {membership.plan?.name || 'Plan'}
                                         </p>
-                                        <div className="flex items-center gap-2">
-                                          <span
-                                            className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                                              isScheduled
-                                                ? 'bg-cyan-100 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-400'
-                                                : 'bg-[#85ea10]/30 text-[#164151] dark:bg-[#85ea10]/30 dark:text-[#85ea10]'
-                                            }`}
-                                          >
-                                            {isScheduled ? 'Próximo' : 'Al día'}
+                                        </div>
+                                        <div className="flex shrink-0 items-center gap-2">
+                                          {isScheduled ? (
+                                            <span className="inline-flex items-center gap-1 rounded-md border border-cyan-500/40 bg-transparent px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-cyan-800 dark:border-cyan-500/35 dark:text-cyan-400">
+                                              <Calendar className="h-3.5 w-3.5 shrink-0" />
+                                              Próximo
                                           </span>
+                                          ) : (
+                                            <span className="inline-flex items-center gap-1 rounded-md border border-gray-200/90 bg-gray-50 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-gray-700 dark:border-white/15 dark:bg-white/[0.06] dark:text-white/85">
+                                              <CheckCircle className="h-3.5 w-3.5 shrink-0 text-[#85ea10]" />
+                                              Al día
+                                            </span>
+                                          )}
                                           {!isSelf && (
                                             <button
                                               onClick={() =>
@@ -1576,135 +1530,262 @@ export function UserDetailContent({
                                                 cancellingMembershipId ===
                                                 membership.id
                                               }
-                                              className="p-1 rounded-lg text-red-500 hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors disabled:opacity-50"
+                                              className="p-1.5 rounded-lg text-[#164151]/45 transition-colors hover:bg-[#164151]/10 hover:text-[#164151] disabled:opacity-50 dark:text-white/40 dark:hover:bg-white/10 dark:hover:text-white"
                                               title="Cancelar membresía"
                                             >
                                               {cancellingMembershipId ===
                                               membership.id ? (
-                                                <div className="w-4 h-4 border-2 border-red-300 border-t-red-500 rounded-full animate-spin" />
+                                                <div className="w-4 h-4 border-2 border-[#164151]/30 border-t-[#85ea10] rounded-full animate-spin dark:border-white/20" />
                                               ) : (
-                                                <X className="w-4 h-4" />
+                                                <X className="h-4 w-4" strokeWidth={2} />
                                               )}
                                             </button>
                                           )}
                                         </div>
                                       </div>
-                                      <div className="space-y-1">
-                                        <div className="flex items-center gap-2">
-                                          {!isSelf &&
-                                          editingStartDateMembershipId ===
-                                            membership.id ? (
-                                            <div className="flex items-center gap-2 flex-1">
-                                              <span className="text-xs text-gray-500 dark:text-white/50">
-                                                Inicia:
-                                              </span>
-                                              <input
-                                                type="date"
-                                                value={newStartDate}
-                                                onChange={(e) =>
-                                                  setNewStartDate(
-                                                    e.target.value,
-                                                  )
-                                                }
-                                                className="px-2 py-1 text-xs rounded-lg border border-gray-300 dark:border-white/20 bg-white dark:bg-gray-800 text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#164151]/50"
-                                                disabled={isUpdatingStartDate}
-                                              />
-                                              <button
-                                                onClick={() =>
-                                                  handleSaveStartDate(
-                                                    membership.id,
-                                                  )
-                                                }
-                                                disabled={isUpdatingStartDate}
-                                                className="px-2 py-1 text-xs bg-[#85ea10] text-[#164151] rounded-lg hover:bg-[#85ea10]/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                                title="Guardar fecha"
-                                              >
-                                                {isUpdatingStartDate
-                                                  ? '...'
-                                                  : '✓'}
-                                              </button>
-                                              <button
-                                                onClick={
-                                                  handleCancelEditStartDate
-                                                }
-                                                disabled={isUpdatingStartDate}
-                                                className="px-2 py-1 text-xs bg-gray-200 dark:bg-white/10 text-gray-700 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-white/20 transition-colors disabled:opacity-50"
-                                                title="Cancelar"
-                                              >
-                                                ✕
-                                              </button>
-                                            </div>
-                                          ) : (
-                                            <>
-                                              <p className="text-xs text-gray-500 dark:text-white/50">
-                                                Inicia:{' '}
-                                                {parseLocalDate(
-                                                  membership.start_date,
-                                                ).toLocaleDateString('es-ES', {
-                                                  day: '2-digit',
-                                                  month: 'long',
-                                                  year: 'numeric',
-                                                })}
-                                              </p>
-                                              {!isSelf && (
-                                                <button
-                                                  onClick={() =>
-                                                    handleStartEditStartDate(
-                                                      membership,
-                                                    )
-                                                  }
-                                                  className="p-1.5 rounded-lg text-[#164151] dark:text-white hover:bg-[#164151]/10 dark:hover:bg-white/10 transition-colors border border-transparent hover:border-[#164151]/20 dark:hover:border-white/20"
-                                                  title="Editar fecha de inicio"
+
+                                      {/* Período: inicio — barra de progreso — fin */}
+                                      <div className="mt-5">
+                                        {!isSelf &&
+                                        editingStartDateMembershipId ===
+                                          membership.id ? (
+                                          <div className="flex flex-wrap items-center gap-2">
+                                            <span className="text-xs text-gray-500 dark:text-white/50 shrink-0">
+                                              Inicia:
+                                            </span>
+                                            <DatePickerField
+                                              id={`membership-start-${membership.id}`}
+                                              value={newStartDate}
+                                              onChange={(iso) =>
+                                                setNewStartDate(iso)
+                                              }
+                                              disabled={isUpdatingStartDate}
+                                              aria-label="Fecha de inicio del plan"
+                                              className="min-w-[160px] max-w-[220px] flex-1"
+                                              triggerClassName="py-1.5 min-h-[34px] text-xs rounded-lg border-gray-300 dark:border-white/20 bg-white dark:bg-gray-800/90"
+                                            />
+                                            <button
+                                              onClick={() =>
+                                                handleSaveStartDate(
+                                                  membership.id,
+                                                )
+                                              }
+                                              disabled={isUpdatingStartDate}
+                                              className="px-2 py-1 text-xs bg-[#85ea10] text-[#164151] rounded-lg hover:bg-[#85ea10]/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                              title="Guardar fecha"
+                                            >
+                                              {isUpdatingStartDate
+                                                ? '...'
+                                                : '✓'}
+                                            </button>
+                                            <button
+                                              onClick={handleCancelEditStartDate}
+                                              disabled={isUpdatingStartDate}
+                                              className="px-2 py-1 text-xs bg-gray-200 dark:bg-white/10 text-gray-700 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-white/20 transition-colors disabled:opacity-50"
+                                              title="Cancelar"
+                                            >
+                                              ✕
+                                            </button>
+                                          </div>
+                                        ) : (
+                                          <>
+                                            <div className="flex flex-wrap items-start justify-between gap-3 sm:gap-4">
+                                              <div className="flex min-w-0 flex-1 flex-col items-center text-center sm:max-w-[38%] sm:items-start sm:text-left">
+                                                <span
+                                                  className="mb-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-[#85ea10] ring-2 ring-[#85ea10]/30"
+                                                  title="Inicio del período"
+                                                />
+                                                <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:text-white/45">
+                                                  Inicio
+                                                </span>
+                                                <span className="mt-0.5 text-xs font-medium leading-snug text-[#164151] dark:text-white">
+                                                  {formatMembershipDayLabel(
+                                                    parseLocalDate(
+                                                      membership.start_date,
+                                                    ),
+                                                  )}
+                                                </span>
+                                                {!isSelf && (
+                                                  <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                      handleStartEditStartDate(
+                                                        membership,
+                                                      )
+                                                    }
+                                                    className="mt-2 inline-flex items-center gap-1 rounded-md border border-gray-200/80 px-2 py-1 text-[10px] font-medium text-gray-600 transition-colors hover:bg-gray-100 dark:border-white/15 dark:text-white/70 dark:hover:bg-white/10"
+                                                    title="Editar fecha de inicio"
+                                                  >
+                                                    <Edit className="h-3 w-3" />
+                                                    Editar
+                                                  </button>
+                                                )}
+                                              </div>
+
+                                              <div className="min-w-0 flex-1 px-1 pt-1 sm:px-2">
+                                                <div
+                                                  className={`relative h-2.5 w-full overflow-hidden rounded-full bg-gray-200/90 dark:bg-white/10 ${
+                                                    period.endingSoon &&
+                                                    !period.notStarted
+                                                      ? 'ring-1 ring-amber-500/50'
+                                                      : ''
+                                                  }`}
+                                                  role="progressbar"
+                                                  aria-valuenow={Math.round(
+                                                    period.pct,
+                                                  )}
+                                                  aria-valuemin={0}
+                                                  aria-valuemax={100}
+                                                  aria-label="Progreso del período del plan"
                                                 >
-                                                  <Edit className="w-4 h-4" />
-                                                </button>
-                                              )}
-                                            </>
-                                          )}
-                                        </div>
-                                        <p
-                                          className={`text-xs ${isScheduled ? 'text-cyan-600 dark:text-cyan-400' : 'text-gray-500 dark:text-white/50'}`}
-                                        >
-                                          Vence:{' '}
-                                          {parseLocalDate(
-                                            membership.end_date,
-                                          ).toLocaleDateString('es-ES', {
-                                            day: '2-digit',
-                                            month: 'long',
-                                            year: 'numeric',
-                                          })}
-                                        </p>
+                                                  <div
+                                                    className={`h-full rounded-full transition-[width] duration-300 ${
+                                                      period.notStarted
+                                                        ? 'w-0 bg-cyan-500/40'
+                                                        : period.endingSoon
+                                                          ? 'bg-gradient-to-r from-[#85ea10] to-amber-500'
+                                                          : 'bg-[#85ea10]'
+                                                    }`}
+                                                    style={{
+                                                      width: `${period.notStarted ? 0 : period.pct}%`,
+                                                    }}
+                                                  />
+                                                </div>
+                                                <div className="mt-2 space-y-0.5 text-center">
+                                                  {period.notStarted ? (
+                                                    <p className="text-[11px] text-cyan-600 dark:text-cyan-400">
+                                                      Comienza en{' '}
+                                                      {period.daysToStart}{' '}
+                                                      {period.daysToStart === 1
+                                                        ? 'día'
+                                                        : 'días'}
+                                                    </p>
+                                                  ) : period.endingSoon ? (
+                                                    <p className="text-[11px] font-semibold text-amber-700 dark:text-amber-400">
+                                                      Quedan {period.daysLeft}{' '}
+                                                      {period.daysLeft === 1
+                                                        ? 'día'
+                                                        : 'días'}{' '}
+                                                      — el plan se acaba pronto
+                                                    </p>
+                                                  ) : (
+                                                    <p className="text-[11px] text-gray-500 dark:text-white/45">
+                                                      {Math.round(period.pct)}%
+                                                      del período transcurrido ·{' '}
+                                                      {period.daysLeft}{' '}
+                                                      {period.daysLeft === 1
+                                                        ? 'día restante'
+                                                        : 'días restantes'}
+                                                    </p>
+                                                  )}
+                                                </div>
+                                              </div>
+
+                                              <div className="flex min-w-0 flex-1 flex-col items-center text-center sm:max-w-[38%] sm:items-end sm:text-right">
+                                                <span
+                                                  className="mb-1.5 h-2.5 w-2.5 shrink-0 rounded-full border-2 border-[#85ea10] bg-gradient-to-b from-[#85ea10] to-[#6bc40a] shadow-sm dark:border-[#85ea10]"
+                                                  title="Fin del período"
+                                                />
+                                                <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:text-white/45">
+                                                  Vence
+                                                </span>
+                                                <span
+                                                  className={`mt-0.5 text-xs font-medium leading-snug ${
+                                                    isScheduled
+                                                      ? 'text-cyan-600 dark:text-cyan-400'
+                                                      : 'text-[#164151] dark:text-white'
+                                                  }`}
+                                                >
+                                                  {formatMembershipDayLabel(
+                                                    parseLocalDate(
+                                                      membership.end_date,
+                                                    ),
+                                                  )}
+                                                </span>
+                                              </div>
+                                            </div>
+                                          </>
+                                        )}
                                       </div>
-                                      {membership.payment?.invoice_number && (
-                                        <p className="text-xs font-medium text-[#164151] dark:text-white mt-1">
-                                          Factura: #
-                                          {membership.payment.invoice_number}
-                                        </p>
-                                      )}
+
+                                      <div className="mt-4">
+                                        <MembershipInvoiceLink
+                                          payment={membership.payment}
+                                        />
+                                      </div>
                                     </div>
                                   </div>
-                                </div>
-                              );
-                            })}
+                                    );
+                                  })}
+                              </div>
+                            </div>
+                          )}
 
                           {/* Cursos activos */}
                           {hasActiveCourses && (
-                            <div className="space-y-3">
-                              <p className="text-xs font-medium text-gray-500 dark:text-white/50 uppercase tracking-wider">
+                            <div className="space-y-0 pt-6">
+                              <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-white/40 pb-4">
                                 Cursos en línea activos
                               </p>
+                              <div className="divide-y divide-gray-200/70 dark:divide-white/[0.08]">
                               {userData.activeCoursePurchases.map(
-                                (purchase: any) => (
+                                (purchase: any) => {
+                                  const course = Array.isArray(
+                                    purchase.course,
+                                  )
+                                    ? purchase.course[0]
+                                    : purchase.course;
+                                  const courseTitle = course?.title || 'Curso';
+                                  const courseThumb = resolveCourseImageSrc(
+                                    course,
+                                  );
+                                  const lessonProgress = getCourseLessonProgressPct(
+                                    Number(purchase.completed_lessons) || 0,
+                                    Number(purchase.total_lessons) || 0,
+                                  );
+                                  const durationFromCourse =
+                                    Number(course?.duration_days) > 0
+                                      ? Number(course.duration_days)
+                                      : 30;
+                                  const accessPeriod =
+                                    getCourseAccessPeriodProgress(
+                                      purchase.access_granted_at,
+                                      durationFromCourse,
+                                      today,
+                                    );
+                                  return (
                                   <div
                                     key={purchase.id}
-                                    className="flex items-start gap-3 p-4 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-200 dark:border-white/10"
+                                    className="flex items-start gap-4 py-6 first:pt-0"
                                   >
-                                    <div className="w-10 h-10 rounded-lg bg-cyan-500/20 dark:bg-cyan-400/20 flex items-center justify-center flex-shrink-0">
-                                      <BookOpen className="w-5 h-5 text-cyan-600 dark:text-cyan-400" />
+                                    <div
+                                      className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-[#164151] ring-1 ring-white/15 shadow-inner"
+                                    >
+                                      {/* <img> + onError: mismo patrón que el dashboard; next/image falla si el host no está en remotePatterns */}
+                                      <img
+                                        src={courseThumb}
+                                        alt=""
+                                        className="h-full w-full object-cover"
+                                        loading="lazy"
+                                        decoding="async"
+                                        onError={(e) => {
+                                          const el = e.currentTarget;
+                                          if (
+                                            !el.src.endsWith(
+                                              'course-placeholder.jpg',
+                                            )
+                                          ) {
+                                            el.src = COURSE_IMAGE_PLACEHOLDER;
+                                          }
+                                        }}
+                                      />
                                     </div>
-                                    <div className="flex-1 min-w-0">
-                                      <p className="text-sm font-medium text-[#164151] dark:text-white">
-                                        {purchase.course?.title || 'Curso'}
+                                    <div className="min-w-0 flex-1">
+                                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-white/40">
+                                        Curso en línea
+                                      </p>
+                                      <p className="text-base font-semibold text-[#164151] dark:text-white">
+                                        {courseTitle}
                                       </p>
                                       <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-gray-500 dark:text-white/50">
                                         {purchase.access_granted_at && (
@@ -1734,18 +1815,137 @@ export function UserDetailContent({
                                             </span>
                                           )}
                                       </div>
+                                      {accessPeriod && (
+                                        <div className="mt-3 min-w-0">
+                                          <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:text-white/45">
+                                            Tiempo de acceso al curso (
+                                            {accessPeriod.accessDurationDays}{' '}
+                                            {accessPeriod.accessDurationDays ===
+                                            1
+                                              ? 'día'
+                                              : 'días'}
+                                            )
+                                          </p>
+                                          <div
+                                            className="relative h-2.5 w-full overflow-hidden rounded-full bg-gray-200/90 dark:bg-white/10"
+                                            role="progressbar"
+                                            aria-valuenow={Math.round(
+                                              accessPeriod.pct,
+                                            )}
+                                            aria-valuemin={0}
+                                            aria-valuemax={100}
+                                            aria-label="Progreso del período de acceso al curso"
+                                          >
+                                            <div
+                                              className={`h-full rounded-full transition-[width] duration-300 ${
+                                                accessPeriod.notStarted
+                                                  ? 'w-0 bg-cyan-500/40'
+                                                  : accessPeriod.endingSoon
+                                                    ? 'bg-gradient-to-r from-[#85ea10] to-amber-500'
+                                                    : 'bg-[#85ea10]'
+                                              }`}
+                                              style={{
+                                                width: `${accessPeriod.notStarted ? 0 : accessPeriod.pct}%`,
+                                              }}
+                                            />
+                                          </div>
+                                          <p className="mt-1.5 text-[11px] leading-snug text-gray-500 dark:text-white/45">
+                                            {accessPeriod.notStarted ? (
+                                              <>
+                                                El acceso comienza en{' '}
+                                                {accessPeriod.daysToStart}{' '}
+                                                {accessPeriod.daysToStart === 1
+                                                  ? 'día'
+                                                  : 'días'}
+                                                .
+                                              </>
+                                            ) : accessPeriod.pct >= 100 ? (
+                                              <>
+                                                Período de acceso terminado (
+                                                vencía el{' '}
+                                                {formatDateOnlyLocal(
+                                                  accessPeriod.accessEndDateStr,
+                                                  {
+                                                    day: 'numeric',
+                                                    month: 'short',
+                                                    year: 'numeric',
+                                                  },
+                                                  'es-CO',
+                                                )}
+                                                ).
+                                              </>
+                                            ) : (
+                                              <>
+                                                {Math.round(accessPeriod.pct)}
+                                                % del cupo transcurrido ·
+                                                vence el{' '}
+                                                {formatDateOnlyLocal(
+                                                  accessPeriod.accessEndDateStr,
+                                                  {
+                                                    day: 'numeric',
+                                                    month: 'short',
+                                                    year: 'numeric',
+                                                  },
+                                                  'es-CO',
+                                                )}{' '}
+                                                · quedan{' '}
+                                                {accessPeriod.daysLeft}{' '}
+                                                {accessPeriod.daysLeft === 1
+                                                  ? 'día'
+                                                  : 'días'}
+                                              </>
+                                            )}
+                                          </p>
+                                        </div>
+                                      )}
+                                      <div className="mt-3 min-w-0">
+                                        <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:text-white/45">
+                                          Lecciones completadas
+                                        </p>
+                                        <p className="mb-2 text-[10px] leading-snug text-gray-500/90 dark:text-white/35">
+                                          Cada día que pasa desde el acceso
+                                          cuenta una lección (Colombia), sin
+                                          depender de que el alumno abra la
+                                          clase.
+                                        </p>
+                                        <div
+                                          className="relative h-2.5 w-full overflow-hidden rounded-full bg-gray-200/90 dark:bg-white/10"
+                                          role="progressbar"
+                                          aria-valuenow={Math.round(
+                                            lessonProgress.pct,
+                                          )}
+                                          aria-valuemin={0}
+                                          aria-valuemax={100}
+                                          aria-label="Progreso por días calendario desde el acceso"
+                                        >
+                                          <div
+                                            className="h-full rounded-full bg-cyan-500/70 dark:bg-cyan-500/50 transition-[width] duration-300"
+                                            style={{
+                                              width: `${lessonProgress.pct}%`,
+                                            }}
+                                          />
+                                        </div>
+                                        <div className="mt-1.5 flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 text-[11px] text-gray-500 dark:text-white/45">
+                                          <span>{lessonProgress.label}</span>
+                                          <span className="tabular-nums font-medium text-[#164151] dark:text-white/80">
+                                            {lessonProgress.pct}%
+                                          </span>
+                                        </div>
+                                      </div>
                                       {isSelf && (
                                         <a
                                           href="/student"
-                                          className="inline-flex items-center gap-1 mt-2 text-xs font-medium text-cyan-600 dark:text-cyan-400 hover:underline"
+                                          className="inline-flex items-center gap-1 mt-2 text-xs font-medium text-white/75 underline-offset-2 hover:text-[#85ea10] hover:underline"
                                         >
                                           Ver clases →
                                         </a>
                                       )}
                                     </div>
                                   </div>
-                                ),
+                                  );
+                                },
                               )}
+                              </div>
                             </div>
                           )}
                         </>
@@ -1761,7 +1961,7 @@ export function UserDetailContent({
                 today.setHours(0, 0, 0, 0);
 
                 // Filtrar membresías vencidas (excluir canceladas) que aún no tienen renovación
-                const expiredMemberships = (
+                const expiredMembershipsRaw = (
                   userData.gym_memberships || []
                 ).filter((membership: any) => {
                   const endDate = parseLocalDate(membership.end_date);
@@ -1780,45 +1980,43 @@ export function UserDetailContent({
                   return !hasRenewedSamePlan;
                 });
 
+                const expiredMemberships =
+                  pickLatestExpiredMembershipPerPlan(expiredMembershipsRaw);
+
                 if (expiredMemberships.length === 0) {
                   return null;
                 }
 
                 return (
-                  <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-white/10 p-6">
-                    <h2 className="text-sm font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider mb-4">
+                  <div className="pb-8 border-b border-gray-200/60 dark:border-white/[0.06]">
+                    <h2 className="mb-4 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-white/40">
                       Planes que necesitan renovación
                     </h2>
-                    <div className="space-y-3">
-                      {expiredMemberships
-                        .sort(
-                          (a: any, b: any) =>
-                            new Date(b.end_date).getTime() -
-                            new Date(a.end_date).getTime(),
-                        )
-                        .map((membership: any) => {
+                    <div className="divide-y divide-gray-200/70 dark:divide-white/[0.08]">
+                      {expiredMemberships.map((membership: any) => {
                           const endDate = parseLocalDate(membership.end_date);
 
                           return (
                             <div
                               key={membership.id}
-                              className="p-4 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-200 dark:border-white/10"
+                              className="py-6 first:pt-0"
                             >
-                              <div className="flex items-center gap-3 mb-3">
-                                <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-slate-100 dark:bg-slate-500/20">
-                                  <Dumbbell className="w-5 h-5 text-slate-600 dark:text-slate-400" />
-                                </div>
-                                <div className="flex-1">
-                                  <div className="flex items-center justify-between mb-1">
-                                    <p className="text-sm font-medium text-[#164151] dark:text-white">
+                              <div className="min-w-0">
+                                  <div className="flex flex-wrap items-start justify-between gap-2">
+                                    <div className="min-w-0">
+                                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-white/40">
+                                        Plan sede física
+                                      </p>
+                                      <p className="text-base font-semibold text-[#164151] dark:text-white">
                                       {membership.plan?.name || 'Plan'}
                                     </p>
-                                    <div className="flex items-center gap-2">
+                                    </div>
+                                    <div className="flex shrink-0 items-center gap-2">
                                       {(() => {
                                         // Solo mostrar "Inactivo" si el usuario está marcado como inactivo en la BD
                                         if (userData.is_inactive) {
                                           return (
-                                            <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400">
+                                            <span className="inline-flex items-center gap-1 rounded-md border border-red-500/40 bg-red-500/5 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-red-700 dark:border-red-500/35 dark:text-red-400">
                                               Inactivo
                                             </span>
                                           );
@@ -1826,7 +2024,7 @@ export function UserDetailContent({
 
                                         // Si no está inactivo, siempre mostrar "Renovar"
                                         return (
-                                          <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-100 dark:bg-orange-500/20 text-orange-700 dark:text-orange-400">
+                                          <span className="inline-flex items-center gap-1 rounded-md border border-orange-500/45 bg-orange-500/[0.07] px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-orange-800 dark:border-orange-500/40 dark:text-orange-400">
                                             Renovar
                                           </span>
                                         );
@@ -1843,20 +2041,20 @@ export function UserDetailContent({
                                               cancellingMembershipId ===
                                               membership.id
                                             }
-                                            className="p-1 rounded-lg text-red-500 hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors disabled:opacity-50"
+                                            className="p-1.5 rounded-lg text-[#164151]/45 transition-colors hover:bg-[#164151]/10 hover:text-[#164151] disabled:opacity-50 dark:text-white/40 dark:hover:bg-white/10 dark:hover:text-white"
                                             title="Cancelar membresía"
                                           >
                                             {cancellingMembershipId ===
                                             membership.id ? (
-                                              <div className="w-4 h-4 border-2 border-red-300 border-t-red-500 rounded-full animate-spin" />
+                                              <div className="w-4 h-4 border-2 border-[#164151]/30 border-t-[#85ea10] rounded-full animate-spin dark:border-white/20" />
                                             ) : (
-                                              <X className="w-4 h-4" />
+                                              <X className="h-4 w-4" strokeWidth={2} />
                                             )}
                                           </button>
                                         )}
                                     </div>
                                   </div>
-                                  <p className="text-xs text-gray-500 dark:text-white/50">
+                                  <p className="mt-3 text-xs text-gray-500 dark:text-white/50">
                                     Venció:{' '}
                                     {parseLocalDate(
                                       membership.end_date,
@@ -1866,13 +2064,9 @@ export function UserDetailContent({
                                       year: 'numeric',
                                     })}
                                   </p>
-                                  {membership.payment?.invoice_number && (
-                                    <p className="text-xs font-medium text-[#164151] dark:text-white mt-1">
-                                      Factura: #
-                                      {membership.payment.invoice_number}
-                                    </p>
-                                  )}
-                                </div>
+                                  <MembershipInvoiceLink
+                                    payment={membership.payment}
+                                  />
                               </div>
                               <div className="mt-3 pt-3 border-t border-gray-200 dark:border-white/10 space-y-2">
                                 {/* Botón Invitar a renovar (WhatsApp) - solo admin */}
@@ -1890,10 +2084,12 @@ export function UserDetailContent({
                                     });
 
                                     const handleRenew = () => {
+                                      const resolved =
+                                        resolveAdminClientDisplayName(userData);
                                       const clientName =
-                                        userData.name ||
-                                        userData.full_name ||
-                                        'Cliente';
+                                        resolved !== 'Sin nombre'
+                                          ? resolved
+                                          : 'Cliente';
                                       const whatsappNumber = (
                                         userData.whatsapp ||
                                         userData.phone ||
@@ -1913,7 +2109,7 @@ export function UserDetailContent({
                                     return (
                                       <button
                                         onClick={handleRenew}
-                                        className="w-full px-4 py-2 rounded-lg bg-[#85ea10]/20 dark:bg-[#85ea10]/30 text-[#164151] dark:text-[#85ea10] hover:bg-[#85ea10]/30 dark:hover:bg-[#85ea10]/40 transition-colors flex items-center justify-center gap-2 text-sm font-medium"
+                                        className="w-full px-4 py-2 rounded-lg border border-white/15 bg-white/5 text-[#164151] transition-colors hover:bg-white/10 flex items-center justify-center gap-2 text-sm font-medium dark:text-white/90 dark:hover:bg-white/10"
                                       >
                                         <MessageSquare className="w-4 h-4" />
                                         Invitar a renovar
@@ -1981,82 +2177,84 @@ export function UserDetailContent({
                 );
               })()}
 
-              {/* Historial de Facturación - siempre visible */}
-              <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-white/10 p-6">
-                <h2 className="text-sm font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider mb-4">
-                  Historial de Facturación
+                </div>
+                <div className="min-w-0 space-y-6 lg:space-y-8">
+              {/* Historial de facturación: listado de facturas asociadas a períodos ya cerrados */}
+              <div className="pb-8 border-b border-gray-200/60 dark:border-white/[0.06] lg:pb-0 lg:border-b-0">
+                <h2 className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-white/40">
+                  Historial de facturación
                 </h2>
-                <div className="space-y-3">
+                <p className="mb-4 text-[10px] leading-snug text-gray-500 dark:text-white/35">
+                  Facturas registradas por período cerrado (vencido o cancelado).
+                </p>
+                <div className="divide-y divide-gray-200/70 dark:divide-white/[0.08]">
                   {!userData.gym_memberships ||
                   userData.gym_memberships.length === 0 ? (
                     <p className="text-sm text-gray-500 dark:text-white/50 py-4">
-                      No tienes facturas registradas.
+                      No hay facturas en el historial.
                     </p>
                   ) : (
-                    userData.gym_memberships
-                      .sort(
-                        (a: any, b: any) =>
-                          new Date(b.end_date).getTime() -
-                          new Date(a.end_date).getTime(),
+                    (() => {
+                      const todayHist = new Date();
+                      todayHist.setHours(0, 0, 0, 0);
+                      const finishedMemberships = (
+                        userData.gym_memberships as any[]
                       )
-                      .map((membership: any) => {
-                        // Verificar dinámicamente si está vencida
-                        const today = new Date();
-                        today.setHours(0, 0, 0, 0);
+                        .filter((m: any) => {
+                          if (m.status === 'cancelled') return true;
+                          return parseLocalDate(m.end_date) < todayHist;
+                        })
+                        .sort(
+                          (a: any, b: any) =>
+                            new Date(b.end_date).getTime() -
+                            new Date(a.end_date).getTime(),
+                        );
+
+                      if (finishedMemberships.length === 0) {
+                        return (
+                          <p className="text-sm text-gray-500 dark:text-white/50 py-4">
+                            No hay facturas en el historial.
+                          </p>
+                        );
+                      }
+
+                      return finishedMemberships.map((membership: any) => {
                         const endDate = parseLocalDate(membership.end_date);
-                        const isExpired = endDate < today;
-                        const isActive =
-                          !isExpired && membership.status === 'active';
+                        const isCancelled =
+                          membership.status === 'cancelled';
 
                         return (
                           <div
                             key={membership.id}
-                            className="p-3 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-200 dark:border-white/10"
+                            className="py-5 first:pt-0"
                           >
-                            <div className="flex items-center justify-between mb-2">
+                            <div className="flex flex-wrap items-start justify-between gap-2 mb-2">
                               <p className="text-sm font-medium text-[#164151] dark:text-white">
                                 {membership.plan?.name || 'Plan'}
                               </p>
-                              <span
-                                className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                                  isActive
-                                    ? 'bg-[#85ea10]/20 text-[#164151] dark:bg-[#85ea10]/30 dark:text-[#85ea10]'
-                                    : isExpired
-                                      ? 'bg-slate-100 dark:bg-slate-500/20 text-slate-700 dark:text-slate-400'
-                                      : 'bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-white/60'
-                                }`}
-                              >
-                                {isActive
-                                  ? 'Al día'
-                                  : isExpired
-                                    ? 'Finalizada'
-                                    : membership.status === 'cancelled'
-                                      ? 'Cancelada'
-                                      : membership.status === 'courtesy'
-                                        ? 'Cortesía'
-                                        : membership.status}
-                              </span>
+                              {isCancelled && (
+                                <span className="inline-flex shrink-0 items-center gap-1 rounded-md border border-gray-300/80 bg-gray-100/80 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-gray-600 dark:border-white/15 dark:bg-white/10 dark:text-white/60">
+                                  Cancelada
+                                </span>
+                              )}
                             </div>
                             <div className="space-y-1">
                               <p className="text-xs text-gray-500 dark:text-white/50">
-                                {isExpired ? 'Venció' : 'Vence'}:{' '}
-                                {parseLocalDate(
-                                  membership.end_date,
-                                ).toLocaleDateString('es-ES', {
+                                Fin de período:{' '}
+                                {endDate.toLocaleDateString('es-ES', {
                                   day: '2-digit',
                                   month: 'long',
                                   year: 'numeric',
                                 })}
                               </p>
-                              {membership.payment?.invoice_number ? (
-                                <p className="text-xs font-medium text-[#164151] dark:text-white">
-                                  Factura: #{membership.payment.invoice_number}
-                                </p>
-                              ) : null}
+                              <MembershipInvoiceLink
+                                payment={membership.payment}
+                              />
                             </div>
                           </div>
                         );
-                      })
+                      });
+                    })()
                   )}
                 </div>
               </div>
@@ -2064,33 +2262,62 @@ export function UserDetailContent({
               {/* Cursos */}
               {userData.course_purchases &&
                 userData.course_purchases.length > 0 && (
-                  <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-white/10 p-6">
-                    <h2 className="text-sm font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider mb-4">
-                      Historial de Cursos
+                  <div className="pb-8 border-b border-gray-200/60 dark:border-white/[0.06] last:border-b-0 lg:pb-0 lg:border-b-0">
+                    <h2 className="mb-4 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-white/40">
+                      Historial de cursos
                     </h2>
-                    <div className="space-y-3">
-                      {userData.course_purchases.map((purchase: any) => (
-                        <div
-                          key={purchase.id}
-                          className="p-3 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-200 dark:border-white/10"
-                        >
-                          <p className="text-sm font-medium text-[#164151] dark:text-white">
-                            {purchase.course?.title || 'Curso'}
-                          </p>
-                          <p className="text-xs text-gray-500 dark:text-white/50">
-                            {purchase.is_course_finished ? (
-                              <span>Finalizado</span>
-                            ) : purchase.is_active ? (
-                              <span className="text-[#85ea10]">Activo</span>
-                            ) : (
-                              <span>Completado</span>
-                            )}
-                          </p>
-                        </div>
-                      ))}
+                    <div className="divide-y divide-gray-200/70 dark:divide-white/[0.08]">
+                      {userData.course_purchases.map((purchase: any) => {
+                        const course = Array.isArray(purchase.course)
+                          ? purchase.course[0]
+                          : purchase.course;
+                        const courseThumb = resolveCourseImageSrc(course);
+                        return (
+                          <div
+                            key={purchase.id}
+                            className="flex items-start gap-4 py-5 first:pt-0"
+                          >
+                            <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-[#164151] ring-1 ring-white/15 shadow-inner">
+                              <img
+                                src={courseThumb}
+                                alt=""
+                                className="h-full w-full object-cover"
+                                loading="lazy"
+                                decoding="async"
+                                onError={(e) => {
+                                  const el = e.currentTarget;
+                                  if (
+                                    !el.src.endsWith(
+                                      'course-placeholder.jpg',
+                                    )
+                                  ) {
+                                    el.src = COURSE_IMAGE_PLACEHOLDER;
+                                  }
+                                }}
+                              />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium text-[#164151] dark:text-white">
+                                {course?.title || 'Curso'}
+                              </p>
+                              <p className="mt-0.5 text-xs text-gray-500 dark:text-white/50">
+                                {purchase.is_course_finished ? (
+                                  <span>Finalizado</span>
+                                ) : purchase.is_active ? (
+                                  <span className="text-[#85ea10]">Activo</span>
+                                ) : (
+                                  <span>Completado</span>
+                                )}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -2117,7 +2344,10 @@ export function UserDetailContent({
             <p className="text-[#164151] dark:text-white/80 mb-4">
               ¿Estás seguro de que deseas eliminar a{' '}
               <strong>
-                {userData?.name || userData?.full_name || 'este usuario'}
+                {(() => {
+                  const dn = resolveAdminClientDisplayName(userData);
+                  return dn !== 'Sin nombre' ? dn : 'este usuario';
+                })()}
               </strong>
               ?
             </p>

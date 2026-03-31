@@ -17,7 +17,9 @@ export interface GymPlan {
   created_at: string;
   updated_at: string;
   created_by?: string;
-  active_users_count?: number; // Número de membresías activas
+  active_users_count?: number; // Membresías vigentes (active/courtesy, fin ≥ hoy)
+  /** Hasta 3 client_info_id para avatares en listado admin */
+  active_client_preview_ids?: string[];
 }
 
 export interface GymPlanInsert {
@@ -45,6 +47,7 @@ export interface GymClientInfo {
   name: string;
   email?: string;
   whatsapp: string;
+  is_inactive?: boolean | null;
   birth_date?: string | null;
   weight?: number | null;
   medical_restrictions?: string | null;

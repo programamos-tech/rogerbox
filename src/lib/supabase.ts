@@ -1,8 +1,8 @@
 import { createBrowserClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 
-// Fallbacks seguros para entorno local Supabase (dev services corriendo en 127.0.0.1:54321)
-const localSupabaseUrl = 'http://127.0.0.1:54321';
+// Fallbacks seguros para entorno local Supabase (puerto API en supabase/config.toml, ej. 55621)
+const localSupabaseUrl = 'http://127.0.0.1:55621';
 // Clave pública por defecto de Supabase local (solo para desarrollo)
 const localAnonKey =
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.' +

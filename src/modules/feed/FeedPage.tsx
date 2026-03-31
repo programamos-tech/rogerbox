@@ -10,13 +10,26 @@ import {
   X,
 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { queryKeys } from '@/lib/query-keys';
+import type { NutritionalBlog } from '@/types';
 import CreatePost from './components/CreatePost';
+import FeedBlogCard from './components/FeedBlogCard';
 import PostCard from './components/PostCard';
 import { createPost, deletePost, fetchPosts } from './services/feed.service';
 import type { FeedPost } from './types';
+
+type TimelineEntry =
+  | { kind: 'post'; post: FeedPost; at: number }
+  | { kind: 'blog'; blog: NutritionalBlog; at: number };
+
+async function fetchPublishedBlogs(): Promise<NutritionalBlog[]> {
+  const res = await fetch('/api/blogs');
+  if (!res.ok) return [];
+  const data = await res.json();
+  return data.blogs ?? [];
+}
 
 export default function FeedPage() {
   const { user } = useSupabaseAuth();
@@ -40,6 +53,35 @@ export default function FeedPage() {
       return data;
     },
   });
+
+  const { data: nutritionalBlogs = [], isLoading: loadingBlogs } = useQuery({
+    queryKey: [...queryKeys.all, 'nutritional-blogs-feed'],
+    queryFn: fetchPublishedBlogs,
+    staleTime: 60_000,
+  });
+
+  const timeline = useMemo((): TimelineEntry[] => {
+    const entries: TimelineEntry[] = [];
+    for (const p of posts) {
+      entries.push({
+        kind: 'post',
+        post: p,
+        at: new Date(p.created_at).getTime(),
+      });
+    }
+    for (const b of nutritionalBlogs) {
+      entries.push({
+        kind: 'blog',
+        blog: b,
+        at: new Date(b.published_at || b.created_at).getTime(),
+      });
+    }
+    entries.sort((a, b) => b.at - a.at);
+    return entries;
+  }, [posts, nutritionalBlogs]);
+
+  const showFeedSkeleton =
+    isLoading || (loadingBlogs && posts.length === 0 && timeline.length === 0);
 
   const handleSuccess = () => {
     queryClient.invalidateQueries({
@@ -153,6 +195,9 @@ export default function FeedPage() {
   const handleRefresh = () => {
     setShowRefreshingUI(true);
     refetch();
+    queryClient.invalidateQueries({
+      queryKey: [...queryKeys.all, 'nutritional-blogs-feed'],
+    });
     if (typeof window !== 'undefined') {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -212,7 +257,7 @@ export default function FeedPage() {
         </div>
       )}
 
-      {isLoading ? (
+      {showFeedSkeleton ? (
         <div className="space-y-5">
           {[1, 2, 3].map((i) => (
             <div
@@ -221,34 +266,38 @@ export default function FeedPage() {
             />
           ))}
         </div>
-      ) : posts.length === 0 ? (
+      ) : timeline.length === 0 ? (
         <div className="rounded-2xl border border-gray-200/80 dark:border-white/10 bg-white/50 dark:bg-white/5 p-10 text-center">
           <MessageCircle className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
           <p className="font-medium text-gray-700 dark:text-gray-300">
-            Aún no hay publicaciones
+            Aún no hay publicaciones ni artículos
           </p>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Sé el primero en compartir algo con la comunidad
+            Vuelve pronto o comparte algo con la comunidad
           </p>
         </div>
       ) : (
         <div className="space-y-5">
-          {posts.map((post) => (
-            <PostCard
-              key={post.id}
-              post={post}
-              currentUserId={user?.id ?? null}
-              onLikeToggle={handleLikeToggle}
-              onDelete={handleDelete}
-              onCommentAdded={handleCommentAdded}
-              onViewRecorded={handleViewRecorded}
-              openCommentsAndScrollToComment={
-                postIdFromUrl === post.id
-                  ? (commentIdFromUrl ?? undefined)
-                  : undefined
-              }
-            />
-          ))}
+          {timeline.map((entry) =>
+            entry.kind === 'post' ? (
+              <PostCard
+                key={`post-${entry.post.id}`}
+                post={entry.post}
+                currentUserId={user?.id ?? null}
+                onLikeToggle={handleLikeToggle}
+                onDelete={handleDelete}
+                onCommentAdded={handleCommentAdded}
+                onViewRecorded={handleViewRecorded}
+                openCommentsAndScrollToComment={
+                  postIdFromUrl === entry.post.id
+                    ? (commentIdFromUrl ?? undefined)
+                    : undefined
+                }
+              />
+            ) : (
+              <FeedBlogCard key={`blog-${entry.blog.id}`} blog={entry.blog} />
+            ),
+          )}
         </div>
       )}
 
@@ -274,7 +323,7 @@ export default function FeedPage() {
         <button
           type="button"
           onClick={handleRefresh}
-          disabled={isRefetching || isLoading}
+          disabled={isRefetching || showFeedSkeleton}
           className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-white dark:bg-gray-800 shadow-md border border-gray-200/80 dark:border-white/10 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:border-[#85ea10]/30 transition-all active:scale-95 disabled:opacity-50"
           aria-label="Actualizar feed"
         >

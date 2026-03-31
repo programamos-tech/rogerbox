@@ -1,10 +1,10 @@
 import { type NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase';
 
-// GET - Obtener todos los blogs publicados
-export async function GET(request: NextRequest) {
+// GET - Obtener todos los blogs publicados (servidor; RLS no aplica con rol anónimo en route handler)
+export async function GET(_request: NextRequest) {
   try {
-    const { data: blogs, error } = await supabase
+    const { data: blogs, error } = await supabaseAdmin
       .from('nutritional_blogs')
       .select('*')
       .eq('is_published', true)
@@ -37,7 +37,10 @@ export async function POST(request: NextRequest) {
       excerpt,
       content,
       featured_image_url,
+      is_published: bodyPublished,
     } = body;
+
+    const is_published = Boolean(bodyPublished);
 
     // Validaciones básicas
     if (!title || !author || !reading_time || !excerpt || !content) {
@@ -55,7 +58,7 @@ export async function POST(request: NextRequest) {
       .replace(/-+/g, '-')
       .trim();
 
-    const { data: blog, error } = await supabase
+    const { data: blog, error } = await supabaseAdmin
       .from('nutritional_blogs')
       .insert({
         title,
@@ -65,7 +68,8 @@ export async function POST(request: NextRequest) {
         excerpt,
         content,
         featured_image_url,
-        is_published: false, // Por defecto no publicado
+        is_published,
+        published_at: is_published ? new Date().toISOString() : null,
       })
       .select()
       .single();

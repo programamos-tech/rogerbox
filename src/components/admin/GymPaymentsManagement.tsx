@@ -18,17 +18,24 @@ import {
   MessageSquare,
   Save,
   Search,
-  User,
   X,
   XCircle,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from 'react';
 import {
   formatDateOnlyLocal,
+  membershipEndDateFromStart,
   parseLocalDate,
-  periodEndFromStart,
 } from '@/lib/dateUtils';
+import { DatePickerField } from '@/shared/components/DatePickerField';
+import { GymSeededAvatar } from '@/shared/components/GymSeededAvatar';
 import type {
   GymClientInfo,
   GymPayment,
@@ -42,6 +49,19 @@ function toLocalDateString(d: Date): string {
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
+}
+
+/** Miles con punto (formato es-CO), sin decimales. */
+function formatCopThousands(n: number): string {
+  if (n === 0 || !Number.isFinite(n)) return '';
+  return n.toLocaleString('es-CO', { maximumFractionDigits: 0 });
+}
+
+function parseDigitsToAmount(s: string): number {
+  const digits = s.replace(/\D/g, '');
+  if (!digits) return 0;
+  const n = parseInt(digits, 10);
+  return Number.isNaN(n) ? 0 : n;
 }
 
 interface PaymentFormData {
@@ -99,7 +119,10 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
       useState<any>(null);
     const [discountPercent, setDiscountPercent] = useState<number>(0);
     const [isAdvancePayment, setIsAdvancePayment] = useState(false);
+    const [amountFieldFocused, setAmountFieldFocused] = useState(false);
     const [urlParamsProcessed, setUrlParamsProcessed] = useState(false);
+    /** Si viene en la URL (ej. ficha cliente → Renovar), no pisar inicio con pago anticipado. */
+    const forcedPeriodStartRef = useRef<string | null>(null);
 
     useEffect(() => {
       loadData();
@@ -126,6 +149,13 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
         const params = new URLSearchParams(window.location.search);
         const clientId = params.get('clientId');
         const planId = params.get('planId');
+        const periodStartParam = params.get('periodStart');
+        if (
+          periodStartParam &&
+          /^\d{4}-\d{2}-\d{2}$/.test(periodStartParam)
+        ) {
+          forcedPeriodStartRef.current = periodStartParam;
+        }
 
         if (clientId || planId) {
           const client = clientId
@@ -162,9 +192,13 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
             if (plan) {
               // Establecer el plan directamente
               setSelectedPlan(plan);
-              const startDate = new Date();
+              const startDate =
+                forcedPeriodStartRef.current &&
+                /^\d{4}-\d{2}-\d{2}$/.test(forcedPeriodStartRef.current)
+                  ? parseLocalDate(forcedPeriodStartRef.current)
+                  : new Date();
               const durationDays = plan.duration_days ?? 30;
-              const periodEndStr = periodEndFromStart(startDate, durationDays);
+              const periodEndStr = membershipEndDateFromStart(startDate, durationDays);
 
               setFormData((prev) => ({
                 ...prev,
@@ -178,7 +212,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
               if (client) {
                 // Usar setTimeout para asegurar que el estado se actualice primero
                 setTimeout(() => {
-                  checkActiveMembershipForPlan(client.id, plan.id);
+                  checkActiveMembershipForPlan(client.id, plan.id, plan);
                 }, 300);
               }
             } else if (planId) {
@@ -206,7 +240,11 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
     // Solo al cambiar plan o cliente: verificar membresía y poner fechas por defecto. No al cambiar la fecha manualmente.
     useEffect(() => {
       if (selectedPlan && selectedClient) {
-        checkActiveMembershipForPlan(selectedClient.id, selectedPlan.id);
+        checkActiveMembershipForPlan(
+          selectedClient.id,
+          selectedPlan.id,
+          selectedPlan,
+        );
       }
     }, [selectedPlan?.id, selectedClient?.id]);
 
@@ -215,7 +253,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
       if (selectedPlan && formData.period_start) {
         const startDate = parseLocalDate(formData.period_start);
         const durationDays = selectedPlan.duration_days ?? 30;
-        const periodEndStr = periodEndFromStart(startDate, durationDays);
+        const periodEndStr = membershipEndDateFromStart(startDate, durationDays);
         setFormData((prev) => ({
           ...prev,
           plan_id: selectedPlan.id,
@@ -229,12 +267,40 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
     const checkActiveMembershipForPlan = async (
       clientId: string,
       planId: string,
+      planForDuration?: GymPlan | null,
     ) => {
       setCheckingMembership(true);
       setError('');
       setHasActiveMembership(false);
       setExpiredMembershipToPay(null);
       setIsAdvancePayment(false);
+
+      const planForCalc = planForDuration ?? selectedPlan;
+
+      const forcedStart = forcedPeriodStartRef.current;
+      if (
+        forcedStart &&
+        /^\d{4}-\d{2}-\d{2}$/.test(forcedStart) &&
+        planForCalc
+      ) {
+        const planDuration = planForCalc.duration_days ?? 30;
+        const periodEndStr = membershipEndDateFromStart(
+          parseLocalDate(forcedStart),
+          planDuration,
+        );
+        setFormData((prev) => ({
+          ...prev,
+          period_start: forcedStart,
+          period_end: periodEndStr,
+        }));
+        setHasActiveMembership(false);
+        setIsAdvancePayment(false);
+        setExpiredMembershipToPay(null);
+        setError('');
+        forcedPeriodStartRef.current = null;
+        setCheckingMembership(false);
+        return;
+      }
 
       try {
         const membershipsRes = await fetch(
@@ -274,8 +340,8 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
             newStartDate.setDate(newStartDate.getDate() + 1);
 
             // Calcular fecha de fin según días del plan (ej. 15 días → inicio + 14)
-            const planDuration = selectedPlan?.duration_days ?? 30;
-            const periodEndStr = periodEndFromStart(newStartDate, planDuration);
+            const planDuration = planForCalc?.duration_days ?? 30;
+            const periodEndStr = membershipEndDateFromStart(newStartDate, planDuration);
 
             // Actualizar las fechas del formulario automáticamente
             setFormData((prev) => ({
@@ -290,9 +356,9 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
             setError('');
           } else {
             // No hay membresía activa para ESTE plan, fechas normales (desde hoy) — por días del plan
-            const planDuration = selectedPlan?.duration_days ?? 30;
+            const planDuration = planForCalc?.duration_days ?? 30;
             const startDate = new Date();
-            const periodEndStr = periodEndFromStart(startDate, planDuration);
+            const periodEndStr = membershipEndDateFromStart(startDate, planDuration);
 
             setFormData((prev) => ({
               ...prev,
@@ -491,6 +557,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
       setIsAdvancePayment(false);
       setUrlParamsProcessed(false);
       setDiscountPercent(0);
+      setAmountFieldFocused(false);
     };
 
     const filteredClients = clients.filter((client) => {
@@ -526,7 +593,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
             setSelectedPlan(plan);
             const startDate = new Date();
             const durationDays = plan.duration_days ?? 30;
-            const periodEndStr = periodEndFromStart(startDate, durationDays);
+            const periodEndStr = membershipEndDateFromStart(startDate, durationDays);
 
             setFormData((prev) => ({
               ...prev,
@@ -805,18 +872,20 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
       <div className="space-y-6 pb-20">
         {/* Form Modal */}
         {showForm && (
-          <div className="fixed inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-white/10 w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl">
-              <div className="p-4 md:p-6 lg:p-8 border-b border-gray-200 dark:border-white/10 flex items-center justify-between">
-                <h3 className="text-xl md:text-2xl font-bold text-[#164151] dark:text-white">
+          <div className="fixed inset-0 z-50 overflow-y-auto overflow-x-hidden bg-black/50 dark:bg-black/70 backdrop-blur-sm">
+            <div className="flex min-h-full items-center justify-center p-3 sm:p-4">
+              <div className="my-4 sm:my-6 w-full max-w-4xl flex flex-col bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-white/10 shadow-2xl">
+              <div className="shrink-0 px-5 py-4 sm:px-6 border-b border-gray-200/90 dark:border-white/[0.08] flex items-center justify-between gap-3">
+                <h3 className="text-base sm:text-lg font-semibold tracking-tight text-[#164151] dark:text-white/95">
                   Registrar Pago
                 </h3>
                 <button
+                  type="button"
                   onClick={() => {
                     setShowForm(false);
                     resetForm();
                   }}
-                  className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-[#164151]/80 dark:text-white/60 transition-colors"
+                  className="w-9 h-9 shrink-0 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-[#164151]/80 dark:text-white/60 transition-colors"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -824,11 +893,11 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
 
               <form
                 onSubmit={handleSubmit}
-                className="p-4 md:p-6 lg:p-8 space-y-4 md:space-y-6"
+                className="px-5 py-5 sm:px-6 sm:pb-6 space-y-5 sm:space-y-6"
               >
                 {error && (
-                  <div className="p-4 bg-red-50 dark:bg-red-500/20 border border-red-200 dark:border-red-500/30 rounded-xl">
-                    <p className="text-sm text-red-600 dark:text-red-400">
+                  <div className="p-2.5 sm:p-3 bg-red-50 dark:bg-red-500/20 border border-red-200 dark:border-red-500/30 rounded-lg">
+                    <p className="text-xs sm:text-sm text-red-600 dark:text-red-400">
                       {error}
                     </p>
                   </div>
@@ -836,11 +905,11 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
 
                 {/* Mensaje de pago anticipado */}
                 {isAdvancePayment && !error && (
-                  <div className="p-4 bg-cyan-50 dark:bg-cyan-500/20 border border-cyan-200 dark:border-cyan-500/30 rounded-xl">
+                  <div className="p-3 sm:p-3.5 bg-slate-50 dark:bg-white/[0.03] border border-slate-200/90 dark:border-white/[0.08] rounded-xl">
                     <div className="flex items-start gap-3">
-                      <div className="w-8 h-8 rounded-full bg-cyan-100 dark:bg-cyan-500/30 flex items-center justify-center flex-shrink-0">
+                      <div className="w-7 h-7 rounded-full bg-slate-200/80 dark:bg-white/[0.06] flex items-center justify-center flex-shrink-0">
                         <svg
-                          className="w-4 h-4 text-cyan-600 dark:text-cyan-400"
+                          className="w-4 h-4 text-slate-600 dark:text-white/50"
                           fill="none"
                           viewBox="0 0 24 24"
                           stroke="currentColor"
@@ -853,11 +922,11 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                           />
                         </svg>
                       </div>
-                      <div>
-                        <p className="text-sm font-semibold text-cyan-700 dark:text-cyan-400">
-                          Pago Anticipado
+                      <div className="min-w-0">
+                        <p className="text-xs font-medium text-[#164151]/90 dark:text-white/80">
+                          Pago anticipado
                         </p>
-                        <p className="text-sm text-cyan-600 dark:text-cyan-300 mt-1">
+                        <p className="text-xs text-[#164151]/70 dark:text-white/55 mt-0.5 leading-relaxed">
                           Este cliente tiene un plan activo. El nuevo plan
                           iniciará el{' '}
                           <strong>
@@ -876,18 +945,23 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
 
                 {/* Selección de Cliente */}
                 <div>
-                  <label className="block text-sm font-semibold text-[#164151] dark:text-white mb-3">
+                  <label className="block text-xs font-medium tracking-wide text-[#164151]/80 dark:text-white/70 mb-2">
                     Cliente *
                   </label>
                   {selectedClient ? (
-                    <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl">
-                      <div className="flex items-center gap-3">
-                        <User className="w-5 h-5 text-gray-400" />
+                    <div className="flex items-center justify-between p-3.5 sm:p-4 bg-gray-50 dark:bg-white/[0.03] border border-gray-200/90 dark:border-white/[0.08] rounded-xl">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <GymSeededAvatar
+                          seed={selectedClient.id}
+                          size={40}
+                          className="shrink-0 rounded-full ring-1 ring-gray-200/80 dark:ring-white/10"
+                          alt=""
+                        />
                         <div>
-                          <p className="text-sm font-medium text-[#164151] dark:text-white">
+                          <p className="text-sm font-medium text-[#164151] dark:text-white truncate">
                             {selectedClient.name}
                           </p>
-                          <p className="text-xs text-gray-500 dark:text-white/60">
+                          <p className="text-[11px] text-gray-500 dark:text-white/60 truncate">
                             {selectedClient.document_id} •{' '}
                             {selectedClient.whatsapp}
                           </p>
@@ -906,29 +980,37 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                     </div>
                   ) : (
                     <div className="relative">
-                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                       <input
                         type="text"
                         value={clientSearchTerm}
                         onChange={(e) => setClientSearchTerm(e.target.value)}
                         placeholder="Buscar cliente por nombre, cédula o WhatsApp..."
-                        className="w-full pl-12 pr-4 py-3.5 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-[#164151] dark:text-white placeholder-gray-400 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 focus:border-[#85ea10]/50 transition-all text-base"
+                        className="w-full pl-10 pr-3.5 py-2.5 text-sm bg-gray-50 dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.08] rounded-xl text-[#164151] dark:text-white placeholder-gray-400 dark:placeholder-white/35 focus:outline-none focus:ring-1 focus:ring-[#85ea10]/25 focus:border-[#85ea10]/35 transition-all"
                       />
                       {clientSearchTerm && filteredClients.length > 0 && (
-                        <div className="absolute z-10 w-full mt-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/10 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                        <div className="absolute z-10 w-full mt-1 max-h-[280px] overflow-y-auto scrollbar-hide rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-gray-900 shadow-lg">
                           {filteredClients.map((client) => (
                             <button
                               key={client.id}
                               type="button"
                               onClick={() => handleClientSelect(client)}
-                              className="w-full px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-white/5 transition-colors border-b border-gray-100 dark:border-white/5 last:border-0"
+                              className="w-full px-3 py-2.5 text-left hover:bg-gray-50 dark:hover:bg-white/5 transition-colors border-b border-gray-100 dark:border-white/5 last:border-0 flex items-center gap-2.5"
                             >
-                              <p className="text-sm font-medium text-[#164151] dark:text-white">
+                              <GymSeededAvatar
+                                seed={client.id}
+                                size={32}
+                                className="shrink-0 rounded-full ring-1 ring-gray-200/80 dark:ring-white/10"
+                                alt=""
+                              />
+                              <div className="min-w-0">
+                              <p className="text-sm font-medium text-[#164151] dark:text-white truncate">
                                 {client.name}
                               </p>
-                              <p className="text-xs text-gray-500 dark:text-white/60">
+                              <p className="text-xs text-gray-500 dark:text-white/60 truncate">
                                 {client.document_id} • {client.whatsapp}
                               </p>
+                              </div>
                             </button>
                           ))}
                         </div>
@@ -939,37 +1021,39 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
 
                 {/* Selección de Plan */}
                 <div>
-                  <label className="block text-sm font-semibold text-[#164151] dark:text-white mb-3">
+                  <label className="block text-xs font-medium tracking-wide text-[#164151]/80 dark:text-white/70 mb-2">
                     Plan *
                   </label>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     {plans.map((plan) => (
                       <button
                         key={plan.id}
                         type="button"
                         onClick={() => handlePlanSelect(plan)}
-                        className={`p-4 rounded-xl border-2 transition-all text-left ${
+                        className={`group rounded-xl border text-left transition-all duration-200 p-3.5 sm:p-4 ${
                           selectedPlan?.id === plan.id
-                            ? 'border-[#85ea10] bg-[#85ea10]/10 dark:bg-[#85ea10]/20'
-                            : 'border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20'
+                            ? 'border-[#85ea10]/30 dark:border-[#85ea10]/20 bg-[#85ea10]/5 dark:bg-[#85ea10]/5 ring-1 ring-inset ring-[#85ea10]/10 dark:ring-[#85ea10]/8'
+                            : 'border-gray-200 dark:border-white/[0.08] bg-white dark:bg-transparent hover:border-gray-300 dark:hover:border-white/[0.14] hover:bg-gray-50/80 dark:hover:bg-white/[0.02]'
                         }`}
                       >
-                        <div className="flex items-center justify-between mb-2">
-                          <h4 className="font-semibold text-[#164151] dark:text-white">
+                        <div className="flex items-start justify-between gap-3 mb-0.5">
+                          <h4 className="text-sm font-medium text-[#164151] dark:text-white/95 leading-snug">
                             {plan.name}
                           </h4>
                           {selectedPlan?.id === plan.id && (
-                            <CheckCircle className="w-5 h-5 text-[#85ea10]" />
+                            <CheckCircle className="w-4 h-4 shrink-0 text-[#85ea10]/70 dark:text-[#85ea10]/55" />
                           )}
                         </div>
-                        <p className="text-xs text-gray-500 dark:text-white/60 mb-2">
-                          {plan.description || 'Sin descripción'}
-                        </p>
-                        <div className="flex items-center justify-between">
+                        {plan.description ? (
+                          <p className="text-[11px] text-gray-500 dark:text-white/60 line-clamp-1 mb-1">
+                            {plan.description}
+                          </p>
+                        ) : null}
+                        <div className="flex items-center justify-between gap-2 mt-1">
                           <span className="text-sm font-bold text-[#164151] dark:text-white">
                             ${plan.price.toLocaleString('es-CO')}
                           </span>
-                          <span className="text-xs text-gray-500 dark:text-white/60">
+                          <span className="text-[11px] text-gray-500 dark:text-white/60 whitespace-nowrap">
                             {plan.duration_days} días
                           </span>
                         </div>
@@ -981,34 +1065,51 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                 {/* Información del Pago */}
                 {selectedPlan && (
                   <>
-                    <div className="grid grid-cols-2 gap-6">
-                      <div>
-                        <label className="block text-sm font-semibold text-[#164151] dark:text-white mb-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
+                      <div className="min-w-0">
+                        <label
+                          htmlFor="gym-amount-cop"
+                          className="block text-xs font-medium tracking-wide text-[#164151]/80 dark:text-white/70 mb-2"
+                        >
                           Monto (COP) *
                         </label>
                         <div className="relative">
-                          <span className="absolute left-5 top-1/2 -translate-y-1/2 text-[#164151] dark:text-white font-medium text-base">
+                          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#164151]/70 dark:text-white/50 font-medium text-sm">
                             $
                           </span>
                           <input
-                            type="number"
+                            id="gym-amount-cop"
+                            type="text"
+                            inputMode="numeric"
+                            autoComplete="off"
                             required
-                            value={formData.amount}
-                            onChange={(e) =>
+                            value={
+                              amountFieldFocused
+                                ? formData.amount === 0
+                                  ? ''
+                                  : String(formData.amount)
+                                : formData.amount === 0
+                                  ? ''
+                                  : formatCopThousands(formData.amount)
+                            }
+                            onFocus={() => setAmountFieldFocused(true)}
+                            onBlur={() => setAmountFieldFocused(false)}
+                            onChange={(e) => {
+                              const amount = parseDigitsToAmount(e.target.value);
                               setFormData({
                                 ...formData,
-                                amount: parseFloat(e.target.value) || 0,
-                              })
-                            }
-                            className="w-full pl-8 pr-5 py-3.5 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-[#164151] dark:text-white placeholder-gray-400 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 focus:border-[#85ea10]/50 transition-all text-base"
+                                amount,
+                              });
+                            }}
+                            className="w-full pl-8 pr-3.5 py-2.5 text-sm rounded-xl border border-gray-200 dark:border-white/[0.08] bg-gray-50 dark:bg-white/[0.03] text-[#164151] dark:text-white tabular-nums placeholder-gray-400 dark:placeholder-white/35 focus:outline-none focus:ring-1 focus:ring-[#85ea10]/25 focus:border-[#85ea10]/35 transition-all"
                             placeholder="0"
                           />
                         </div>
                       </div>
 
-                      <div>
-                        <label className="block text-sm font-semibold text-[#164151] dark:text-white mb-3">
-                          Descuento (%)
+                      <div className="min-w-0">
+                        <label className="block text-xs font-medium tracking-wide text-[#164151]/80 dark:text-white/70 mb-2">
+                          Desc. (%)
                         </label>
                         <input
                           type="number"
@@ -1026,32 +1127,13 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                             );
                           }}
                           placeholder="0"
-                          className="w-full px-5 py-3.5 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-[#164151] dark:text-white placeholder-gray-400 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 focus:border-[#85ea10]/50 transition-all text-base"
+                          className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-gray-200 dark:border-white/[0.08] bg-gray-50 dark:bg-white/[0.03] text-[#164151] dark:text-white placeholder-gray-400 dark:placeholder-white/35 focus:outline-none focus:ring-1 focus:ring-[#85ea10]/25 focus:border-[#85ea10]/35 transition-all"
                         />
                       </div>
-                    </div>
 
-                    {discountPercent > 0 && (
-                      <div className="mt-3 p-3 bg-[#85ea10]/10 dark:bg-[#85ea10]/20 rounded-xl border border-[#85ea10]/30">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-semibold text-[#164151] dark:text-white">
-                            Total a pagar ({discountPercent}% descuento)
-                          </span>
-                          <span className="text-lg font-bold text-[#85ea10]">
-                            $
-                            {Math.round(
-                              formData.amount * (1 - discountPercent / 100),
-                            ).toLocaleString('es-CO')}{' '}
-                            COP
-                          </span>
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="grid grid-cols-2 gap-6 mt-6">
-                      <div>
-                        <label className="block text-sm font-semibold text-[#164151] dark:text-white mb-3">
-                          Método de Pago *
+                      <div className="min-w-0">
+                        <label className="block text-xs font-medium tracking-wide text-[#164151]/80 dark:text-white/70 mb-2">
+                          Método de pago *
                         </label>
                         <select
                           required
@@ -1062,7 +1144,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                               payment_method: e.target.value as PaymentMethod,
                             })
                           }
-                          className="w-full px-5 py-3.5 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 focus:border-[#85ea10]/50 transition-all text-base"
+                          className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-gray-200 dark:border-white/[0.08] bg-gray-50 dark:bg-white/[0.03] text-[#164151] dark:text-white focus:outline-none focus:ring-1 focus:ring-[#85ea10]/25 focus:border-[#85ea10]/35 transition-all"
                         >
                           <option value="cash">Efectivo</option>
                           <option value="transfer">Transferencia</option>
@@ -1070,112 +1152,121 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                         </select>
                       </div>
                     </div>
+
+                    {discountPercent > 0 && (
+                      <div className="p-3 sm:p-3.5 bg-gray-50 dark:bg-white/[0.03] rounded-xl border border-gray-200/80 dark:border-white/[0.08]">
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-xs font-medium text-[#164151]/80 dark:text-white/70">
+                            Total ({discountPercent}% dto.)
+                          </span>
+                          <span className="text-sm font-semibold text-[#164151] dark:text-white/90 tabular-nums">
+                            $
+                            {Math.round(
+                              formData.amount * (1 - discountPercent / 100),
+                            ).toLocaleString('es-CO')}{' '}
+                            COP
+                          </span>
+                        </div>
+                      </div>
+                    )}
                   </>
                 )}
 
-                {/* Fechas */}
+                {/* Fechas (calendario RogerBox, sin picker nativo) */}
                 {selectedPlan && (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-                    <div>
-                      <label className="block text-sm font-semibold text-[#164151] dark:text-white mb-3">
-                        Fecha de Pago *
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
+                    <div className="min-w-0">
+                      <label
+                        htmlFor="gym-payment-date"
+                        className="block text-xs font-medium tracking-wide text-[#164151]/80 dark:text-white/70 mb-2"
+                      >
+                        Fecha de pago *
                       </label>
-                      <div className="relative">
-                        <Calendar className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                        <input
-                          type="date"
-                          required
-                          value={formData.payment_date}
-                          onChange={(e) =>
+                      <DatePickerField
+                        id="gym-payment-date"
+                        value={formData.payment_date}
+                        onChange={(iso) =>
+                          setFormData({ ...formData, payment_date: iso })
+                        }
+                        aria-label="Fecha de pago"
+                      />
+                    </div>
+
+                    <div className="min-w-0">
+                      <label
+                        htmlFor="gym-period-start"
+                        className="block text-xs font-medium tracking-wide text-[#164151]/80 dark:text-white/70 mb-2 leading-snug"
+                      >
+                        Inicio período *
+                        {isAdvancePayment && (
+                          <span className="block sm:inline sm:ml-1 text-[10px] font-normal text-slate-500 dark:text-white/45">
+                            (editable)
+                          </span>
+                        )}
+                      </label>
+                      <DatePickerField
+                        id="gym-period-start"
+                        value={formData.period_start}
+                        onChange={(iso) => {
+                          const startDate = parseLocalDate(iso);
+                          if (selectedPlan) {
+                            const durationDays =
+                              selectedPlan.duration_days ?? 30;
+                            const periodEndStr = membershipEndDateFromStart(
+                              startDate,
+                              durationDays,
+                            );
                             setFormData({
                               ...formData,
-                              payment_date: e.target.value,
-                            })
+                              period_start: iso,
+                              period_end: periodEndStr,
+                            });
+                          } else {
+                            setFormData({
+                              ...formData,
+                              period_start: iso,
+                            });
                           }
-                          className="w-full pl-12 pr-5 py-3.5 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 focus:border-[#85ea10]/50 transition-all text-base"
-                        />
-                      </div>
+                        }}
+                        triggerClassName={
+                          isAdvancePayment
+                            ? 'border-slate-200/90 dark:border-white/[0.1] bg-slate-50 dark:bg-white/[0.04] hover:border-slate-300 dark:hover:border-white/15'
+                            : ''
+                        }
+                        aria-label="Inicio del período"
+                      />
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-semibold text-[#164151] dark:text-white mb-3">
-                        Inicio del Período *
+                    <div className="min-w-0">
+                      <label
+                        htmlFor="gym-period-end"
+                        className="block text-xs font-medium tracking-wide text-[#164151]/80 dark:text-white/70 mb-2 leading-snug"
+                      >
+                        Fin período *
                         {isAdvancePayment && (
-                          <span className="ml-2 text-xs font-normal text-cyan-600 dark:text-cyan-400">
-                            (sugerido, editable)
+                          <span className="block sm:inline sm:ml-1 text-[10px] font-normal text-slate-500 dark:text-white/45">
+                            (auto)
                           </span>
                         )}
                       </label>
-                      <div className="relative">
-                        <Calendar
-                          className={`absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 ${isAdvancePayment ? 'text-cyan-500' : 'text-gray-400'}`}
-                        />
-                        <input
-                          type="date"
-                          required
-                          value={formData.period_start}
-                          onChange={(e) => {
-                            const startDate = parseLocalDate(e.target.value);
-                            if (selectedPlan) {
-                              const durationDays =
-                                selectedPlan.duration_days ?? 30;
-                              const periodEndStr = periodEndFromStart(
-                                startDate,
-                                durationDays,
-                              );
-                              setFormData({
-                                ...formData,
-                                period_start: e.target.value,
-                                period_end: periodEndStr,
-                              });
-                            } else {
-                              setFormData({
-                                ...formData,
-                                period_start: e.target.value,
-                              });
-                            }
-                          }}
-                          className={`w-full pl-12 pr-5 py-3.5 border rounded-xl text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 focus:border-[#85ea10]/50 transition-all text-base ${
-                            isAdvancePayment
-                              ? 'bg-cyan-50 dark:bg-cyan-500/10 border-cyan-200 dark:border-cyan-500/30'
-                              : 'bg-gray-50 dark:bg-white/5 border-gray-200 dark:border-white/10'
-                          }`}
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-semibold text-[#164151] dark:text-white mb-3">
-                        Fin del Período *
-                        {isAdvancePayment && (
-                          <span className="ml-2 text-xs font-normal text-cyan-600 dark:text-cyan-400">
-                            (automático)
-                          </span>
-                        )}
-                      </label>
-                      <div className="relative">
-                        <Calendar
-                          className={`absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 ${isAdvancePayment ? 'text-cyan-500' : 'text-gray-400'}`}
-                        />
-                        <input
-                          type="date"
-                          required
-                          value={formData.period_end}
-                          readOnly
-                          className={`w-full pl-12 pr-5 py-3.5 border rounded-xl text-[#164151] dark:text-white text-base cursor-not-allowed ${
-                            isAdvancePayment
-                              ? 'bg-cyan-50 dark:bg-cyan-500/10 border-cyan-200 dark:border-cyan-500/30'
-                              : 'bg-gray-100 dark:bg-white/10 border-gray-200 dark:border-white/10'
-                          }`}
-                        />
-                      </div>
+                      <DatePickerField
+                        id="gym-period-end"
+                        value={formData.period_end}
+                        readOnly
+                        readOnlyInnerClassName={
+                          isAdvancePayment
+                            ? 'w-full pl-10 pr-3 py-2.5 text-sm rounded-xl border cursor-not-allowed border-slate-200/90 dark:border-white/[0.1] bg-slate-100/80 dark:bg-white/[0.05] text-[#164151] dark:text-white/90'
+                            : 'w-full pl-10 pr-3 py-2.5 text-sm rounded-xl border cursor-not-allowed border-gray-200 dark:border-white/[0.08] bg-gray-100/90 dark:bg-white/[0.06] text-[#164151] dark:text-white/90'
+                        }
+                        aria-label="Fin del período (calculado)"
+                      />
                     </div>
                   </div>
                 )}
 
                 {/* Notas */}
                 <div>
-                  <label className="block text-sm font-semibold text-[#164151] dark:text-white mb-3">
+                  <label className="block text-xs font-medium tracking-wide text-[#164151]/80 dark:text-white/70 mb-2">
                     Notas
                   </label>
                   <textarea
@@ -1183,21 +1274,21 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                     onChange={(e) =>
                       setFormData({ ...formData, notes: e.target.value })
                     }
-                    className="w-full px-5 py-3.5 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-[#164151] dark:text-white placeholder-gray-400 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 focus:border-[#85ea10]/50 resize-none transition-all text-base"
-                    rows={3}
-                    placeholder="Notas adicionales sobre el pago..."
+                    className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-gray-200 dark:border-white/[0.08] bg-gray-50 dark:bg-white/[0.03] text-[#164151] dark:text-white placeholder-gray-400 dark:placeholder-white/35 focus:outline-none focus:ring-1 focus:ring-[#85ea10]/25 focus:border-[#85ea10]/35 resize-none transition-all"
+                    rows={2}
+                    placeholder="Opcional…"
                   />
                 </div>
 
                 {/* Botones */}
-                <div className="flex items-center justify-end gap-4 pt-6 border-t border-gray-200 dark:border-white/10">
+                <div className="flex items-center justify-end gap-3 pt-5 mt-1 border-t border-gray-200/90 dark:border-white/[0.08]">
                   <button
                     type="button"
                     onClick={() => {
                       setShowForm(false);
                       resetForm();
                     }}
-                    className="px-6 py-3 rounded-lg bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-[#164151] dark:text-white font-medium transition-colors"
+                    className="px-5 py-2.5 text-sm rounded-xl border border-gray-200 dark:border-white/[0.1] bg-transparent hover:bg-gray-50 dark:hover:bg-white/[0.04] text-[#164151]/90 dark:text-white/85 font-medium transition-colors"
                   >
                     Cancelar
                   </button>
@@ -1210,7 +1301,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                       hasActiveMembership ||
                       checkingMembership
                     }
-                    className="px-6 py-3 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-white/90 font-semibold transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-5 py-2.5 text-sm rounded-xl bg-[#164151] dark:bg-white text-white dark:text-gray-900 hover:bg-[#0f303d] dark:hover:bg-white/95 font-medium transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
                   >
                     <Save className="w-4 h-4" />
                     {isSubmitting
@@ -1221,6 +1312,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                   </button>
                 </div>
               </form>
+              </div>
             </div>
           </div>
         )}

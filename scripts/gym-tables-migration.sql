@@ -3,7 +3,7 @@
 -- ============================================
 -- Ejecuta este SQL en Supabase SQL Editor
 -- URL del Studio:
---   Local: http://127.0.0.1:54323
+--   Local: http://127.0.0.1:55623
 --   Producción: https://[tu-project-ref].supabase.co
 -- ============================================
 

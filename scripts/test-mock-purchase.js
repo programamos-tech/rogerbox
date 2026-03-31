@@ -25,7 +25,7 @@ const API_URL = 'http://localhost:3001/api/payments/create-order';
 async function getCourse() {
   try {
     const response = await fetch(
-      'http://localhost:54321/rest/v1/courses?select=id,title,price&is_published=eq.true&limit=1',
+      'http://localhost:55621/rest/v1/courses?select=id,title,price&is_published=eq.true&limit=1',
       {
         headers: {
           apikey:

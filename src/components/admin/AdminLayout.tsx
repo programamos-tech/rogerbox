@@ -127,7 +127,7 @@ export default function AdminLayout({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 flex">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white dark:from-[#0a1628] dark:to-gray-900 flex">
       {mobileMenuOpen && (
         <div
           className="fixed inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm z-40 md:hidden"

@@ -536,7 +536,7 @@ export default function UserDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 flex">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white dark:from-[#0a1628] dark:to-gray-900 flex">
       {/* Overlay para móvil */}
       {mobileMenuOpen && (
         <div

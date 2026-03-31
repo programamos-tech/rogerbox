@@ -5,15 +5,63 @@ import {
   DollarSign,
   Dumbbell,
   Edit,
+  Eye,
   Plus,
   Save,
   Trash2,
   Users,
   X,
 } from 'lucide-react';
+import Link from 'next/link';
 import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 import type { GymPlan } from '@/types/gym';
+import { GymSeededAvatar } from '@/shared/components/GymSeededAvatar';
 import ConfirmDialog from './ConfirmDialog';
+
+function ActiveClientAvatarStack({
+  previewIds,
+  total,
+}: {
+  previewIds: string[] | undefined;
+  total: number;
+}) {
+  const ids = (previewIds || []).slice(0, 3);
+  const showMore = total > 3;
+
+  if (total === 0) {
+    return (
+      <span className="text-xs font-medium text-gray-500 dark:text-white/40">
+        Sin clientes
+      </span>
+    );
+  }
+
+  return (
+    <div className="flex items-center justify-end">
+      <div className="flex items-center -space-x-2.5">
+        {ids.map((id, index) => (
+          <GymSeededAvatar
+            key={id}
+            seed={id}
+            size={34}
+            className={`relative rounded-full ring-2 ring-white dark:ring-[#0c1628] shadow-sm ${
+              index === 0 ? 'z-[3]' : index === 1 ? 'z-[2]' : 'z-[1]'
+            }`}
+            alt=""
+          />
+        ))}
+        {showMore ? (
+          <span
+            className="relative z-[4] flex h-[34px] min-w-[34px] items-center justify-center rounded-full bg-[#164151] px-1.5 text-[10px] font-bold tabular-nums text-white ring-2 ring-white dark:ring-[#0c1628]"
+            title={`${total} clientes en total`}
+          >
+            +{total - 3}
+          </span>
+        ) : null}
+      </div>
+    </div>
+  );
+}
 
 export interface GymPlansManagementRef {
   openCreateModal: () => void;
@@ -423,90 +471,107 @@ const GymPlansManagement = forwardRef<GymPlansManagementRef>((props, ref) => {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {plans
             .filter((plan) => plan.is_active)
-            .map((plan) => (
+            .map((plan) => {
+              const activeTotal = plan.active_users_count || 0;
+              return (
               <div
                 key={plan.id}
-                className={`bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl border ${
-                  plan.is_active
-                    ? 'border-gray-200 dark:border-white/10'
-                    : 'border-gray-300 dark:border-white/20 opacity-60'
-                } p-6 shadow-sm dark:shadow-none`}
+                className={`group relative overflow-hidden rounded-2xl border border-gray-200/90 dark:border-white/[0.07] bg-white dark:bg-[#0c1628] pl-5 pr-4 py-5 shadow-sm dark:shadow-none border-l-[3px] border-l-[#85ea10] ${
+                  !plan.is_active ? 'opacity-60' : ''
+                }`}
               >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <h3 className="text-lg font-bold text-[#164151] dark:text-white mb-1">
+                <div className="flex items-start justify-between gap-3 mb-4">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-base font-bold tracking-tight text-[#164151] dark:text-white mb-1">
                       {plan.name}
                     </h3>
                     {plan.description && (
-                      <p className="text-sm text-[#164151]/60 dark:text-white/60 line-clamp-2">
+                      <p className="text-sm text-[#164151]/65 dark:text-white/50 line-clamp-2 leading-snug">
                         {plan.description}
                       </p>
                     )}
                   </div>
                   {!plan.is_active && (
-                    <span className="px-2 py-1 text-xs font-semibold bg-gray-200 dark:bg-white/10 text-gray-600 dark:text-white/60 rounded-full">
+                    <span className="shrink-0 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide bg-gray-200/90 dark:bg-white/10 text-gray-600 dark:text-white/55 rounded-md">
                       Inactivo
                     </span>
                   )}
                 </div>
 
-                <div className="space-y-2 mb-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-[#164151]/80 dark:text-white/60">
-                      Precio:
+                <div className="space-y-3 mb-5">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-white/40">
+                      Precio
                     </span>
-                    <span className="text-lg font-bold text-[#164151] dark:text-white">
+                    <span className="text-lg font-bold tabular-nums text-[#164151] dark:text-white">
                       $
                       {parseFloat(plan.price.toString()).toLocaleString(
                         'es-CO',
-                      )}
+                      )}{' '}
+                      <span className="text-xs font-semibold text-gray-500 dark:text-white/35">
+                        COP
+                      </span>
                     </span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-[#164151]/80 dark:text-white/60">
-                      Duración:
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-white/40">
+                      Duración
                     </span>
                     <span className="text-sm font-semibold text-[#164151] dark:text-white">
                       {plan.duration_days} días
                     </span>
                   </div>
-                  <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-white/5">
-                    <span className="text-sm text-[#164151]/80 dark:text-white/60 flex items-center gap-1.5">
-                      <Users className="w-3.5 h-3.5" />
-                      Clientes activos:
+                  <div className="flex items-center justify-between gap-3 pt-3 border-t border-gray-100 dark:border-white/[0.06]">
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-white/40 flex items-center gap-1.5">
+                      <Users className="w-3.5 h-3.5 text-[#85ea10]/90" />
+                      Clientes activos
                     </span>
-                    <span
-                      className={`text-sm font-bold px-2.5 py-1 rounded-full ${
-                        (plan.active_users_count || 0) > 0
-                          ? 'bg-[#85ea10]/10 text-[#85ea10]'
-                          : 'bg-gray-100 dark:bg-white/5 text-gray-500 dark:text-white/40'
-                      }`}
-                    >
-                      {plan.active_users_count || 0}
-                    </span>
+                    <div className="flex flex-col items-end gap-1">
+                      <ActiveClientAvatarStack
+                        previewIds={plan.active_client_preview_ids}
+                        total={activeTotal}
+                      />
+                      {activeTotal > 0 ? (
+                        <span className="text-[10px] font-medium tabular-nums text-gray-500 dark:text-white/35">
+                          {activeTotal}{' '}
+                          {activeTotal === 1 ? 'membresía' : 'membresías'}
+                        </span>
+                      ) : null}
+                    </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 pt-4 border-t border-gray-200 dark:border-white/10">
-                  <button
-                    onClick={() => handleEdit(plan)}
-                    className="flex-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-white/10 text-[#164151] dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 transition-colors flex items-center justify-center gap-2 text-sm"
+                <div className="flex items-center gap-2 pt-4 border-t border-gray-200/90 dark:border-white/[0.07]">
+                  <Link
+                    href={`/admin/gym-plans/${plan.id}`}
+                    className="flex-1 px-3 py-2.5 rounded-xl bg-[#164151] text-white hover:bg-[#1a4d5f] dark:bg-[#164151] dark:hover:bg-[#1a4d5f] transition-colors flex items-center justify-center gap-2 text-sm font-semibold shadow-sm"
                   >
-                    <Edit className="w-3.5 h-3.5" />
+                    <Eye className="w-3.5 h-3.5 text-current" />
+                    Ver detalle
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => handleEdit(plan)}
+                    className="flex-1 px-3 py-2.5 rounded-xl border border-gray-200/90 dark:border-white/15 bg-gray-50/80 dark:bg-white/[0.06] text-[#164151] dark:text-white hover:bg-gray-100 dark:hover:bg-white/10 transition-colors flex items-center justify-center gap-2 text-sm font-semibold"
+                  >
+                    <Edit className="w-3.5 h-3.5 text-current" />
                     Editar
                   </button>
                   <button
+                    type="button"
                     onClick={() => handleDeleteClick(plan)}
-                    className="px-3 py-2 rounded-lg bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors"
+                    className="shrink-0 px-3 py-2.5 rounded-xl bg-red-500/12 dark:bg-red-500/15 text-red-700 dark:text-red-400 hover:bg-red-500/20 transition-colors border border-red-500/25 dark:border-red-500/30"
+                    aria-label="Eliminar plan"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
-            ))}
+            );
+            })}
         </div>
       )}
 

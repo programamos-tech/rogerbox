@@ -1,10 +1,10 @@
 import { type NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase';
 
 // GET - Obtener todos los blogs para el admin (incluyendo no publicados)
 export async function GET(request: NextRequest) {
   try {
-    const { data: blogs, error } = await supabase
+    const { data: blogs, error } = await supabaseAdmin
       .from('nutritional_blogs')
       .select('*')
       .order('created_at', { ascending: false });
