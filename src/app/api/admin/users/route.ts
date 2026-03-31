@@ -254,6 +254,14 @@ export async function GET(request: NextRequest) {
         dismissedIds,
         today,
       );
+      // Prioridad visual en listado:
+      // 0 = Renovar (vencido), 1 = Activo + Renovación pendiente, 2 = resto
+      const listPriority =
+        hasExpiredOnly && !client.is_inactive
+          ? 0
+          : mixRenewalCategory === 'pending'
+            ? 1
+            : 2;
 
       return {
         id: client.id,
@@ -284,15 +292,18 @@ export async function GET(request: NextRequest) {
         activeCoursePurchases,
         course_purchases: coursePurchases,
         mixRenewalCategory,
+        listPriority,
         // Campos para ordenamiento
         latestMembershipDate,
         sortPriority,
       };
     });
 
-    // Ordenar siempre por clientes más recientes primero (created_at descendente)
+    // Ordenar mostrando primero los que requieren acción de renovación,
+    // y dentro de cada grupo por más recientes (created_at desc).
     processedClients.sort(
       (a, b) =>
+        a.listPriority - b.listPriority ||
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
     );
 

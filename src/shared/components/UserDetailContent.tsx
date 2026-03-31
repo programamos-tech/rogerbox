@@ -2055,6 +2055,16 @@ export function UserDetailContent({
                                     </div>
                                   </div>
                                   <p className="mt-3 text-xs text-gray-500 dark:text-white/50">
+                                    Inició:{' '}
+                                    {parseLocalDate(
+                                      membership.start_date,
+                                    ).toLocaleDateString('es-ES', {
+                                      day: '2-digit',
+                                      month: 'long',
+                                      year: 'numeric',
+                                    })}
+                                  </p>
+                                  <p className="mt-1 text-xs text-gray-500 dark:text-white/50">
                                     Venció:{' '}
                                     {parseLocalDate(
                                       membership.end_date,
@@ -2239,6 +2249,16 @@ export function UserDetailContent({
                               )}
                             </div>
                             <div className="space-y-1">
+                              <p className="text-xs text-gray-500 dark:text-white/50">
+                                Inicio de período:{' '}
+                                {parseLocalDate(
+                                  membership.start_date,
+                                ).toLocaleDateString('es-ES', {
+                                  day: '2-digit',
+                                  month: 'long',
+                                  year: 'numeric',
+                                })}
+                              </p>
                               <p className="text-xs text-gray-500 dark:text-white/50">
                                 Fin de período:{' '}
                                 {endDate.toLocaleDateString('es-ES', {
