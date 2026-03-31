@@ -1,9 +1,15 @@
 'use client';
 
-import { ArrowLeft, Calendar, CheckCircle } from 'lucide-react';
+import {
+  ArrowLeft,
+  Calendar,
+  CheckCircle,
+  Filter,
+  Search,
+} from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import {
@@ -18,7 +24,7 @@ import { gymPlanDetailStyles as s } from '@/modules/gym-admin/styles';
 import type { GymPlanOverviewMembership } from '@/modules/gym-admin/types';
 import { GymSeededAvatar } from '@/shared/components/GymSeededAvatar';
 
-function PlanMembershipRow({
+function PlanMembershipCard({
   membership,
   today,
 }: {
@@ -61,12 +67,12 @@ function PlanMembershipRow({
       : Math.round(period.pct);
 
   return (
-    <div className="py-6 first:pt-2 border-b border-gray-200/70 dark:border-white/[0.07] last:border-b-0">
-      <div className="flex gap-4 sm:gap-5">
+    <article className="rounded-2xl border border-gray-200/80 bg-white/60 p-4 shadow-sm dark:border-white/10 dark:bg-white/[0.03]">
+      <div className="flex gap-3">
         <GymSeededAvatar
           seed={seed}
-          size={52}
-          className="h-[52px] w-[52px] shrink-0 rounded-full ring-2 ring-gray-200/80 dark:ring-white/12"
+          size={44}
+          className="h-11 w-11 shrink-0 rounded-full"
           alt=""
         />
         <div className="min-w-0 flex-1">
@@ -75,17 +81,17 @@ function PlanMembershipRow({
               {href ? (
                 <Link
                   href={href}
-                  className="text-lg font-bold leading-snug text-[#164151] dark:text-white hover:underline decoration-[#85ea10]/70 underline-offset-2"
+                  className="text-base font-semibold leading-snug text-[#164151] dark:text-white hover:underline decoration-[#85ea10]/70 underline-offset-2"
                 >
                   {c?.name ?? 'Sin nombre'}
                 </Link>
               ) : (
-                <p className="text-lg font-bold text-[#164151] dark:text-white">
+                <p className="text-base font-semibold text-[#164151] dark:text-white">
                   {c?.name ?? 'Sin nombre'}
                 </p>
               )}
               {c?.document_id ? (
-                <p className="mt-1 text-xs text-gray-500 dark:text-white/45 tabular-nums">
+                <p className="mt-0.5 text-[11px] text-gray-500 dark:text-white/45 tabular-nums">
                   Doc. {c.document_id}
                 </p>
               ) : null}
@@ -118,9 +124,9 @@ function PlanMembershipRow({
             </div>
           </div>
 
-          <div className="mt-5">
+          <div className="mt-3">
             <div
-              className={`relative h-2.5 w-full overflow-hidden rounded-full bg-gray-200/90 dark:bg-white/10 ${trackRing}`}
+              className={`relative h-2 w-full overflow-hidden rounded-full bg-gray-200/90 dark:bg-white/10 ${trackRing}`}
               role="progressbar"
               aria-valuenow={pctWidth}
               aria-valuemin={0}
@@ -132,7 +138,7 @@ function PlanMembershipRow({
                 style={{ width: `${pctWidth}%` }}
               />
             </div>
-            <div className="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-[11px] text-gray-500 dark:text-white/45">
+            <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[10px] text-gray-500 dark:text-white/45">
               <span>
                 Inicio{' '}
                 <span className="font-medium text-[#164151] dark:text-white/80">
@@ -150,7 +156,7 @@ function PlanMembershipRow({
                 </span>
               </span>
             </div>
-            <p className="mt-1.5 text-[11px] text-gray-500 dark:text-white/40">
+            <p className="mt-1 text-[10px] text-gray-500 dark:text-white/40">
               {isExpiredPeriod ? (
                 <>
                   El período finalizó el{' '}
@@ -180,7 +186,7 @@ function PlanMembershipRow({
           </div>
         </div>
       </div>
-    </div>
+    </article>
   );
 }
 
@@ -203,6 +209,10 @@ export function GymPlanDetailPage() {
 
   const { data, isLoading, isError, error, refetch } =
     useGymPlanOverview(planId);
+  const [clientSearch, setClientSearch] = useState('');
+  const [membershipStateFilter, setMembershipStateFilter] = useState<
+    'all' | 'active' | 'scheduled' | 'expired'
+  >('all');
 
   const today = useMemo(() => {
     const d = parseLocalDate(getTodayYmdColombia());
@@ -224,6 +234,30 @@ export function GymPlanDetailPage() {
     );
     return [...active, ...expired];
   }, [data]);
+
+  const filteredMemberships = useMemo(() => {
+    const q = clientSearch.trim().toLowerCase();
+    return planMemberships.filter((m) => {
+      const endDate = parseLocalDate(m.end_date);
+      const isExpiredPeriod = today > endDate;
+      const period = getMembershipPeriodProgress(
+        m.start_date,
+        m.end_date,
+        today,
+      );
+      const isScheduled = period.notStarted;
+
+      if (membershipStateFilter === 'active' && (isExpiredPeriod || isScheduled))
+        return false;
+      if (membershipStateFilter === 'scheduled' && !isScheduled) return false;
+      if (membershipStateFilter === 'expired' && !isExpiredPeriod) return false;
+
+      if (!q) return true;
+      const name = (m.client_info?.name || '').toLowerCase();
+      const doc = String(m.client_info?.document_id || '').toLowerCase();
+      return name.includes(q) || doc.includes(q);
+    });
+  }, [planMemberships, clientSearch, membershipStateFilter, today]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -317,34 +351,72 @@ export function GymPlanDetailPage() {
       headerRight={headerBack}
     >
       <div className="w-full max-w-none">
-        <div className="pb-8 border-b border-gray-200/60 dark:border-white/[0.06]">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-white/40">
-            Precio de lista
-          </p>
-          <p className="mt-2 text-3xl sm:text-4xl font-bold tabular-nums text-[#164151] dark:text-white tracking-tight">
-            ${Number(plan.price).toLocaleString('es-CO')}{' '}
-            <span className="text-lg sm:text-xl font-semibold text-gray-500 dark:text-white/40">
-              COP
-            </span>
-          </p>
-          <p className="mt-5 text-sm text-gray-600 dark:text-white/60">
-            <span className="text-gray-500 dark:text-white/40">Duración: </span>
-            <span className="font-semibold text-[#164151] dark:text-white">
-              {plan.duration_days} días
-            </span>
-            <span className="mx-2 text-gray-400 dark:text-white/25">·</span>
-            <span className="text-gray-500 dark:text-white/45">Catálogo: </span>
-            {plan.is_active ? (
-              <span className="font-semibold text-[#85ea10]">Activo</span>
-            ) : (
-              <span className="text-gray-500 dark:text-white/45">Inactivo</span>
-            )}
-          </p>
-          {plan.description ? (
-            <p className="mt-6 pt-6 border-t border-gray-200/80 dark:border-white/[0.08] text-sm text-gray-600 dark:text-white/55 leading-relaxed">
-              {plan.description}
+        <div className="pb-8 border-b border-gray-200/60 dark:border-white/[0.06] flex flex-col xl:flex-row xl:items-end xl:justify-between gap-5 xl:gap-8">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-white/40">
+              Precio de lista
             </p>
-          ) : null}
+            <p className="mt-2 text-3xl sm:text-4xl font-bold tabular-nums text-[#164151] dark:text-white tracking-tight">
+              ${Number(plan.price).toLocaleString('es-CO')}{' '}
+              <span className="text-lg sm:text-xl font-semibold text-gray-500 dark:text-white/40">
+                COP
+              </span>
+            </p>
+            <p className="mt-5 text-sm text-gray-600 dark:text-white/60">
+              <span className="text-gray-500 dark:text-white/40">Duración: </span>
+              <span className="font-semibold text-[#164151] dark:text-white">
+                {plan.duration_days} días
+              </span>
+              <span className="mx-2 text-gray-400 dark:text-white/25">·</span>
+              <span className="text-gray-500 dark:text-white/45">Catálogo: </span>
+              {plan.is_active ? (
+                <span className="font-semibold text-[#85ea10]">Activo</span>
+              ) : (
+                <span className="text-gray-500 dark:text-white/45">Inactivo</span>
+              )}
+            </p>
+            {plan.description ? (
+              <p className="mt-6 pt-6 border-t border-gray-200/80 dark:border-white/[0.08] text-sm text-gray-600 dark:text-white/55 leading-relaxed">
+                {plan.description}
+              </p>
+            ) : null}
+          </div>
+
+          <div className="w-full xl:w-auto xl:min-w-[620px]">
+            <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+              <div className="relative flex-1 sm:min-w-[360px]">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-white/35" />
+              <input
+                type="text"
+                value={clientSearch}
+                onChange={(e) => setClientSearch(e.target.value)}
+                placeholder="Buscar cliente por nombre o cédula"
+                className="w-full rounded-xl border border-gray-200/80 bg-white/70 pl-9 pr-3 py-2.5 text-sm text-[#164151] outline-none transition focus:border-[#85ea10]/55 focus:ring-2 focus:ring-[#85ea10]/20 dark:border-white/10 dark:bg-white/[0.03] dark:text-white"
+              />
+              </div>
+              <div className="relative sm:w-[210px]">
+                <Filter className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-white/35" />
+                <select
+                  value={membershipStateFilter}
+                  onChange={(e) =>
+                    setMembershipStateFilter(
+                      e.target.value as
+                        | 'all'
+                        | 'active'
+                        | 'scheduled'
+                        | 'expired',
+                    )
+                  }
+                  className="w-full appearance-none rounded-xl border border-gray-200/80 bg-white/70 pl-9 pr-3 py-2.5 text-sm text-[#164151] outline-none transition focus:border-[#85ea10]/55 focus:ring-2 focus:ring-[#85ea10]/20 dark:border-white/10 dark:bg-white/[0.03] dark:text-white"
+                >
+                  <option value="all">Estado: Todos</option>
+                  <option value="active">En período</option>
+                  <option value="scheduled">Próximo</option>
+                  <option value="expired">Vencido</option>
+                </select>
+              </div>
+            </div>
+          </div>
         </div>
 
         <section className="pt-8">
@@ -354,14 +426,16 @@ export function GymPlanDetailPage() {
           <p className="mb-6 text-[10px] leading-snug text-gray-500 dark:text-white/35">
             Progreso del período de cada membresía (vigentes y vencidos).
           </p>
-          {planMemberships.length === 0 ? (
+          {filteredMemberships.length === 0 ? (
             <p className="py-12 text-center text-sm text-gray-500 dark:text-white/45 border-t border-b border-gray-200/80 dark:border-white/[0.08]">
-              No hay clientes registrados con este plan.
+              {planMemberships.length === 0
+                ? 'No hay clientes registrados con este plan.'
+                : 'No hay clientes que coincidan con ese filtro.'}
             </p>
           ) : (
-            <div>
-              {planMemberships.map((m) => (
-                <PlanMembershipRow
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {filteredMemberships.map((m) => (
+                <PlanMembershipCard
                   key={m.id}
                   membership={m}
                   today={today}

@@ -91,8 +91,9 @@ function MembershipInvoiceLink({
     return (
       <Link
         href={`/admin/payments/${payment.id}`}
-        className="mt-2 inline-flex text-xs font-medium text-gray-600 underline-offset-2 hover:text-[#85ea10] hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20 rounded-sm dark:text-white/70 dark:hover:text-[#85ea10]"
+        className="group mt-2 inline-flex items-center gap-1.5 rounded-md border border-transparent bg-transparent px-1.5 py-0.5 text-xs font-medium text-gray-600 transition-all hover:border-gray-200/80 hover:bg-gray-50/60 hover:text-[#164151] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20 dark:text-white/70 dark:hover:border-white/15 dark:hover:bg-white/5 dark:hover:text-white"
       >
+        <FileText className="h-3.5 w-3.5 opacity-70 transition-opacity group-hover:opacity-100" />
         {label}
       </Link>
     );
@@ -101,6 +102,44 @@ function MembershipInvoiceLink({
     <p className="mt-2 text-xs font-medium text-[#164151] dark:text-white">
       {label}
     </p>
+  );
+}
+
+function resolveMembershipPlanData(membership: any): { id: string | null; name: string } {
+  const rawPlan = membership?.plan;
+  if (Array.isArray(rawPlan)) {
+    const first = rawPlan[0] || {};
+    return {
+      id: first?.id ? String(first.id) : null,
+      name: first?.name || 'Plan',
+    };
+  }
+  return {
+    id: rawPlan?.id ? String(rawPlan.id) : null,
+    name: rawPlan?.name || 'Plan',
+  };
+}
+
+function MembershipPlanName({
+  membership,
+  canOpenDetail,
+}: {
+  membership: any;
+  canOpenDetail: boolean;
+}) {
+  const plan = resolveMembershipPlanData(membership);
+  if (!canOpenDetail || !plan.id) {
+    return <span>{plan.name}</span>;
+  }
+  return (
+    <Link
+      href={`/admin/gym-plans/${plan.id}`}
+      className="inline-flex items-center gap-1.5 rounded-sm underline decoration-white/15 underline-offset-3 transition-colors hover:text-[#85ea10] hover:decoration-[#85ea10]/55"
+      title="Ver detalle del plan"
+    >
+      <span>{plan.name}</span>
+      <FileText className="h-3.5 w-3.5 opacity-75" />
+    </Link>
   );
 }
 
@@ -1504,8 +1543,11 @@ export function UserDetailContent({
                                             Plan sede física
                                           </p>
                                           <p className="text-base font-semibold leading-snug text-[#164151] dark:text-white">
-                                          {membership.plan?.name || 'Plan'}
-                                        </p>
+                                            <MembershipPlanName
+                                              membership={membership}
+                                              canOpenDetail={!isSelf}
+                                            />
+                                          </p>
                                         </div>
                                         <div className="flex shrink-0 items-center gap-2">
                                           {isScheduled ? (
@@ -2008,8 +2050,11 @@ export function UserDetailContent({
                                         Plan sede física
                                       </p>
                                       <p className="text-base font-semibold text-[#164151] dark:text-white">
-                                      {membership.plan?.name || 'Plan'}
-                                    </p>
+                                        <MembershipPlanName
+                                          membership={membership}
+                                          canOpenDetail={!isSelf}
+                                        />
+                                      </p>
                                     </div>
                                     <div className="flex shrink-0 items-center gap-2">
                                       {(() => {
@@ -2240,7 +2285,10 @@ export function UserDetailContent({
                           >
                             <div className="flex flex-wrap items-start justify-between gap-2 mb-2">
                               <p className="text-sm font-medium text-[#164151] dark:text-white">
-                                {membership.plan?.name || 'Plan'}
+                                <MembershipPlanName
+                                  membership={membership}
+                                  canOpenDetail={!isSelf}
+                                />
                               </p>
                               {isCancelled && (
                                 <span className="inline-flex shrink-0 items-center gap-1 rounded-md border border-gray-300/80 bg-gray-100/80 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-gray-600 dark:border-white/15 dark:bg-white/10 dark:text-white/60">

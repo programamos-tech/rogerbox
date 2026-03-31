@@ -2,7 +2,14 @@
 
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
-import { ArrowLeft, Download, X, XCircle } from 'lucide-react';
+import {
+  ArrowLeft,
+  CheckCircle2,
+  ChevronRight,
+  Download,
+  X,
+  XCircle,
+} from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
@@ -376,11 +383,19 @@ export default function PaymentDetailPage() {
                   <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-white/40">
                     Comprobante de pago · Sede física
                   </p>
-                  <h2 className="mt-2 text-2xl sm:text-3xl font-bold tabular-nums tracking-tight text-[#164151] dark:text-white">
-                    Factura #
-                    {payment.invoice_number ||
-                      payment.id.substring(0, 8).toUpperCase()}
-                  </h2>
+                  <div className="mt-2 flex flex-wrap items-center gap-3">
+                    <h2 className="text-2xl sm:text-3xl font-bold tabular-nums tracking-tight text-[#164151] dark:text-white">
+                      Factura #
+                      {payment.invoice_number ||
+                        payment.id.substring(0, 8).toUpperCase()}
+                    </h2>
+                    {payment.status !== 'voided' && (
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-[#85ea10]/45 bg-[#85ea10]/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#85ea10]">
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        Factura pagada
+                      </span>
+                    )}
+                  </div>
                   <p className="mt-2 text-[11px] text-gray-500 dark:text-white/40 max-w-xl leading-relaxed">
                     NIT 1102819763-9 · Cr 54 A #25-26, Los Alpes · 3005009487
                   </p>
@@ -395,7 +410,7 @@ export default function PaymentDetailPage() {
                         Anulado
                       </span>
                     ) : (
-                      <span className="font-semibold text-[#85ea10]">
+                      <span className="font-semibold text-white dark:text-white">
                         Pagado
                       </span>
                     )}
@@ -443,9 +458,10 @@ export default function PaymentDetailPage() {
                             ? `/admin/users/${payment.client_info.user_id}`
                             : `/admin/users/${payment.client_info_id}`
                         }
-                        className="inline-block text-2xl sm:text-3xl font-bold tracking-tight text-[#164151] dark:text-white leading-tight hover:underline decoration-[#85ea10]/70 underline-offset-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#85ea10]/45 focus-visible:rounded-sm"
+                        className="inline-flex items-center gap-1.5 text-2xl sm:text-3xl font-bold tracking-tight text-[#164151] dark:text-white leading-tight hover:text-[#0f3440] dark:hover:text-[#d8f9a9] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#85ea10]/45 focus-visible:rounded-sm"
                       >
                         {payment.client_info?.name || '—'}
+                        <ChevronRight className="h-5 w-5 text-[#85ea10]/90" />
                       </Link>
                       <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm text-gray-600 dark:text-white/55">
                         {payment.client_info?.document_id ? (
@@ -458,18 +474,11 @@ export default function PaymentDetailPage() {
                             {payment.client_info.email}
                           </span>
                         ) : null}
-                        {payment.client_info?.whatsapp ? (
-                          isPlaceholderGymWhatsapp(
-                            payment.client_info.whatsapp,
-                          ) ? (
-                            <span className="text-xs text-gray-500 dark:text-white/45 italic">
-                              WhatsApp pendiente
-                            </span>
-                          ) : (
-                            <span className="tabular-nums">
-                              WhatsApp {payment.client_info.whatsapp}
-                            </span>
-                          )
+                        {payment.client_info?.whatsapp &&
+                        !isPlaceholderGymWhatsapp(payment.client_info.whatsapp) ? (
+                          <span className="tabular-nums">
+                            WhatsApp {payment.client_info.whatsapp}
+                          </span>
                         ) : null}
                       </div>
                     </div>
@@ -480,7 +489,7 @@ export default function PaymentDetailPage() {
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-white/40 mb-3">
                     Qué plan se facturó
                   </p>
-                  <p className="text-2xl sm:text-3xl font-bold tracking-tight text-[#85ea10] leading-tight">
+                  <p className="text-2xl sm:text-3xl font-bold tracking-tight text-white dark:text-white leading-tight">
                     {payment.plan?.name || 'Plan'}
                   </p>
                   <p className="mt-4 text-sm text-gray-600 dark:text-white/60 leading-relaxed">
@@ -506,11 +515,11 @@ export default function PaymentDetailPage() {
                     {paymentMethodText[payment.payment_method] ||
                       payment.payment_method}
                   </p>
-                  <div className="mt-8 pt-6 border-t border-gray-200/80 dark:border-white/[0.08]">
+                  <div className="mt-6">
                     <p className="text-[11px] font-medium uppercase tracking-wider text-gray-500 dark:text-white/40">
                       Total COP
                     </p>
-                    <p className="mt-1 text-3xl sm:text-4xl font-bold tabular-nums text-[#85ea10]">
+                    <p className="mt-1 text-3xl sm:text-4xl font-bold tabular-nums text-white dark:text-white">
                       ${payment.amount.toLocaleString('es-CO')}
                     </p>
                   </div>
@@ -530,20 +539,6 @@ export default function PaymentDetailPage() {
 
               </div>
 
-              {payment.status !== 'voided' ? (
-                <div
-                  className="pointer-events-none absolute inset-0 z-20 flex items-end justify-end overflow-hidden p-3 sm:p-5 md:p-6"
-                  aria-hidden
-                >
-                  <div
-                    className="max-w-[min(15.5rem,78vw)] origin-bottom-right -rotate-[12deg] rounded-lg border-[4px] border-[#85ea10] bg-gradient-to-b from-[#85ea10] via-[#7bd60a] to-[#6bc40a] px-5 py-2.5 sm:px-8 sm:py-3.5 shadow-[0_10px_32px_rgba(133,234,16,0.38)] ring-1 ring-[#164151]/15"
-                  >
-                    <p className="text-center font-black uppercase tracking-[0.38em] sm:tracking-[0.48em] text-[#164151] text-[clamp(1rem,3.2vw,1.65rem)] drop-shadow-[0_1px_0_rgba(255,255,255,0.45)]">
-                      Pagado
-                    </p>
-                  </div>
-                </div>
-              ) : null}
             </div>
       </div>
 
