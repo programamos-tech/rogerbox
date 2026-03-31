@@ -1,6 +1,7 @@
 {
   "name": "roger-box",
   "version": "0.1.0",
+  "description": "RogerBox — plataforma fitness y bienestar",
   "private": true,
   "scripts": {
     "dev": "next dev -p 3001 -H 0.0.0.0",
