@@ -1,6 +1,5 @@
-import type { NextConfig } from 'next';
-
-const nextConfig: NextConfig = {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   images: {
     remotePatterns: [
       {
@@ -22,8 +21,8 @@ const nextConfig: NextConfig = {
         hostname: 'i.ytimg.com',
       },
       {
-        protocol: "http",
-        hostname: "127.0.0.1",
+        protocol: 'http',
+        hostname: '127.0.0.1',
       },
     ],
     formats: ['image/avif', 'image/webp'],
@@ -35,10 +34,6 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: ['@supabase/supabase-js', '@supabase/ssr'],
   },
-
-  // compiler: {
-  //   removeConsole: true,
-  // },
 
   transpilePackages: ['pako', 'fast-png'],
 };
