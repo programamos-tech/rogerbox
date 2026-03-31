@@ -10,7 +10,7 @@ console.log(
 );
 console.log('================================\n');
 
-if (process.env.NEXT_PUBLIC_SUPABASE_URL === 'http://127.0.0.1:54321') {
+if (process.env.NEXT_PUBLIC_SUPABASE_URL === 'http://127.0.0.1:55621') {
   console.log('✅ ESTÁS APUNTANDO A LOCAL (Docker)');
   console.log('   Los cambios NO afectarán producción\n');
 } else if (

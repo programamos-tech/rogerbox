@@ -51,20 +51,42 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Para cada plan, contar usuarios activos
+    const todayYmd = new Date().toISOString().split('T')[0];
+
+    // Por plan: conteo vigente (misma regla que overview) + hasta 3 clientes para avatares
     const plansWithCounts = await Promise.all(
       (data || []).map(async (plan) => {
-        // Contar membresías activas y vigentes
         const { count } = await supabaseAdmin
           .from('gym_memberships')
           .select('*', { count: 'exact', head: true })
           .eq('plan_id', plan.id)
-          .eq('status', 'active')
-          .gte('end_date', new Date().toISOString().split('T')[0]);
+          .in('status', ['active', 'courtesy'])
+          .gte('end_date', todayYmd);
+
+        const { data: memRows } = await supabaseAdmin
+          .from('gym_memberships')
+          .select('client_info_id')
+          .eq('plan_id', plan.id)
+          .in('status', ['active', 'courtesy'])
+          .gte('end_date', todayYmd)
+          .order('end_date', { ascending: true })
+          .limit(40);
+
+        const seen = new Set<string>();
+        const active_client_preview_ids: string[] = [];
+        for (const row of memRows || []) {
+          const cid = row.client_info_id as string | null;
+          if (cid && !seen.has(cid)) {
+            seen.add(cid);
+            active_client_preview_ids.push(cid);
+            if (active_client_preview_ids.length >= 3) break;
+          }
+        }
 
         return {
           ...plan,
           active_users_count: count || 0,
+          active_client_preview_ids,
         };
       }),
     );

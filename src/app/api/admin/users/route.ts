@@ -1,6 +1,8 @@
 import { type NextRequest, NextResponse } from 'next/server';
+import { getTodayYmdColombia, parseLocalDate } from '@/lib/dateUtils';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getSession } from '@/lib/supabase-server';
+import { partitionGymMembershipsLikeOverview } from '@/shared/utils/gym-membership-admin.util';
 
 export async function GET(request: NextRequest) {
   try {
@@ -37,7 +39,8 @@ export async function GET(request: NextRequest) {
           status,
           start_date,
           end_date,
-          plan:gym_plans (name)
+          plan_id,
+          plan:gym_plans (name, id)
         )
       `,
       { count: 'exact' },
@@ -68,29 +71,75 @@ export async function GET(request: NextRequest) {
       throw clientsError;
     }
 
-    // Procesar clientes para agregar estados calculados
-    const today = new Date();
+    const clientIds = (clients || []).map((c: { id: string }) => c.id);
+    const dismissalsByClient = new Map<string, string[]>();
+    if (clientIds.length > 0) {
+      const { data: dismissRows } = await supabaseAdmin
+        .from('gym_renewal_followup_dismissals')
+        .select('client_info_id, plan_id')
+        .in('client_info_id', clientIds);
+      for (const row of dismissRows || []) {
+        const cid = row.client_info_id as string;
+        const arr = dismissalsByClient.get(cid) || [];
+        arr.push(row.plan_id as string);
+        dismissalsByClient.set(cid, arr);
+      }
+    }
+
+    const profileUserIds = [
+      ...new Set(
+        (clients || [])
+          .map((c: { user_id?: string | null }) => c.user_id)
+          .filter(Boolean),
+      ),
+    ] as string[];
+    const avatarByUserId = new Map<
+      string,
+      { avatar_url: string | null; updated_at: string | null }
+    >();
+    if (profileUserIds.length > 0) {
+      const { data: profRows } = await supabaseAdmin
+        .from('profiles')
+        .select('id, avatar_url, updated_at')
+        .in('id', profileUserIds);
+      for (const p of profRows || []) {
+        const row = p as {
+          id: string;
+          avatar_url?: string | null;
+          updated_at?: string | null;
+        };
+        avatarByUserId.set(row.id, {
+          avatar_url: row.avatar_url ?? null,
+          updated_at: row.updated_at ?? null,
+        });
+      }
+    }
+
+    // Procesar clientes para agregar estados calculados (fechas locales, misma regla que overview de plan)
+    const today = parseLocalDate(getTodayYmdColombia());
     today.setHours(0, 0, 0, 0);
 
     let processedClients = (clients || []).map((client: any) => {
       const memberships = client.gym_memberships || [];
+      const { active, expired } = partitionGymMembershipsLikeOverview(
+        memberships,
+        today,
+      );
+      const nonCancelledCount = memberships.filter(
+        (m: any) => m.status !== 'cancelled',
+      ).length;
 
-      // Encontrar membresía activa
-      const activeMembership = memberships.find((m: any) => {
-        const endDate = new Date(m.end_date);
-        endDate.setHours(0, 0, 0, 0);
-        return m.status !== 'cancelled' && endDate >= today;
-      });
+      const activeSorted = [...active].sort(
+        (a: any, b: any) =>
+          parseLocalDate(a.end_date).getTime() -
+          parseLocalDate(b.end_date).getTime(),
+      );
+      const activeMembership = activeSorted[0] ?? null;
 
-      // Verificar si todas las membresías están vencidas
       const hasExpiredOnly =
-        memberships.length > 0 &&
-        !activeMembership &&
-        memberships.every((m: any) => {
-          const endDate = new Date(m.end_date);
-          endDate.setHours(0, 0, 0, 0);
-          return m.status !== 'cancelled' && endDate < today;
-        });
+        nonCancelledCount > 0 &&
+        active.length === 0 &&
+        expired.length === nonCancelledCount;
 
       // Calcular fecha más reciente de membresía (para ordenamiento)
       // Prioridad: membresías activas primero, luego por fecha de vencimiento más reciente
@@ -98,18 +147,18 @@ export async function GET(request: NextRequest) {
       let sortPriority = 3; // 0=activo, 1=por renovar, 2=sin productos recientes, 3=sin productos
 
       if (memberships.length > 0) {
-        // Ordenar membresías por end_date descendente
         const sortedMemberships = [...memberships]
           .filter((m: any) => m.status !== 'cancelled')
           .sort(
             (a: any, b: any) =>
-              new Date(b.end_date).getTime() - new Date(a.end_date).getTime(),
+              parseLocalDate(b.end_date).getTime() -
+              parseLocalDate(a.end_date).getTime(),
           );
 
         if (sortedMemberships.length > 0) {
-          latestMembershipDate = new Date(sortedMemberships[0].end_date);
+          latestMembershipDate = parseLocalDate(sortedMemberships[0].end_date);
 
-          if (activeMembership) {
+          if (active.length > 0) {
             sortPriority = 0; // Activos primero
           } else {
             sortPriority = 1; // Por renovar segundo
@@ -117,10 +166,16 @@ export async function GET(request: NextRequest) {
         }
       }
 
+      const profileAvatar = client.user_id
+        ? avatarByUserId.get(client.user_id)
+        : undefined;
+
       return {
         id: client.id,
         name: client.name,
         email: client.email,
+        avatar_url: profileAvatar?.avatar_url ?? null,
+        avatar_updated_at: profileAvatar?.updated_at ?? null,
         phone: client.whatsapp,
         whatsapp: client.whatsapp,
         document_id: client.document_id,
@@ -129,13 +184,15 @@ export async function GET(request: NextRequest) {
         weight: client.weight,
         created_at: client.created_at,
         is_inactive: client.is_inactive || false,
+        renewal_followup_dismissed_plan_ids:
+          dismissalsByClient.get(client.id) ?? [],
         medical_restrictions: client.medical_restrictions,
         user_id: client.user_id,
         isRegistered: !!client.user_id,
         isUnregisteredClient: !client.user_id,
         gym_memberships: memberships,
-        hasActiveGymMembership: !!activeMembership,
-        activeGymMembership: activeMembership || null,
+        hasActiveGymMembership: active.length > 0,
+        activeGymMembership: activeMembership,
         hasGymMembership: memberships.length > 0,
         hasExpiredOnly,
         hasOnlinePurchase: false,
@@ -170,21 +227,19 @@ export async function GET(request: NextRequest) {
     // Calcular totales para los contadores
     const allClientsForCount = (clients || []).map((client: any) => {
       const memberships = client.gym_memberships || [];
-      const activeMembership = memberships.find((m: any) => {
-        const endDate = new Date(m.end_date);
-        endDate.setHours(0, 0, 0, 0);
-        return m.status !== 'cancelled' && endDate >= today;
-      });
+      const { active, expired } = partitionGymMembershipsLikeOverview(
+        memberships,
+        today,
+      );
+      const nonCancelledCount = memberships.filter(
+        (m: any) => m.status !== 'cancelled',
+      ).length;
       const hasExpiredOnly =
-        memberships.length > 0 &&
-        !activeMembership &&
-        memberships.every((m: any) => {
-          const endDate = new Date(m.end_date);
-          endDate.setHours(0, 0, 0, 0);
-          return m.status !== 'cancelled' && endDate < today;
-        });
+        nonCancelledCount > 0 &&
+        active.length === 0 &&
+        expired.length === nonCancelledCount;
       return {
-        hasActiveGymMembership: !!activeMembership,
+        hasActiveGymMembership: active.length > 0,
         hasExpiredOnly,
         hasGymMembership: memberships.length > 0,
         is_inactive: client.is_inactive || false,

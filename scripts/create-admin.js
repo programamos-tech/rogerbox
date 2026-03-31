@@ -1,14 +1,17 @@
 // Script para crear usuario administrador en RogerBox local
 require('dotenv').config({ path: '.env.local' });
+require('dotenv').config({ path: '.env' });
 
 async function createAdminUser() {
   const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const SERVICE_ROLE_KEY = process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY;
+  const SERVICE_ROLE_KEY =
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY;
 
   if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
     console.error('❌ Error: Variables de entorno no encontradas');
     console.error(
-      '   Verifica que .env.local tenga NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY',
+      '   Verifica que .env.local tenga NEXT_PUBLIC_SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY',
     );
     process.exit(1);
   }
@@ -16,7 +19,7 @@ async function createAdminUser() {
   if (!SUPABASE_URL.includes('127.0.0.1')) {
     console.error('❌ Error: Este script solo funciona en desarrollo local');
     console.error(
-      '   NEXT_PUBLIC_SUPABASE_URL debe ser http://127.0.0.1:54321',
+      '   NEXT_PUBLIC_SUPABASE_URL debe ser http://127.0.0.1:55621 (ver supabase/config.toml)',
     );
     process.exit(1);
   }
@@ -47,14 +50,21 @@ async function createAdminUser() {
     const result = await response.json();
 
     if (!response.ok) {
-      if (result.msg?.includes('already registered')) {
+      const errText = JSON.stringify(result);
+      if (
+        errText.includes('already been registered') ||
+        errText.includes('already registered') ||
+        result.error_code === 'email_exists'
+      ) {
         console.log('⚠️  El usuario ya existe en la base de datos');
         console.log('   Email: rogerbox@admin.com');
         console.log('   Password: admin123');
         console.log('\n✅ Puedes hacer login con estas credenciales\n');
         return;
       }
-      throw new Error(result.msg || result.message || 'Error desconocido');
+      throw new Error(
+        result.msg || result.message || result.error_description || errText,
+      );
     }
 
     console.log('✅ Usuario administrador creado exitosamente!\n');
@@ -67,7 +77,7 @@ async function createAdminUser() {
     console.error(
       '\n💡 Alternativa: Crea el usuario manualmente en Supabase Studio:',
     );
-    console.error('   1. Abre http://127.0.0.1:54323');
+    console.error('   1. Abre http://127.0.0.1:55623');
     console.error('   2. Ve a Authentication > Users > Add User');
     console.error('   3. Email: rogerbox@admin.com');
     console.error('   4. Password: admin123');

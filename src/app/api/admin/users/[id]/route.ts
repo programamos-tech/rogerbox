@@ -1,6 +1,32 @@
 import { type NextRequest, NextResponse } from 'next/server';
+import {
+  calendarDaysElapsedSinceStart,
+  getTodayYmdColombia,
+} from '@/lib/dateUtils';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getSession } from '@/lib/supabase-server';
+
+function enrichCoursePurchaseFromCalendarDays(
+  p: any,
+  totalLessonsByCourse: Record<string, number>,
+  todayYmd: string,
+) {
+  const total = totalLessonsByCourse[p.course_id] || 0;
+  const startYmd = p.access_granted_at
+    ? String(p.access_granted_at).slice(0, 10)
+    : null;
+  const daysElapsed = startYmd
+    ? calendarDaysElapsedSinceStart(startYmd, todayYmd)
+    : 0;
+  const completed = total > 0 ? Math.min(daysElapsed, total) : 0;
+  const is_course_finished = total > 0 && daysElapsed >= total;
+  return {
+    ...p,
+    is_course_finished,
+    total_lessons: total,
+    completed_lessons: completed,
+  };
+}
 
 function isAdmin(
   session: {
@@ -100,6 +126,7 @@ export async function GET(
             status,
             start_date,
             end_date,
+            plan_id,
             client_info_id,
             plan:gym_plans(name, id)
           `)
@@ -118,6 +145,7 @@ export async function GET(
               status,
               start_date,
               end_date,
+              plan_id,
               client_info_id,
               plan:gym_plans(name, id)
             `)
@@ -144,7 +172,9 @@ export async function GET(
               const { data: payments, error: paymentsError } =
                 await supabaseAdmin
                   .from('gym_payments')
-                  .select('membership_id, invoice_number, payment_date, amount')
+                  .select(
+                    'id, membership_id, invoice_number, payment_date, amount',
+                  )
                   .in('membership_id', membershipIds)
                   .order('payment_date', { ascending: false });
 
@@ -182,7 +212,7 @@ export async function GET(
             is_active,
             purchase_price,
             access_granted_at,
-            course:courses(title)
+            course:courses(title, preview_image, thumbnail_url, duration_days)
           `)
           .eq('user_id', id);
 
@@ -193,36 +223,26 @@ export async function GET(
             ),
           ];
           const totalLessonsByCourse: Record<string, number> = {};
-          const completedByCourse: Record<string, number> = {};
+          const todayYmd = getTodayYmdColombia();
 
           if (courseIds.length > 0) {
-            const [lessonsRes, completionsRes] = await Promise.all([
-              supabaseAdmin
-                .from('course_lessons')
-                .select('course_id')
-                .in('course_id', courseIds),
-              supabaseAdmin
-                .from('user_lesson_completions')
-                .select('course_id')
-                .eq('user_id', id)
-                .in('course_id', courseIds),
-            ]);
-            (lessonsRes.data || []).forEach((r: any) => {
+            const { data: lessonsRows } = await supabaseAdmin
+              .from('course_lessons')
+              .select('course_id')
+              .in('course_id', courseIds);
+            (lessonsRows || []).forEach((r: any) => {
               totalLessonsByCourse[r.course_id] =
                 (totalLessonsByCourse[r.course_id] || 0) + 1;
             });
-            (completionsRes.data || []).forEach((r: any) => {
-              completedByCourse[r.course_id] =
-                (completedByCourse[r.course_id] || 0) + 1;
-            });
           }
 
-          coursePurchases = (purchases as any[]).map((p) => {
-            const total = totalLessonsByCourse[p.course_id] || 0;
-            const completed = completedByCourse[p.course_id] || 0;
-            const is_course_finished = total > 0 && completed >= total;
-            return { ...p, is_course_finished };
-          });
+          coursePurchases = (purchases as any[]).map((p) =>
+            enrichCoursePurchaseFromCalendarDays(
+              p,
+              totalLessonsByCourse,
+              todayYmd,
+            ),
+          );
         }
       } catch (e: any) {
         // Continuar sin compras
@@ -239,6 +259,8 @@ export async function GET(
       // Obtener is_inactive del cliente físico si existe
       let isInactive = false;
       let medicalRestrictions = null;
+      let gymClientName: string | null = null;
+      let renewalFollowupDismissedPlanIds: string[] = [];
 
       // Si no tenemos clientInfoId aún, intentar obtenerlo de las membresías
       if (!clientInfoId && gymMemberships.length > 0) {
@@ -247,13 +269,25 @@ export async function GET(
 
       if (clientInfoId) {
         try {
-          const { data: clientInfo } = await supabaseAdmin
-            .from('gym_client_info')
-            .select('is_inactive, medical_restrictions')
-            .eq('id', clientInfoId)
-            .single();
+          const [clientInfoRes, dismissalsRes] = await Promise.all([
+            supabaseAdmin
+              .from('gym_client_info')
+              .select('is_inactive, medical_restrictions, name')
+              .eq('id', clientInfoId)
+              .single(),
+            supabaseAdmin
+              .from('gym_renewal_followup_dismissals')
+              .select('plan_id')
+              .eq('client_info_id', clientInfoId),
+          ]);
+          const clientInfo = clientInfoRes.data;
           isInactive = clientInfo?.is_inactive || false;
           medicalRestrictions = clientInfo?.medical_restrictions || null;
+          gymClientName =
+            typeof clientInfo?.name === 'string' ? clientInfo.name.trim() : null;
+          renewalFollowupDismissedPlanIds = (dismissalsRes.data || []).map(
+            (r: { plan_id: string }) => r.plan_id,
+          );
         } catch (e) {
           // Continuar sin is_inactive si hay error
         }
@@ -282,7 +316,9 @@ export async function GET(
           userType,
           isUnregisteredClient: false,
           is_inactive: isInactive,
+          renewal_followup_dismissed_plan_ids: renewalFollowupDismissedPlanIds,
           client_info_id: clientInfoId,
+          gym_client_name: gymClientName,
           medical_restrictions:
             medicalRestrictions || profile.medical_restrictions || null,
         },
@@ -309,6 +345,7 @@ export async function GET(
             status,
             start_date,
             end_date,
+            plan_id,
             client_info_id,
             plan:gym_plans(name, id)
           `)
@@ -326,7 +363,7 @@ export async function GET(
                 await supabaseAdmin
                   .from('gym_payments')
                   .select(
-                    'membership_id, invoice_number, payment_date, amount, user_id',
+                    'id, membership_id, invoice_number, payment_date, amount, user_id',
                   )
                   .in('membership_id', membershipIds)
                   .order('payment_date', { ascending: false });
@@ -373,7 +410,7 @@ export async function GET(
             supabaseAdmin
               .from('course_purchases')
               .select(
-                'id, course_id, is_active, purchase_price, access_granted_at, course:courses(title)',
+                'id, course_id, is_active, purchase_price, access_granted_at, course:courses(title, preview_image, thumbnail_url, duration_days)',
               )
               .eq('user_id', client.user_id),
           ]);
@@ -384,36 +421,24 @@ export async function GET(
               ...new Set(purchases.map((p) => p.course_id).filter(Boolean)),
             ];
             const totalLessonsByCourse: Record<string, number> = {};
-            const completedByCourse: Record<string, number> = {};
+            const todayYmd = getTodayYmdColombia();
             if (courseIds.length > 0) {
-              const [lessonsRes, completionsRes] = await Promise.all([
-                supabaseAdmin
-                  .from('course_lessons')
-                  .select('course_id')
-                  .in('course_id', courseIds),
-                supabaseAdmin
-                  .from('user_lesson_completions')
-                  .select('course_id')
-                  .eq('user_id', client.user_id)
-                  .in('course_id', courseIds),
-              ]);
-              (lessonsRes.data || []).forEach((r: any) => {
+              const { data: lessonsRows } = await supabaseAdmin
+                .from('course_lessons')
+                .select('course_id')
+                .in('course_id', courseIds);
+              (lessonsRows || []).forEach((r: any) => {
                 totalLessonsByCourse[r.course_id] =
                   (totalLessonsByCourse[r.course_id] || 0) + 1;
               });
-              (completionsRes.data || []).forEach((r: any) => {
-                completedByCourse[r.course_id] =
-                  (completedByCourse[r.course_id] || 0) + 1;
-              });
             }
-            coursePurchases = purchases.map((p: any) => {
-              const total = totalLessonsByCourse[p.course_id] || 0;
-              const completed = completedByCourse[p.course_id] || 0;
-              return {
-                ...p,
-                is_course_finished: total > 0 && completed >= total,
-              };
-            });
+            coursePurchases = purchases.map((p: any) =>
+              enrichCoursePurchaseFromCalendarDays(
+                p,
+                totalLessonsByCourse,
+                todayYmd,
+              ),
+            );
           }
         } catch (e) {
           // Continuar sin datos del perfil/compras si hay error
@@ -434,6 +459,19 @@ export async function GET(
             : hasOnlinePurchase
               ? 'online'
               : 'none';
+
+      let renewalFollowupDismissedPlanIdsClient: string[] = [];
+      try {
+        const { data: dismissRows } = await supabaseAdmin
+          .from('gym_renewal_followup_dismissals')
+          .select('plan_id')
+          .eq('client_info_id', client.id);
+        renewalFollowupDismissedPlanIdsClient = (dismissRows || []).map(
+          (r: { plan_id: string }) => r.plan_id,
+        );
+      } catch {
+        // continuar sin lista
+      }
 
       return NextResponse.json({
         user: {
@@ -471,6 +509,8 @@ export async function GET(
           isRegistered: !!client.user_id,
           isUnregisteredClient: !client.user_id,
           is_inactive: client.is_inactive || false,
+          renewal_followup_dismissed_plan_ids:
+            renewalFollowupDismissedPlanIdsClient,
           client_info_id: client.id,
           medical_restrictions: client.medical_restrictions || null,
         },

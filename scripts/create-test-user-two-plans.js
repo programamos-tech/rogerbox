@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const supabaseUrl =
-  process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321';
+  process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:55621';
 const supabaseServiceKey =
   process.env.SUPABASE_SERVICE_ROLE_KEY ||
   process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY ||

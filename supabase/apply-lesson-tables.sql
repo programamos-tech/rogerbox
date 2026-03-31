@@ -1,4 +1,4 @@
--- Ejecuta este script en Supabase Studio → SQL Editor (local: http://127.0.0.1:54323)
+-- Ejecuta este script en Supabase Studio → SQL Editor (local: http://127.0.0.1:55623)
 -- para crear las tablas lesson_ratings y lesson_comments si no existen.
 -- Así podrás valorar clases y dejar comentarios.
 
