@@ -27,6 +27,7 @@ import {
   Eye,
   EyeOff,
   FileText,
+  FileWarning,
   Filter,
   Globe,
   Home,
@@ -393,7 +394,7 @@ function AdminDashboardContent() {
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [userSearchTerm, setUserSearchTerm] = useState('');
   const [userTypeFilter, setUserTypeFilter] = useState<string>('all'); // 'all', 'physical', 'online', 'both'
-  const [paymentStatusFilter, setPaymentStatusFilter] = useState<string>('all'); // 'all', 'active', 'renewal', 'no-products', 'inactive'
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState<string>('all'); // 'all', 'active', 'renewal', 'no-products', 'inactive', 'missing-receipt', …
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [userCounts, setUserCounts] = useState({
@@ -404,6 +405,7 @@ function AdminDashboardContent() {
     inactive: 0,
     mixPending: 0,
     mixDismissed: 0,
+    missingPaymentReceipt: 0,
   });
   const [usersListTotal, setUsersListTotal] = useState(0);
   const usersPerPage = 20;
@@ -1258,6 +1260,7 @@ function AdminDashboardContent() {
           inactive: 0,
           mixPending: 0,
           mixDismissed: 0,
+          missingPaymentReceipt: 0,
         },
       );
     } catch (error) {
@@ -2749,6 +2752,12 @@ function AdminDashboardContent() {
                       >
                         <option value="all">Estado: Todos</option>
                         <option value="active">Al día</option>
+                        <option value="missing-receipt">
+                          Sin comprobante de pago
+                          {userCounts.missingPaymentReceipt > 0
+                            ? ` (${userCounts.missingPaymentReceipt})`
+                            : ''}
+                        </option>
                         <option value="renewal">Renovar</option>
                         <option value="mix-pending">
                           Activo + renov. pendiente
@@ -2774,12 +2783,16 @@ function AdminDashboardContent() {
                     title={
                       userSearchTerm
                         ? 'No se encontraron clientes'
-                        : 'No hay clientes registrados'
+                        : paymentStatusFilter === 'missing-receipt'
+                          ? 'Sin casos en este filtro'
+                          : 'No hay clientes registrados'
                     }
                     description={
                       userSearchTerm
                         ? `No hay clientes que coincidan con "${userSearchTerm}"`
-                        : 'Los clientes aparecerán aquí cuando se registren'
+                        : paymentStatusFilter === 'missing-receipt'
+                          ? 'No hay clientes con membresía vigente y sin pago registrado, o prueba otro filtro.'
+                          : 'Los clientes aparecerán aquí cuando se registren'
                     }
                   />
                 ) : (
@@ -2931,6 +2944,7 @@ function AdminDashboardContent() {
                                         isActive: boolean;
                                         isCancelled?: boolean;
                                         isScheduled?: boolean;
+                                        missingRegisteredPayment?: boolean;
                                         membership?: any;
                                       }> = [];
 
@@ -2948,6 +2962,9 @@ function AdminDashboardContent() {
                                             type: 'membership',
                                             isActive: true,
                                             membership: m,
+                                            missingRegisteredPayment:
+                                              m.has_registered_payment ===
+                                              false,
                                           });
                                         }
                                       });
@@ -2967,6 +2984,9 @@ function AdminDashboardContent() {
                                             isActive: true,
                                             isScheduled: true,
                                             membership: m,
+                                            missingRegisteredPayment:
+                                              m.has_registered_payment ===
+                                              false,
                                           });
                                         }
                                       });
@@ -3135,6 +3155,17 @@ function AdminDashboardContent() {
                                           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400">
                                             <X className="w-3 h-3" />
                                             Inactivo
+                                          </span>
+                                        );
+                                      }
+
+                                      if (user.activeGymWithoutPaymentReceipt) {
+                                        return (
+                                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-500/20 text-amber-900 dark:text-amber-200 max-w-[16rem] sm:max-w-none">
+                                            <FileWarning className="w-3.5 h-3.5 shrink-0" />
+                                            <span className="text-left leading-snug">
+                                              Activo sin comprobante de pago
+                                            </span>
                                           </span>
                                         );
                                       }
@@ -3838,6 +3869,13 @@ function AdminDashboardContent() {
                           statusBadge = (
                             <span className="bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">
                               Inactivo
+                            </span>
+                          );
+                        } else if (user.activeGymWithoutPaymentReceipt) {
+                          statusColor = 'border-amber-400/60';
+                          statusBadge = (
+                            <span className="bg-amber-100 dark:bg-amber-500/25 text-amber-900 dark:text-amber-200 text-[9px] px-2 py-0.5 rounded-full font-bold uppercase leading-tight text-center max-w-[11rem]">
+                              Sin comprobante de pago
                             </span>
                           );
                         } else if (
@@ -4630,22 +4668,26 @@ function AdminDashboardContent() {
                         </div>
                         <span
                           className={`px-1.5 py-0.5 rounded text-xs font-medium flex-shrink-0 ${
-                            product.isScheduled
-                              ? 'bg-cyan-100 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-400'
-                              : product.isActive
-                                ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400'
-                                : product.isCancelled
-                                  ? 'bg-slate-100 dark:bg-slate-500/20 text-slate-600 dark:text-slate-400'
-                                  : 'bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400'
+                            product.missingRegisteredPayment
+                              ? 'bg-amber-100 dark:bg-amber-500/20 text-amber-900 dark:text-amber-200'
+                              : product.isScheduled
+                                ? 'bg-cyan-100 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-400'
+                                : product.isActive
+                                  ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400'
+                                  : product.isCancelled
+                                    ? 'bg-slate-100 dark:bg-slate-500/20 text-slate-600 dark:text-slate-400'
+                                    : 'bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400'
                           }`}
                         >
-                          {product.isScheduled
-                            ? 'Próximo'
-                            : product.isActive
-                              ? 'Al día'
-                              : product.isCancelled
-                                ? 'Cancelado'
-                                : 'Renovar'}
+                          {product.missingRegisteredPayment
+                            ? 'Sin comprobante'
+                            : product.isScheduled
+                              ? 'Próximo'
+                              : product.isActive
+                                ? 'Al día'
+                                : product.isCancelled
+                                  ? 'Cancelado'
+                                  : 'Renovar'}
                         </span>
                       </div>
                     </div>

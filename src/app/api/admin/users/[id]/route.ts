@@ -149,14 +149,16 @@ export async function GET(
                 await supabaseAdmin
                   .from('gym_payments')
                   .select(
-                    'id, membership_id, invoice_number, payment_date, amount',
+                    'id, membership_id, invoice_number, payment_date, amount, status',
                   )
                   .in('membership_id', membershipIds)
                   .order('payment_date', { ascending: false });
 
               if (!paymentsError && payments) {
-                // Crear mapa de pagos por membresía (tomar el más reciente de cada una)
-                payments.forEach((payment: any) => {
+                const valid = (payments as any[]).filter(
+                  (p) => p.status !== 'voided',
+                );
+                valid.forEach((payment: any) => {
                   if (!paymentsMap[payment.membership_id]) {
                     paymentsMap[payment.membership_id] = payment;
                   }
@@ -168,10 +170,14 @@ export async function GET(
           }
 
           // Agregar información del pago a cada membresía
-          gymMemberships = memberships.map((membership: any) => ({
-            ...membership,
-            payment: paymentsMap[membership.id] || null,
-          }));
+          gymMemberships = memberships.map((membership: any) => {
+            const payment = paymentsMap[membership.id] || null;
+            return {
+              ...membership,
+              payment,
+              has_registered_payment: !!payment,
+            };
+          });
         }
       } catch (e: any) {
         // Continuar sin membresías si hay error
@@ -339,14 +345,16 @@ export async function GET(
                 await supabaseAdmin
                   .from('gym_payments')
                   .select(
-                    'id, membership_id, invoice_number, payment_date, amount, user_id',
+                    'id, membership_id, invoice_number, payment_date, amount, user_id, status',
                   )
                   .in('membership_id', membershipIds)
                   .order('payment_date', { ascending: false });
 
               if (!paymentsError && payments) {
-                // Crear mapa de pagos por membresía (tomar el más reciente de cada una)
-                payments.forEach((payment: any) => {
+                const valid = (payments as any[]).filter(
+                  (p) => p.status !== 'voided',
+                );
+                valid.forEach((payment: any) => {
                   if (!paymentsMap[payment.membership_id]) {
                     paymentsMap[payment.membership_id] = payment;
                   }
@@ -357,10 +365,14 @@ export async function GET(
             }
           }
 
-          gymMemberships = memberships.map((membership: any) => ({
-            ...membership,
-            payment: paymentsMap[membership.id] || null,
-          }));
+          gymMemberships = memberships.map((membership: any) => {
+            const payment = paymentsMap[membership.id] || null;
+            return {
+              ...membership,
+              payment,
+              has_registered_payment: !!payment,
+            };
+          });
         }
       } catch (e: any) {
         // Continuar sin membresías si hay error

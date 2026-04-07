@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '50');
     const search = searchParams.get('search') || '';
-    const status = searchParams.get('status') || 'all'; // all, active, renewal, no-products, inactive, mix-pending, mix-dismissed
+    const status = searchParams.get('status') || 'all'; // all, active, renewal, no-products, inactive, mix-pending, mix-dismissed, missing-receipt
     const userType = searchParams.get('userType') || 'all'; // all, physical, online, both
     const offset = (page - 1) * limit;
 
@@ -77,6 +77,32 @@ export async function GET(request: NextRequest) {
 
     if (clientsError) {
       throw clientsError;
+    }
+
+    const allMembershipIds = [
+      ...new Set(
+        (clients || []).flatMap((c: any) =>
+          (c.gym_memberships || [])
+            .map((m: { id?: string }) => m.id)
+            .filter(Boolean),
+        ),
+      ),
+    ] as string[];
+
+    const paidMembershipIds = new Set<string>();
+    if (allMembershipIds.length > 0) {
+      const { data: paymentRows, error: payErr } = await supabaseAdmin
+        .from('gym_payments')
+        .select('membership_id, status')
+        .in('membership_id', allMembershipIds);
+      if (!payErr && paymentRows) {
+        for (const row of paymentRows) {
+          const r = row as { membership_id?: string; status?: string | null };
+          if (!r.membership_id) continue;
+          if (r.status === 'voided') continue;
+          paidMembershipIds.add(r.membership_id);
+        }
+      }
     }
 
     const clientIds = (clients || []).map((c: { id: string }) => c.id);
@@ -179,7 +205,11 @@ export async function GET(request: NextRequest) {
     today.setHours(0, 0, 0, 0);
 
     let processedClients = (clients || []).map((client: any) => {
-      const memberships = client.gym_memberships || [];
+      const membershipsRaw = client.gym_memberships || [];
+      const memberships = membershipsRaw.map((m: any) => ({
+        ...m,
+        has_registered_payment: paidMembershipIds.has(m.id),
+      }));
       const { active, expired } = partitionGymMembershipsLikeOverview(
         memberships,
         today,
@@ -293,6 +323,10 @@ export async function GET(request: NextRequest) {
         course_purchases: coursePurchases,
         mixRenewalCategory,
         listPriority,
+        /** Membresía gimnasio vigente sin pago no anulado en gym_payments */
+        activeGymWithoutPaymentReceipt:
+          active.length > 0 &&
+          active.some((m: any) => !m.has_registered_payment),
         // Campos para ordenamiento
         latestMembershipDate,
         sortPriority,
@@ -321,6 +355,9 @@ export async function GET(request: NextRequest) {
       mixDismissed: processedClients.filter(
         (c) => c.mixRenewalCategory === 'dismissed',
       ).length,
+      missingPaymentReceipt: processedClients.filter(
+        (c) => c.activeGymWithoutPaymentReceipt,
+      ).length,
     };
 
     // Aplicar filtro de estado después de procesar
@@ -341,6 +378,10 @@ export async function GET(request: NextRequest) {
     } else if (status === 'mix-dismissed') {
       processedClients = processedClients.filter(
         (c) => c.mixRenewalCategory === 'dismissed',
+      );
+    } else if (status === 'missing-receipt') {
+      processedClients = processedClients.filter(
+        (c) => c.activeGymWithoutPaymentReceipt,
       );
     }
 
