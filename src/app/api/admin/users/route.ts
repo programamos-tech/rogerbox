@@ -107,22 +107,40 @@ export async function GET(request: NextRequest) {
 
     const clientIds = (clients || []).map((c: { id: string }) => c.id);
 
-    /** Clientes con al menos un pago de gimnasio no anulado (histórico por sede). */
-    const clientsWithAnyGymPayment = new Set<string>();
+    const userIdToClientId = new Map<string, string>();
+    const membershipIdToClientId = new Map<string, string>();
+    for (const c of clients || []) {
+      const row = c as { id: string; user_id?: string | null; gym_memberships?: { id?: string }[] };
+      if (row.user_id) userIdToClientId.set(row.user_id, row.id);
+      for (const m of row.gym_memberships || []) {
+        if (m?.id) membershipIdToClientId.set(m.id, row.id);
+      }
+    }
+
+    /**
+     * Cualquier fila en gym_payments (cualquier estado) = ya hubo registro de cobro/factura.
+     * Por client_info_id, membership_id o user_id (datos viejos o migraciones).
+     */
+    const clientsWithAnyGymPaymentRecord = new Set<string>();
     if (clientIds.length > 0) {
-      const { data: payClientRows, error: payClientErr } = await supabaseAdmin
+      const { data: payByClient } = await supabaseAdmin
         .from('gym_payments')
-        .select('client_info_id, status')
+        .select('client_info_id')
         .in('client_info_id', clientIds);
-      if (!payClientErr && payClientRows) {
-        for (const row of payClientRows) {
-          const r = row as {
-            client_info_id?: string;
-            status?: string | null;
-          };
-          if (!r.client_info_id || r.status === 'voided') continue;
-          clientsWithAnyGymPayment.add(r.client_info_id);
-        }
+      for (const row of payByClient || []) {
+        const cid = (row as { client_info_id?: string }).client_info_id;
+        if (cid) clientsWithAnyGymPaymentRecord.add(cid);
+      }
+    }
+    if (allMembershipIds.length > 0) {
+      const { data: payByMem } = await supabaseAdmin
+        .from('gym_payments')
+        .select('membership_id')
+        .in('membership_id', allMembershipIds);
+      for (const row of payByMem || []) {
+        const mid = (row as { membership_id?: string }).membership_id;
+        const cid = mid ? membershipIdToClientId.get(mid) : undefined;
+        if (cid) clientsWithAnyGymPaymentRecord.add(cid);
       }
     }
 
@@ -147,6 +165,18 @@ export async function GET(request: NextRequest) {
           .filter(Boolean),
       ),
     ] as string[];
+
+    if (profileUserIds.length > 0) {
+      const { data: payByUser } = await supabaseAdmin
+        .from('gym_payments')
+        .select('user_id')
+        .in('user_id', profileUserIds);
+      for (const row of payByUser || []) {
+        const uid = (row as { user_id?: string | null }).user_id;
+        const cid = uid ? userIdToClientId.get(uid) : undefined;
+        if (cid) clientsWithAnyGymPaymentRecord.add(cid);
+      }
+    }
 
     /** Usuarios con al menos una orden en línea aprobada (cursos / compras web). */
     const usersWithApprovedOrder = new Set<string>();
@@ -331,7 +361,7 @@ export async function GET(request: NextRequest) {
             : 2;
 
       const hasAnyInvoiceEver =
-        clientsWithAnyGymPayment.has(client.id) ||
+        clientsWithAnyGymPaymentRecord.has(client.id) ||
         (!!client.user_id &&
           usersWithApprovedOrder.has(client.user_id as string));
 

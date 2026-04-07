@@ -5,11 +5,13 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { getSession } from '@/lib/supabase-server';
 
 /**
- * Cobro/factura en sede (gym_payments no anulado) u orden en línea aprobada (orders).
+ * Algún registro comercial: gym_payments (cualquier estado/fila) por sede, membresía o user,
+ * u orden web aprobada.
  */
 async function computeHasAnyInvoiceEver(
   clientInfoId: string | null,
   userId: string | null,
+  membershipIds: string[],
 ): Promise<boolean> {
   const tasks: Promise<boolean>[] = [];
 
@@ -18,13 +20,10 @@ async function computeHasAnyInvoiceEver(
       (async () => {
         const { data, error } = await supabaseAdmin
           .from('gym_payments')
-          .select('status')
+          .select('id')
           .eq('client_info_id', clientInfoId)
-          .limit(200);
-        if (error || !data?.length) return false;
-        return data.some(
-          (row: { status?: string | null }) => row.status !== 'voided',
-        );
+          .limit(1);
+        return !error && !!(data && data.length > 0);
       })(),
     );
   }
@@ -33,10 +32,34 @@ async function computeHasAnyInvoiceEver(
     tasks.push(
       (async () => {
         const { data, error } = await supabaseAdmin
+          .from('gym_payments')
+          .select('id')
+          .eq('user_id', userId)
+          .limit(1);
+        return !error && !!(data && data.length > 0);
+      })(),
+    );
+    tasks.push(
+      (async () => {
+        const { data, error } = await supabaseAdmin
           .from('orders')
           .select('id')
           .eq('user_id', userId)
           .eq('status', 'approved')
+          .limit(1);
+        return !error && !!(data && data.length > 0);
+      })(),
+    );
+  }
+
+  const mids = (membershipIds || []).filter(Boolean);
+  if (mids.length > 0) {
+    tasks.push(
+      (async () => {
+        const { data, error } = await supabaseAdmin
+          .from('gym_payments')
+          .select('id')
+          .in('membership_id', mids)
           .limit(1);
         return !error && !!(data && data.length > 0);
       })(),
@@ -333,6 +356,7 @@ export async function GET(
       const hasAnyInvoiceEver = await computeHasAnyInvoiceEver(
         clientInfoId,
         id,
+        gymMemberships.map((m: { id: string }) => m.id),
       );
 
       return NextResponse.json({
@@ -514,6 +538,7 @@ export async function GET(
       const hasAnyInvoiceEver = await computeHasAnyInvoiceEver(
         client.id,
         client.user_id ?? null,
+        gymMemberships.map((m: { id: string }) => m.id),
       );
 
       return NextResponse.json({
