@@ -4,20 +4,48 @@ import { getTodayYmdColombia } from '@/lib/dateUtils';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getSession } from '@/lib/supabase-server';
 
-/** True si existe al menos un gym_payment no anulado para ese cliente de sede. */
-async function computeHasEverRegisteredGymPayment(
+/**
+ * Cobro/factura en sede (gym_payments no anulado) u orden en línea aprobada (orders).
+ */
+async function computeHasAnyInvoiceEver(
   clientInfoId: string | null,
+  userId: string | null,
 ): Promise<boolean> {
-  if (!clientInfoId) return false;
-  const { data, error } = await supabaseAdmin
-    .from('gym_payments')
-    .select('status')
-    .eq('client_info_id', clientInfoId)
-    .limit(200);
-  if (error || !data?.length) return false;
-  return data.some(
-    (row: { status?: string | null }) => row.status !== 'voided',
-  );
+  const tasks: Promise<boolean>[] = [];
+
+  if (clientInfoId) {
+    tasks.push(
+      (async () => {
+        const { data, error } = await supabaseAdmin
+          .from('gym_payments')
+          .select('status')
+          .eq('client_info_id', clientInfoId)
+          .limit(200);
+        if (error || !data?.length) return false;
+        return data.some(
+          (row: { status?: string | null }) => row.status !== 'voided',
+        );
+      })(),
+    );
+  }
+
+  if (userId) {
+    tasks.push(
+      (async () => {
+        const { data, error } = await supabaseAdmin
+          .from('orders')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('status', 'approved')
+          .limit(1);
+        return !error && !!(data && data.length > 0);
+      })(),
+    );
+  }
+
+  if (tasks.length === 0) return false;
+  const results = await Promise.all(tasks);
+  return results.some(Boolean);
 }
 
 function isAdmin(
@@ -302,8 +330,10 @@ export async function GET(
               ? 'online'
               : 'none';
 
-      const hasEverRegisteredGymPayment =
-        await computeHasEverRegisteredGymPayment(clientInfoId);
+      const hasAnyInvoiceEver = await computeHasAnyInvoiceEver(
+        clientInfoId,
+        id,
+      );
 
       return NextResponse.json({
         user: {
@@ -322,7 +352,7 @@ export async function GET(
           gym_client_name: gymClientName,
           medical_restrictions:
             medicalRestrictions || profile.medical_restrictions || null,
-          hasEverRegisteredGymPayment,
+          hasAnyInvoiceEver,
         },
         source: 'profile',
       });
@@ -481,8 +511,10 @@ export async function GET(
         // continuar sin lista
       }
 
-      const hasEverRegisteredGymPayment =
-        await computeHasEverRegisteredGymPayment(client.id);
+      const hasAnyInvoiceEver = await computeHasAnyInvoiceEver(
+        client.id,
+        client.user_id ?? null,
+      );
 
       return NextResponse.json({
         user: {
@@ -524,7 +556,7 @@ export async function GET(
             renewalFollowupDismissedPlanIdsClient,
           client_info_id: client.id,
           medical_restrictions: client.medical_restrictions || null,
-          hasEverRegisteredGymPayment,
+          hasAnyInvoiceEver,
         },
         source: 'gym_client_info',
       });

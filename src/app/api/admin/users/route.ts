@@ -147,6 +147,23 @@ export async function GET(request: NextRequest) {
           .filter(Boolean),
       ),
     ] as string[];
+
+    /** Usuarios con al menos una orden en línea aprobada (cursos / compras web). */
+    const usersWithApprovedOrder = new Set<string>();
+    if (profileUserIds.length > 0) {
+      const { data: orderRows, error: orderErr } = await supabaseAdmin
+        .from('orders')
+        .select('user_id')
+        .in('user_id', profileUserIds)
+        .eq('status', 'approved');
+      if (!orderErr && orderRows) {
+        for (const row of orderRows) {
+          const uid = (row as { user_id?: string }).user_id;
+          if (uid) usersWithApprovedOrder.add(uid);
+        }
+      }
+    }
+
     const avatarByUserId = new Map<
       string,
       { avatar_url: string | null; updated_at: string | null }
@@ -313,6 +330,11 @@ export async function GET(request: NextRequest) {
             ? 1
             : 2;
 
+      const hasAnyInvoiceEver =
+        clientsWithAnyGymPayment.has(client.id) ||
+        (!!client.user_id &&
+          usersWithApprovedOrder.has(client.user_id as string));
+
       return {
         id: client.id,
         name: client.name,
@@ -343,14 +365,12 @@ export async function GET(request: NextRequest) {
         course_purchases: coursePurchases,
         mixRenewalCategory,
         listPriority,
-        /** Algún cobro de gimnasio registrado alguna vez (no anulado) para este cliente */
-        hasEverRegisteredGymPayment: clientsWithAnyGymPayment.has(client.id),
+        hasAnyInvoiceEver,
         /**
-         * Membresía vigente pero el cliente nunca tuvo un pago en gym_payments
-         * (no aplica si ya facturaste otros períodos).
+         * Plan de gimnasio vigente y cero facturación en sede y en línea.
          */
         activeGymWithoutPaymentReceipt:
-          active.length > 0 && !clientsWithAnyGymPayment.has(client.id),
+          active.length > 0 && !hasAnyInvoiceEver,
         // Campos para ordenamiento
         latestMembershipDate,
         sortPriority,

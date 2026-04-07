@@ -2753,7 +2753,7 @@ function AdminDashboardContent() {
                         <option value="all">Estado: Todos</option>
                         <option value="active">Al día</option>
                         <option value="missing-receipt">
-                          Nunca cobrado en sede
+                          Sin facturas (sede ni web)
                           {userCounts.missingPaymentReceipt > 0
                             ? ` (${userCounts.missingPaymentReceipt})`
                             : ''}
@@ -2791,7 +2791,7 @@ function AdminDashboardContent() {
                       userSearchTerm
                         ? `No hay clientes que coincidan con "${userSearchTerm}"`
                         : paymentStatusFilter === 'missing-receipt'
-                          ? 'No hay clientes con plan vigente que nunca hayan tenido un cobro registrado en sede.'
+                          ? 'No hay clientes con plan vigente y sin ninguna factura en sede ni orden web aprobada.'
                           : 'Los clientes aparecerán aquí cuando se registren'
                     }
                   />
@@ -2963,8 +2963,7 @@ function AdminDashboardContent() {
                                             isActive: true,
                                             membership: m,
                                             missingRegisteredPayment:
-                                              user.hasEverRegisteredGymPayment ===
-                                              false,
+                                              user.hasAnyInvoiceEver === false,
                                           });
                                         }
                                       });
@@ -2985,8 +2984,7 @@ function AdminDashboardContent() {
                                             isScheduled: true,
                                             membership: m,
                                             missingRegisteredPayment:
-                                              user.hasEverRegisteredGymPayment ===
-                                              false,
+                                              user.hasAnyInvoiceEver === false,
                                           });
                                         }
                                       });
@@ -3164,7 +3162,7 @@ function AdminDashboardContent() {
                                           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-500/20 text-amber-900 dark:text-amber-200 max-w-[16rem] sm:max-w-none">
                                             <FileWarning className="w-3.5 h-3.5 shrink-0" />
                                             <span className="text-left leading-snug">
-                                              Plan vigente · sin cobros en sede
+                                              Plan vigente · sin facturas
                                             </span>
                                           </span>
                                         );
@@ -3875,7 +3873,7 @@ function AdminDashboardContent() {
                           statusColor = 'border-amber-400/60';
                           statusBadge = (
                             <span className="bg-amber-100 dark:bg-amber-500/25 text-amber-900 dark:text-amber-200 text-[9px] px-2 py-0.5 rounded-full font-bold uppercase leading-tight text-center max-w-[11rem]">
-                              Sin cobros en sede
+                              Sin facturas
                             </span>
                           );
                         } else if (
@@ -4680,7 +4678,7 @@ function AdminDashboardContent() {
                           }`}
                         >
                           {product.missingRegisteredPayment
-                            ? 'Sin cobros'
+                            ? 'Sin facturas'
                             : product.isScheduled
                               ? 'Próximo'
                               : product.isActive
