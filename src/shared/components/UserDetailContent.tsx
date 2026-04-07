@@ -1531,7 +1531,9 @@ export function UserDetailContent({
                                       membership.end_date,
                                       today,
                                     );
-                                    const missingRegisteredPayment = !(membership as { payment?: unknown }).payment;
+                                    const neverBilledAtGym =
+                                      (userData as { hasEverRegisteredGymPayment?: boolean })
+                                        .hasEverRegisteredGymPayment === false;
 
                                     return (
                                       <div
@@ -1552,12 +1554,12 @@ export function UserDetailContent({
                                           </p>
                                         </div>
                                         <div className="flex shrink-0 items-center gap-2">
-                                          {missingRegisteredPayment ? (
+                                          {neverBilledAtGym ? (
                                             <span className="inline-flex items-center gap-1 rounded-md border border-amber-400/50 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-950 dark:border-amber-500/35 dark:bg-amber-500/15 dark:text-amber-100 max-w-[14rem] sm:max-w-none sm:text-[11px]">
                                               <FileWarning className="h-3.5 w-3.5 shrink-0" />
                                               {isScheduled
-                                                ? 'Próximo sin comprobante'
-                                                : 'Activo sin comprobante de pago'}
+                                                ? 'Próximo · sin cobros en sede'
+                                                : 'Plan vigente · sin cobros en sede'}
                                             </span>
                                           ) : isScheduled ? (
                                             <span className="inline-flex items-center gap-1 rounded-md border border-cyan-500/40 bg-transparent px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-cyan-800 dark:border-cyan-500/35 dark:text-cyan-400">

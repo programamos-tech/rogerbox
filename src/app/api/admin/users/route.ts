@@ -106,6 +106,26 @@ export async function GET(request: NextRequest) {
     }
 
     const clientIds = (clients || []).map((c: { id: string }) => c.id);
+
+    /** Clientes con al menos un pago de gimnasio no anulado (histórico por sede). */
+    const clientsWithAnyGymPayment = new Set<string>();
+    if (clientIds.length > 0) {
+      const { data: payClientRows, error: payClientErr } = await supabaseAdmin
+        .from('gym_payments')
+        .select('client_info_id, status')
+        .in('client_info_id', clientIds);
+      if (!payClientErr && payClientRows) {
+        for (const row of payClientRows) {
+          const r = row as {
+            client_info_id?: string;
+            status?: string | null;
+          };
+          if (!r.client_info_id || r.status === 'voided') continue;
+          clientsWithAnyGymPayment.add(r.client_info_id);
+        }
+      }
+    }
+
     const dismissalsByClient = new Map<string, string[]>();
     if (clientIds.length > 0) {
       const { data: dismissRows } = await supabaseAdmin
@@ -323,10 +343,14 @@ export async function GET(request: NextRequest) {
         course_purchases: coursePurchases,
         mixRenewalCategory,
         listPriority,
-        /** Membresía gimnasio vigente sin pago no anulado en gym_payments */
+        /** Algún cobro de gimnasio registrado alguna vez (no anulado) para este cliente */
+        hasEverRegisteredGymPayment: clientsWithAnyGymPayment.has(client.id),
+        /**
+         * Membresía vigente pero el cliente nunca tuvo un pago en gym_payments
+         * (no aplica si ya facturaste otros períodos).
+         */
         activeGymWithoutPaymentReceipt:
-          active.length > 0 &&
-          active.some((m: any) => !m.has_registered_payment),
+          active.length > 0 && !clientsWithAnyGymPayment.has(client.id),
         // Campos para ordenamiento
         latestMembershipDate,
         sortPriority,

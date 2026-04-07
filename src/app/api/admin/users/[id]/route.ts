@@ -4,6 +4,22 @@ import { getTodayYmdColombia } from '@/lib/dateUtils';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getSession } from '@/lib/supabase-server';
 
+/** True si existe al menos un gym_payment no anulado para ese cliente de sede. */
+async function computeHasEverRegisteredGymPayment(
+  clientInfoId: string | null,
+): Promise<boolean> {
+  if (!clientInfoId) return false;
+  const { data, error } = await supabaseAdmin
+    .from('gym_payments')
+    .select('status')
+    .eq('client_info_id', clientInfoId)
+    .limit(200);
+  if (error || !data?.length) return false;
+  return data.some(
+    (row: { status?: string | null }) => row.status !== 'voided',
+  );
+}
+
 function isAdmin(
   session: {
     user?: { id?: string; email?: string; user_metadata?: any };
@@ -286,6 +302,9 @@ export async function GET(
               ? 'online'
               : 'none';
 
+      const hasEverRegisteredGymPayment =
+        await computeHasEverRegisteredGymPayment(clientInfoId);
+
       return NextResponse.json({
         user: {
           ...profile,
@@ -303,6 +322,7 @@ export async function GET(
           gym_client_name: gymClientName,
           medical_restrictions:
             medicalRestrictions || profile.medical_restrictions || null,
+          hasEverRegisteredGymPayment,
         },
         source: 'profile',
       });
@@ -461,6 +481,9 @@ export async function GET(
         // continuar sin lista
       }
 
+      const hasEverRegisteredGymPayment =
+        await computeHasEverRegisteredGymPayment(client.id);
+
       return NextResponse.json({
         user: {
           id: client.id,
@@ -501,6 +524,7 @@ export async function GET(
             renewalFollowupDismissedPlanIdsClient,
           client_info_id: client.id,
           medical_restrictions: client.medical_restrictions || null,
+          hasEverRegisteredGymPayment,
         },
         source: 'gym_client_info',
       });
