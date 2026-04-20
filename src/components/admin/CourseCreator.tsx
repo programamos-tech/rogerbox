@@ -24,7 +24,7 @@ import {
   Video,
   X,
 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   deleteImage,
   getBucketFromUrl,
@@ -143,6 +143,49 @@ const HARDCODED_CATEGORIES: Category[] = [
 // Key para localStorage
 const STORAGE_KEY = 'rogerbox_course_draft';
 
+const EMPTY_COURSE_DATA: CourseData = {
+  title: '',
+  slug: '',
+  short_description: '',
+  preview_image: null,
+  price: null,
+  discount_percentage: null,
+  category: '',
+  duration_days: null,
+  calories_burned: null,
+  mux_playback_id: '',
+  level: 'beginner',
+  is_published: false,
+};
+
+function formatPriceForDraft(price: number | null | undefined): string {
+  if (price == null || Number(price) <= 0) return '';
+  return Number(price).toLocaleString('es-CO');
+}
+
+/** True si hay algo que merezca guardarse (antes solo título o lecciones). */
+function hasDraftPayload(
+  courseData: CourseData,
+  lessons: LessonData[],
+): boolean {
+  if (lessons.length > 0) return true;
+  const d = courseData;
+  if (d.title?.trim()) return true;
+  if (d.slug?.trim()) return true;
+  if (d.short_description?.trim()) return true;
+  if (d.preview_image) return true;
+  if (d.price != null && d.price > 0) return true;
+  if (d.discount_percentage != null && d.discount_percentage > 0) return true;
+  if (d.duration_days != null && d.duration_days > 0) return true;
+  if (d.calories_burned != null && d.calories_burned > 0) return true;
+  if (d.mux_playback_id?.trim()) return true;
+  if (d.level && d.level !== 'beginner') return true;
+  if (d.is_published) return true;
+  const firstCat = HARDCODED_CATEGORIES[0]?.id;
+  if (firstCat && d.category && d.category !== firstCat) return true;
+  return false;
+}
+
 export default function CourseCreator({
   onClose,
   onSuccess,
@@ -161,73 +204,95 @@ export default function CourseCreator({
     new Set(),
   );
   const [bulkAddCount, setBulkAddCount] = useState<number>(10);
-  const [courseData, setCourseData] = useState<CourseData>({
-    title: '',
-    slug: '',
-    short_description: '',
-    preview_image: null,
-    price: null,
-    discount_percentage: null,
-    category: '',
-    duration_days: null,
-    calories_burned: null,
-    mux_playback_id: '',
-    level: 'beginner',
-    is_published: false,
-    // include_iva: false, // Temporalmente deshabilitado
-    // iva_percentage: 19 // Temporalmente deshabilitado
-  });
+  const [courseData, setCourseData] = useState<CourseData>(() => ({
+    ...EMPTY_COURSE_DATA,
+  }));
   const [lessons, setLessons] = useState<LessonData[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lessonsContainerRef = useRef<HTMLDivElement>(null);
 
-  // Guardar en localStorage cuando cambia el estado (solo si no es edición)
+  // Restaurar borrador antes del paint (evita que el guardado vacío pise el draft y corrige carrera con categoría por defecto)
+  useLayoutEffect(() => {
+    if (courseToEdit) return;
+
+    const raw = localStorage.getItem(STORAGE_KEY);
+    let merged: CourseData | null = null;
+    let nextLessons: LessonData[] | null = null;
+    let nextStep: number | null = null;
+
+    if (raw) {
+      try {
+        const draft = JSON.parse(raw) as {
+          courseData?: CourseData;
+          lessons?: LessonData[];
+          currentStep?: number;
+        };
+        if (draft.courseData && typeof draft.courseData === 'object') {
+          merged = { ...EMPTY_COURSE_DATA, ...draft.courseData };
+        }
+        if (Array.isArray(draft.lessons) && draft.lessons.length > 0) {
+          const sorted = [...draft.lessons].sort(
+            (a, b) => (a.lesson_order ?? 0) - (b.lesson_order ?? 0),
+          );
+          nextLessons = sorted.map((l, i) => ({
+            ...l,
+            lesson_number: i + 1,
+            lesson_order: i + 1,
+          }));
+        }
+        if (
+          typeof draft.currentStep === 'number' &&
+          draft.currentStep >= 1 &&
+          draft.currentStep <= 4
+        ) {
+          nextStep = draft.currentStep;
+        }
+      } catch {
+        // borrador corrupto
+      }
+    }
+
+    const defaultCategoryId = HARDCODED_CATEGORIES[0]?.id ?? '';
+
+    if (merged) {
+      setCourseData({
+        ...merged,
+        category: merged.category || defaultCategoryId,
+      });
+      if (merged.price != null && merged.price > 0) {
+        setFormattedPrice(formatPriceForDraft(merged.price));
+      }
+    } else {
+      setCourseData((prev) => ({
+        ...prev,
+        category: prev.category || defaultCategoryId,
+      }));
+    }
+
+    if (nextLessons) setLessons(nextLessons);
+    if (nextStep != null) setCurrentStep(nextStep);
+  }, [courseToEdit]);
+
+  // Persistir borrador en creación (cualquier campo relevante o lecciones)
   useEffect(() => {
-    if (!courseToEdit && (courseData.title || lessons.length > 0)) {
-      const draft = { courseData, lessons, currentStep };
+    if (courseToEdit) return;
+    if (!hasDraftPayload(courseData, lessons)) {
+      if (localStorage.getItem(STORAGE_KEY)) {
+        localStorage.removeItem(STORAGE_KEY);
+      }
+      return;
+    }
+    const draft = { courseData, lessons, currentStep };
+    try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
+    } catch {
+      // quota / privado
     }
   }, [courseData, lessons, currentStep, courseToEdit]);
 
-  // Cargar del localStorage al iniciar (solo si no es edición)
-  useEffect(() => {
-    if (!courseToEdit) {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        try {
-          const draft = JSON.parse(saved);
-          if (draft.courseData) setCourseData(draft.courseData);
-          if (draft.lessons && draft.lessons.length > 0) {
-            // Ordenar por lesson_order y normalizar números para que la lista sea consistente
-            const sorted = [...draft.lessons].sort(
-              (a, b) => (a.lesson_order ?? 0) - (b.lesson_order ?? 0),
-            );
-            const normalized = sorted.map((l, i) => ({
-              ...l,
-              lesson_number: i + 1,
-              lesson_order: i + 1,
-            }));
-            setLessons(normalized);
-          }
-          if (draft.currentStep) setCurrentStep(draft.currentStep);
-          if (draft.courseData?.price)
-            setFormattedPrice(formatPrice(draft.courseData.price));
-        } catch (e) {}
-      }
-    }
-  }, [courseToEdit]);
-
-  // Limpiar localStorage al guardar exitosamente
   const clearDraft = () => {
     localStorage.removeItem(STORAGE_KEY);
   };
-
-  // Inicializar categoría por defecto si no hay una seleccionada
-  useEffect(() => {
-    if (!courseData.category && categories.length > 0) {
-      setCourseData((prev) => ({ ...prev, category: categories[0].id }));
-    }
-  }, []);
 
   // Cargar datos del curso a editar
   useEffect(() => {
