@@ -363,15 +363,6 @@ export default function HomePage() {
         className="relative z-10 scroll-mt-16 px-4 sm:px-6 md:px-12 lg:px-20 xl:px-32 pt-4 pb-8 sm:pt-5 sm:pb-10 bg-gray-50 dark:bg-transparent"
       >
         <div className="max-w-7xl mx-auto">
-          <div className="mb-4 sm:mb-5">
-            <h2 className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white tracking-tight">
-              Catálogo
-            </h2>
-            <p className="mt-0.5 text-xs sm:text-sm text-gray-600 dark:text-gray-400 max-w-2xl">
-              Todos los cursos publicados. Toca una tarjeta para ver la ficha.
-            </p>
-          </div>
-
           {!loadingCourses &&
             !coursesError &&
             coursesByCategory.length > 1 && (
