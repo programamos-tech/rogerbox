@@ -987,7 +987,8 @@ function AdminDashboardContent() {
               name,
               document_id,
               email,
-              whatsapp
+              whatsapp,
+              avatar_url
             ),
             plan:gym_plans(
               id,
@@ -1044,12 +1045,18 @@ function AdminDashboardContent() {
           ];
           let profilesMap: Record<
             string,
-            { name: string | null; email: string | null; document_id: string | null }
+            {
+              name: string | null;
+              email: string | null;
+              document_id: string | null;
+              avatar_url: string | null;
+              updated_at: string | null;
+            }
           > = {};
           if (userIds.length > 0) {
             const { data: profilesData } = await supabaseAdmin
               .from('profiles')
-              .select('id, name, email, document_id')
+              .select('id, name, email, document_id, avatar_url, updated_at')
               .in('id', userIds);
             if (profilesData) {
               profilesMap = Object.fromEntries(
@@ -1081,12 +1088,20 @@ function AdminDashboardContent() {
               invoice_number: null,
               wompi_transaction_id: order.wompi_transaction_id,
               user: prof
-                ? { name: prof.name, email: prof.email }
+                ? {
+                    id: order.user_id,
+                    name: prof.name,
+                    email: prof.email,
+                    avatar_url: prof.avatar_url,
+                    avatar_updated_at: prof.updated_at,
+                  }
                 : undefined,
               client_info: {
+                id: order.user_id,
                 name: clientName,
                 document_id: prof?.document_id ?? null,
                 email: clientEmail,
+                avatar_url: prof?.avatar_url ?? null,
               },
               plan: {
                 name: productName,
@@ -1795,17 +1810,17 @@ function AdminDashboardContent() {
         className={`flex-1 flex flex-col min-h-screen ${sidebarCollapsed ? 'md:ml-16' : 'md:ml-56'}`}
       >
         {/* Top Header */}
-        <header className="h-16 bg-white border-b border-gray-200/80 flex items-center gap-3 px-3 md:px-5 lg:px-6 sticky top-0 z-30">
+        <header className="h-16 bg-white dark:bg-[#0b1422] border-b border-gray-200/80 dark:border-white/10 flex items-center gap-3 px-3 md:px-5 lg:px-6 sticky top-0 z-30">
           <button
             onClick={() => setMobileMenuOpen(true)}
-            className="md:hidden w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 text-[#164151]/80"
+            className="md:hidden w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-white/10 text-[#164151]/80 dark:text-white/80"
           >
             <Menu className="w-4 h-4" />
           </button>
 
           <div className="flex-1 max-w-3xl relative">
-            <div className="h-10 rounded-full border border-gray-200 bg-[#f8fafc] flex items-center gap-2 px-4">
-              <Search className="w-4 h-4 text-gray-400" />
+            <div className="h-10 rounded-full border border-gray-200 dark:border-white/10 bg-[#f8fafc] dark:bg-[#111b2b] flex items-center gap-2 px-4">
+              <Search className="w-4 h-4 text-gray-400 dark:text-white/50" />
               <input
                 type="text"
                 placeholder="Buscar cliente por nombre, cédula o correo..."
@@ -1815,7 +1830,7 @@ function AdminDashboardContent() {
                   setShowHeaderSearchResults(true);
                 }}
                 onFocus={() => setShowHeaderSearchResults(true)}
-                className="w-full bg-transparent border-0 outline-none text-sm text-[#164151] placeholder:text-gray-400"
+                className="w-full bg-transparent border-0 outline-none text-sm text-[#164151] dark:text-white placeholder:text-gray-400 dark:placeholder:text-white/45"
               />
               {headerSearchTerm && (
                 <button
@@ -1979,7 +1994,7 @@ function AdminDashboardContent() {
 
             <button
               onClick={() => router.push('/dashboard')}
-              className="h-8 px-3 rounded-full border border-gray-200 bg-white text-[#164151] text-[11px] font-semibold hover:bg-gray-100 transition-colors"
+              className="h-8 px-3 rounded-full border border-gray-200 dark:border-white/12 bg-white dark:bg-[#111b2b] text-[#164151] dark:text-white text-[11px] font-semibold hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
               title="Ir a plataforma"
             >
               Ir a plataforma
@@ -1989,7 +2004,7 @@ function AdminDashboardContent() {
               <>
                 <button
                   onClick={() => loadUsers()}
-                  className="w-8 h-8 rounded-full border border-gray-200 text-[#164151]/80 inline-flex items-center justify-center hover:bg-gray-100 transition-colors"
+                  className="w-8 h-8 rounded-full border border-gray-200 dark:border-white/12 text-[#164151]/80 dark:text-white/75 inline-flex items-center justify-center hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
                   title="Actualizar lista de clientes"
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
@@ -2001,7 +2016,7 @@ function AdminDashboardContent() {
               <>
                 <button
                   onClick={() => gymPaymentsRef.current?.refresh()}
-                  className="w-8 h-8 rounded-full border border-gray-200 text-[#164151]/80 inline-flex items-center justify-center hover:bg-gray-100 transition-colors"
+                  className="w-8 h-8 rounded-full border border-gray-200 dark:border-white/12 text-[#164151]/80 dark:text-white/75 inline-flex items-center justify-center hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
                   title="Actualizar pagos"
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
@@ -2009,18 +2024,18 @@ function AdminDashboardContent() {
               </>
             )}
 
-            <button className="hidden sm:inline-flex w-8 h-8 rounded-full text-[#164151]/70 hover:bg-gray-100 items-center justify-center transition-colors">
+            <button className="hidden sm:inline-flex w-8 h-8 rounded-full text-[#164151]/70 dark:text-white/70 hover:bg-gray-100 dark:hover:bg-white/10 items-center justify-center transition-colors">
               <Zap className="w-4 h-4" />
             </button>
-            <button className="hidden sm:inline-flex w-8 h-8 rounded-full text-[#164151]/70 hover:bg-gray-100 items-center justify-center transition-colors">
+            <button className="hidden sm:inline-flex w-8 h-8 rounded-full text-[#164151]/70 dark:text-white/70 hover:bg-gray-100 dark:hover:bg-white/10 items-center justify-center transition-colors">
               <Settings className="w-4 h-4" />
             </button>
-            <button className="relative inline-flex w-8 h-8 rounded-full text-[#164151]/70 hover:bg-gray-100 items-center justify-center transition-colors">
+            <button className="relative inline-flex w-8 h-8 rounded-full text-[#164151]/70 dark:text-white/70 hover:bg-gray-100 dark:hover:bg-white/10 items-center justify-center transition-colors">
               <Bell className="w-4 h-4" />
               <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
             </button>
 
-            <div className="flex items-center gap-2 pl-2 md:pl-3 border-l border-gray-200 ml-1">
+            <div className="flex items-center gap-2 pl-2 md:pl-3 border-l border-gray-200 dark:border-white/10 ml-1">
               <GymSeededAvatar
                 seed={String(user?.id || profile?.id || 'admin')}
                 size={32}
@@ -2028,10 +2043,10 @@ function AdminDashboardContent() {
                 alt="Avatar del usuario"
               />
               <div className="leading-tight">
-                <p className="text-[12px] font-semibold text-[#164151] truncate max-w-[8rem]">
+                <p className="text-[12px] font-semibold text-[#164151] dark:text-white truncate max-w-[8rem]">
                   {user?.user_metadata?.name || profile?.name || 'Admin'}
                 </p>
-                <p className="text-[10px] text-gray-500">Propietario</p>
+                <p className="text-[10px] text-gray-500 dark:text-white/50">Propietario</p>
               </div>
             </div>
           </div>
@@ -2517,8 +2532,8 @@ function AdminDashboardContent() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
                 {/* Lista de Facturas del Período */}
                 {(dateFilter === 'today' || dateFilter === 'custom') && (
-                  <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 px-6 pt-6 pb-6 shadow-lg">
-                    <div className="flex items-center justify-between mb-4">
+                  <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 px-5 pt-5 pb-5 shadow-lg">
+                    <div className="flex items-center justify-between mb-3">
                       <div>
                         <h3 className="text-sm font-semibold text-[#164151] dark:text-white uppercase tracking-wide">
                           Facturas del Período
@@ -2590,22 +2605,55 @@ function AdminDashboardContent() {
                           return (
                             <div
                               key={payment.id}
-                              className="bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-200 dark:border-white/10 p-4 hover:shadow-md transition-shadow"
+                              className="bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-200 dark:border-white/10 p-3 hover:shadow-md transition-shadow"
                             >
                               <div className="flex items-start justify-between">
                                 <div className="flex-1">
-                                  <div className="flex items-center gap-3 mb-2">
-                                    <div className="w-10 h-10 rounded-full bg-[#164151]/10 dark:bg-white/10 flex items-center justify-center">
-                                      <User className="w-5 h-5 text-[#164151] dark:text-white" />
-                                    </div>
+                                  <div className="flex items-center gap-2 mb-1.5">
+                                    {(() => {
+                                      const avatarRaw =
+                                        payment.client_info?.avatar_url ||
+                                        payment.user?.avatar_url ||
+                                        '';
+                                      const avatarUpdatedAt =
+                                        payment.user?.avatar_updated_at || '';
+                                      const avatarSrc = avatarRaw
+                                        ? `${avatarRaw}${avatarRaw.includes('?') ? '&' : '?'}v=${avatarUpdatedAt}`
+                                        : '';
+                                      const avatarSeed =
+                                        String(
+                                          payment.client_info?.id ||
+                                            payment.user?.id ||
+                                            payment.client_info?.email ||
+                                            payment.client_info?.document_id ||
+                                            payment.id,
+                                        ) || 'client';
+                                      if (avatarSrc) {
+                                        return (
+                                          <img
+                                            src={avatarSrc}
+                                            alt={clientName}
+                                            className="w-8 h-8 rounded-full object-cover ring-1 ring-gray-200/80 dark:ring-white/12 shrink-0"
+                                          />
+                                        );
+                                      }
+                                      return (
+                                        <GymSeededAvatar
+                                          seed={avatarSeed}
+                                          size={32}
+                                          className="w-8 h-8 rounded-full ring-1 ring-gray-200/80 dark:ring-white/12 shrink-0"
+                                          alt={clientName}
+                                        />
+                                      );
+                                    })()}
                                     <div className="flex-1">
                                       <div className="flex items-center gap-2">
-                                        <p className="font-semibold text-[#164151] dark:text-white">
+                                        <p className="text-sm font-semibold text-[#164151] dark:text-white leading-tight">
                                           {clientName}
                                         </p>
                                         {payment.sede && (
                                           <span
-                                            className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                                            className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium leading-none ${
                                               payment.sede === 'fisica'
                                                 ? 'bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300'
                                                 : 'bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300'
@@ -2617,28 +2665,28 @@ function AdminDashboardContent() {
                                           </span>
                                         )}
                                       </div>
-                                      <p className="text-xs text-gray-500 dark:text-white/50">
+                                      <p className="text-[11px] text-gray-500 dark:text-white/50 leading-tight">
                                         {clientDoc}
                                       </p>
                                     </div>
                                   </div>
 
-                                  <div className="grid grid-cols-2 gap-4 mt-3 ml-13">
+                                  <div className="grid grid-cols-2 gap-x-3 gap-y-2 mt-2 pl-10">
                                     <div>
-                                      <p className="text-xs text-gray-500 dark:text-white/50 mb-1">
+                                      <p className="text-[10px] text-gray-500 dark:text-white/50 mb-0.5 uppercase tracking-wide">
                                         {payment.sede === 'online'
                                           ? 'Curso/Plan'
                                           : 'Plan'}
                                       </p>
-                                      <p className="text-sm font-medium text-[#164151] dark:text-white">
+                                      <p className="text-sm font-medium text-[#164151] dark:text-white leading-tight">
                                         {planName}
                                       </p>
                                     </div>
                                     <div>
-                                      <p className="text-xs text-gray-500 dark:text-white/50 mb-1">
+                                      <p className="text-[10px] text-gray-500 dark:text-white/50 mb-0.5 uppercase tracking-wide">
                                         Método de pago
                                       </p>
-                                      <p className="text-sm font-medium text-[#164151] dark:text-white">
+                                      <p className="text-sm font-medium text-[#164151] dark:text-white leading-tight">
                                         {paymentMethodLabels[
                                           payment.payment_method
                                         ] ||
@@ -2647,10 +2695,10 @@ function AdminDashboardContent() {
                                       </p>
                                     </div>
                                     <div>
-                                      <p className="text-xs text-gray-500 dark:text-white/50 mb-1">
+                                      <p className="text-[10px] text-gray-500 dark:text-white/50 mb-0.5 uppercase tracking-wide">
                                         Fecha
                                       </p>
-                                      <p className="text-sm font-medium text-[#164151] dark:text-white">
+                                      <p className="text-sm font-medium text-[#164151] dark:text-white leading-tight">
                                         {payment.payment_date &&
                                         /^\d{4}-\d{2}-\d{2}$/.test(
                                           payment.payment_date,
@@ -2676,20 +2724,20 @@ function AdminDashboardContent() {
                                     </div>
                                     {payment.invoice_number ? (
                                       <div>
-                                        <p className="text-xs text-gray-500 dark:text-white/50 mb-1">
+                                        <p className="text-[10px] text-gray-500 dark:text-white/50 mb-0.5 uppercase tracking-wide">
                                           Factura
                                         </p>
-                                        <p className="text-sm font-medium text-[#164151] dark:text-white">
+                                        <p className="text-sm font-medium text-[#164151] dark:text-white leading-tight">
                                           #{payment.invoice_number}
                                         </p>
                                       </div>
                                     ) : payment.sede === 'online' &&
                                       payment.wompi_transaction_id ? (
                                       <div>
-                                        <p className="text-xs text-gray-500 dark:text-white/50 mb-1">
+                                        <p className="text-[10px] text-gray-500 dark:text-white/50 mb-0.5 uppercase tracking-wide">
                                           Pasarela (Wompi)
                                         </p>
-                                        <p className="text-sm font-mono font-medium text-[#164151] dark:text-white truncate max-w-[140px]">
+                                        <p className="text-sm font-mono font-medium text-[#164151] dark:text-white truncate max-w-[120px]">
                                           {String(payment.wompi_transaction_id).slice(0, 12)}…
                                         </p>
                                       </div>
@@ -2697,11 +2745,11 @@ function AdminDashboardContent() {
                                   </div>
                                 </div>
 
-                                <div className="ml-4 text-right">
-                                  <p className="text-xs text-gray-500 dark:text-white/50 mb-1">
+                                <div className="ml-3 text-right min-w-[110px]">
+                                  <p className="text-[10px] text-gray-500 dark:text-white/50 mb-0.5 uppercase tracking-wide">
                                     Monto
                                   </p>
-                                  <p className="text-xl font-bold text-[#85ea10]">
+                                  <p className="text-lg md:text-xl font-bold text-[#85ea10] leading-tight">
                                     {showRevenueNumbers
                                       ? `$${Number(payment.amount).toLocaleString('es-CO')}`
                                       : '••••••'}
@@ -2739,7 +2787,7 @@ function AdminDashboardContent() {
                                 : ` del ${parseLocalDate(customStartDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'long' })} al ${parseLocalDate(customEndDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'long' })}`
                               : ' de Hoy'}
                           </h3>
-                          <p className="text-xs text-gray-500 dark:text-white/50 mt-1">
+                          <p className="text-[11px] text-gray-500 dark:text-white/50 mt-0.5">
                             {dateFilter === 'custom' &&
                             customStartDate &&
                             customEndDate
@@ -2755,7 +2803,7 @@ function AdminDashboardContent() {
                           <p className="text-xs text-gray-500 dark:text-white/50">
                             Total
                           </p>
-                          <p className="text-lg font-bold text-[#164151] dark:text-white">
+                          <p className="text-base font-bold text-[#164151] dark:text-white">
                             {birthdayClients.length}
                           </p>
                         </div>
@@ -2763,7 +2811,7 @@ function AdminDashboardContent() {
                     </div>
 
                     {loadingBirthdays ? (
-                      <div className="flex items-center justify-center py-12">
+                      <div className="flex items-center justify-center py-8">
                         <div className="text-center">
                           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#164151] mx-auto mb-4"></div>
                           <p className="text-sm text-gray-500 dark:text-white/50">
@@ -2772,7 +2820,7 @@ function AdminDashboardContent() {
                         </div>
                       </div>
                     ) : birthdayClients.length > 0 ? (
-                      <div className="space-y-3 mt-4 max-h-[600px] overflow-y-auto scrollbar-hide">
+                      <div className="space-y-2.5 mt-3 max-h-[520px] overflow-y-auto scrollbar-hide">
                         {birthdayClients.map((client) => {
                           // Parsear fecha de nacimiento correctamente para evitar problemas de zona horaria
                           let birthDateStr: string;
@@ -2817,41 +2865,41 @@ function AdminDashboardContent() {
                           return (
                             <div
                               key={client.id}
-                              className="bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-200 dark:border-white/10 p-4 hover:shadow-md transition-all"
+                              className="bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-200 dark:border-white/10 p-3 hover:shadow-md transition-all"
                             >
                               <div className="flex items-start justify-between">
                                 <div className="flex-1">
-                                  <div className="flex items-center gap-3 mb-2">
-                                    <div className="w-12 h-12 rounded-full bg-[#164151]/10 dark:bg-white/10 flex items-center justify-center text-[#164151] dark:text-white font-bold text-lg border-2 border-[#85ea10]/30">
+                                  <div className="flex items-center gap-2.5 mb-1.5">
+                                    <div className="w-9 h-9 rounded-full bg-[#164151]/10 dark:bg-white/10 flex items-center justify-center text-[#164151] dark:text-white font-bold text-sm border border-[#85ea10]/30">
                                       {client.name.charAt(0).toUpperCase()}
                                     </div>
                                     <div className="flex-1">
                                       <div className="flex items-center gap-2 flex-wrap">
-                                        <p className="font-bold text-lg text-[#164151] dark:text-white">
+                                        <p className="font-semibold text-sm text-[#164151] dark:text-white leading-tight">
                                           {client.name}
                                         </p>
-                                        <span className="text-xs px-2 py-1 rounded-full bg-[#85ea10]/20 dark:bg-[#85ea10]/20 text-[#164151] dark:text-[#85ea10] font-semibold">
+                                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#85ea10]/20 dark:bg-[#85ea10]/20 text-[#164151] dark:text-[#85ea10] font-semibold">
                                           🎂 {client.age} años
                                         </span>
                                       </div>
-                                      <p className="text-xs text-gray-500 dark:text-white/50 mt-1">
+                                      <p className="text-[11px] text-gray-500 dark:text-white/50 leading-tight">
                                         {client.document_id || 'Sin documento'}
                                       </p>
                                     </div>
                                   </div>
 
-                                  <div className="grid grid-cols-2 gap-4 mt-3 ml-13">
+                                  <div className="grid grid-cols-2 gap-x-3 gap-y-2 mt-2 pl-11">
                                     <div>
-                                      <p className="text-xs text-gray-500 dark:text-white/50 mb-1">
+                                      <p className="text-[10px] text-gray-500 dark:text-white/50 mb-0.5 uppercase tracking-wide">
                                         Fecha de nacimiento
                                       </p>
-                                      <p className="text-sm font-medium text-[#164151] dark:text-white">
+                                      <p className="text-sm font-medium text-[#164151] dark:text-white leading-tight">
                                         {formattedBirthday}
                                       </p>
                                     </div>
                                     {client.whatsapp && (
                                       <div>
-                                        <p className="text-xs text-gray-500 dark:text-white/50 mb-1">
+                                        <p className="text-[10px] text-gray-500 dark:text-white/50 mb-0.5 uppercase tracking-wide">
                                           WhatsApp
                                         </p>
                                         <button
@@ -2867,19 +2915,19 @@ function AdminDashboardContent() {
                                             const whatsappUrl = `https://wa.me/${phoneNumber}?text=${message}`;
                                             window.open(whatsappUrl, '_blank');
                                           }}
-                                          className="flex items-center gap-2 px-3 py-1.5 bg-[#25D366] hover:bg-[#20BA5A] text-white rounded-lg text-sm font-medium transition-all hover:shadow-md group"
+                                          className="flex items-center gap-1.5 px-2 py-1 bg-[#25D366] hover:bg-[#20BA5A] text-white rounded-lg text-xs font-medium transition-all hover:shadow-md group w-fit"
                                         >
-                                          <MessageSquare className="w-4 h-4" />
+                                          <MessageSquare className="w-3.5 h-3.5" />
                                           <span>{client.whatsapp}</span>
                                         </button>
                                       </div>
                                     )}
                                     {client.email && (
                                       <div>
-                                        <p className="text-xs text-gray-500 dark:text-white/50 mb-1">
+                                        <p className="text-[10px] text-gray-500 dark:text-white/50 mb-0.5 uppercase tracking-wide">
                                           Email
                                         </p>
-                                        <p className="text-sm font-medium text-[#164151] dark:text-white">
+                                        <p className="text-sm font-medium text-[#164151] dark:text-white leading-tight">
                                           {client.email}
                                         </p>
                                       </div>
@@ -2887,11 +2935,11 @@ function AdminDashboardContent() {
                                   </div>
                                 </div>
 
-                                <div className="ml-4 text-center">
-                                  <div className="w-12 h-12 rounded-full bg-[#85ea10]/20 dark:bg-[#85ea10]/20 flex items-center justify-center border-2 border-[#85ea10]/30">
-                                    <Cake className="w-6 h-6 text-[#85ea10]" />
+                                <div className="ml-3 text-center">
+                                  <div className="w-9 h-9 rounded-full bg-[#85ea10]/20 dark:bg-[#85ea10]/20 flex items-center justify-center border border-[#85ea10]/30">
+                                    <Cake className="w-4.5 h-4.5 text-[#85ea10]" />
                                   </div>
-                                  <p className="text-xs text-[#164151] dark:text-white font-semibold mt-2">
+                                  <p className="text-[10px] text-[#164151] dark:text-white font-semibold mt-1.5 leading-tight">
                                     ¡Feliz Cumpleaños!
                                   </p>
                                 </div>
@@ -2901,8 +2949,8 @@ function AdminDashboardContent() {
                         })}
                       </div>
                     ) : (
-                      <div className="text-center py-12">
-                        <Cake className="w-16 h-16 text-gray-300 dark:text-white/20 mx-auto mb-4" />
+                      <div className="text-center py-8">
+                        <Cake className="w-12 h-12 text-gray-300 dark:text-white/20 mx-auto mb-3" />
                         <p className="text-sm text-gray-500 dark:text-white/50">
                           No hay clientes que cumplan años hoy
                         </p>

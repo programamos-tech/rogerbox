@@ -227,21 +227,21 @@ export default function AdminLayout({
       <main
         className={`flex-1 flex flex-col min-h-screen ${sidebarCollapsed ? 'md:ml-16' : 'md:ml-56'}`}
       >
-        <header className="h-16 bg-white border-b border-gray-200/80 flex items-center gap-3 px-3 md:px-5 lg:px-6 sticky top-0 z-30">
+        <header className="h-16 bg-white dark:bg-[#0b1422] border-b border-gray-200/80 dark:border-white/10 flex items-center gap-3 px-3 md:px-5 lg:px-6 sticky top-0 z-30">
           <button
             onClick={() => setMobileMenuOpen(true)}
-            className="md:hidden w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 text-[#164151]/80"
+            className="md:hidden w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-white/10 text-[#164151]/80 dark:text-white/80"
           >
             <Menu className="w-4 h-4" />
           </button>
 
           <div className="flex-1 max-w-3xl">
-            <div className="h-10 rounded-full border border-gray-200 bg-[#f8fafc] flex items-center gap-2 px-4">
-              <Search className="w-4 h-4 text-gray-400" />
+            <div className="h-10 rounded-full border border-gray-200 dark:border-white/10 bg-[#f8fafc] dark:bg-[#111b2b] flex items-center gap-2 px-4">
+              <Search className="w-4 h-4 text-gray-400 dark:text-white/50" />
               <input
                 type="text"
                 placeholder="Buscar cliente por nombre, cédula o correo..."
-                className="w-full bg-transparent border-0 outline-none text-sm text-[#164151] placeholder:text-gray-400"
+                className="w-full bg-transparent border-0 outline-none text-sm text-[#164151] dark:text-white placeholder:text-gray-400 dark:placeholder:text-white/45"
               />
             </div>
           </div>
@@ -256,23 +256,23 @@ export default function AdminLayout({
             </button>
             <button
               onClick={() => router.push('/dashboard')}
-              className="h-8 px-3 rounded-full border border-gray-200 bg-white text-[#164151] text-[11px] font-semibold hover:bg-gray-100 transition-colors"
+              className="h-8 px-3 rounded-full border border-gray-200 dark:border-white/12 bg-white dark:bg-[#111b2b] text-[#164151] dark:text-white text-[11px] font-semibold hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
               title="Ir a plataforma"
             >
               Ir a plataforma
             </button>
             {headerRight && <div className="hidden sm:flex">{headerRight}</div>}
-            <button className="hidden sm:inline-flex w-8 h-8 rounded-full text-[#164151]/70 hover:bg-gray-100 items-center justify-center transition-colors">
+            <button className="hidden sm:inline-flex w-8 h-8 rounded-full text-[#164151]/70 dark:text-white/70 hover:bg-gray-100 dark:hover:bg-white/10 items-center justify-center transition-colors">
               <Zap className="w-4 h-4" />
             </button>
-            <button className="hidden sm:inline-flex w-8 h-8 rounded-full text-[#164151]/70 hover:bg-gray-100 items-center justify-center transition-colors">
+            <button className="hidden sm:inline-flex w-8 h-8 rounded-full text-[#164151]/70 dark:text-white/70 hover:bg-gray-100 dark:hover:bg-white/10 items-center justify-center transition-colors">
               <Settings className="w-4 h-4" />
             </button>
-            <button className="relative inline-flex w-8 h-8 rounded-full text-[#164151]/70 hover:bg-gray-100 items-center justify-center transition-colors">
+            <button className="relative inline-flex w-8 h-8 rounded-full text-[#164151]/70 dark:text-white/70 hover:bg-gray-100 dark:hover:bg-white/10 items-center justify-center transition-colors">
               <Bell className="w-4 h-4" />
               <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
             </button>
-            <div className="flex items-center gap-2 pl-2 md:pl-3 border-l border-gray-200 ml-1">
+            <div className="flex items-center gap-2 pl-2 md:pl-3 border-l border-gray-200 dark:border-white/10 ml-1">
               {(() => {
                 const avatarUrl =
                   authUser?.user_metadata?.avatar_url ||
@@ -297,10 +297,10 @@ export default function AdminLayout({
                 );
               })()}
               <div className="leading-tight">
-                <p className="text-[12px] font-semibold text-[#164151] truncate max-w-[8rem]">
+                <p className="text-[12px] font-semibold text-[#164151] dark:text-white truncate max-w-[8rem]">
                   {authUser?.user_metadata?.name || profile?.name || title}
                 </p>
-                <p className="text-[10px] text-gray-500">
+                <p className="text-[10px] text-gray-500 dark:text-white/50">
                   {description || 'Admin'}
                 </p>
               </div>
