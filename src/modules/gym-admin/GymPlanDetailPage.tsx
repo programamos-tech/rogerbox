@@ -24,27 +24,32 @@ import { gymPlanDetailStyles as s } from '@/modules/gym-admin/styles';
 import type { GymPlanOverviewMembership } from '@/modules/gym-admin/types';
 import { GymSeededAvatar } from '@/shared/components/GymSeededAvatar';
 
-function PlanMembershipCard({
-  membership,
+function PlanClientGroupCard({
+  memberships,
   today,
 }: {
-  membership: GymPlanOverviewMembership;
+  memberships: GymPlanOverviewMembership[];
   today: Date;
 }) {
-  const c = membership.client_info;
+  const latestMembership = memberships[0];
+  const c = latestMembership.client_info;
   const href =
     c?.user_id != null && c.user_id !== ''
       ? `/admin/users/${c.user_id}`
       : null;
-  const seed = membership.client_info_id || '—';
+  const seed = latestMembership.client_info_id || '—';
   const period = getMembershipPeriodProgress(
-    membership.start_date,
-    membership.end_date,
+    latestMembership.start_date,
+    latestMembership.end_date,
     today,
   );
-  const endDate = parseLocalDate(membership.end_date);
+  const endDate = parseLocalDate(latestMembership.end_date);
   const isExpiredPeriod = today > endDate;
   const isScheduled = period.notStarted;
+  const expiredCount = memberships.filter((m) => {
+    const e = parseLocalDate(m.end_date);
+    return today > e;
+  }).length;
 
   let barClass =
     'h-full rounded-full transition-[width] duration-300 bg-[#85ea10]';
@@ -143,7 +148,7 @@ function PlanMembershipCard({
                 Inicio{' '}
                 <span className="font-medium text-[#164151] dark:text-white/80">
                   {formatMembershipDayLabel(
-                    parseLocalDate(membership.start_date),
+                    parseLocalDate(latestMembership.start_date),
                   )}
                 </span>
               </span>
@@ -151,7 +156,7 @@ function PlanMembershipCard({
                 Fin{' '}
                 <span className="font-medium text-[#164151] dark:text-white/80">
                   {formatMembershipDayLabel(
-                    parseLocalDate(membership.end_date),
+                    parseLocalDate(latestMembership.end_date),
                   )}
                 </span>
               </span>
@@ -160,7 +165,7 @@ function PlanMembershipCard({
               {isExpiredPeriod ? (
                 <>
                   El período finalizó el{' '}
-                  {formatDateOnlyLocal(membership.end_date, {
+                  {formatDateOnlyLocal(latestMembership.end_date, {
                     day: '2-digit',
                     month: 'long',
                     year: 'numeric',
@@ -183,6 +188,11 @@ function PlanMembershipCard({
                 </>
               )}
             </p>
+            {expiredCount > 1 ? (
+              <p className="mt-1 text-[10px] font-medium text-amber-700 dark:text-amber-400">
+                Historial: {expiredCount} períodos vencidos para este cliente.
+              </p>
+            ) : null}
           </div>
         </div>
       </div>
@@ -259,6 +269,33 @@ export function GymPlanDetailPage() {
     });
   }, [planMemberships, clientSearch, membershipStateFilter, today]);
 
+  const groupedMembershipsByClient = useMemo(() => {
+    const groups = new Map<string, GymPlanOverviewMembership[]>();
+    for (const membership of filteredMemberships) {
+      const clientKey =
+        membership.client_info_id ||
+        membership.client_info?.user_id ||
+        `${membership.client_info?.name || 'sin-nombre'}-${membership.client_info?.document_id || 'sin-doc'}`;
+      const current = groups.get(clientKey) || [];
+      current.push(membership);
+      groups.set(clientKey, current);
+    }
+
+    return Array.from(groups.values())
+      .map((memberships) =>
+        memberships.sort(
+          (a, b) =>
+            parseLocalDate(b.end_date).getTime() -
+            parseLocalDate(a.end_date).getTime(),
+        ),
+      )
+      .sort((a, b) => {
+        const aName = (a[0]?.client_info?.name || '').toLowerCase();
+        const bName = (b[0]?.client_info?.name || '').toLowerCase();
+        return aName.localeCompare(bName, 'es');
+      });
+  }, [filteredMemberships]);
+
   useEffect(() => {
     if (authLoading) return;
     if (!authUser) {
@@ -271,16 +308,6 @@ export function GymPlanDetailPage() {
   }, [authLoading, authUser, isAdmin, router]);
 
   const backHref = '/admin?tab=gym-plans';
-  const headerBack = (
-    <button
-      type="button"
-      onClick={() => router.push(backHref)}
-      className="inline-flex items-center gap-2 rounded-lg bg-[#164151] text-white dark:bg-white dark:text-[#164151] hover:bg-[#1a4d5f] dark:hover:bg-gray-100 px-3 py-2 text-sm font-semibold transition-colors"
-    >
-      <ArrowLeft className="w-4 h-4" />
-      Volver
-    </button>
-  );
 
   if (authLoading || !authUser || !isAdmin) {
     return (
@@ -301,7 +328,6 @@ export function GymPlanDetailPage() {
         title="Plan"
         description="Cargando…"
         activeTab="gym-plans"
-        headerRight={headerBack}
       >
         <div className="flex justify-center py-20">
           <div className="flex items-center gap-3">
@@ -321,7 +347,6 @@ export function GymPlanDetailPage() {
         title="Plan"
         description="No se pudo cargar"
         activeTab="gym-plans"
-        headerRight={headerBack}
       >
         <div className="text-center max-w-md mx-auto py-12">
           <p className="text-[#164151] dark:text-white mb-4">
@@ -348,7 +373,6 @@ export function GymPlanDetailPage() {
       title={plan.name}
       description="Detalle del plan"
       activeTab="gym-plans"
-      headerRight={headerBack}
     >
       <div className="w-full max-w-none">
         <div className="pb-8 border-b border-gray-200/60 dark:border-white/[0.06] flex flex-col xl:flex-row xl:items-end xl:justify-between gap-5 xl:gap-8">
@@ -415,6 +439,14 @@ export function GymPlanDetailPage() {
                   <option value="expired">Vencido</option>
                 </select>
               </div>
+              <button
+                type="button"
+                onClick={() => router.push(backHref)}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#164151] text-white hover:bg-[#1a4d5f] px-3 py-2.5 text-sm font-semibold transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Volver
+              </button>
             </div>
           </div>
         </div>
@@ -426,7 +458,7 @@ export function GymPlanDetailPage() {
           <p className="mb-6 text-[10px] leading-snug text-gray-500 dark:text-white/35">
             Progreso del período de cada membresía (vigentes y vencidos).
           </p>
-          {filteredMemberships.length === 0 ? (
+          {groupedMembershipsByClient.length === 0 ? (
             <p className="py-12 text-center text-sm text-gray-500 dark:text-white/45 border-t border-b border-gray-200/80 dark:border-white/[0.08]">
               {planMemberships.length === 0
                 ? 'No hay clientes registrados con este plan.'
@@ -434,10 +466,10 @@ export function GymPlanDetailPage() {
             </p>
           ) : (
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {filteredMemberships.map((m) => (
-                <PlanMembershipCard
-                  key={m.id}
-                  membership={m}
+              {groupedMembershipsByClient.map((clientMemberships) => (
+                <PlanClientGroupCard
+                  key={clientMemberships[0].id}
+                  memberships={clientMemberships}
                   today={today}
                 />
               ))}

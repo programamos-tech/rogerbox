@@ -1467,6 +1467,18 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                     <option value="voided">Anulados</option>
                   </select>
                 </div>
+
+                <button
+                  onClick={() => {
+                    resetForm();
+                    setShowForm(true);
+                  }}
+                  className="sm:w-auto px-4 py-2.5 sm:py-3 rounded-xl bg-[#164151] text-white hover:bg-[#1a4d5f] font-semibold text-[11px] sm:text-sm inline-flex items-center justify-center gap-2 transition-colors"
+                  title="Registrar pago"
+                >
+                  <Save className="w-4 h-4" />
+                  Nuevo pago
+                </button>
               </div>
             </div>
           )}

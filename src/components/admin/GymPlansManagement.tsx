@@ -6,8 +6,10 @@ import {
   Dumbbell,
   Edit,
   Eye,
+  Filter,
   Plus,
   Save,
+  Search,
   Trash2,
   Users,
   X,
@@ -86,6 +88,10 @@ const GymPlansManagement = forwardRef<GymPlansManagementRef>((props, ref) => {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [showEditWarning, setShowEditWarning] = useState(false);
   const [pendingEditData, setPendingEditData] = useState<any>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>(
+    'active',
+  );
 
   // Función para formatear precio con separador de miles
   const formatPrice = (value: string) => {
@@ -316,6 +322,23 @@ const GymPlansManagement = forwardRef<GymPlansManagementRef>((props, ref) => {
     );
   }
 
+  const filteredPlans = plans.filter((plan) => {
+    const q = searchTerm.trim().toLowerCase();
+    const matchesSearch =
+      !q ||
+      plan.name.toLowerCase().includes(q) ||
+      (plan.description || '').toLowerCase().includes(q);
+
+    const matchesStatus =
+      statusFilter === 'all'
+        ? true
+        : statusFilter === 'active'
+          ? plan.is_active
+          : !plan.is_active;
+
+    return matchesSearch && matchesStatus;
+  });
+
   return (
     <div className="space-y-6 pb-20">
       {/* Form Modal */}
@@ -459,6 +482,52 @@ const GymPlansManagement = forwardRef<GymPlansManagementRef>((props, ref) => {
         </div>
       )}
 
+      {/* Search and filters */}
+      {plans.length > 0 && (
+        <div className="bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl border border-gray-200 dark:border-white/10 p-4">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex-1 relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Buscar plan por nombre o descripción..."
+                className="w-full pl-10 pr-3 py-2.5 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-[#164151] dark:text-white placeholder-gray-400 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50"
+              />
+            </div>
+            <div className="sm:w-56 relative">
+              <Filter className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+              <select
+                value={statusFilter}
+                onChange={(e) =>
+                  setStatusFilter(
+                    e.target.value as 'all' | 'active' | 'inactive',
+                  )
+                }
+                className="w-full pl-10 pr-4 py-2.5 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 appearance-none cursor-pointer"
+              >
+                <option value="all">Todos los planes</option>
+                <option value="active">Activos</option>
+                <option value="inactive">Inactivos</option>
+              </select>
+            </div>
+            <button
+              onClick={() => {
+                setEditingPlan(null);
+                resetForm();
+                setDisplayPrice('');
+                setShowForm(true);
+              }}
+              className="sm:w-auto h-[42px] px-4 rounded-xl bg-[#164151] text-white hover:bg-[#1a4d5f] font-semibold text-sm inline-flex items-center justify-center gap-2 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Nuevo plan
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Plans List */}
       {plans.length === 0 ? (
         <div className="bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl border border-gray-200 dark:border-white/10 p-12 text-center">
@@ -470,16 +539,23 @@ const GymPlansManagement = forwardRef<GymPlansManagementRef>((props, ref) => {
             Crea tu primer plan para comenzar
           </p>
         </div>
+      ) : filteredPlans.length === 0 ? (
+        <div className="bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl border border-gray-200 dark:border-white/10 p-12 text-center">
+          <p className="text-[#164151] dark:text-white font-medium mb-2">
+            No hay planes para los filtros seleccionados
+          </p>
+          <p className="text-sm text-[#164151]/60 dark:text-white/60">
+            Ajusta la búsqueda o cambia el filtro de estado.
+          </p>
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {plans
-            .filter((plan) => plan.is_active)
-            .map((plan) => {
+          {filteredPlans.map((plan) => {
               const activeTotal = plan.active_users_count || 0;
               return (
               <div
                 key={plan.id}
-                className={`group relative overflow-hidden rounded-2xl border border-gray-200/90 dark:border-white/[0.07] bg-white dark:bg-[#0c1628] pl-5 pr-4 py-5 shadow-sm dark:shadow-none border-l-[3px] border-l-[#85ea10] ${
+                className={`group relative overflow-hidden rounded-2xl border border-gray-200/90 dark:border-white/[0.07] bg-white dark:bg-[#0c1628] pl-5 pr-4 py-5 shadow-sm dark:shadow-none ${
                   !plan.is_active ? 'opacity-60' : ''
                 }`}
               >

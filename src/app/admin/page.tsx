@@ -9,7 +9,6 @@ import {
   BellOff,
   BookOpen,
   Cake,
-  Calendar,
   Check,
   CheckCircle,
   ChevronDown,
@@ -64,12 +63,14 @@ import GymClientForm from '@/components/admin/GymClientForm';
 import GymPaymentsManagement, {
   type GymPaymentsManagementRef,
 } from '@/components/admin/GymPaymentsManagement';
+import GymExpensesManagement from '@/components/admin/GymExpensesManagement';
 import GymPlansManagement, {
   type GymPlansManagementRef,
 } from '@/components/admin/GymPlansManagement';
 // Admin dashboard component
 import QuickLoading from '@/components/QuickLoading';
 import UnderConstruction from '@/components/UnderConstruction';
+import { DatePickerField } from '@/shared/components/DatePickerField';
 import { GymSeededAvatar } from '@/shared/components/GymSeededAvatar';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { formatDateOnlyLocal, parseLocalDate } from '@/lib/dateUtils';
@@ -254,6 +255,12 @@ const menuSections = [
         icon: CreditCard,
         description: 'Facturar planes a clientes físicos',
       },
+      {
+        id: 'gym-expenses',
+        label: 'Egresos',
+        icon: Wallet,
+        description: 'Registrar egresos de sede física',
+      },
     ],
   },
   {
@@ -296,10 +303,10 @@ const menuSections = [
     title: 'Sistema',
     items: [
       {
-        id: 'settings',
-        label: 'Configuración',
-        icon: Settings,
-        description: 'Ajustes de la plataforma',
+        id: 'activities',
+        label: 'Actividades',
+        icon: ClipboardList,
+        description: 'Bitácora de acciones en la plataforma',
       },
     ],
   },
@@ -412,6 +419,18 @@ function AdminDashboardContent() {
   const [editingClient, setEditingClient] = useState<any | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [headerSearchTerm, setHeaderSearchTerm] = useState('');
+  const [headerSearchResults, setHeaderSearchResults] = useState<any[]>([]);
+  const [headerSearchLoading, setHeaderSearchLoading] = useState(false);
+  const [showHeaderSearchResults, setShowHeaderSearchResults] = useState(false);
+  const [activities, setActivities] = useState<any[]>([]);
+  const [activitiesLoading, setActivitiesLoading] = useState(false);
+  const [activitySearchTerm, setActivitySearchTerm] = useState('');
+  const [activityModuleFilter, setActivityModuleFilter] = useState('all');
+  const [activityActionFilter, setActivityActionFilter] = useState('all');
+  const [activityCurrentPage, setActivityCurrentPage] = useState(1);
+  const [activityTotalPages, setActivityTotalPages] = useState(1);
+  const activitiesPerPage = 30;
   const [renewalFollowupMenuClientId, setRenewalFollowupMenuClientId] =
     useState<string | null>(null);
   const renewalMenuCloseCleanupRef = useRef<(() => void) | null>(null);
@@ -493,6 +512,7 @@ function AdminDashboardContent() {
   const [loadingDailyPayments, setLoadingDailyPayments] = useState(false);
   const [birthdayClients, setBirthdayClients] = useState<any[]>([]);
   const [loadingBirthdays, setLoadingBirthdays] = useState(false);
+  const [physicalExpensesTotal, setPhysicalExpensesTotal] = useState(0);
 
   // Parsear YYYY-MM-DD en hora local para que no cambie el día (evita UTC → 10 en vez de 11)
   const parseLocalDate = (dateStr: string): Date => {
@@ -561,6 +581,8 @@ function AdminDashboardContent() {
       loadUsers('', 'all', 1);
     } else if (activeTab === 'sales') {
       loadSales();
+    } else if (activeTab === 'activities') {
+      loadActivities(1, '', 'all', 'all');
     } else if (activeTab === 'overview') {
       // Cargar ingresos del día actual por defecto
       const today = new Date();
@@ -574,6 +596,71 @@ function AdminDashboardContent() {
       loadBirthdayClients(todayStr, todayStr);
     }
   }, [activeTab]);
+
+  useEffect(() => {
+    if (activeTab !== 'activities') return;
+    const timer = window.setTimeout(() => {
+      loadActivities(
+        activityCurrentPage,
+        activitySearchTerm,
+        activityModuleFilter,
+        activityActionFilter,
+      );
+    }, activitySearchTerm ? 280 : 0);
+    return () => window.clearTimeout(timer);
+  }, [
+    activeTab,
+    activityCurrentPage,
+    activitySearchTerm,
+    activityModuleFilter,
+    activityActionFilter,
+  ]);
+
+  useEffect(() => {
+    const q = headerSearchTerm.trim();
+    if (q.length < 2) {
+      setHeaderSearchResults([]);
+      setHeaderSearchLoading(false);
+      return;
+    }
+
+    const timer = window.setTimeout(async () => {
+      try {
+        setHeaderSearchLoading(true);
+        const params = new URLSearchParams({
+          page: '1',
+          limit: '8',
+          search: q,
+          status: 'all',
+          userType: 'all',
+        });
+        const response = await fetch(`/api/admin/users?${params}`);
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Error de búsqueda');
+        setHeaderSearchResults(data.users || []);
+      } catch {
+        setHeaderSearchResults([]);
+      } finally {
+        setHeaderSearchLoading(false);
+      }
+    }, 250);
+
+    return () => window.clearTimeout(timer);
+  }, [headerSearchTerm]);
+
+  // Si llegan con ?tab=gym-payments&newInvoice=1, abrir modal de nueva factura.
+  useEffect(() => {
+    const shouldOpenNewInvoice =
+      activeTab === 'gym-payments' && searchParams.get('newInvoice') === '1';
+    if (!shouldOpenNewInvoice) return;
+
+    const timer = window.setTimeout(() => {
+      gymPaymentsRef.current?.openCreateModal();
+      router.replace('/admin?tab=gym-payments', { scroll: false });
+    }, 120);
+
+    return () => window.clearTimeout(timer);
+  }, [activeTab, searchParams, router]);
 
   // Recargar usuarios cuando cambien filtros o página
   useEffect(() => {
@@ -633,6 +720,7 @@ function AdminDashboardContent() {
 
       if (startDate && endDate) {
         loadRevenueStats(startDate, endDate, sedeFilter);
+        loadPhysicalExpensesTotal(startDate, endDate);
         // Cargar datos de la gráfica: usar fechas personalizadas si están disponibles, si no usar últimos 7 días
         if (dateFilter === 'custom' && customStartDate && customEndDate) {
           loadWeeklyData(customStartDate, customEndDate);
@@ -735,6 +823,28 @@ function AdminDashboardContent() {
     }
   };
 
+  const loadPhysicalExpensesTotal = async (
+    startDate: string,
+    endDate: string,
+  ) => {
+    try {
+      const params = new URLSearchParams({ from: startDate, to: endDate });
+      const response = await fetch(`/api/admin/gym/expenses?${params}`);
+      if (!response.ok) {
+        setPhysicalExpensesTotal(0);
+        return;
+      }
+      const rows = (await response.json()) as Array<{ amount?: number }>;
+      const total = (rows || []).reduce(
+        (sum, row) => sum + Number(row.amount || 0),
+        0,
+      );
+      setPhysicalExpensesTotal(total);
+    } catch {
+      setPhysicalExpensesTotal(0);
+    }
+  };
+
   const loadWeeklyData = async (
     customStartDate?: string,
     customEndDate?: string,
@@ -787,6 +897,7 @@ function AdminDashboardContent() {
         dayName: string;
       }[] = [];
       const byDay = data.byDay || [];
+      const amountByDay = new Map<string, number>();
 
       for (const day of byDay) {
         let totalAmount = 0;
@@ -801,19 +912,45 @@ function AdminDashboardContent() {
           else if (sedeFilter === 'online' && onlineData)
             totalAmount = onlineData.total;
         }
-        const dateObj = new Date(day.date + 'T12:00:00');
-        const dayName = dateObj.toLocaleDateString('es-ES', {
+        amountByDay.set(day.date, totalAmount);
+      }
+
+      // Completar todos los días del rango aunque no haya ventas (monto 0)
+      const cursor = new Date(
+        startDate.getFullYear(),
+        startDate.getMonth(),
+        startDate.getDate(),
+        12,
+        0,
+        0,
+        0,
+      );
+      const last = new Date(
+        endDate.getFullYear(),
+        endDate.getMonth(),
+        endDate.getDate(),
+        12,
+        0,
+        0,
+        0,
+      );
+
+      while (cursor <= last) {
+        const dateKey = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}-${String(cursor.getDate()).padStart(2, '0')}`;
+        const dayName = cursor.toLocaleDateString('es-ES', {
           weekday: 'short',
         });
         weeklyDataArray.push({
-          date: day.date,
-          amount: totalAmount,
+          date: dateKey,
+          amount: amountByDay.get(dateKey) ?? 0,
           dayName: dayName.charAt(0).toUpperCase() + dayName.slice(1),
         });
+        cursor.setDate(cursor.getDate() + 1);
       }
 
       setWeeklyData(weeklyDataArray);
     } catch (error) {
+      setWeeklyData([]);
     } finally {
       setLoadingWeeklyData(false);
     }
@@ -1355,6 +1492,36 @@ function AdminDashboardContent() {
     }
   };
 
+  const loadActivities = async (
+    page = 1,
+    search = '',
+    moduleFilter = 'all',
+    actionFilter = 'all',
+  ) => {
+    try {
+      setActivitiesLoading(true);
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: String(activitiesPerPage),
+        search,
+        module: moduleFilter,
+        action: actionFilter,
+      });
+      const response = await fetch(`/api/admin/activities?${params}`);
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al cargar actividades');
+      }
+      setActivities(data.activities || []);
+      setActivityTotalPages(data.pagination?.totalPages || 1);
+    } catch {
+      setActivities([]);
+      setActivityTotalPages(1);
+    } finally {
+      setActivitiesLoading(false);
+    }
+  };
+
   // Filtrar por búsqueda, estado y paginar (solo ventas en línea ya vienen de loadSales)
   const filteredSales = useMemo(() => {
     let list = [...sales];
@@ -1526,10 +1693,10 @@ function AdminDashboardContent() {
       {/* Sidebar */}
       <aside
         className={`
-        fixed md:static inset-y-0 left-0 z-50
+        fixed inset-y-0 left-0 z-50 h-screen overflow-hidden
         ${sidebarCollapsed ? 'w-16' : 'w-56'}
         ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
-        bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-white/10
+        bg-gradient-to-b from-[#020812] via-[#030d1a] to-[#020916] border-r border-[#0d253e]/65
         flex flex-col
         transition-all duration-300 ease-in-out
       `}
@@ -1537,32 +1704,32 @@ function AdminDashboardContent() {
         {/* Logo Header */}
         <div
           className={`
-          h-16 flex items-center border-b border-gray-200 dark:border-white/10 px-4
+          h-16 flex items-center border-b border-[#0d253e]/65 px-4
           ${sidebarCollapsed ? 'justify-center' : 'justify-between'}
         `}
         >
           {!sidebarCollapsed && (
             <div className="flex items-center gap-3">
               <div>
-                <h1 className="text-[#164151] dark:text-white font-black text-xl tracking-tight">
+                <h1 className="text-white font-black text-xl tracking-tight">
                   ROGER<span className="text-[#85ea10]">BOX</span>
                 </h1>
-                <span className="text-[10px] text-gray-500 dark:text-white/40 uppercase tracking-widest font-semibold">
-                  Admin Panel
+                <span className="text-[10px] text-white/55 uppercase tracking-widest font-semibold">
+                  BackOffice
                 </span>
               </div>
             </div>
           )}
           {sidebarCollapsed && (
-            <div className="w-10 h-10 bg-gray-200 dark:bg-white/10 rounded-lg flex items-center justify-center">
-              <span className="text-[#164151] dark:text-white font-bold text-sm">
+            <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold text-sm">
                 R
               </span>
             </div>
           )}
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="hidden md:flex w-8 h-8 items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-gray-500 dark:text-white/60 hover:text-[#164151] dark:hover:text-white transition-colors"
+            className="hidden md:flex w-8 h-8 items-center justify-center rounded-lg hover:bg-white/10 text-white/60 hover:text-white transition-colors"
           >
             <ChevronLeft
               className={`w-4 h-4 transition-transform ${sidebarCollapsed ? 'rotate-180' : ''}`}
@@ -1571,11 +1738,11 @@ function AdminDashboardContent() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto py-4 px-3">
+        <nav className="flex-1 py-4 px-3">
           {menuSections.map((section, sectionIndex) => (
             <div key={section.title} className={sectionIndex > 0 ? 'mt-6' : ''}>
               {!sidebarCollapsed && (
-                <h3 className="px-3 mb-3 text-xs font-black text-[#164151]/60 dark:text-white/50 uppercase tracking-widest">
+                <h3 className="px-3 mb-3 text-xs font-black text-white/45 uppercase tracking-widest">
                   {section.title}
                 </h3>
               )}
@@ -1598,8 +1765,8 @@ function AdminDashboardContent() {
                         transition-all duration-200 group
                         ${
                           isActive
-                            ? 'bg-[#85ea10]/20 dark:bg-[#85ea10]/20 text-[#164151] dark:text-white'
-                            : 'text-[#164151]/80 dark:text-white/60 hover:text-[#164151] dark:hover:text-white hover:bg-gray-50 dark:hover:bg-white/5'
+                            ? 'bg-[#85ea10]/10 text-white'
+                            : 'text-white/70 hover:text-white hover:bg-white/10'
                         }
                         ${sidebarCollapsed ? 'justify-center' : ''}
                       `}
@@ -1621,171 +1788,257 @@ function AdminDashboardContent() {
           ))}
         </nav>
 
-        {/* User Section */}
-        <div
-          className={`
-          border-t border-gray-200 dark:border-white/10 p-4
-          ${sidebarCollapsed ? 'flex justify-center' : ''}
-        `}
-        >
-          {!sidebarCollapsed ? (
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-gray-200 dark:bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
-                <User className="w-3.5 h-3.5 text-[#164151]/70 dark:text-white/70" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold text-[#164151] dark:text-white truncate">
-                  {user?.user_metadata?.name || profile?.name || 'Admin'}
-                </p>
-                <p className="text-[10px] font-medium text-gray-500 dark:text-white/50 truncate">
-                  Admin
-                </p>
-              </div>
-              <button
-                onClick={() => router.push('/dashboard')}
-                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-[#164151]/80 dark:text-white/60 hover:text-[#164151] dark:hover:text-white transition-colors flex-shrink-0"
-                title="Ir al Dashboard"
-              >
-                <Home className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => router.push('/dashboard')}
-              className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-[#164151]/80 dark:text-white/60 hover:text-[#164151] dark:hover:text-white transition-colors"
-              title="Ir al Dashboard"
-            >
-              <Home className="w-4 h-4" />
-            </button>
-          )}
-        </div>
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col min-h-screen overflow-hidden">
+      <main
+        className={`flex-1 flex flex-col min-h-screen ${sidebarCollapsed ? 'md:ml-16' : 'md:ml-56'}`}
+      >
         {/* Top Header */}
-        <header className="h-16 bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-gray-200 dark:border-white/20 flex items-center justify-between px-4 md:px-6 lg:px-8 sticky top-0 z-30">
-          <div className="flex items-center gap-4">
-            {/* Mobile menu button */}
-            <button
-              onClick={() => setMobileMenuOpen(true)}
-              className="md:hidden w-10 h-10 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-[#164151]/80 dark:text-white/60"
-            >
-              <Menu className="w-4 h-4" />
-            </button>
+        <header className="h-16 bg-white border-b border-gray-200/80 flex items-center gap-3 px-3 md:px-5 lg:px-6 sticky top-0 z-30">
+          <button
+            onClick={() => setMobileMenuOpen(true)}
+            className="md:hidden w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 text-[#164151]/80"
+          >
+            <Menu className="w-4 h-4" />
+          </button>
 
-            <div>
-              <h1 className="text-xl font-black text-[#164151] dark:text-white uppercase tracking-tight">
-                {activeItem.label}
-              </h1>
-              <p
-                className={`text-xs text-[#164151]/80 dark:text-white/60 font-medium ${
-                  activeTab === 'sales' ? '' : 'hidden sm:block'
-                }`}
-              >
-                {activeItem.description}
-              </p>
+          <div className="flex-1 max-w-3xl relative">
+            <div className="h-10 rounded-full border border-gray-200 bg-[#f8fafc] flex items-center gap-2 px-4">
+              <Search className="w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Buscar cliente por nombre, cédula o correo..."
+                value={headerSearchTerm}
+                onChange={(e) => {
+                  setHeaderSearchTerm(e.target.value);
+                  setShowHeaderSearchResults(true);
+                }}
+                onFocus={() => setShowHeaderSearchResults(true)}
+                className="w-full bg-transparent border-0 outline-none text-sm text-[#164151] placeholder:text-gray-400"
+              />
+              {headerSearchTerm && (
+                <button
+                  onClick={() => {
+                    setHeaderSearchTerm('');
+                    setHeaderSearchResults([]);
+                    setShowHeaderSearchResults(false);
+                  }}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  title="Limpiar búsqueda"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
+
+            {showHeaderSearchResults && headerSearchTerm.trim().length >= 2 && (
+              <div className="absolute top-12 left-0 right-0 z-40 rounded-2xl border border-white/35 bg-white/70 backdrop-blur-xl shadow-2xl max-h-[26rem] overflow-y-auto">
+                {headerSearchLoading ? (
+                  <div className="px-4 py-6 text-sm text-[#164151]/70">
+                    Buscando clientes...
+                  </div>
+                ) : headerSearchResults.length === 0 ? (
+                  <div className="px-4 py-6 text-sm text-[#164151]/70">
+                    No encontramos clientes con ese criterio.
+                  </div>
+                ) : (
+                  <div className="p-2">
+                    {headerSearchResults.map((client) => {
+                      const memberships = Array.isArray(client.gym_memberships)
+                        ? client.gym_memberships
+                        : [];
+                      const activeCourses = Array.isArray(
+                        client.activeCoursePurchases,
+                      )
+                        ? client.activeCoursePurchases
+                        : [];
+                      const planNames: string[] = [
+                        ...new Set(
+                          memberships
+                            .map((m: any) =>
+                              Array.isArray(m.plan)
+                                ? m.plan[0]?.name
+                                : m.plan?.name,
+                            )
+                            .filter(Boolean) as string[],
+                        ),
+                      ];
+                      const courseNames: string[] = [
+                        ...new Set(
+                          activeCourses
+                            .map(
+                              (c: any) =>
+                                c.course?.title || c.course_title || c.title,
+                            )
+                            .filter(Boolean) as string[],
+                        ),
+                      ];
+
+                      const statusLabel = client.is_inactive
+                        ? 'Inactivo'
+                        : client.hasExpiredOnly
+                          ? 'Renovación'
+                          : client.hasActiveGymMembership ||
+                              activeCourses.length > 0
+                            ? 'Al día'
+                            : 'Sin productos';
+
+                      const statusClass = client.is_inactive
+                        ? 'bg-red-100 text-red-700'
+                        : client.hasExpiredOnly
+                          ? 'bg-orange-100 text-orange-700'
+                          : client.hasActiveGymMembership ||
+                              activeCourses.length > 0
+                            ? 'bg-emerald-100 text-emerald-700'
+                            : 'bg-gray-100 text-gray-700';
+
+                      const productTypeLabel =
+                        client.userType === 'both'
+                          ? 'Físico + Online'
+                          : client.userType === 'physical'
+                            ? 'Sede física'
+                            : client.userType === 'online'
+                              ? 'Online'
+                              : 'Sin tipo';
+
+                      return (
+                        <button
+                          key={client.id}
+                          onClick={() => {
+                            setShowHeaderSearchResults(false);
+                            router.push(`/admin/users/${client.id}`);
+                          }}
+                          className="w-full text-left rounded-xl px-3 py-2.5 hover:bg-white/70 transition-colors border border-transparent hover:border-gray-200/70"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="text-sm font-semibold text-[#164151] truncate">
+                              {client.name || 'Cliente'}
+                            </p>
+                            <span
+                              className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold ${statusClass}`}
+                            >
+                              {statusLabel}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-[#164151]/70 truncate">
+                            {client.document_id || 'Sin cédula'}{' '}
+                            {client.email ? `· ${client.email}` : ''}
+                          </p>
+                          <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-700">
+                              {productTypeLabel}
+                            </span>
+                            {planNames.map((plan: string) => (
+                              <span
+                                key={`plan-${client.id}-${plan}`}
+                                className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-[#85ea10]/20 text-[#164151]"
+                              >
+                                {plan}
+                              </span>
+                            ))}
+                            {courseNames.map((course: string) => (
+                              <span
+                                key={`course-${client.id}-${course}`}
+                                className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-cyan-100 text-cyan-700"
+                              >
+                                {course}
+                              </span>
+                            ))}
+                            {planNames.length === 0 && courseNames.length === 0 && (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-100 text-gray-600">
+                                Sin productos registrados
+                              </span>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
-          <div className="flex items-center gap-3">
-            {/* Quick Actions */}
-            {activeTab === 'courses' && (
-              <button
-                onClick={() => router.push('/admin/courses/new')}
-                className="bg-[#164151] text-white hover:bg-[#1a4d5f] dark:bg-[#164151] dark:hover:bg-[#1a4d5f] font-semibold px-5 py-2.5 rounded-lg transition-all duration-200 flex items-center gap-2 text-sm shadow-lg hover:shadow-xl"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Crear Curso</span>
-              </button>
-            )}
+          <div className="flex items-center gap-2 md:gap-2.5 ml-auto">
+            <button
+              onClick={() => {
+                if (activeTab === 'gym-payments') {
+                  gymPaymentsRef.current?.openCreateModal();
+                  return;
+                }
+                router.push('/admin?tab=gym-payments&newInvoice=1', {
+                  scroll: false,
+                });
+              }}
+              className="w-8 h-8 rounded-full bg-[#1b1f24] text-white inline-flex items-center justify-center hover:bg-[#0f1115] transition-colors"
+              title="Crear factura"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+
+            <button
+              onClick={() => router.push('/dashboard')}
+              className="h-8 px-3 rounded-full border border-gray-200 bg-white text-[#164151] text-[11px] font-semibold hover:bg-gray-100 transition-colors"
+              title="Ir a plataforma"
+            >
+              Ir a plataforma
+            </button>
 
             {activeTab === 'users' && (
               <>
                 <button
-                  onClick={() => {
-                    loadUsers();
-                  }}
-                  className="bg-gray-100 dark:bg-white/10 text-[#164151] dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 font-semibold p-2.5 sm:px-5 sm:py-2.5 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 text-sm shadow-lg hover:shadow-xl"
+                  onClick={() => loadUsers()}
+                  className="w-8 h-8 rounded-full border border-gray-200 text-[#164151]/80 inline-flex items-center justify-center hover:bg-gray-100 transition-colors"
                   title="Actualizar lista de clientes"
                 >
-                  <RefreshCw className="w-4 h-4" />
-                  <span className="hidden sm:inline">Actualizar</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setEditingClient(null);
-                    setShowClientForm(true);
-                  }}
-                  className="bg-[#164151] text-white hover:bg-[#1a4d5f] dark:bg-[#164151] dark:hover:bg-[#1a4d5f] font-semibold p-2.5 sm:px-5 sm:py-2.5 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 text-sm shadow-lg hover:shadow-xl"
-                  title="Crear Cliente Físico"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span className="hidden sm:inline">Crear Cliente Físico</span>
+                  <RefreshCw className="w-3.5 h-3.5" />
                 </button>
               </>
-            )}
-
-            {activeTab === 'gym-plans' && (
-              <button
-                onClick={() => {
-                  gymPlansRef.current?.openCreateModal();
-                }}
-                className="bg-[#164151] text-white hover:bg-[#1a4d5f] dark:bg-[#164151] dark:hover:bg-[#1a4d5f] font-semibold px-5 py-2.5 rounded-lg transition-all duration-200 flex items-center gap-2 text-sm shadow-lg hover:shadow-xl"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Crear Plan</span>
-              </button>
             )}
 
             {activeTab === 'gym-payments' && (
               <>
                 <button
-                  onClick={() => {
-                    gymPaymentsRef.current?.refresh();
-                  }}
-                  className="bg-gray-100 dark:bg-white/10 text-[#164151] dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 font-semibold px-5 py-2.5 rounded-lg transition-all duration-200 flex items-center gap-2 text-sm shadow-lg hover:shadow-xl"
-                  title="Actualizar lista de pagos"
+                  onClick={() => gymPaymentsRef.current?.refresh()}
+                  className="w-8 h-8 rounded-full border border-gray-200 text-[#164151]/80 inline-flex items-center justify-center hover:bg-gray-100 transition-colors"
+                  title="Actualizar pagos"
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Actualizar</span>
-                </button>
-                <button
-                  onClick={() => {
-                    gymPaymentsRef.current?.openCreateModal();
-                  }}
-                  className="bg-[#164151] text-white hover:bg-[#1a4d5f] dark:bg-[#164151] dark:hover:bg-[#1a4d5f] font-semibold px-5 py-2.5 rounded-lg transition-all duration-200 flex items-center gap-2 text-sm shadow-lg hover:shadow-xl"
-                >
-                  <CreditCard className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Registrar Pago</span>
                 </button>
               </>
             )}
 
-            {/* Powered by */}
-            <a
-              href="https://andresruss.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1.5 text-xs font-medium text-[#164151]/60 dark:text-white/50 hover:text-[#164151] dark:hover:text-white transition-colors mr-2"
-            >
-              <Zap className="w-3 h-3" style={{ color: '#ff9568' }} />
-              <span className="font-semibold">powered by</span>
-              <span className="font-bold" style={{ color: '#ff9568' }}>
-                programamos.st
-              </span>
-            </a>
-
-            {/* Notifications */}
-            <button className="relative w-10 h-10 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-[#164151]/80 dark:text-white/60 hover:text-[#164151] dark:hover:text-white transition-colors">
-              <Bell className="w-4 h-4" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-gray-400 dark:bg-white/60 rounded-full border-2 border-white dark:border-gray-900"></span>
+            <button className="hidden sm:inline-flex w-8 h-8 rounded-full text-[#164151]/70 hover:bg-gray-100 items-center justify-center transition-colors">
+              <Zap className="w-4 h-4" />
             </button>
+            <button className="hidden sm:inline-flex w-8 h-8 rounded-full text-[#164151]/70 hover:bg-gray-100 items-center justify-center transition-colors">
+              <Settings className="w-4 h-4" />
+            </button>
+            <button className="relative inline-flex w-8 h-8 rounded-full text-[#164151]/70 hover:bg-gray-100 items-center justify-center transition-colors">
+              <Bell className="w-4 h-4" />
+              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
+            </button>
+
+            <div className="flex items-center gap-2 pl-2 md:pl-3 border-l border-gray-200 ml-1">
+              <GymSeededAvatar
+                seed={String(user?.id || profile?.id || 'admin')}
+                size={32}
+                className="w-8 h-8 rounded-full ring-1 ring-gray-200/80"
+                alt="Avatar del usuario"
+              />
+              <div className="leading-tight">
+                <p className="text-[12px] font-semibold text-[#164151] truncate max-w-[8rem]">
+                  {user?.user_metadata?.name || profile?.name || 'Admin'}
+                </p>
+                <p className="text-[10px] text-gray-500">Propietario</p>
+              </div>
+            </div>
           </div>
         </header>
 
         {/* Page Content */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 pb-20">
+        <div className="flex-1 p-4 md:p-6 lg:p-8 pb-20">
           {/* Overview Tab - Nuevo Dashboard de Ingresos */}
           {activeTab === 'overview' && (
             <div className="space-y-6">
@@ -1862,47 +2115,23 @@ function AdminDashboardContent() {
                     {/* Selector de fechas personalizadas: clic en todo el campo abre calendario, icono blanco */}
                     {dateFilter === 'custom' && (
                       <div className="flex items-center gap-2">
-                        <div
-                          className="relative flex items-center rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-gray-800 focus-within:ring-2 focus-within:ring-[#164151]/50 cursor-pointer min-w-[140px]"
-                          onClick={(e) => {
-                            const target = (e.target as HTMLElement)
-                              .closest('div')
-                              ?.querySelector(
-                                'input[type="date"]',
-                              ) as HTMLInputElement | null;
-                            target?.showPicker?.();
-                          }}
-                        >
-                          <input
-                            type="date"
-                            value={customStartDate}
-                            onChange={(e) => setCustomStartDate(e.target.value)}
-                            className="w-full pl-3 pr-9 py-2 rounded-lg bg-transparent text-[#164151] dark:text-white text-sm focus:outline-none cursor-pointer [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer"
-                          />
-                          <Calendar className="absolute right-2.5 w-4 h-4 text-[#164151] dark:text-white pointer-events-none" />
-                        </div>
+                        <DatePickerField
+                          value={customStartDate}
+                          onChange={setCustomStartDate}
+                          aria-label="Fecha de inicio personalizada"
+                          className="min-w-[140px]"
+                          triggerClassName="h-[38px] rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-gray-800 text-[#164151] dark:text-white focus:ring-2 focus:ring-[#164151]/50"
+                        />
                         <span className="text-gray-500 dark:text-white/50">
                           -
                         </span>
-                        <div
-                          className="relative flex items-center rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-gray-800 focus-within:ring-2 focus-within:ring-[#164151]/50 cursor-pointer min-w-[140px]"
-                          onClick={(e) => {
-                            const target = (e.target as HTMLElement)
-                              .closest('div')
-                              ?.querySelector(
-                                'input[type="date"]',
-                              ) as HTMLInputElement | null;
-                            target?.showPicker?.();
-                          }}
-                        >
-                          <input
-                            type="date"
-                            value={customEndDate}
-                            onChange={(e) => setCustomEndDate(e.target.value)}
-                            className="w-full pl-3 pr-9 py-2 rounded-lg bg-transparent text-[#164151] dark:text-white text-sm focus:outline-none cursor-pointer [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer"
-                          />
-                          <Calendar className="absolute right-2.5 w-4 h-4 text-[#164151] dark:text-white pointer-events-none" />
-                        </div>
+                        <DatePickerField
+                          value={customEndDate}
+                          onChange={setCustomEndDate}
+                          aria-label="Fecha de fin personalizada"
+                          className="min-w-[140px]"
+                          triggerClassName="h-[38px] rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-gray-800 text-[#164151] dark:text-white focus:ring-2 focus:ring-[#164151]/50"
+                        />
                       </div>
                     )}
                   </div>
@@ -1923,7 +2152,7 @@ function AdminDashboardContent() {
                 <>
                   {/* Dashboard Sede Física */}
                   {sedeFilter === 'fisica' && revenueStats.fisica && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                       {/* Total */}
                       <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 p-6 shadow-lg">
                         <div className="flex items-center gap-3 mb-4">
@@ -1986,6 +2215,28 @@ function AdminDashboardContent() {
                         <p className="text-xl font-semibold text-[#164151] dark:text-white">
                           {showRevenueNumbers
                             ? `$${revenueStats.fisica.transfer.toLocaleString('es-CO')}`
+                            : '••••••'}
+                        </p>
+                      </div>
+
+                      {/* Egresos */}
+                      <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 p-6 shadow-lg">
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="w-9 h-9 rounded-lg bg-red-100 dark:bg-red-500/20 flex items-center justify-center">
+                            <Wallet className="w-4 h-4 text-red-700 dark:text-red-300" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide">
+                              Egresos
+                            </p>
+                            <p className="text-[10px] text-gray-500 dark:text-white/50">
+                              Salidas de dinero de sede física
+                            </p>
+                          </div>
+                        </div>
+                        <p className="text-xl font-semibold text-[#164151] dark:text-white">
+                          {showRevenueNumbers
+                            ? `$${physicalExpensesTotal.toLocaleString('es-CO')}`
                             : '••••••'}
                         </p>
                       </div>
@@ -2117,108 +2368,141 @@ function AdminDashboardContent() {
                       <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#164151]"></div>
                     </div>
                   ) : weeklyData.length > 0 ? (
-                    <div className="relative mt-8">
-                      {/* Gráfica */}
-                      <div className="relative h-64 flex items-end justify-between gap-1 mb-0">
-                        {weeklyData.map((day, index) => {
-                          const maxAmount = Math.max(
-                            ...weeklyData.map((d) => d.amount),
-                            1,
-                          );
-                          const height =
-                            maxAmount > 0 ? (day.amount / maxAmount) * 100 : 0;
-                          const barHeight = Math.max(height, 8);
+                    (() => {
+                      const maxAmount = Math.max(
+                        ...weeklyData.map((d) => d.amount),
+                        1,
+                      );
+                      const chartPointWidth = 34;
+                      const useScrollableChart = weeklyData.length > 20;
+                      const chartMinWidth = Math.max(
+                        720,
+                        weeklyData.length * chartPointWidth,
+                      );
+                      const showAmountLabels = weeklyData.length <= 20;
+                      const labelStep =
+                        weeklyData.length <= 14
+                          ? 1
+                          : weeklyData.length <= 45
+                            ? 3
+                            : 7;
 
-                          // Formatear fecha en hora local (evita que 11 se muestre como 10 por UTC)
-                          const date = parseLocalDate(day.date);
-                          const dayNumber = date.getDate();
-                          const month = date.toLocaleDateString('es-ES', {
-                            month: 'short',
-                          });
-
-                          return (
-                            <div
-                              key={index}
-                              className="flex-1 flex flex-col items-center gap-1 h-full relative group"
-                            >
-                              {/* Tooltip con fecha e ingresos */}
-                              <div className="absolute -top-20 left-1/2 transform -translate-x-1/2 bg-[#164151] dark:bg-gray-800 text-white text-xs rounded-lg px-3 py-2 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 whitespace-nowrap">
-                                <p className="font-semibold mb-1">
-                                  {day.dayName}, {dayNumber} {month}
-                                </p>
-                                <p className="text-[#85ea10] font-bold">
-                                  {showRevenueNumbers
-                                    ? `$${day.amount.toLocaleString('es-CO')}`
-                                    : '••••••'}
-                                </p>
-                              </div>
-
-                              {/* Valor sobre el punto */}
-                              <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 text-center w-full">
-                                <p className="text-xs font-semibold text-[#164151] dark:text-white">
-                                  {showRevenueNumbers
-                                    ? `$${day.amount.toLocaleString('es-CO')}`
-                                    : '••••'}
-                                </p>
-                              </div>
-
-                              {/* Contenedor de la barra */}
-                              <div className="flex-1 w-full flex items-end justify-center relative">
-                                {/* Línea vertical */}
-                                <div
-                                  className="w-3/4 bg-[#164151]/20 dark:bg-[#85ea10]/20 rounded-t transition-all duration-500 relative cursor-pointer hover:bg-[#164151]/30 dark:hover:bg-[#85ea10]/30"
-                                  style={{ height: `${barHeight}%` }}
-                                >
-                                  {/* Punto en la parte superior */}
-                                  <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 w-3 h-3 bg-[#85ea10] dark:bg-[#164151] rounded-full border-2 border-white dark:border-gray-900 shadow-md"></div>
-                                </div>
-                              </div>
-
-                              {/* Nombre del día y fecha */}
-                              <div className="text-center">
-                                <p className="text-[10px] font-medium text-gray-500 dark:text-white/50">
-                                  {day.dayName}
-                                </p>
-                                <p className="text-[9px] text-gray-400 dark:text-white/40">
-                                  {dayNumber}/{date.getMonth() + 1}
-                                </p>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-
-                      {/* Línea conectando los puntos */}
-                      <svg
-                        className="absolute top-8 left-0 right-0 h-40 pointer-events-none"
-                        style={{ zIndex: 1 }}
-                      >
-                        <polyline
-                          points={weeklyData
-                            .map((day, index) => {
-                              const maxAmount = Math.max(
-                                ...weeklyData.map((d) => d.amount),
-                                1,
-                              );
+                      return (
+                        <div
+                          className={`relative mt-8 pb-2 ${useScrollableChart ? 'overflow-x-auto' : 'overflow-x-hidden'}`}
+                        >
+                          {/* Gráfica */}
+                          <div
+                            className={`relative h-64 flex items-end gap-1 mb-0 ${useScrollableChart ? '' : 'justify-between'}`}
+                            style={
+                              useScrollableChart
+                                ? { minWidth: `${chartMinWidth}px` }
+                                : undefined
+                            }
+                          >
+                            {weeklyData.map((day, index) => {
                               const height =
-                                maxAmount > 0
-                                  ? (day.amount / maxAmount) * 100
-                                  : 0;
+                                maxAmount > 0 ? (day.amount / maxAmount) * 100 : 0;
                               const barHeight = Math.max(height, 8);
-                              const x =
-                                ((index + 0.5) / weeklyData.length) * 100;
-                              const y = 100 - barHeight;
-                              return `${x}%,${y}%`;
-                            })
-                            .join(' ')}
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeDasharray="3 3"
-                          className="text-[#85ea10]/40 dark:text-[#164151]/40"
-                        />
-                      </svg>
-                    </div>
+
+                              // Formatear fecha en hora local (evita que 11 se muestre como 10 por UTC)
+                              const date = parseLocalDate(day.date);
+                              const dayNumber = date.getDate();
+                              const month = date.toLocaleDateString('es-ES', {
+                                month: 'short',
+                              });
+                              const shouldShowDayLabel =
+                                index % labelStep === 0 ||
+                                index === weeklyData.length - 1;
+
+                              return (
+                                <div
+                                  key={index}
+                                  className={`${useScrollableChart ? 'w-8 shrink-0' : 'flex-1 min-w-0'} flex flex-col items-center gap-1 h-full relative group`}
+                                >
+                                  {/* Tooltip con diseño compacto */}
+                                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white text-[#3a3a3a] text-[11px] rounded-[4px] px-2.5 py-1 shadow-md border border-gray-200 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 whitespace-nowrap">
+                                    {`${day.dayName}, ${dayNumber} ${month}: $${day.amount.toLocaleString('es-CO')}`}
+                                  </div>
+
+                                  {/* Valor sobre el punto (solo en rangos cortos/medios) */}
+                                  {showAmountLabels && (
+                                    <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 text-center w-full">
+                                      <p className="text-xs font-semibold text-[#164151] dark:text-white">
+                                        {showRevenueNumbers
+                                          ? `$${day.amount.toLocaleString('es-CO')}`
+                                          : '••••'}
+                                      </p>
+                                    </div>
+                                  )}
+
+                                  {/* Contenedor de la barra */}
+                                  <div className="flex-1 w-full flex items-end justify-center relative">
+                                    {/* Línea vertical */}
+                                    <div
+                                      className="w-3/4 bg-[#164151]/20 dark:bg-[#85ea10]/20 rounded-t transition-all duration-500 relative cursor-pointer hover:bg-[#164151]/30 dark:hover:bg-[#85ea10]/30"
+                                      style={{ height: `${barHeight}%` }}
+                                    >
+                                      {/* Punto en la parte superior */}
+                                      <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 w-3 h-3 bg-[#85ea10] dark:bg-[#164151] rounded-full border-2 border-white dark:border-gray-900 shadow-md"></div>
+                                    </div>
+                                  </div>
+
+                                  {/* Nombre del día y fecha */}
+                                  <div className="text-center min-h-[30px]">
+                                    {shouldShowDayLabel ? (
+                                      <>
+                                        <p className="text-[10px] font-medium text-gray-500 dark:text-white/50">
+                                          {day.dayName}
+                                        </p>
+                                        <p className="text-[9px] text-gray-400 dark:text-white/40">
+                                          {dayNumber}/{date.getMonth() + 1}
+                                        </p>
+                                      </>
+                                    ) : (
+                                      <span className="text-[10px] text-transparent">
+                                        .
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          {/* Línea conectando los puntos */}
+                          <svg
+                            className="absolute top-8 left-0 h-40 pointer-events-none"
+                            style={
+                              useScrollableChart
+                                ? { zIndex: 1, minWidth: `${chartMinWidth}px` }
+                                : { zIndex: 1, width: '100%' }
+                            }
+                          >
+                            <polyline
+                              points={weeklyData
+                                .map((day, index) => {
+                                  const height =
+                                    maxAmount > 0
+                                      ? (day.amount / maxAmount) * 100
+                                      : 0;
+                                  const barHeight = Math.max(height, 8);
+                                  const x =
+                                    ((index + 0.5) / weeklyData.length) * 100;
+                                  const y = 100 - barHeight;
+                                  return `${x}%,${y}%`;
+                                })
+                                .join(' ')}
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeDasharray="3 3"
+                              className="text-[#85ea10]/40 dark:text-[#164151]/40"
+                            />
+                          </svg>
+                        </div>
+                      );
+                    })()
                   ) : (
                     <div className="text-center py-8">
                       <p className="text-sm text-gray-500 dark:text-white/50">
@@ -2695,7 +2979,348 @@ function AdminDashboardContent() {
             <GymPaymentsManagement ref={gymPaymentsRef} />
           )}
 
+          {/* Gym Expenses Tab */}
+          {activeTab === 'gym-expenses' && <GymExpensesManagement />}
+
           {/* Gym Collections Tab */}
+
+          {/* Activities Tab */}
+          {activeTab === 'activities' && (
+            <div className="space-y-6">
+              <div className="bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl border border-gray-200 dark:border-white/10 p-4 shadow-sm dark:shadow-none">
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <div className="flex-1 relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      type="text"
+                      value={activitySearchTerm}
+                      onChange={(e) => {
+                        setActivitySearchTerm(e.target.value);
+                        setActivityCurrentPage(1);
+                      }}
+                      placeholder="Buscar por acción, módulo, detalles o usuario..."
+                      className="w-full pl-10 pr-3 py-2.5 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-sm text-[#164151] dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50"
+                    />
+                  </div>
+                  <select
+                    value={activityModuleFilter}
+                    onChange={(e) => {
+                      setActivityModuleFilter(e.target.value);
+                      setActivityCurrentPage(1);
+                    }}
+                    className="px-3 py-2.5 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-sm text-[#164151] dark:text-white"
+                  >
+                    <option value="all">Módulos: todos</option>
+                    <option value="gym">Gym</option>
+                    <option value="payments">Pagos</option>
+                    <option value="courses">Cursos</option>
+                    <option value="users">Usuarios</option>
+                    <option value="blogs">Blogs</option>
+                  </select>
+                  <select
+                    value={activityActionFilter}
+                    onChange={(e) => {
+                      setActivityActionFilter(e.target.value);
+                      setActivityCurrentPage(1);
+                    }}
+                    className="px-3 py-2.5 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-sm text-[#164151] dark:text-white"
+                  >
+                    <option value="all">Acciones: todas</option>
+                    <option value="payment_create">Facturación</option>
+                    <option value="membership_create">Membresía creada</option>
+                    <option value="create">Creación</option>
+                    <option value="update">Actualización</option>
+                    <option value="delete">Eliminación</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl border border-gray-200 dark:border-white/10 overflow-hidden shadow-sm dark:shadow-none">
+                {activitiesLoading ? (
+                  <div className="p-10 text-center text-sm text-[#164151]/70 dark:text-white/60">
+                    Cargando actividades...
+                  </div>
+                ) : activities.length === 0 ? (
+                  <div className="p-10 text-center text-sm text-[#164151]/70 dark:text-white/60">
+                    No hay actividades para los filtros seleccionados.
+                  </div>
+                ) : (
+                  <div className="divide-y divide-gray-100 dark:divide-white/10">
+                    {activities.map((log) => (
+                      <div key={log.id} className="p-4 sm:p-5">
+                        {(() => {
+                          const details = (log.details || {}) as Record<
+                            string,
+                            unknown
+                          >;
+                          const amount =
+                            typeof details.amount === 'number'
+                              ? details.amount
+                              : typeof details.amount === 'string'
+                                ? Number(details.amount)
+                                : null;
+                          const paymentMethod =
+                            typeof details.payment_method === 'string'
+                              ? details.payment_method
+                              : null;
+                          const planId =
+                            typeof details.plan_id === 'string'
+                              ? details.plan_id
+                              : null;
+                          const planName =
+                            typeof details.plan_name === 'string'
+                              ? details.plan_name
+                              : null;
+                          const invoiceNumber =
+                            typeof details.invoice_number === 'string'
+                              ? details.invoice_number
+                              : null;
+                          const paymentId =
+                            typeof details.payment_id === 'string'
+                              ? details.payment_id
+                              : null;
+                          const periodStart =
+                            typeof details.period_start === 'string'
+                              ? details.period_start
+                              : null;
+                          const periodEnd =
+                            typeof details.period_end === 'string'
+                              ? details.period_end
+                              : null;
+                          const paymentDate =
+                            typeof details.payment_date === 'string'
+                              ? details.payment_date
+                              : null;
+                          const clientInfoId =
+                            typeof details.client_info_id === 'string'
+                              ? details.client_info_id
+                              : null;
+                          const clientName =
+                            typeof details.client_name === 'string'
+                              ? details.client_name
+                              : typeof details.name === 'string'
+                                ? details.name
+                                : null;
+                          const clientDocument =
+                            typeof details.document_id === 'string'
+                              ? details.document_id
+                              : null;
+                          const clientEmail =
+                            typeof details.email === 'string'
+                              ? details.email
+                              : null;
+                          const clientWhatsapp =
+                            typeof details.whatsapp === 'string'
+                              ? details.whatsapp
+                              : null;
+                          const description =
+                            typeof details.description === 'string'
+                              ? details.description
+                              : null;
+
+                          const paymentMethodLabel =
+                            paymentMethod === 'cash'
+                              ? 'efectivo'
+                              : paymentMethod === 'transfer'
+                                ? 'transferencia'
+                                : paymentMethod === 'mixed'
+                                  ? 'pago mixto'
+                                  : null;
+
+                          const moduleLabelMap: Record<string, string> = {
+                            gym: 'Clientes',
+                            payments: 'Pagos',
+                            courses: 'Cursos',
+                            users: 'Usuarios',
+                            blogs: 'Blogs',
+                            system: 'Sistema',
+                          };
+
+                          const actionLabelMap: Record<string, string> = {
+                            payment_create: 'Factura registrada',
+                            membership_create: 'Membresía creada',
+                            client_create: 'Cliente creado',
+                            order_approved: 'Venta aprobada',
+                          };
+
+                          const moduleLabel =
+                            String(log.action || '').toLowerCase() ===
+                            'payment_create'
+                              ? 'Pagos'
+                              : String(log.action || '').toLowerCase() ===
+                                  'client_create'
+                                ? 'Clientes'
+                                : String(log.action || '').toLowerCase() ===
+                                    'membership_create'
+                                  ? 'Membresías'
+                                  :
+                            moduleLabelMap[String(log.module || '').toLowerCase()] ||
+                            String(log.module || 'Sistema');
+                          const actionLabel =
+                            actionLabelMap[String(log.action || '').toLowerCase()] ||
+                            String(log.action || 'Acción');
+
+                          let humanTitle = 'Acción registrada en la plataforma';
+                          if (log.action === 'payment_create') {
+                            humanTitle = `Se registró la factura${invoiceNumber ? ` #${String(invoiceNumber).padStart(3, '0')}` : ''}${amount ? ` por $${Number(amount).toLocaleString('es-CO')}` : ''}${paymentMethodLabel ? ` (${paymentMethodLabel})` : ''}.`;
+                          } else if (log.action === 'membership_create') {
+                            humanTitle = 'Se creó una nueva membresía de sede física.';
+                          } else if (log.action === 'client_create') {
+                            humanTitle = `Se creó un nuevo cliente${clientName ? `: ${clientName}` : ''}.`;
+                          } else if (log.action === 'order_approved') {
+                            humanTitle = 'Se aprobó una orden de compra.';
+                          } else if (description) {
+                            humanTitle = description;
+                          }
+
+                          return (
+                            <>
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#85ea10]/20 text-[#164151] dark:text-[#85ea10] uppercase">
+                              {moduleLabel}
+                            </span>
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 dark:bg-white/10 text-[#164151]/80 dark:text-white/70">
+                              {actionLabel}
+                            </span>
+                          </div>
+                          <span className="text-[11px] text-[#164151]/60 dark:text-white/50">
+                            {new Date(log.created_at).toLocaleString('es-CO')}
+                          </span>
+                        </div>
+                        <p className="text-sm font-semibold text-[#164151] dark:text-white mt-2">
+                          {log.user_name || 'Sistema/Admin'}
+                          {log.user_email ? (
+                            <span className="text-[#164151]/60 dark:text-white/60 font-medium">
+                              {' '}
+                              · {log.user_email}
+                            </span>
+                          ) : null}
+                        </p>
+                        <p className="mt-2 text-sm text-[#164151]/90 dark:text-white/90">
+                          {humanTitle}
+                        </p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {amount ? (
+                            <span className="px-2 py-1 rounded-lg text-[11px] bg-emerald-100 text-emerald-700">
+                              Monto: ${Number(amount).toLocaleString('es-CO')}
+                            </span>
+                          ) : null}
+                          {paymentMethodLabel ? (
+                            <span className="px-2 py-1 rounded-lg text-[11px] bg-cyan-100 text-cyan-700">
+                              Método: {paymentMethodLabel}
+                            </span>
+                          ) : null}
+                          {invoiceNumber ? (
+                            <span className="px-2 py-1 rounded-lg text-[11px] bg-lime-100 text-lime-700">
+                              Factura: #{String(invoiceNumber).padStart(3, '0')}
+                            </span>
+                          ) : null}
+                          {planName ? (
+                            <span className="px-2 py-1 rounded-lg text-[11px] bg-indigo-100 text-indigo-700">
+                              Plan: {planName}
+                            </span>
+                          ) : planId ? (
+                            <span className="px-2 py-1 rounded-lg text-[11px] bg-indigo-100 text-indigo-700">
+                              Plan: {planId.slice(0, 8)}...
+                            </span>
+                          ) : null}
+                          {periodStart && periodEnd ? (
+                            <span className="px-2 py-1 rounded-lg text-[11px] bg-amber-100 text-amber-700">
+                              Período: {periodStart} al {periodEnd}
+                            </span>
+                          ) : null}
+                          {paymentDate ? (
+                            <span className="px-2 py-1 rounded-lg text-[11px] bg-violet-100 text-violet-700">
+                              Fecha de pago: {paymentDate}
+                            </span>
+                          ) : null}
+                          {clientName ? (
+                            <span className="px-2 py-1 rounded-lg text-[11px] bg-blue-100 text-blue-700">
+                              Cliente: {clientName}
+                            </span>
+                          ) : null}
+                          {clientDocument ? (
+                            <span className="px-2 py-1 rounded-lg text-[11px] bg-slate-100 text-slate-700">
+                              Cédula: {clientDocument}
+                            </span>
+                          ) : null}
+                          {clientEmail ? (
+                            <span className="px-2 py-1 rounded-lg text-[11px] bg-cyan-100 text-cyan-700">
+                              Email: {clientEmail}
+                            </span>
+                          ) : null}
+                          {clientWhatsapp ? (
+                            <span className="px-2 py-1 rounded-lg text-[11px] bg-teal-100 text-teal-700">
+                              WhatsApp: {clientWhatsapp}
+                            </span>
+                          ) : null}
+                        </div>
+                        {paymentId && String(log.action || '').toLowerCase() ===
+                        'payment_create' ? (
+                          <div className="mt-2">
+                            <button
+                              onClick={() => router.push(`/admin/payments/${paymentId}`)}
+                              className="text-xs font-semibold text-[#164151] hover:text-[#0f303d] underline underline-offset-2"
+                            >
+                              Ver detalle de factura
+                            </button>
+                          </div>
+                        ) : String(log.action || '').toLowerCase() ===
+                          'payment_create' ? (
+                          <div className="mt-2">
+                            <span className="text-xs text-[#164151]/60">
+                              Detalle de factura no disponible en registros antiguos.
+                            </span>
+                          </div>
+                        ) : clientInfoId ? (
+                          <div className="mt-2">
+                            <button
+                              onClick={() => router.push(`/admin/users/${clientInfoId}`)}
+                              className="text-xs font-semibold text-[#164151] hover:text-[#0f303d] underline underline-offset-2"
+                            >
+                              Ver detalle del cliente
+                            </button>
+                          </div>
+                        ) : null}
+                            </>
+                          );
+                        })()}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {activityTotalPages > 1 && (
+                <div className="flex items-center justify-center gap-2">
+                  <button
+                    onClick={() =>
+                      setActivityCurrentPage((p) => Math.max(1, p - 1))
+                    }
+                    disabled={activityCurrentPage === 1}
+                    className="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-white/10 text-sm disabled:opacity-50"
+                  >
+                    Anterior
+                  </button>
+                  <span className="text-sm text-[#164151]/70 dark:text-white/60">
+                    Página {activityCurrentPage} de {activityTotalPages}
+                  </span>
+                  <button
+                    onClick={() =>
+                      setActivityCurrentPage((p) =>
+                        Math.min(activityTotalPages, p + 1),
+                      )
+                    }
+                    disabled={activityCurrentPage === activityTotalPages}
+                    className="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-white/10 text-sm disabled:opacity-50"
+                  >
+                    Siguiente
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Users Tab */}
           {activeTab === 'users' && (
@@ -2769,6 +3394,18 @@ function AdminDashboardContent() {
                       </select>
                     </div>
                   </div>
+
+                  <button
+                    onClick={() => {
+                      setEditingClient(null);
+                      setShowClientForm(true);
+                    }}
+                    className="sm:ml-auto h-11 px-4 rounded-xl bg-[#164151] text-white hover:bg-[#1a4d5f] font-semibold text-sm inline-flex items-center justify-center gap-2 transition-colors"
+                    title="Crear cliente físico"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Nuevo cliente
+                  </button>
                 </div>
               </div>
 

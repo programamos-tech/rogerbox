@@ -168,6 +168,9 @@ export async function POST(request: NextRequest) {
       details: {
         client_info_id: data.id,
         name: data.name,
+        document_id: data.document_id,
+        email: data.email,
+        whatsapp: data.whatsapp,
         description: `Nuevo cliente: ${data.name}`,
       },
       store_id: STORE_ID_FISICA,

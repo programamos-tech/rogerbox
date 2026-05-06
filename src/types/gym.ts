@@ -175,6 +175,31 @@ export interface GymPaymentUpdate {
   updated_at?: string;
 }
 
+export type GymExpensePaymentMethod = PaymentMethod;
+
+export interface GymExpense {
+  id: string;
+  concept: string;
+  category: string;
+  amount: number;
+  expense_date: string;
+  payment_method: GymExpensePaymentMethod;
+  notes?: string | null;
+  store_id?: string | null;
+  created_by?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GymExpenseInsert {
+  concept: string;
+  category: string;
+  amount: number;
+  expense_date: string;
+  payment_method: GymExpensePaymentMethod;
+  notes?: string;
+}
+
 // Vista de cobranza (deudores)
 export interface CollectionItem {
   membership_id: string;

@@ -1,7 +1,6 @@
 'use client';
 
 import {
-  Calendar,
   CreditCard,
   FileText,
   Mail,
@@ -12,6 +11,7 @@ import {
   X,
 } from 'lucide-react';
 import { useState } from 'react';
+import { DatePickerField } from '@/shared/components/DatePickerField';
 import type { GymClientInfoInsert } from '@/types/gym';
 
 interface GymClientFormProps {
@@ -250,17 +250,16 @@ export default function GymClientForm({
                 <label className="block text-sm font-semibold text-[#164151] dark:text-white mb-2">
                   Fecha de Nacimiento
                 </label>
-                <div className="relative">
-                  <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input
-                    type="date"
-                    value={formData.birth_date || ''}
-                    onChange={(e) =>
-                      setFormData({ ...formData, birth_date: e.target.value })
-                    }
-                    className="w-full pl-12 pr-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50"
-                  />
-                </div>
+                <DatePickerField
+                  id="gym-client-birth-date"
+                  value={formData.birth_date || ''}
+                  onChange={(iso) =>
+                    setFormData({ ...formData, birth_date: iso })
+                  }
+                  aria-label="Fecha de nacimiento"
+                  className="w-full"
+                  triggerClassName="py-3 bg-gray-50 dark:bg-white/5 border-gray-200 dark:border-white/10 focus:ring-2 focus:ring-[#85ea10]/50"
+                />
               </div>
 
               {/* Peso */}
