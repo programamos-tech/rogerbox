@@ -27,7 +27,6 @@ import {
   Eye,
   EyeOff,
   FileText,
-  FileWarning,
   Filter,
   Globe,
   Home,
@@ -3157,17 +3156,6 @@ function AdminDashboardContent() {
                                         );
                                       }
 
-                                      if (user.activeGymWithoutPaymentReceipt) {
-                                        return (
-                                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-500/20 text-amber-900 dark:text-amber-200 max-w-[16rem] sm:max-w-none">
-                                            <FileWarning className="w-3.5 h-3.5 shrink-0" />
-                                            <span className="text-left leading-snug">
-                                              Plan vigente · sin facturas
-                                            </span>
-                                          </span>
-                                        );
-                                      }
-
                                       const allMemberships =
                                         user.gym_memberships || [];
                                       const allCourses =
@@ -3867,13 +3855,6 @@ function AdminDashboardContent() {
                           statusBadge = (
                             <span className="bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">
                               Inactivo
-                            </span>
-                          );
-                        } else if (user.activeGymWithoutPaymentReceipt) {
-                          statusColor = 'border-amber-400/60';
-                          statusBadge = (
-                            <span className="bg-amber-100 dark:bg-amber-500/25 text-amber-900 dark:text-amber-200 text-[9px] px-2 py-0.5 rounded-full font-bold uppercase leading-tight text-center max-w-[11rem]">
-                              Sin facturas
                             </span>
                           );
                         } else if (
