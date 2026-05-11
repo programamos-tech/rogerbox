@@ -9,6 +9,8 @@ import {
   isSameDay,
   isSameMonth,
   isToday,
+  setMonth,
+  setYear,
   startOfMonth,
   startOfWeek,
   subMonths,
@@ -38,6 +40,16 @@ function parseYmd(ymd: string): Date | null {
   } catch {
     return null;
   }
+}
+
+function yearRangeFromBounds(minD: Date | null, maxD: Date | null): {
+  min: number;
+  max: number;
+} {
+  const nowY = new Date().getFullYear();
+  const minY = minD?.getFullYear() ?? nowY - 100;
+  const maxY = maxD?.getFullYear() ?? nowY + 50;
+  return minY <= maxY ? { min: minY, max: maxY } : { min: maxY, max: minY };
 }
 
 export interface DatePickerFieldProps {
@@ -109,6 +121,26 @@ export function DatePickerField({
     }
     return days;
   }, [viewMonth]);
+
+  const { min: minYear, max: maxYear } = useMemo(
+    () => yearRangeFromBounds(minD, maxD),
+    [minD, maxD],
+  );
+
+  const yearOptions = useMemo(() => {
+    const out: number[] = [];
+    for (let y = minYear; y <= maxYear; y += 1) out.push(y);
+    return out;
+  }, [minYear, maxYear]);
+
+  useEffect(() => {
+    setViewMonth((m) => {
+      const y = m.getFullYear();
+      const yClamped = Math.min(maxYear, Math.max(minYear, y));
+      if (y === yClamped) return m;
+      return startOfMonth(setYear(m, yClamped));
+    });
+  }, [minYear, maxYear]);
 
   const dayDisabled = useCallback(
     (day: Date) => {
@@ -223,24 +255,56 @@ export function DatePickerField({
         maxWidth: 'min(100vw - 16px, 320px)',
       }}
     >
-      <div className="flex items-center justify-between px-2 py-2 border-b border-gray-200 dark:border-white/[0.08]">
+      <div className="flex items-center justify-between gap-1 px-2 py-2 border-b border-gray-200 dark:border-white/[0.08]">
         <button
           type="button"
           onClick={() => setViewMonth((m) => subMonths(m, 1))}
-          className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-gray-600 dark:text-white/70"
+          className="shrink-0 p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-gray-600 dark:text-white/70"
           aria-label="Mes anterior"
         >
           <ChevronLeft className="w-4 h-4" />
         </button>
-        <span className="text-xs font-medium text-gray-900 dark:text-white/95 capitalize">
-          {viewMonth
-            .toLocaleDateString('es-CO', { month: 'long', year: 'numeric' })
-            .replace(/^\w/, (c) => c.toUpperCase())}
-        </span>
+        <div className="flex min-w-0 flex-1 items-center justify-center gap-1">
+          <select
+            value={viewMonth.getMonth()}
+            aria-label="Mes"
+            onChange={(e) => {
+              const monthIndex = Number(e.target.value);
+              setViewMonth((m) => startOfMonth(setMonth(m, monthIndex)));
+            }}
+            className="max-w-[7.5rem] min-w-0 flex-1 truncate rounded-lg border border-gray-200 bg-gray-50 px-1.5 py-1 text-xs font-medium text-gray-900 focus:border-[#85ea10]/35 focus:outline-none focus:ring-1 focus:ring-[#85ea10]/25 dark:border-white/15 dark:bg-white/[0.06] dark:text-white/95"
+          >
+            {Array.from({ length: 12 }, (_, i) => {
+              const label = new Date(2000, i, 1)
+                .toLocaleDateString('es-CO', { month: 'long' })
+                .replace(/^\w/, (c) => c.toUpperCase());
+              return (
+                <option key={i} value={i}>
+                  {label}
+                </option>
+              );
+            })}
+          </select>
+          <select
+            value={viewMonth.getFullYear()}
+            aria-label="Año"
+            onChange={(e) => {
+              const y = Number(e.target.value);
+              setViewMonth((m) => startOfMonth(setYear(m, y)));
+            }}
+            className="w-[4.25rem] shrink-0 rounded-lg border border-gray-200 bg-gray-50 px-1 py-1 text-xs font-medium tabular-nums text-gray-900 focus:border-[#85ea10]/35 focus:outline-none focus:ring-1 focus:ring-[#85ea10]/25 dark:border-white/15 dark:bg-white/[0.06] dark:text-white/95"
+          >
+            {yearOptions.map((y) => (
+              <option key={y} value={y}>
+                {y}
+              </option>
+            ))}
+          </select>
+        </div>
         <button
           type="button"
           onClick={() => setViewMonth((m) => addMonths(m, 1))}
-          className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-gray-600 dark:text-white/70"
+          className="shrink-0 p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-gray-600 dark:text-white/70"
           aria-label="Mes siguiente"
         >
           <ChevronRight className="w-4 h-4" />

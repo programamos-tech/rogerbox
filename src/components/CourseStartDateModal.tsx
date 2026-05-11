@@ -8,6 +8,8 @@ import {
   isSameDay,
   isSameMonth,
   isToday,
+  setMonth,
+  setYear,
   startOfMonth,
   startOfWeek,
   subMonths,
@@ -100,6 +102,28 @@ export default function CourseStartDateModal({
     }
     return days;
   }, [viewMonth]);
+
+  const { minYear, maxYear } = useMemo(() => {
+    const nowY = new Date().getFullYear();
+    const minY = minDateObj?.getFullYear() ?? nowY;
+    const maxY = Math.max(minY, nowY + 5);
+    return { minYear: minY, maxYear: maxY };
+  }, [minDateObj]);
+
+  const yearOptions = useMemo(() => {
+    const out: number[] = [];
+    for (let y = minYear; y <= maxYear; y += 1) out.push(y);
+    return out;
+  }, [minYear, maxYear]);
+
+  useEffect(() => {
+    setViewMonth((m) => {
+      const y = m.getFullYear();
+      const yClamped = Math.min(maxYear, Math.max(minYear, y));
+      if (y === yClamped) return m;
+      return startOfMonth(setYear(m, yClamped));
+    });
+  }, [minYear, maxYear]);
 
   const handleSubmit = async () => {
     if (!selectedDate) {
@@ -271,27 +295,56 @@ export default function CourseStartDateModal({
             </label>
             <div className="rounded-xl border border-gray-200 dark:border-gray-600 overflow-hidden bg-gray-50 dark:bg-gray-700/30">
               {/* Header mes / año */}
-              <div className="flex items-center justify-between px-2 py-2 border-b border-gray-200 dark:border-gray-600">
+              <div className="flex items-center justify-between gap-1 px-2 py-2 border-b border-gray-200 dark:border-gray-600">
                 <button
                   type="button"
                   onClick={() => setViewMonth((m) => subMonths(m, 1))}
-                  className="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-gray-600 dark:text-gray-300"
+                  className="shrink-0 p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-gray-600 dark:text-gray-300"
                   aria-label="Mes anterior"
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </button>
-                <span className="text-xs font-semibold text-gray-900 dark:text-white capitalize">
-                  {viewMonth
-                    .toLocaleDateString('es-CO', {
-                      month: 'long',
-                      year: 'numeric',
-                    })
-                    .replace(/^\w/, (c) => c.toUpperCase())}
-                </span>
+                <div className="flex min-w-0 flex-1 items-center justify-center gap-1">
+                  <select
+                    value={viewMonth.getMonth()}
+                    aria-label="Mes"
+                    onChange={(e) => {
+                      const monthIndex = Number(e.target.value);
+                      setViewMonth((m) => startOfMonth(setMonth(m, monthIndex)));
+                    }}
+                    className="max-w-[7.5rem] min-w-0 flex-1 truncate rounded-lg border border-gray-200 bg-white px-1.5 py-1 text-xs font-semibold text-gray-900 focus:border-[#85ea10]/50 focus:outline-none focus:ring-1 focus:ring-[#85ea10]/30 dark:border-gray-500 dark:bg-gray-800 dark:text-white"
+                  >
+                    {Array.from({ length: 12 }, (_, i) => {
+                      const label = new Date(2000, i, 1)
+                        .toLocaleDateString('es-CO', { month: 'long' })
+                        .replace(/^\w/, (c) => c.toUpperCase());
+                      return (
+                        <option key={i} value={i}>
+                          {label}
+                        </option>
+                      );
+                    })}
+                  </select>
+                  <select
+                    value={viewMonth.getFullYear()}
+                    aria-label="Año"
+                    onChange={(e) => {
+                      const y = Number(e.target.value);
+                      setViewMonth((m) => startOfMonth(setYear(m, y)));
+                    }}
+                    className="w-[4.25rem] shrink-0 rounded-lg border border-gray-200 bg-white px-1 py-1 text-xs font-semibold tabular-nums text-gray-900 focus:border-[#85ea10]/50 focus:outline-none focus:ring-1 focus:ring-[#85ea10]/30 dark:border-gray-500 dark:bg-gray-800 dark:text-white"
+                  >
+                    {yearOptions.map((y) => (
+                      <option key={y} value={y}>
+                        {y}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <button
                   type="button"
                   onClick={() => setViewMonth((m) => addMonths(m, 1))}
-                  className="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-gray-600 dark:text-gray-300"
+                  className="shrink-0 p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-gray-600 dark:text-gray-300"
                   aria-label="Mes siguiente"
                 >
                   <ChevronRight className="w-4 h-4" />
