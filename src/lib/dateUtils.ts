@@ -49,14 +49,14 @@ export function periodEndFromStart(
 }
 
 /**
- * Dada una fecha de inicio y duration_days del plan, devuelve la fecha de fin en formato YYYY-MM-DD (mes a mes).
+ * Fecha de fin de membresía / facturación según `duration_days` del plan (días corridos, inclusive).
+ * Ej: 7 días desde el 10/05 → fin 16/05; 15 días → inicio + 14 días.
  */
 export function membershipEndDateFromStart(
   startDate: Date,
   durationDays: number,
 ): string {
-  const end = addCalendarMonths(startDate, durationDaysToMonths(durationDays));
-  return `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`;
+  return periodEndFromStart(startDate, durationDays);
 }
 
 /** Parsea YYYY-MM-DD como fecha local (evita UTC). */
