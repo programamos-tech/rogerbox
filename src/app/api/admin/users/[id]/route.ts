@@ -1,8 +1,41 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { enrichCoursePurchaseFromCalendarDays } from '@/lib/enrichCoursePurchase';
-import { getTodayYmdColombia } from '@/lib/dateUtils';
+import { getTodayYmdColombia, parseLocalDate } from '@/lib/dateUtils';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getSession } from '@/lib/supabase-server';
+import {
+  computeClientGymAdminStatus,
+  isClientFullyCurrentOnGymPlans,
+  isMembershipCurrentPeriod,
+  summarizeGymPlansPerClient,
+} from '@/shared/utils/gym-membership-admin.util';
+
+function buildGymUserStatusFields(gymMemberships: any[]) {
+  const today = parseLocalDate(getTodayYmdColombia());
+  today.setHours(0, 0, 0, 0);
+  const gymPlanSummaries = summarizeGymPlansPerClient(gymMemberships, today);
+  const gymClientStatus = computeClientGymAdminStatus(
+    gymPlanSummaries,
+    gymMemberships,
+  );
+  const currentSorted = [...gymMemberships]
+    .filter((m) => isMembershipCurrentPeriod(m, today))
+    .sort(
+      (a, b) =>
+        parseLocalDate(b.end_date).getTime() -
+        parseLocalDate(a.end_date).getTime(),
+    );
+
+  return {
+    gym_plan_summaries: gymPlanSummaries,
+    gym_client_status: gymClientStatus,
+    activeGymMembership: currentSorted[0] ?? null,
+    hasActiveGymMembership: isClientFullyCurrentOnGymPlans(
+      gymMemberships,
+      today,
+    ),
+  };
+}
 
 /**
  * Algún registro comercial: gym_payments (cualquier estado/fila) por sede, membresía o user,
@@ -301,9 +334,7 @@ export async function GET(
         coursePurchases.filter(
           (p: any) => p.is_active && !p.is_course_finished,
         ) || [];
-      const activeMembership = gymMemberships.find(
-        (m: any) => m.status === 'active' && new Date(m.end_date) >= new Date(),
-      );
+      const gymStatusFields = buildGymUserStatusFields(gymMemberships);
 
       // Obtener is_inactive del cliente físico si existe
       let isInactive = false;
@@ -365,8 +396,7 @@ export async function GET(
           gym_memberships: gymMemberships,
           course_purchases: coursePurchases,
           activeCoursePurchases: activeCoursePurchases,
-          activeGymMembership: activeMembership,
-          hasActiveGymMembership: !!activeMembership,
+          ...gymStatusFields,
           hasGymMembership,
           userType,
           isUnregisteredClient: false,
@@ -452,9 +482,7 @@ export async function GET(
         // Continuar sin membresías si hay error
       }
 
-      const activeMembership = gymMemberships.find(
-        (m: any) => m.status === 'active' && new Date(m.end_date) >= new Date(),
-      );
+      const gymStatusFields = buildGymUserStatusFields(gymMemberships);
 
       // Si el cliente tiene user_id, obtener datos del perfil y compras de cursos
       let profileData: any = null;
@@ -569,8 +597,7 @@ export async function GET(
           gym_memberships: gymMemberships,
           course_purchases: coursePurchases,
           activeCoursePurchases: activeCoursePurchases,
-          activeGymMembership: activeMembership,
-          hasActiveGymMembership: !!activeMembership,
+          ...gymStatusFields,
           hasGymMembership,
           hasOnlinePurchase,
           userType,

@@ -7,8 +7,12 @@ import { getTodayYmdColombia, parseLocalDate } from '@/lib/dateUtils';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getSession } from '@/lib/supabase-server';
 import {
+  computeClientGymAdminStatus,
   getMixRenewalFilterCategory,
+  isClientFullyCurrentOnGymPlans,
+  isMembershipCurrentPeriod,
   partitionGymMembershipsLikeOverview,
+  summarizeGymPlansPerClient,
 } from '@/shared/utils/gym-membership-admin.util';
 
 export async function GET(request: NextRequest) {
@@ -281,21 +285,30 @@ export async function GET(request: NextRequest) {
         memberships,
         today,
       );
+      const gymPlanSummaries = summarizeGymPlansPerClient(memberships, today);
+      const gymClientStatus = computeClientGymAdminStatus(
+        gymPlanSummaries,
+        memberships,
+      );
       const nonCancelledCount = memberships.filter(
         (m: any) => m.status !== 'cancelled',
       ).length;
 
-      const activeSorted = [...active].sort(
-        (a: any, b: any) =>
-          parseLocalDate(a.end_date).getTime() -
-          parseLocalDate(b.end_date).getTime(),
-      );
-      const activeMembership = activeSorted[0] ?? null;
+      const currentSorted = [...memberships]
+        .filter((m: any) => isMembershipCurrentPeriod(m, today))
+        .sort(
+          (a: any, b: any) =>
+            parseLocalDate(b.end_date).getTime() -
+            parseLocalDate(a.end_date).getTime(),
+        );
+      const activeMembership = currentSorted[0] ?? null;
 
-      const hasExpiredOnly =
-        nonCancelledCount > 0 &&
-        active.length === 0 &&
-        expired.length === nonCancelledCount;
+      const hasActiveGymMembershipStrict = isClientFullyCurrentOnGymPlans(
+        memberships,
+        today,
+      );
+
+      const hasExpiredOnly = gymClientStatus === 'renewal';
 
       // Calcular fecha más reciente de membresía (para ordenamiento)
       // Prioridad: membresías activas primero, luego por fecha de vencimiento más reciente
@@ -314,9 +327,9 @@ export async function GET(request: NextRequest) {
         if (sortedMemberships.length > 0) {
           latestMembershipDate = parseLocalDate(sortedMemberships[0].end_date);
 
-          if (active.length > 0) {
-            sortPriority = 0; // Activos primero
-          } else {
+          if (hasActiveGymMembershipStrict) {
+            sortPriority = 0; // Al día (todos los planes vigentes)
+          } else if (gymClientStatus === 'renewal') {
             sortPriority = 1; // Por renovar segundo
           }
         }
@@ -385,7 +398,9 @@ export async function GET(request: NextRequest) {
         isRegistered: !!client.user_id,
         isUnregisteredClient: !client.user_id,
         gym_memberships: memberships,
-        hasActiveGymMembership: active.length > 0,
+        gym_plan_summaries: gymPlanSummaries,
+        gym_client_status: gymClientStatus,
+        hasActiveGymMembership: hasActiveGymMembershipStrict,
         activeGymMembership: activeMembership,
         hasGymMembership,
         hasExpiredOnly,
@@ -400,7 +415,7 @@ export async function GET(request: NextRequest) {
          * Plan de gimnasio vigente y cero facturación en sede y en línea.
          */
         activeGymWithoutPaymentReceipt:
-          active.length > 0 && !hasAnyInvoiceEver,
+          gymClientStatus === 'current_no_payment',
         // Campos para ordenamiento
         latestMembershipDate,
         sortPriority,

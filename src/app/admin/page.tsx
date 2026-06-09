@@ -71,16 +71,20 @@ import GymPlansManagement, {
 import QuickLoading from '@/components/QuickLoading';
 import UnderConstruction from '@/components/UnderConstruction';
 import { DatePickerField } from '@/shared/components/DatePickerField';
+import { GymClientPaymentStatusBadge } from '@/shared/components/GymClientPaymentStatusBadge';
 import { GymSeededAvatar } from '@/shared/components/GymSeededAvatar';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { formatDateOnlyLocal, parseLocalDate } from '@/lib/dateUtils';
 import {
   allRenewalPlansDismissed,
+  buildAdminProductsList,
   buildGymRenewalAdminContext,
   buildRenewalPlanMenuOptions,
+  computeClientGymAdminStatus,
   getCalendarExpiredNonCancelled,
   getGymAdminToday,
   renewalPendingPlanIdsFromMemberships,
+  summarizeGymPlansPerClient,
 } from '@/shared/utils/gym-membership-admin.util';
 import { supabaseAdmin } from '@/lib/supabase';
 import { supabase } from '@/lib/supabase-browser';
@@ -1890,23 +1894,48 @@ function AdminDashboardContent() {
                         ),
                       ];
 
+                      const gymStatus =
+                        client.gym_client_status ??
+                        computeClientGymAdminStatus(
+                          summarizeGymPlansPerClient(
+                            client.gym_memberships || [],
+                          ),
+                          client.gym_memberships,
+                        );
                       const statusLabel = client.is_inactive
                         ? 'Inactivo'
-                        : client.hasExpiredOnly
+                        : gymStatus === 'renewal'
                           ? 'Renovación'
-                          : client.hasActiveGymMembership ||
-                              activeCourses.length > 0
+                          : gymStatus === 'all_current' ||
+                              (activeCourses.length > 0 &&
+                                (client.gym_memberships || []).filter(
+                                  (m: any) => m.status !== 'cancelled',
+                                ).length === 0)
                             ? 'Al día'
-                            : 'Sin productos';
+                            : gymStatus === 'scheduled_only'
+                              ? 'Programado'
+                              : gymStatus === 'partial_renewal'
+                                ? 'Parcial'
+                                : gymStatus === 'current_no_payment'
+                                  ? 'Sin factura'
+                                  : 'Sin productos';
 
                       const statusClass = client.is_inactive
                         ? 'bg-red-100 text-red-700'
-                        : client.hasExpiredOnly
+                        : gymStatus === 'renewal'
                           ? 'bg-orange-100 text-orange-700'
-                          : client.hasActiveGymMembership ||
-                              activeCourses.length > 0
+                          : gymStatus === 'all_current' ||
+                              (activeCourses.length > 0 &&
+                                (client.gym_memberships || []).filter(
+                                  (m: any) => m.status !== 'cancelled',
+                                ).length === 0)
                             ? 'bg-emerald-100 text-emerald-700'
-                            : 'bg-gray-100 text-gray-700';
+                            : gymStatus === 'scheduled_only'
+                              ? 'bg-cyan-100 text-cyan-700'
+                              : gymStatus === 'partial_renewal' ||
+                                  gymStatus === 'current_no_payment'
+                                ? 'bg-amber-100 text-amber-700'
+                                : 'bg-gray-100 text-gray-700';
 
                       const productTypeLabel =
                         client.userType === 'both'
@@ -3598,110 +3627,22 @@ function AdminDashboardContent() {
                                 <td className="px-3 md:px-4 py-3 md:py-4">
                                   <div onClick={(e) => e.stopPropagation()}>
                                     {(() => {
-                                      const today = getGymAdminToday();
                                       const allMemberships =
                                         user.gym_memberships || [];
                                       const allCourses =
                                         user.activeCoursePurchases || [];
-                                      const ctx = buildGymRenewalAdminContext(
+                                      const allProducts = buildAdminProductsList(
                                         allMemberships,
-                                        today,
+                                        allCourses,
                                       );
-                                      const activeMemberships = ctx.active;
-                                      const expiredMemberships = ctx.expired;
-                                      const cancelledMemberships = ctx.cancelled;
 
-                                      if (
-                                        allMemberships.length === 0 &&
-                                        allCourses.length === 0
-                                      ) {
+                                      if (allProducts.length === 0) {
                                         return (
                                           <span className="text-sm font-medium text-gray-500 dark:text-white/50">
                                             Sin productos
                                           </span>
                                         );
                                       }
-
-                                      const allProducts: Array<{
-                                        name: string;
-                                        type: 'membership' | 'course';
-                                        isActive: boolean;
-                                        isCancelled?: boolean;
-                                        isScheduled?: boolean;
-                                        missingRegisteredPayment?: boolean;
-                                        membership?: any;
-                                      }> = [];
-
-                                      // 1. Primero: Agregar membresías activas actuales (no programadas)
-                                      activeMemberships.forEach((m: any) => {
-                                        const startDate = parseLocalDate(
-                                          m.start_date,
-                                        );
-                                        startDate.setHours(0, 0, 0, 0);
-                                        const isScheduled = startDate > today;
-
-                                        if (!isScheduled) {
-                                          allProducts.push({
-                                            name: m.plan?.name || 'Plan',
-                                            type: 'membership',
-                                            isActive: true,
-                                            membership: m,
-                                            missingRegisteredPayment:
-                                              user.hasAnyInvoiceEver === false,
-                                          });
-                                        }
-                                      });
-
-                                      // 2. Segundo: Agregar membresías programadas (pagos anticipados)
-                                      activeMemberships.forEach((m: any) => {
-                                        const startDate = parseLocalDate(
-                                          m.start_date,
-                                        );
-                                        startDate.setHours(0, 0, 0, 0);
-                                        const isScheduled = startDate > today;
-
-                                        if (isScheduled) {
-                                          allProducts.push({
-                                            name: m.plan?.name || 'Plan',
-                                            type: 'membership',
-                                            isActive: true,
-                                            isScheduled: true,
-                                            membership: m,
-                                            missingRegisteredPayment:
-                                              user.hasAnyInvoiceEver === false,
-                                          });
-                                        }
-                                      });
-
-                                      // 3. Tercero: Agregar membresías vencidas (para renovar)
-                                      expiredMemberships.forEach((m: any) => {
-                                        allProducts.push({
-                                          name: m.plan?.name || 'Plan',
-                                          type: 'membership',
-                                          isActive: false,
-                                          membership: m,
-                                        });
-                                      });
-
-                                      // 4. Cuarto: Agregar membresías canceladas
-                                      cancelledMemberships.forEach((m: any) => {
-                                        allProducts.push({
-                                          name: m.plan?.name || 'Plan',
-                                          type: 'membership',
-                                          isActive: false,
-                                          isCancelled: true,
-                                          membership: m,
-                                        });
-                                      });
-
-                                      // Agregar cursos
-                                      allCourses.forEach((p: any) => {
-                                        allProducts.push({
-                                          name: p.course?.title || 'Curso',
-                                          type: 'course',
-                                          isActive: true,
-                                        });
-                                      });
 
                                       // Obtener el primer producto para mostrar
                                       const firstProduct =
@@ -3830,215 +3771,16 @@ function AdminDashboardContent() {
                                 </td>
                                 <td className="px-3 md:px-4 py-3 md:py-4">
                                   <div>
-                                    {(() => {
-                                      // Si está inactivo, siempre mostrar "Inactivo" primero
-                                      if (user.is_inactive) {
-                                        return (
-                                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400">
-                                            <X className="w-3 h-3" />
-                                            Inactivo
-                                          </span>
-                                        );
+                                    <GymClientPaymentStatusBadge
+                                      memberships={user.gym_memberships}
+                                      activeCoursePurchases={
+                                        user.activeCoursePurchases
                                       }
-
-                                      const allMemberships =
-                                        user.gym_memberships || [];
-                                      const allCourses =
-                                        user.activeCoursePurchases || [];
-                                      const today = getGymAdminToday();
-                                      const ctx = buildGymRenewalAdminContext(
-                                        allMemberships,
-                                        today,
-                                      );
-                                      const activeMemberships = ctx.active;
-                                      const expiredMemberships = ctx.expired;
-                                      const cancelledMemberships = ctx.cancelled;
-                                      const expiredNeedingRenewal =
-                                        ctx.expiredNeedingRenewal;
-                                      const renewalDismissed =
-                                        allRenewalPlansDismissed(
-                                          renewalPendingPlanIdsFromMemberships(
-                                            expiredNeedingRenewal,
-                                          ),
-                                          user.renewal_followup_dismissed_plan_ids,
-                                        );
-
-                                      if (
-                                        allMemberships.length === 0 &&
-                                        allCourses.length === 0
-                                      ) {
-                                        return (
-                                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-white/60">
-                                            <AlertCircle className="w-3 h-3" />
-                                            Sin pagos
-                                          </span>
-                                        );
+                                      isInactive={user.is_inactive}
+                                      renewalFollowupDismissedPlanIds={
+                                        user.renewal_followup_dismissed_plan_ids
                                       }
-
-                                      const hasOnlyCancelled =
-                                        cancelledMemberships.length > 0 &&
-                                        activeMemberships.length === 0 &&
-                                        expiredMemberships.length === 0;
-
-                                      // Si solo tiene membresías canceladas
-                                      if (hasOnlyCancelled) {
-                                        return (
-                                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-500/20 text-slate-600 dark:text-slate-400">
-                                            <X className="w-3 h-3" />
-                                            Cancelado
-                                          </span>
-                                        );
-                                      }
-
-                                      // Si solo tiene cursos online
-                                      if (
-                                        allMemberships.length === 0 &&
-                                        allCourses.length > 0
-                                      ) {
-                                        return (
-                                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400">
-                                            <CheckCircle className="w-3 h-3" />
-                                            Al día
-                                          </span>
-                                        );
-                                      }
-
-                                      // Si solo tiene membresías físicas (no canceladas)
-                                      const nonCancelledMemberships =
-                                        allMemberships.filter(
-                                          (m: any) => m.status !== 'cancelled',
-                                        );
-                                      if (
-                                        nonCancelledMemberships.length > 0 &&
-                                        allCourses.length === 0
-                                      ) {
-                                        // Todos activos
-                                        if (
-                                          activeMemberships.length ===
-                                            nonCancelledMemberships.length &&
-                                          expiredMemberships.length === 0
-                                        ) {
-                                          return (
-                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400">
-                                              <CheckCircle className="w-3 h-3" />
-                                              Al día
-                                            </span>
-                                          );
-                                        }
-                                        // Todos vencidos
-                                        if (
-                                          expiredMemberships.length ===
-                                            nonCancelledMemberships.length &&
-                                          activeMemberships.length === 0
-                                        ) {
-                                          if (renewalDismissed) {
-                                            return (
-                                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-500/20 text-slate-700 dark:text-slate-300">
-                                                <Ban className="w-3 h-3 shrink-0" />
-                                                Renovación descartada
-                                              </span>
-                                            );
-                                          }
-                                          return (
-                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400">
-                                              <AlertTriangle className="w-3 h-3" />
-                                              Renovar
-                                            </span>
-                                          );
-                                        }
-                                        // Mezcla: activos + vencidos en historial
-                                        if (
-                                          activeMemberships.length > 0 &&
-                                          expiredMemberships.length > 0
-                                        ) {
-                                          if (expiredNeedingRenewal.length === 0) {
-                                            return (
-                                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400">
-                                                <CheckCircle className="w-3 h-3" />
-                                                Al día
-                                              </span>
-                                            );
-                                          }
-                                          if (renewalDismissed) {
-                                            return (
-                                              <span className="inline-flex max-w-[14rem] flex-col gap-0.5 rounded-lg px-2.5 py-1.5 text-left text-[10px] font-medium leading-tight bg-slate-100 dark:bg-slate-500/20 text-slate-700 dark:text-slate-300 sm:max-w-none sm:flex-row sm:items-center sm:gap-1.5 sm:rounded-full sm:text-xs">
-                                                <Ban className="w-3 h-3 shrink-0 sm:order-none" />
-                                                <span>
-                                                  Activo + Renovación
-                                                  descartada
-                                                </span>
-                                              </span>
-                                            );
-                                          }
-                                          return (
-                                            <span className="inline-flex max-w-[14rem] flex-col gap-0.5 rounded-lg px-2.5 py-1.5 text-left text-[10px] font-medium leading-tight bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300 sm:max-w-none sm:flex-row sm:items-center sm:gap-1.5 sm:rounded-full sm:text-xs">
-                                              <Bell className="w-3 h-3 shrink-0" />
-                                              <span>
-                                                Activo + Renovación pendiente
-                                              </span>
-                                            </span>
-                                          );
-                                        }
-                                      }
-
-                                      // Si tiene ambos (físico y online)
-                                      if (
-                                        nonCancelledMemberships.length > 0 &&
-                                        allCourses.length > 0
-                                      ) {
-                                        // Si todas las membresías están activas
-                                        if (
-                                          activeMemberships.length ===
-                                            nonCancelledMemberships.length &&
-                                          expiredMemberships.length === 0
-                                        ) {
-                                          return (
-                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400">
-                                              <CheckCircle className="w-3 h-3" />
-                                              Al día
-                                            </span>
-                                          );
-                                        }
-                                        // Membresías vencidas + cursos online
-                                        if (expiredMemberships.length > 0) {
-                                          if (expiredNeedingRenewal.length === 0) {
-                                            return (
-                                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400">
-                                                <CheckCircle className="w-3 h-3" />
-                                                Al día
-                                              </span>
-                                            );
-                                          }
-                                          if (renewalDismissed) {
-                                            return (
-                                              <span className="inline-flex max-w-[14rem] flex-col gap-0.5 rounded-lg px-2.5 py-1.5 text-left text-[10px] font-medium leading-tight bg-slate-100 dark:bg-slate-500/20 text-slate-700 dark:text-slate-300 sm:max-w-none sm:flex-row sm:items-center sm:gap-1.5 sm:rounded-full sm:text-xs">
-                                                <Ban className="w-3 h-3 shrink-0" />
-                                                <span>
-                                                  Activo + Renovación
-                                                  descartada
-                                                </span>
-                                              </span>
-                                            );
-                                          }
-                                          return (
-                                            <span className="inline-flex max-w-[14rem] flex-col gap-0.5 rounded-lg px-2.5 py-1.5 text-left text-[10px] font-medium leading-tight bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300 sm:max-w-none sm:flex-row sm:items-center sm:gap-1.5 sm:rounded-full sm:text-xs">
-                                              <Bell className="w-3 h-3 shrink-0" />
-                                              <span>
-                                                Activo + Renovación pendiente
-                                              </span>
-                                            </span>
-                                          );
-                                        }
-                                      }
-
-                                      // Fallback
-                                      return (
-                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-white/60">
-                                          <AlertCircle className="w-3 h-3" />
-                                          Sin pagos
-                                        </span>
-                                      );
-                                    })()}
+                                    />
                                   </div>
                                 </td>
                                 <td className="px-3 md:px-4 py-3 md:py-4">
@@ -4495,126 +4237,51 @@ function AdminDashboardContent() {
                     {/* Card view para móviles */}
                     <div className="md:hidden divide-y divide-gray-100 dark:divide-white/5">
                       {users.map((user) => {
-                        const today = getGymAdminToday();
                         const memberships = user.gym_memberships || [];
-                        const ctxMobile = buildGymRenewalAdminContext(
-                          memberships,
-                          today,
-                        );
-                        const activeMemberships = ctxMobile.active;
-                        const expiredMemberships = ctxMobile.expired;
-                        const expiredNeedingRenewalMobile =
-                          ctxMobile.expiredNeedingRenewal;
-                        const nonCancelledMemberships = memberships.filter(
-                          (m: any) => m.status !== 'cancelled',
-                        );
-                        const cancelledMemberships = memberships.filter(
-                          (m: any) => m.status === 'cancelled',
-                        );
-                        const hasActive = activeMemberships.length > 0;
-                        const hasMixRenewal =
-                          activeMemberships.length > 0 &&
-                          expiredNeedingRenewalMobile.length > 0;
-                        const allExpiredOnly =
-                          nonCancelledMemberships.length > 0 &&
-                          activeMemberships.length === 0 &&
-                          expiredMemberships.length ===
-                            nonCancelledMemberships.length;
+                        const gymStatus =
+                          user.gym_client_status ??
+                          computeClientGymAdminStatus(
+                            summarizeGymPlansPerClient(memberships),
+                            memberships,
+                          );
+                        const ctxMobile =
+                          buildGymRenewalAdminContext(memberships);
                         const hasExpired =
-                          nonCancelledMemberships.length > 0 && !hasActive;
-                        const hasOnlyCancelled =
-                          cancelledMemberships.length > 0 &&
-                          nonCancelledMemberships.length === 0;
-                        const renewalDismissed = allRenewalPlansDismissed(
-                          renewalPendingPlanIdsFromMemberships(
-                            expiredNeedingRenewalMobile,
-                          ),
-                          user.renewal_followup_dismissed_plan_ids,
+                          gymStatus === 'renewal' ||
+                          gymStatus === 'partial_renewal';
+
+                        const statusColor = user.is_inactive
+                          ? 'border-red-400/60'
+                          : gymStatus === 'all_current'
+                            ? 'border-emerald-400/50'
+                            : gymStatus === 'scheduled_only'
+                              ? 'border-cyan-400/60'
+                              : gymStatus === 'renewal'
+                                ? allRenewalPlansDismissed(
+                                    renewalPendingPlanIdsFromMemberships(
+                                      ctxMobile.expiredNeedingRenewal,
+                                    ),
+                                    user.renewal_followup_dismissed_plan_ids,
+                                  )
+                                  ? 'border-slate-400/60'
+                                  : 'border-orange-400/60'
+                                : gymStatus === 'partial_renewal'
+                                  ? 'border-amber-400/60'
+                                  : gymStatus === 'cancelled_only'
+                                    ? 'border-slate-400/60'
+                                    : 'border-gray-300';
+
+                        const statusBadge = (
+                          <GymClientPaymentStatusBadge
+                            memberships={memberships}
+                            activeCoursePurchases={user.activeCoursePurchases}
+                            isInactive={user.is_inactive}
+                            renewalFollowupDismissedPlanIds={
+                              user.renewal_followup_dismissed_plan_ids
+                            }
+                            size="sm"
+                          />
                         );
-
-                        let statusColor = 'border-gray-300';
-                        let statusBadge = null;
-
-                        if (user.is_inactive) {
-                          statusColor = 'border-red-400/60';
-                          statusBadge = (
-                            <span className="bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">
-                              Inactivo
-                            </span>
-                          );
-                        } else if (
-                          hasActive &&
-                          expiredMemberships.length > 0 &&
-                          expiredNeedingRenewalMobile.length === 0
-                        ) {
-                          statusColor = 'border-emerald-400/50';
-                          statusBadge = (
-                            <span className="bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">
-                              Al día
-                            </span>
-                          );
-                        } else if (hasMixRenewal) {
-                          statusColor = renewalDismissed
-                            ? 'border-slate-400/60'
-                            : 'border-amber-400/60';
-                          statusBadge = (
-                            <span
-                              className={`text-[9px] px-2 py-0.5 rounded-full font-bold uppercase leading-tight max-w-[11rem] text-center ${
-                                renewalDismissed
-                                  ? 'bg-slate-100 dark:bg-slate-500/20 text-slate-700 dark:text-slate-300'
-                                  : 'bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300'
-                              }`}
-                            >
-                              {renewalDismissed
-                                ? 'Activo + Renov. descartada'
-                                : 'Activo + Renov. pendiente'}
-                            </span>
-                          );
-                        } else if (hasActive && expiredMemberships.length === 0) {
-                          statusColor = 'border-emerald-400/50';
-                          statusBadge = (
-                            <span className="bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">
-                              Al día
-                            </span>
-                          );
-                        } else if (allExpiredOnly) {
-                          statusColor = renewalDismissed
-                            ? 'border-slate-400/60'
-                            : 'border-orange-400/60';
-                          statusBadge = (
-                            <span
-                              className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
-                                renewalDismissed
-                                  ? 'bg-slate-100 dark:bg-slate-500/20 text-slate-700 dark:text-slate-300'
-                                  : 'bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400'
-                              }`}
-                            >
-                              {renewalDismissed
-                                ? 'Renov. descartada'
-                                : 'Renovar'}
-                            </span>
-                          );
-                        } else if (hasExpired) {
-                          statusColor = 'border-orange-400/60';
-                          statusBadge = (
-                            <span className="bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">
-                              Renovación
-                            </span>
-                          );
-                        } else if (hasOnlyCancelled) {
-                          statusColor = 'border-slate-400/60';
-                          statusBadge = (
-                            <span className="bg-slate-100 dark:bg-slate-500/20 text-slate-600 dark:text-slate-400 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">
-                              Cancelado
-                            </span>
-                          );
-                        } else {
-                          statusBadge = (
-                            <span className="bg-gray-100 dark:bg-gray-500/20 text-gray-500 dark:text-gray-400 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">
-                              Sin productos
-                            </span>
-                          );
-                        }
 
                         const isAdminUserMobile =
                           user.email === 'rogerbox@admin.com' ||
@@ -4731,9 +4398,9 @@ function AdminDashboardContent() {
                                     </span>
                                   </div>
                                 )}
-                                {/* Mostrar planes activos */}
-                                {activeMemberships.length > 0 &&
-                                  activeMemberships.map(
+                                {/* Planes con período en curso */}
+                                {ctxMobile.current.length > 0 &&
+                                  ctxMobile.current.map(
                                     (membership: any, idx: number) => (
                                       <div
                                         key={membership.id || idx}
@@ -4748,11 +4415,9 @@ function AdminDashboardContent() {
                                       </div>
                                     ),
                                   )}
-                                {/* Mostrar planes vencidos (para renovar) */}
-                                {getCalendarExpiredNonCancelled(
-                                  memberships,
-                                  today,
-                                ).map((membership: any, idx: number) => (
+                                {/* Planes vencidos que piden renovación */}
+                                {ctxMobile.expiredNeedingRenewal.map(
+                                  (membership: any, idx: number) => (
                                     <div
                                       key={`expired-${membership.id || idx}`}
                                       className="flex items-center gap-1 bg-orange-100 dark:bg-orange-500/10 px-2 py-1 rounded-lg"
@@ -4764,7 +4429,8 @@ function AdminDashboardContent() {
                                       </span>
                                       <AlertTriangle className="w-3 h-3 text-orange-600 dark:text-orange-400" />
                                     </div>
-                                  ))}
+                                  ),
+                                )}
                               </div>
 
                               <div className="flex items-center gap-1 text-[#164151]/30 dark:text-white/20 font-bold uppercase text-[9px] tracking-widest group-hover:text-[#85ea10] transition-colors">
