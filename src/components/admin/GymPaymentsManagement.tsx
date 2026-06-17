@@ -127,6 +127,18 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
       endDate: string;
       status: string;
     } | null>(null);
+    /** Decisión del admin cuando ya hay un período vigente del mismo plan. */
+    const [advanceDecision, setAdvanceDecision] = useState<
+      'today' | 'advance' | null
+    >(null);
+    /** Opciones de fechas para renovar (desde hoy) o pagar anticipado (encadenado). */
+    const [renewalOptions, setRenewalOptions] = useState<{
+      todayStart: string;
+      todayEnd: string;
+      advanceStart: string;
+      advanceEnd: string;
+      currentEnd: string;
+    } | null>(null);
     const [amountFieldFocused, setAmountFieldFocused] = useState(false);
     const [urlParamsProcessed, setUrlParamsProcessed] = useState(false);
     /** Si viene en la URL (ej. ficha cliente → Renovar), no pisar inicio con pago anticipado. */
@@ -283,6 +295,8 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
       setExpiredMembershipToPay(null);
       setIsAdvancePayment(false);
       setAdvanceMembershipSnapshot(null);
+      setAdvanceDecision(null);
+      setRenewalOptions(null);
 
       const planForCalc = planForDuration ?? selectedPlan;
 
@@ -336,8 +350,11 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
               new Date(b.end_date).getTime() - new Date(a.end_date).getTime(),
           )[0];
 
-          // Si hay membresía activa para ESTE MISMO plan, es pago anticipado
+          // Si hay membresía vigente del MISMO plan, el admin debe elegir
+          // explícitamente: renovar desde hoy o pago anticipado (encadenado).
           if (activeMembershipForThisPlan) {
+            const planDuration = planForCalc?.duration_days ?? 30;
+
             // Parsear end_date como fecha local (evitar UTC) para que "día siguiente" sea correcto
             const endStr = String(
               activeMembershipForThisPlan.end_date || '',
@@ -348,24 +365,28 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                 ? new Date(y, m - 1, d)
                 : new Date(activeMembershipForThisPlan.end_date);
 
-            // El nuevo plan empieza el día siguiente al último día del plan actual
-            const newStartDate = new Date(latestEndDate);
-            newStartDate.setDate(newStartDate.getDate() + 1);
+            // Opción anticipada: empieza el día siguiente al fin del período actual
+            const advanceStartDate = new Date(latestEndDate);
+            advanceStartDate.setDate(advanceStartDate.getDate() + 1);
+            const advanceStartStr = toLocalDateString(advanceStartDate);
+            const advanceEndStr = membershipEndDateFromStart(
+              advanceStartDate,
+              planDuration,
+            );
 
-            // Calcular fecha de fin según días del plan (ej. 15 días → inicio + 14)
-            const planDuration = planForCalc?.duration_days ?? 30;
-            const periodEndStr = membershipEndDateFromStart(newStartDate, planDuration);
-
-            // Actualizar las fechas del formulario automáticamente
-            setFormData((prev) => ({
-              ...prev,
-              period_start: toLocalDateString(newStartDate),
-              period_end: periodEndStr,
-            }));
+            // Opción renovar desde hoy
+            const todayStartDate = new Date();
+            const todayStartStr = toLocalDateString(todayStartDate);
+            const todayEndStr = membershipEndDateFromStart(
+              todayStartDate,
+              planDuration,
+            );
 
             const planNested = activeMembershipForThisPlan.plan;
             const planNameFromMem =
-              (Array.isArray(planNested) ? planNested[0]?.name : planNested?.name) ||
+              (Array.isArray(planNested)
+                ? planNested[0]?.name
+                : planNested?.name) ||
               planForCalc?.name ||
               'Plan';
 
@@ -378,16 +399,29 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                   10,
                 ),
               ),
-              endDate: String(
-                String(activeMembershipForThisPlan.end_date || '').slice(0, 10),
-              ),
+              endDate: endStr,
               status: String(activeMembershipForThisPlan.status || ''),
             });
+            setRenewalOptions({
+              todayStart: todayStartStr,
+              todayEnd: todayEndStr,
+              advanceStart: advanceStartStr,
+              advanceEnd: advanceEndStr,
+              currentEnd: endStr,
+            });
 
-            // Marcar como pago anticipado (permitido)
-            setIsAdvancePayment(true);
+            // Pendiente de decisión: no encadenar en silencio
+            setAdvanceDecision(null);
+            setIsAdvancePayment(false);
             setHasActiveMembership(false);
             setError('');
+
+            // Default visual: período anticipado (se confirma abajo)
+            setFormData((prev) => ({
+              ...prev,
+              period_start: advanceStartStr,
+              period_end: advanceEndStr,
+            }));
           } else {
             // No hay membresía activa para ESTE plan, fechas normales (desde hoy) — por días del plan
             const planDuration = planForCalc?.duration_days ?? 30;
@@ -405,6 +439,8 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
             setExpiredMembershipToPay(null);
             setIsAdvancePayment(false);
             setAdvanceMembershipSnapshot(null);
+            setAdvanceDecision(null);
+            setRenewalOptions(null);
           }
         }
       } catch (error) {
@@ -468,6 +504,43 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
       setSelectedPlan(plan);
     };
 
+    /** Renovar desde hoy (no encadenar): el período empieza hoy. */
+    const chooseRenewToday = () => {
+      if (!renewalOptions) return;
+      setFormData((prev) => ({
+        ...prev,
+        period_start: renewalOptions.todayStart,
+        period_end: renewalOptions.todayEnd,
+      }));
+      setAdvanceDecision('today');
+      setIsAdvancePayment(false);
+    };
+
+    /** Pago anticipado: el período se encadena tras el período vigente. */
+    const chooseAdvance = () => {
+      if (!renewalOptions) return;
+      setFormData((prev) => ({
+        ...prev,
+        period_start: renewalOptions.advanceStart,
+        period_end: renewalOptions.advanceEnd,
+      }));
+      setAdvanceDecision('advance');
+      setIsAdvancePayment(true);
+    };
+
+    /** Volver a elegir entre renovar hoy / anticipado. */
+    const resetAdvanceDecision = () => {
+      setAdvanceDecision(null);
+      setIsAdvancePayment(false);
+      if (renewalOptions) {
+        setFormData((prev) => ({
+          ...prev,
+          period_start: renewalOptions.advanceStart,
+          period_end: renewalOptions.advanceEnd,
+        }));
+      }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
       setError('');
@@ -476,6 +549,15 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
       try {
         if (!formData.client_info_id || !formData.plan_id) {
           setError('Debes seleccionar un cliente y un plan');
+          setIsSubmitting(false);
+          return;
+        }
+
+        // Si ya hay un período vigente del mismo plan, exigir decisión explícita
+        if (advanceMembershipSnapshot && advanceDecision === null) {
+          setError(
+            'Este cliente ya tiene el plan vigente. Elige "Renovar desde hoy" o "Pago anticipado" antes de continuar.',
+          );
           setIsSubmitting(false);
           return;
         }
@@ -591,6 +673,8 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
       setExpiredMembershipToPay(null);
       setIsAdvancePayment(false);
       setAdvanceMembershipSnapshot(null);
+      setAdvanceDecision(null);
+      setRenewalOptions(null);
       setUrlParamsProcessed(false);
       setDiscountPercent(0);
       setAmountFieldFocused(false);
@@ -939,6 +1023,81 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                   </div>
                 )}
 
+                {/* Decisión: plan vigente del mismo plan → renovar hoy o anticipado */}
+                {advanceMembershipSnapshot &&
+                  advanceDecision === null &&
+                  renewalOptions &&
+                  !error && (
+                    <div className="p-3.5 sm:p-4 bg-amber-50 dark:bg-amber-500/[0.06] border border-amber-200/90 dark:border-amber-500/20 rounded-xl space-y-3">
+                      <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-500/15 flex items-center justify-center flex-shrink-0">
+                          <Calendar className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-semibold text-[#164151] dark:text-white/90">
+                            Este cliente ya tiene{' '}
+                            {advanceMembershipSnapshot.planName} vigente hasta{' '}
+                            {formatDateOnlyLocal(renewalOptions.currentEnd, {
+                              day: '2-digit',
+                              month: 'long',
+                              year: 'numeric',
+                            })}
+                          </p>
+                          <p className="text-[11px] text-[#164151]/65 dark:text-white/50 mt-0.5 leading-relaxed">
+                            Elige cómo registrar este pago. No se creará ningún
+                            período sin tu confirmación.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <button
+                          type="button"
+                          onClick={chooseRenewToday}
+                          className="rounded-lg border border-gray-200/90 dark:border-white/[0.1] bg-white/70 dark:bg-white/[0.04] px-3 py-2.5 text-left hover:border-[#85ea10]/40 hover:bg-[#85ea10]/[0.04] transition-colors"
+                        >
+                          <p className="text-sm font-semibold text-[#164151] dark:text-white/95">
+                            Renovar desde hoy
+                          </p>
+                          <p className="text-[11px] text-[#164151]/70 dark:text-white/55 mt-1 tabular-nums">
+                            {formatDateOnlyLocal(renewalOptions.todayStart, {
+                              day: '2-digit',
+                              month: 'short',
+                            })}{' '}
+                            →{' '}
+                            {formatDateOnlyLocal(renewalOptions.todayEnd, {
+                              day: '2-digit',
+                              month: 'short',
+                              year: 'numeric',
+                            })}
+                          </p>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={chooseAdvance}
+                          className="rounded-lg border border-gray-200/90 dark:border-white/[0.1] bg-white/70 dark:bg-white/[0.04] px-3 py-2.5 text-left hover:border-[#85ea10]/40 hover:bg-[#85ea10]/[0.04] transition-colors"
+                        >
+                          <p className="text-sm font-semibold text-[#164151] dark:text-white/95">
+                            Pago anticipado
+                          </p>
+                          <p className="text-[11px] text-[#164151]/70 dark:text-white/55 mt-1 tabular-nums">
+                            {formatDateOnlyLocal(renewalOptions.advanceStart, {
+                              day: '2-digit',
+                              month: 'short',
+                            })}{' '}
+                            →{' '}
+                            {formatDateOnlyLocal(renewalOptions.advanceEnd, {
+                              day: '2-digit',
+                              month: 'short',
+                              year: 'numeric',
+                            })}
+                          </p>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                 {/* Pago anticipado: plan vigente + nuevo período */}
                 {isAdvancePayment && !error && advanceMembershipSnapshot && (
                   <div className="p-3.5 sm:p-4 bg-slate-50 dark:bg-white/[0.03] border border-slate-200/90 dark:border-white/[0.08] rounded-xl space-y-3">
@@ -947,9 +1106,20 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                         <Calendar className="w-4 h-4 text-slate-600 dark:text-white/50" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-xs font-semibold text-[#164151] dark:text-white/90">
-                          Pago anticipado
-                        </p>
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-xs font-semibold text-[#164151] dark:text-white/90">
+                            Pago anticipado
+                          </p>
+                          {renewalOptions && (
+                            <button
+                              type="button"
+                              onClick={resetAdvanceDecision}
+                              className="text-[11px] font-medium text-slate-500 hover:text-[#164151] dark:text-white/50 dark:hover:text-white shrink-0"
+                            >
+                              Cambiar
+                            </button>
+                          )}
+                        </div>
                         <p className="text-[11px] text-[#164151]/65 dark:text-white/50 mt-0.5 leading-relaxed">
                           Revisa el período que ya tiene cubierto y el que se
                           creará con este pago (mismo plan). Puedes corregir el
@@ -1397,7 +1567,8 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                       !selectedClient ||
                       !selectedPlan ||
                       hasActiveMembership ||
-                      checkingMembership
+                      checkingMembership ||
+                      (!!advanceMembershipSnapshot && advanceDecision === null)
                     }
                     className="px-5 py-2.5 text-sm rounded-xl bg-[#164151] dark:bg-white text-white dark:text-gray-900 hover:bg-[#0f303d] dark:hover:bg-white/95 font-medium transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
                   >

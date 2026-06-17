@@ -71,6 +71,10 @@ import GymPlansManagement, {
 import QuickLoading from '@/components/QuickLoading';
 import UnderConstruction from '@/components/UnderConstruction';
 import { DatePickerField } from '@/shared/components/DatePickerField';
+import {
+  DailyBirthdaysModal,
+  useDailyBirthdaysModal,
+} from '@/shared/components/DailyBirthdaysModal';
 import { GymClientPaymentStatusBadge } from '@/shared/components/GymClientPaymentStatusBadge';
 import { GymSeededAvatar } from '@/shared/components/GymSeededAvatar';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
@@ -86,6 +90,10 @@ import {
   renewalPendingPlanIdsFromMemberships,
   summarizeGymPlansPerClient,
 } from '@/shared/utils/gym-membership-admin.util';
+import {
+  formatBirthDayMonthLabel,
+  parseBirthDateYmd,
+} from '@/shared/utils/birthday.util';
 import { supabaseAdmin } from '@/lib/supabase';
 import { supabase } from '@/lib/supabase-browser';
 
@@ -535,6 +543,11 @@ function AdminDashboardContent() {
     const matchRole = user.user_metadata?.role === 'admin';
     return Boolean(matchId || matchEmail || matchRole);
   }, [user]);
+
+  const dailyBirthdays = useDailyBirthdaysModal(
+    !authLoading && isAdmin && !!user,
+  );
+  const [reopenBirthdaysModal, setReopenBirthdaysModal] = useState(false);
 
   // Leer query param 'tab' y establecer activeTab al cargar
   useEffect(() => {
@@ -1843,7 +1856,7 @@ function AdminDashboardContent() {
                     setHeaderSearchResults([]);
                     setShowHeaderSearchResults(false);
                   }}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  className="text-gray-400 dark:text-white/45 hover:text-gray-600 dark:hover:text-white/80 transition-colors"
                   title="Limpiar búsqueda"
                 >
                   <X className="w-3.5 h-3.5" />
@@ -1852,13 +1865,13 @@ function AdminDashboardContent() {
             </div>
 
             {showHeaderSearchResults && headerSearchTerm.trim().length >= 2 && (
-              <div className="absolute top-12 left-0 right-0 z-40 rounded-2xl border border-white/35 bg-white/70 backdrop-blur-xl shadow-2xl max-h-[26rem] overflow-y-auto">
+              <div className="absolute top-12 left-0 right-0 z-40 rounded-2xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#111b2b] shadow-2xl max-h-[26rem] overflow-y-auto">
                 {headerSearchLoading ? (
-                  <div className="px-4 py-6 text-sm text-[#164151]/70">
+                  <div className="px-4 py-6 text-sm text-[#164151]/70 dark:text-white/60">
                     Buscando clientes...
                   </div>
                 ) : headerSearchResults.length === 0 ? (
-                  <div className="px-4 py-6 text-sm text-[#164151]/70">
+                  <div className="px-4 py-6 text-sm text-[#164151]/70 dark:text-white/60">
                     No encontramos clientes con ese criterio.
                   </div>
                 ) : (
@@ -1921,21 +1934,21 @@ function AdminDashboardContent() {
                                   : 'Sin productos';
 
                       const statusClass = client.is_inactive
-                        ? 'bg-red-100 text-red-700'
+                        ? 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300'
                         : gymStatus === 'renewal'
-                          ? 'bg-orange-100 text-orange-700'
+                          ? 'bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-300'
                           : gymStatus === 'all_current' ||
                               (activeCourses.length > 0 &&
                                 (client.gym_memberships || []).filter(
                                   (m: any) => m.status !== 'cancelled',
                                 ).length === 0)
-                            ? 'bg-emerald-100 text-emerald-700'
+                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300'
                             : gymStatus === 'scheduled_only'
-                              ? 'bg-cyan-100 text-cyan-700'
+                              ? 'bg-cyan-100 text-cyan-700 dark:bg-cyan-500/20 dark:text-cyan-300'
                               : gymStatus === 'partial_renewal' ||
                                   gymStatus === 'current_no_payment'
-                                ? 'bg-amber-100 text-amber-700'
-                                : 'bg-gray-100 text-gray-700';
+                                ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300'
+                                : 'bg-gray-100 text-gray-700 dark:bg-white/10 dark:text-white/60';
 
                       const productTypeLabel =
                         client.userType === 'both'
@@ -1953,10 +1966,10 @@ function AdminDashboardContent() {
                             setShowHeaderSearchResults(false);
                             router.push(`/admin/users/${client.id}`);
                           }}
-                          className="w-full text-left rounded-xl px-3 py-2.5 hover:bg-white/70 transition-colors border border-transparent hover:border-gray-200/70"
+                          className="w-full text-left rounded-xl px-3 py-2.5 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors border border-transparent hover:border-gray-200/70 dark:hover:border-white/10"
                         >
                           <div className="flex items-start justify-between gap-2">
-                            <p className="text-sm font-semibold text-[#164151] truncate">
+                            <p className="text-sm font-semibold text-[#164151] dark:text-white truncate">
                               {client.name || 'Cliente'}
                             </p>
                             <span
@@ -1965,18 +1978,18 @@ function AdminDashboardContent() {
                               {statusLabel}
                             </span>
                           </div>
-                          <p className="text-[11px] text-[#164151]/70 truncate">
+                          <p className="text-[11px] text-[#164151]/70 dark:text-white/55 truncate">
                             {client.document_id || 'Sin cédula'}{' '}
                             {client.email ? `· ${client.email}` : ''}
                           </p>
                           <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-700">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300">
                               {productTypeLabel}
                             </span>
                             {planNames.map((plan: string) => (
                               <span
                                 key={`plan-${client.id}-${plan}`}
-                                className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-[#85ea10]/20 text-[#164151]"
+                                className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-[#85ea10]/20 text-[#164151] dark:text-[#85ea10]"
                               >
                                 {plan}
                               </span>
@@ -1984,13 +1997,13 @@ function AdminDashboardContent() {
                             {courseNames.map((course: string) => (
                               <span
                                 key={`course-${client.id}-${course}`}
-                                className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-cyan-100 text-cyan-700"
+                                className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-cyan-100 text-cyan-700 dark:bg-cyan-500/20 dark:text-cyan-300"
                               >
                                 {course}
                               </span>
                             ))}
                             {planNames.length === 0 && courseNames.length === 0 && (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-100 text-gray-600">
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-100 text-gray-600 dark:bg-white/10 dark:text-white/50">
                                 Sin productos registrados
                               </span>
                             )}
@@ -2828,13 +2841,22 @@ function AdminDashboardContent() {
                         </div>
                       </div>
                       {birthdayClients.length > 0 && (
-                        <div className="text-right">
-                          <p className="text-xs text-gray-500 dark:text-white/50">
-                            Total
-                          </p>
-                          <p className="text-base font-bold text-[#164151] dark:text-white">
-                            {birthdayClients.length}
-                          </p>
+                        <div className="flex items-center gap-3">
+                          <button
+                            type="button"
+                            onClick={() => setReopenBirthdaysModal(true)}
+                            className="text-xs font-medium text-[#164151] dark:text-[#85ea10] hover:underline"
+                          >
+                            Ver modal
+                          </button>
+                          <div className="text-right">
+                            <p className="text-xs text-gray-500 dark:text-white/50">
+                              Total
+                            </p>
+                            <p className="text-base font-bold text-[#164151] dark:text-white">
+                              {birthdayClients.length}
+                            </p>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -5034,6 +5056,37 @@ function AdminDashboardContent() {
       )}
 
       {/* Gym Client Form Modal */}
+      <DailyBirthdaysModal
+        isOpen={
+          dailyBirthdays.isOpen ||
+          (reopenBirthdaysModal && birthdayClients.length > 0)
+        }
+        onClose={() => {
+          dailyBirthdays.close();
+          setReopenBirthdaysModal(false);
+        }}
+        clients={
+          reopenBirthdaysModal && birthdayClients.length > 0
+            ? birthdayClients.map((c) => {
+                const birthYmd =
+                  parseBirthDateYmd(c.birth_date) ??
+                  String(c.birth_date).slice(0, 10);
+                return {
+                  id: c.id,
+                  name: c.name,
+                  document_id: c.document_id,
+                  email: c.email,
+                  whatsapp: c.whatsapp,
+                  birth_date: birthYmd,
+                  age: c.age ?? 0,
+                  birthDayMonthLabel: formatBirthDayMonthLabel(birthYmd),
+                };
+              })
+            : dailyBirthdays.clients
+        }
+        loading={dailyBirthdays.loading && !reopenBirthdaysModal}
+        dateYmd={dailyBirthdays.dateYmd}
+      />
       <GymClientForm
         isOpen={showClientForm}
         onClose={() => {

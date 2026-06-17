@@ -1,5 +1,9 @@
 import { type NextRequest, NextResponse } from 'next/server';
-import { membershipEndDateFromStart, parseLocalDate } from '@/lib/dateUtils';
+import {
+  getTodayYmdColombia,
+  membershipEndDateFromStart,
+  parseLocalDate,
+} from '@/lib/dateUtils';
 import { insertLog, STORE_ID_FISICA } from '@/lib/logs-service';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getUser } from '@/lib/supabase-server';
@@ -140,59 +144,21 @@ export async function POST(request: NextRequest) {
     // Usar user_id del cliente si existe, o el proporcionado
     const finalUserId = user_id || client.user_id || null;
 
-    // Calcular fechas de inicio y fin
+    // Respetar las fechas que envía el formulario. El front es quien calcula el
+    // período (incluido el pago anticipado, ya confirmado explícitamente por el
+    // admin). Solo se calculan valores por defecto si faltan. Fechas locales
+    // (Colombia) para evitar desfases por UTC.
+    const today = parseLocalDate(getTodayYmdColombia());
+    today.setHours(0, 0, 0, 0);
+
     let finalStartDate = start_date;
     let finalEndDate = end_date;
 
-    // Buscar membresías activas o programadas del mismo plan (no canceladas)
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const { data: existingMemberships, error: existingError } =
-      await supabaseAdmin
-        .from('gym_memberships')
-        .select('id, end_date, status')
-        .eq('client_info_id', client_info_id)
-        .eq('plan_id', plan_id)
-        .neq('status', 'cancelled')
-        .order('end_date', { ascending: false });
-
-    if (
-      !existingError &&
-      existingMemberships &&
-      existingMemberships.length > 0
-    ) {
-      // Encontrar la membresía del mismo plan con la fecha de fin más lejana (activa o programada)
-      const latestMembership = existingMemberships.find((m: any) => {
-        const endDate = new Date(m.end_date);
-        endDate.setHours(0, 0, 0, 0);
-        return endDate >= today; // Solo considerar membresías no vencidas
-      });
-
-      if (latestMembership) {
-        // Hay una membresía activa o programada, calcular fechas para pago anticipado
-        const latestEndDate = new Date(latestMembership.end_date);
-        latestEndDate.setHours(0, 0, 0, 0);
-
-        // La nueva membresía empieza el día siguiente al fin de la última
-        const newStartDate = new Date(latestEndDate);
-        newStartDate.setDate(newStartDate.getDate() + 1);
-        finalStartDate = newStartDate.toISOString().split('T')[0];
-
-        // Calcular fecha de fin mes a mes (ej. 25 feb → 25 mar)
-        finalEndDate = membershipEndDateFromStart(
-          newStartDate,
-          plan.duration_days || 30,
-        );
-      }
-    }
-
-    // Si no hay membresías activas, usar las fechas proporcionadas o calcular desde hoy
     if (!finalStartDate) {
-      finalStartDate = today.toISOString().split('T')[0];
+      finalStartDate = getTodayYmdColombia();
     }
     if (!finalEndDate) {
-      const startLocal = parseLocalDate(finalStartDate!);
+      const startLocal = parseLocalDate(finalStartDate);
       finalEndDate = membershipEndDateFromStart(
         startLocal,
         plan.duration_days || 30,
@@ -237,8 +203,10 @@ export async function POST(request: NextRequest) {
       store_id: STORE_ID_FISICA,
     });
 
-    // Indicar si es pago anticipado
-    const isAdvancePayment = new Date(finalStartDate) > today;
+    // Indicar si es pago anticipado (inicio futuro), con fecha local
+    const startLocalForFlag = parseLocalDate(finalStartDate);
+    startLocalForFlag.setHours(0, 0, 0, 0);
+    const isAdvancePayment = startLocalForFlag > today;
 
     return NextResponse.json({ ...data, isAdvancePayment }, { status: 201 });
   } catch (error) {

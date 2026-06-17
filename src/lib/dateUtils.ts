@@ -101,18 +101,16 @@ export function getMembershipPeriodProgress(
   now.setHours(0, 0, 0, 0);
 
   const totalMs = end.getTime() - start.getTime();
-  const totalDays = Math.max(1, Math.round(totalMs / MS_PER_DAY));
+  // Días inclusivos: un período 1–15 jun son 15 días (no 14).
+  const totalDays = Math.max(1, Math.round(totalMs / MS_PER_DAY) + 1);
 
   if (now < start) {
     const daysToStart = Math.ceil(
       (start.getTime() - now.getTime()) / MS_PER_DAY,
     );
-    const daysLeft = Math.ceil(
-      (end.getTime() - now.getTime()) / MS_PER_DAY,
-    );
     return {
       pct: 0,
-      daysLeft,
+      daysLeft: totalDays,
       daysToStart,
       totalDays,
       notStarted: true,
@@ -136,7 +134,8 @@ export function getMembershipPeriodProgress(
     totalMs > 0
       ? Math.min(100, Math.max(0, (elapsedMs / totalMs) * 100))
       : 100;
-  const daysLeft = Math.ceil((end.getTime() - now.getTime()) / MS_PER_DAY);
+  // Días restantes inclusivos (cuentan hoy): el día de inicio de un plan de 15 → 15.
+  const daysLeft = Math.floor((end.getTime() - now.getTime()) / MS_PER_DAY) + 1;
 
   return {
     pct,

@@ -30,6 +30,7 @@ import { useState } from 'react';
 import { isPlaceholderGymWhatsapp } from '@/lib/gymClientDisplay';
 import {
   formatDateOnlyLocal,
+  getMembershipPeriodProgress,
   periodEndFromStart,
 } from '@/lib/dateUtils';
 import { DatePickerField } from '@/shared/components/DatePickerField';
@@ -405,75 +406,6 @@ const parseLocalDate = (dateStr: string): Date => {
   if (!y || !m || !d) return new Date(dateStr);
   return new Date(y, m - 1, d);
 };
-
-const MS_PER_DAY = 86400000;
-
-function getMembershipPeriodProgress(
-  startStr: string,
-  endStr: string,
-  todayRef: Date,
-): {
-  pct: number;
-  daysLeft: number;
-  daysToStart: number;
-  totalDays: number;
-  notStarted: boolean;
-  endingSoon: boolean;
-} {
-  const start = parseLocalDate(startStr);
-  start.setHours(0, 0, 0, 0);
-  const end = parseLocalDate(endStr);
-  end.setHours(0, 0, 0, 0);
-  const now = new Date(todayRef);
-  now.setHours(0, 0, 0, 0);
-
-  const totalMs = end.getTime() - start.getTime();
-  const totalDays = Math.max(1, Math.round(totalMs / MS_PER_DAY));
-
-  if (now < start) {
-    const daysToStart = Math.ceil(
-      (start.getTime() - now.getTime()) / MS_PER_DAY,
-    );
-    const daysLeft = Math.ceil(
-      (end.getTime() - now.getTime()) / MS_PER_DAY,
-    );
-    return {
-      pct: 0,
-      daysLeft,
-      daysToStart,
-      totalDays,
-      notStarted: true,
-      endingSoon: false,
-    };
-  }
-
-  if (now > end) {
-    return {
-      pct: 100,
-      daysLeft: 0,
-      daysToStart: 0,
-      totalDays,
-      notStarted: false,
-      endingSoon: false,
-    };
-  }
-
-  const elapsedMs = now.getTime() - start.getTime();
-  const pct =
-    totalMs > 0
-      ? Math.min(100, Math.max(0, (elapsedMs / totalMs) * 100))
-      : 100;
-  const daysLeft = Math.ceil((end.getTime() - now.getTime()) / MS_PER_DAY);
-
-  return {
-    pct,
-    daysLeft,
-    daysToStart: 0,
-    totalDays,
-    notStarted: false,
-    endingSoon: daysLeft <= 7 && daysLeft >= 0,
-  };
-}
 
 function getCourseLessonProgressPct(
   completed: number,
