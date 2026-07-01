@@ -23,6 +23,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import WeeklyWeightReminder from '@/components/WeeklyWeightReminder';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { getBMIColor } from '@/lib/goalSuggestion';
+import { sortCourseLessonsByOrder } from '@/shared/utils/course-lessons.util';
 import { supabase } from '@/lib/supabase-browser';
 import { ShareCourseToFeedButton } from '@/shared/components/ShareCourseToFeedButton';
 
@@ -248,6 +249,11 @@ export default function InsightsSection({
     return lessonsCompleted + completedComplementsCount;
   }, [completedLessons, completedComplementsCount]);
 
+  const orderedLessons = useMemo(
+    () => sortCourseLessonsByOrder(courseWithLessons?.lessons ?? []),
+    [courseWithLessons?.lessons],
+  );
+
   // Calcular minutos totales ejercitados (clases + complementos)
   // Cada complemento = 10 minutos
   const COMPLEMENT_DURATION_MINUTES = 10;
@@ -256,8 +262,8 @@ export default function InsightsSection({
     let totalMinutes = 0;
 
     // Sumar duration_minutes de todas las clases completadas
-    if (completedLessons?.length && courseWithLessons?.lessons) {
-      courseWithLessons.lessons.forEach((lesson: any) => {
+    if (completedLessons?.length && orderedLessons.length > 0) {
+      orderedLessons.forEach((lesson: any) => {
         if (completedLessons.includes(lesson.id) && lesson.duration_minutes) {
           totalMinutes += Number(lesson.duration_minutes);
         }
@@ -268,7 +274,7 @@ export default function InsightsSection({
     totalMinutes += completedComplementsCount * COMPLEMENT_DURATION_MINUTES;
 
     return totalMinutes;
-  }, [completedLessons, courseWithLessons, completedComplementsCount]);
+  }, [completedLessons, orderedLessons, completedComplementsCount]);
 
   // Calcular número total de clases + complementos completados (para la tarjeta Racha)
   useEffect(() => {
@@ -304,19 +310,18 @@ export default function InsightsSection({
 
   // Obtener la próxima clase
   useEffect(() => {
-    if (courseWithLessons?.lessons && currentLesson?.id) {
-      const lessons = courseWithLessons.lessons;
-      const currentIndex = lessons.findIndex(
+    if (orderedLessons.length > 0 && currentLesson?.id) {
+      const currentIndex = orderedLessons.findIndex(
         (l: any) => l.id === currentLesson.id,
       );
 
-      if (currentIndex >= 0 && currentIndex < lessons.length - 1) {
-        setNextLesson(lessons[currentIndex + 1]);
+      if (currentIndex >= 0 && currentIndex < orderedLessons.length - 1) {
+        setNextLesson(orderedLessons[currentIndex + 1]);
       } else {
         setNextLesson(null);
       }
     }
-  }, [courseWithLessons, currentLesson]);
+  }, [orderedLessons, currentLesson]);
 
   // Obtener registros de peso (se piden los viernes)
   useEffect(() => {

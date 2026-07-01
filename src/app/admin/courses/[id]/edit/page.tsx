@@ -8,6 +8,7 @@ import CourseCreator from '@/components/admin/CourseCreator';
 import QuickLoading from '@/components/QuickLoading';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { supabase } from '@/lib/supabase-browser';
+import { sortCourseLessonsByOrder } from '@/shared/utils/course-lessons.util';
 
 export default function EditCoursePage() {
   const params = useParams();
@@ -69,6 +70,10 @@ export default function EditCoursePage() {
         `,
         )
         .eq('id', id)
+        .order('lesson_order', {
+          foreignTable: 'course_lessons',
+          ascending: true,
+        })
         .single();
 
       if (err) {
@@ -77,7 +82,10 @@ export default function EditCoursePage() {
         return;
       }
       const course = data
-        ? { ...data, lessons: data.course_lessons || [] }
+        ? {
+            ...data,
+            lessons: sortCourseLessonsByOrder(data.course_lessons || []),
+          }
         : null;
       setCourseToEdit(course);
       setLoadingCourse(false);

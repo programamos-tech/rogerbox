@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { sortCourseLessonsByOrder } from '@/shared/utils/course-lessons.util';
 
 export async function GET(
   request: NextRequest,
@@ -30,19 +31,23 @@ export async function GET(
 
     // Obtener lecciones del curso
     const { data: lessons, error: lessonsError } = await supabase
-      .from('lessons')
+      .from('course_lessons')
       .select('*')
       .eq('course_id', course.id)
-      .order('order_index', { ascending: true });
+      .order('lesson_order', { ascending: true });
 
     if (lessonsError) {
+      return NextResponse.json(
+        { error: 'Error al cargar lecciones' },
+        { status: 500 },
+      );
     }
 
     return NextResponse.json({
       success: true,
       course: {
         ...course,
-        lessons: lessons || [],
+        lessons: sortCourseLessonsByOrder(lessons || []),
       },
     });
   } catch (error) {

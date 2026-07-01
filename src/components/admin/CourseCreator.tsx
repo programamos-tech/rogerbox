@@ -32,6 +32,7 @@ import {
   isSupabaseStorageUrl,
   uploadImage,
 } from '@/lib/storage';
+import { sortCourseLessonsByOrder } from '@/shared/utils/course-lessons.util';
 import { supabase } from '@/lib/supabase-browser';
 import RogerAlert from '../RogerAlert';
 
@@ -231,9 +232,7 @@ export default function CourseCreator({
           merged = { ...EMPTY_COURSE_DATA, ...draft.courseData };
         }
         if (Array.isArray(draft.lessons) && draft.lessons.length > 0) {
-          const sorted = [...draft.lessons].sort(
-            (a, b) => (a.lesson_order ?? 0) - (b.lesson_order ?? 0),
-          );
+          const sorted = sortCourseLessonsByOrder(draft.lessons);
           nextLessons = sorted.map((l, i) => ({
             ...l,
             lesson_number: i + 1,
@@ -336,10 +335,9 @@ export default function CourseCreator({
       // Formatear precio para mostrar
       setFormattedPrice(formatPrice(newCourseData.price));
 
-      // Cargar lecciones del curso
+      // Cargar lecciones del curso (siempre ordenadas por lesson_order)
       if (courseToEdit.lessons) {
-        setLessons(courseToEdit.lessons);
-      } else {
+        setLessons(sortCourseLessonsByOrder(courseToEdit.lessons));
       }
     }
   }, [courseToEdit, categories]);
@@ -736,7 +734,10 @@ export default function CourseCreator({
             for (let i = 0; i < existingLessons.length; i++) {
               await supabase
                 .from('course_lessons')
-                .update({ lesson_number: -(i + 1) }) // Valores temporales negativos
+                .update({
+                  lesson_number: -(i + 1),
+                  lesson_order: -(i + 1),
+                })
                 .eq('id', existingLessons[i].id);
             }
           }
@@ -1484,7 +1485,7 @@ export default function CourseCreator({
                   const isExpanded = expandedLessons.has(index);
                   return (
                     <div
-                      key={index}
+                      key={lesson.id ?? `lesson-${index}`}
                       className="border border-gray-200 dark:border-white/10 rounded-xl overflow-hidden bg-white dark:bg-gray-900/30"
                     >
                       {/* Header compacto - siempre visible */}

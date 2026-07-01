@@ -94,6 +94,7 @@ import {
   formatBirthDayMonthLabel,
   parseBirthDateYmd,
 } from '@/shared/utils/birthday.util';
+import { sortCourseLessonsByOrder } from '@/shared/utils/course-lessons.util';
 import { supabaseAdmin } from '@/lib/supabase';
 import { supabase } from '@/lib/supabase-browser';
 
@@ -1388,10 +1389,18 @@ function AdminDashboardContent() {
           )
         `,
         )
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .order('lesson_order', {
+          foreignTable: 'course_lessons',
+          ascending: true,
+        });
 
       if (error) throw error;
-      setCourses(data || []);
+      const normalized = (data || []).map((course) => ({
+        ...course,
+        course_lessons: sortCourseLessonsByOrder(course.course_lessons || []),
+      }));
+      setCourses(normalized);
     } catch (error) {
     } finally {
       setLoadingCourses(false);

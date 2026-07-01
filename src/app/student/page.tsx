@@ -27,6 +27,7 @@ import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useUserPurchases } from '@/hooks/useUserPurchases';
 import { supabase } from '@/lib/supabase';
 import { ShareCourseToFeedButton } from '@/shared/components/ShareCourseToFeedButton';
+import { sortCourseLessonsByOrder } from '@/shared/utils/course-lessons.util';
 
 function StudentPageContent() {
   const { user } = useSupabaseAuth();
@@ -403,7 +404,7 @@ function StudentPageContent() {
 
         const courseWithLessons = {
           ...courseData,
-          lessons: courseData.lessons || [],
+          lessons: sortCourseLessonsByOrder(courseData.lessons || []),
         };
 
         // Si acaba de editar la fecha de inicio, mostrar siempre la primera clase del nuevo inicio
@@ -628,7 +629,7 @@ function StudentPageContent() {
       : isSameDay
         ? 0
         : daysDiff;
-    const lessonDay = index; // La primera clase es index 0, corresponde al día 0
+    const lessonDay = (lesson.lesson_order ?? index + 1) - 1;
 
     // Debug para la primera clase (solo una vez, no en cada render)
     // Comentado para evitar logs repetidos

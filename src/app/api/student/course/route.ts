@@ -1,6 +1,10 @@
 import { type NextRequest, NextResponse } from 'next/server';
+import { sortCourseLessonsByOrder } from '@/shared/utils/course-lessons.util';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getSession } from '@/lib/supabase-server';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 /**
  * GET /api/student/course?courseId=xxx
@@ -77,10 +81,9 @@ export async function GET(request: NextRequest) {
       purchase = realPurchase;
     }
 
-    // Cargar curso con lecciones (sin depender de RLS)
     const { data: courseData, error: courseError } = await supabaseAdmin
       .from('courses')
-      .select(`*, course_lessons (*)`)
+      .select('*')
       .eq('id', courseId)
       .maybeSingle();
 
@@ -98,21 +101,37 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const lessons = (courseData.course_lessons || []).sort(
-      (a: { lesson_order?: number }, b: { lesson_order?: number }) =>
-        (a.lesson_order ?? 0) - (b.lesson_order ?? 0),
-    );
+    const { data: lessonsData, error: lessonsError } = await supabaseAdmin
+      .from('course_lessons')
+      .select('*')
+      .eq('course_id', courseId)
+      .order('lesson_order', { ascending: true })
+      .order('lesson_number', { ascending: true });
 
-    const { course_lessons: _unused, ...course } = courseData;
-    const courseWithLessons = { ...course, lessons };
+    if (lessonsError) {
+      return NextResponse.json(
+        { error: 'Error al cargar lecciones' },
+        { status: 500 },
+      );
+    }
 
-    return NextResponse.json({
-      course: courseWithLessons,
-      purchase: {
-        start_date: purchase.start_date,
-        created_at: purchase.created_at,
+    const lessons = sortCourseLessonsByOrder(lessonsData || []);
+    const courseWithLessons = { ...courseData, lessons };
+
+    return NextResponse.json(
+      {
+        course: courseWithLessons,
+        purchase: {
+          start_date: purchase.start_date,
+          created_at: purchase.created_at,
+        },
       },
-    });
+      {
+        headers: {
+          'Cache-Control': 'no-store, max-age=0',
+        },
+      },
+    );
   } catch {
     return NextResponse.json(
       { error: 'Error inesperado al cargar el curso' },

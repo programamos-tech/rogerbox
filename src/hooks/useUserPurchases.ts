@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useIsAdmin } from '@/hooks/auth/useIsAdmin';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { supabase } from '@/lib/supabase';
+import { sortCourseLessonsByOrder } from '@/shared/utils/course-lessons.util';
 
 interface CourseLesson {
   id: string;
@@ -117,9 +118,13 @@ export const useUserPurchases = (): UseUserPurchasesReturn => {
         .from('courses')
         .select(`
           id, title, slug, preview_image, duration_days, short_description, description,
-          lessons:course_lessons(id, title, lesson_order, duration_minutes)
+          lessons:course_lessons(id, title, lesson_order, duration_minutes, created_at)
         `)
-        .in('id', courseIds);
+        .in('id', courseIds)
+        .order('lesson_order', {
+          foreignTable: 'course_lessons',
+          ascending: true,
+        });
 
       // Obtener completaciones vía API (incluye completed_at para saber el día de finalización)
       type CompletionRow = {
@@ -152,12 +157,12 @@ export const useUserPurchases = (): UseUserPurchasesReturn => {
             (c) => String(c.course_id) === String(purchase.course_id),
           );
           const completedLessonIds = courseCompletions.map((c) => c.lesson_id);
-          const lessons = (course as any)?.lessons ?? [];
+          const lessons = sortCourseLessonsByOrder(
+            (course as { lessons?: CourseLesson[] })?.lessons ?? [],
+          );
           const isFullyCompleted =
             lessons.length > 0 &&
-            lessons.every((l: { id: string }) =>
-              completedLessonIds.includes(l.id),
-            );
+            lessons.every((l) => l.id && completedLessonIds.includes(l.id));
           const courseCompletedAt =
             isFullyCompleted && courseCompletions.length > 0
               ? courseCompletions.reduce<string | null>(
@@ -185,7 +190,7 @@ export const useUserPurchases = (): UseUserPurchasesReturn => {
                 : 0,
             completed_lessons: completedLessonIds,
             course_completed_at: courseCompletedAt || null,
-            course,
+            course: course ? { ...course, lessons } : null,
           };
         },
       );
