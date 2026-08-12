@@ -1,8 +1,9 @@
 'use client';
 
 import {
-  Calendar,
-  DollarSign,
+  ArrowUpDown,
+  ChevronDown,
+  ChevronUp,
   Dumbbell,
   Edit,
   Eye,
@@ -11,57 +12,48 @@ import {
   Save,
   Search,
   Trash2,
-  Users,
   X,
 } from 'lucide-react';
 import Link from 'next/link';
-import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useState,
+} from 'react';
+import {
+  adminFormModalStyles as modal,
+  gymPlansListStyles as styles,
+} from '@/modules/gym-admin/styles';
+import {
+  GYM_DURATION_PRESETS,
+  formatGymPlanDuration,
+  isGymDurationPresetSelected,
+  toDurationDays,
+} from '@/modules/gym-admin/utils/gym-plan-duration.util';
 import type { GymPlan } from '@/types/gym';
-import { GymSeededAvatar } from '@/shared/components/GymSeededAvatar';
 import ConfirmDialog from './ConfirmDialog';
 
-function ActiveClientAvatarStack({
-  previewIds,
-  total,
+type SortKey = 'name' | 'price' | 'duration' | 'clients';
+type SortDir = 'asc' | 'desc';
+
+function SortIcon({
+  active,
+  direction,
 }: {
-  previewIds: string[] | undefined;
-  total: number;
+  active: boolean;
+  direction: SortDir;
 }) {
-  const ids = (previewIds || []).slice(0, 3);
-  const showMore = total > 3;
-
-  if (total === 0) {
-    return (
-      <span className="text-xs font-medium text-gray-500 dark:text-white/40">
-        Sin clientes
-      </span>
-    );
+  if (!active) {
+    return <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />;
   }
-
-  return (
-    <div className="flex items-center justify-end">
-      <div className="flex items-center -space-x-2.5">
-        {ids.map((id, index) => (
-          <GymSeededAvatar
-            key={id}
-            seed={id}
-            size={34}
-            className={`relative rounded-full ring-2 ring-white dark:ring-[#0c1628] shadow-sm ${
-              index === 0 ? 'z-[3]' : index === 1 ? 'z-[2]' : 'z-[1]'
-            }`}
-            alt=""
-          />
-        ))}
-        {showMore ? (
-          <span
-            className="relative z-[4] flex h-[34px] min-w-[34px] items-center justify-center rounded-full bg-[#164151] px-1.5 text-[10px] font-bold tabular-nums text-white ring-2 ring-white dark:ring-[#0c1628]"
-            title={`${total} clientes en total`}
-          >
-            +{total - 3}
-          </span>
-        ) : null}
-      </div>
-    </div>
+  return direction === 'asc' ? (
+    <ChevronUp className="w-3.5 h-3.5" />
+  ) : (
+    <ChevronDown className="w-3.5 h-3.5" />
   );
 }
 
@@ -78,7 +70,7 @@ const GymPlansManagement = forwardRef<GymPlansManagementRef>((props, ref) => {
     name: '',
     description: '',
     price: '',
-    duration_days: '',
+    duration_days: '30',
     is_active: true,
   });
   const [displayPrice, setDisplayPrice] = useState('');
@@ -92,6 +84,9 @@ const GymPlansManagement = forwardRef<GymPlansManagementRef>((props, ref) => {
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>(
     'active',
   );
+  const [sortKey, setSortKey] = useState<SortKey>('clients');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
+  const router = useRouter();
 
   // Función para formatear precio con separador de miles
   const formatPrice = (value: string) => {
@@ -292,7 +287,7 @@ const GymPlansManagement = forwardRef<GymPlansManagementRef>((props, ref) => {
       name: '',
       description: '',
       price: '',
-      duration_days: '',
+      duration_days: '30',
       is_active: true,
     });
     setDisplayPrice('');
@@ -314,6 +309,58 @@ const GymPlansManagement = forwardRef<GymPlansManagementRef>((props, ref) => {
     },
   }));
 
+  const filteredPlans = useMemo(() => {
+    return plans.filter((plan) => {
+      const q = searchTerm.trim().toLowerCase();
+      const matchesSearch =
+        !q ||
+        plan.name.toLowerCase().includes(q) ||
+        (plan.description || '').toLowerCase().includes(q);
+
+      const matchesStatus =
+        statusFilter === 'all'
+          ? true
+          : statusFilter === 'active'
+            ? plan.is_active
+            : !plan.is_active;
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [plans, searchTerm, statusFilter]);
+
+  const sortedPlans = useMemo(() => {
+    const list = [...filteredPlans];
+    const dir = sortDir === 'asc' ? 1 : -1;
+    list.sort((a, b) => {
+      if (sortKey === 'price') {
+        return (Number(a.price) - Number(b.price)) * dir;
+      }
+      if (sortKey === 'duration') {
+        return (a.duration_days - b.duration_days) * dir;
+      }
+      if (sortKey === 'clients') {
+        return ((a.active_users_count || 0) - (b.active_users_count || 0)) * dir;
+      }
+      return a.name.localeCompare(b.name, 'es') * dir;
+    });
+    return list;
+  }, [filteredPlans, sortKey, sortDir]);
+
+  const totalActiveClients = useMemo(
+    () =>
+      filteredPlans.reduce((sum, plan) => sum + (plan.active_users_count || 0), 0),
+    [filteredPlans],
+  );
+
+  const handleSort = useCallback((key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir((current) => (current === 'asc' ? 'desc' : 'asc'));
+      return;
+    }
+    setSortKey(key);
+    setSortDir(key === 'name' ? 'asc' : 'desc');
+  }, [sortKey]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -322,49 +369,28 @@ const GymPlansManagement = forwardRef<GymPlansManagementRef>((props, ref) => {
     );
   }
 
-  const filteredPlans = plans.filter((plan) => {
-    const q = searchTerm.trim().toLowerCase();
-    const matchesSearch =
-      !q ||
-      plan.name.toLowerCase().includes(q) ||
-      (plan.description || '').toLowerCase().includes(q);
-
-    const matchesStatus =
-      statusFilter === 'all'
-        ? true
-        : statusFilter === 'active'
-          ? plan.is_active
-          : !plan.is_active;
-
-    return matchesSearch && matchesStatus;
-  });
-
   return (
     <div className="space-y-6 pb-20">
       {/* Form Modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-white/10 w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl">
-            <div className="p-4 md:p-6 lg:p-8 border-b border-gray-200 dark:border-white/10 flex items-center justify-between">
-              <h3 className="text-xl md:text-2xl font-bold text-[#164151] dark:text-white">
+        <div className={modal.overlay}>
+          <div className={modal.panel}>
+            <div className={modal.header}>
+              <h3 className={modal.title}>
                 {editingPlan ? 'Editar Plan' : 'Nuevo Plan'}
               </h3>
               <button
+                type="button"
                 onClick={handleCancel}
-                className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-[#164151]/80 dark:text-white/60 transition-colors"
+                className={modal.closeBtn}
               >
-                <X className="w-5 h-5" />
+                <X className="h-4 w-4" />
               </button>
             </div>
 
-            <form
-              onSubmit={handleSubmit}
-              className="p-4 md:p-6 lg:p-8 space-y-4 md:space-y-6"
-            >
+            <form onSubmit={handleSubmit} className={modal.body}>
               <div>
-                <label className="block text-sm font-semibold text-[#164151] dark:text-white mb-3">
-                  Nombre del Plan *
-                </label>
+                <label className={modal.label}>Nombre del Plan *</label>
                 <input
                   type="text"
                   required
@@ -372,33 +398,29 @@ const GymPlansManagement = forwardRef<GymPlansManagementRef>((props, ref) => {
                   onChange={(e) =>
                     setFormData({ ...formData, name: e.target.value })
                   }
-                  className="w-full px-5 py-3.5 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-[#164151] dark:text-white placeholder-gray-400 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 focus:border-[#85ea10]/50 transition-all text-base"
+                  className={modal.input}
                   placeholder="Ej: Mensual, Trimestral, Anual"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-[#164151] dark:text-white mb-3">
-                  Descripción
-                </label>
+                <label className={modal.label}>Descripción</label>
                 <textarea
                   value={formData.description}
                   onChange={(e) =>
                     setFormData({ ...formData, description: e.target.value })
                   }
-                  className="w-full px-5 py-3.5 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-[#164151] dark:text-white placeholder-gray-400 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 focus:border-[#85ea10]/50 resize-none transition-all text-base"
-                  rows={4}
+                  className={`${modal.input} resize-none`}
+                  rows={3}
                   placeholder="Descripción opcional del plan"
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                 <div>
-                  <label className="block text-sm font-semibold text-[#164151] dark:text-white mb-3">
-                    Precio (COP) *
-                  </label>
+                  <label className={modal.label}>Precio (COP) *</label>
                   <div className="relative">
-                    <span className="absolute left-5 top-1/2 -translate-y-1/2 text-[#164151] dark:text-white font-medium text-base">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-medium text-[#164151] dark:text-white">
                       $
                     </span>
                     <input
@@ -413,37 +435,52 @@ const GymPlansManagement = forwardRef<GymPlansManagementRef>((props, ref) => {
                           price: parsePrice(formatted),
                         });
                       }}
-                      className="w-full pl-8 pr-5 py-3.5 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-[#164151] dark:text-white placeholder-gray-400 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 focus:border-[#85ea10]/50 transition-all text-base"
+                      className={`${modal.input} pl-8`}
                       placeholder="0"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-[#164151] dark:text-white mb-3">
-                    Duración (días) *
-                  </label>
-                  <div className="relative">
-                    <Calendar className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input
-                      type="number"
-                      required
-                      min="1"
-                      value={formData.duration_days}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          duration_days: e.target.value,
-                        })
-                      }
-                      className="w-full pl-12 pr-5 py-3.5 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-[#164151] dark:text-white placeholder-gray-400 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 focus:border-[#85ea10]/50 transition-all text-base"
-                      placeholder="30"
-                    />
+                  <label className={modal.label}>Duración *</label>
+                  <div className={styles.durationGrid}>
+                    {GYM_DURATION_PRESETS.map((preset) => {
+                      const selected = isGymDurationPresetSelected(
+                        Number(formData.duration_days) || 30,
+                        preset.unit,
+                        preset.value,
+                      );
+                      return (
+                        <button
+                          key={preset.key}
+                          type="button"
+                          onClick={() =>
+                            setFormData({
+                              ...formData,
+                              duration_days: String(
+                                toDurationDays(preset.unit, preset.value),
+                              ),
+                            })
+                          }
+                          className={`${styles.durationChip} ${
+                            selected
+                              ? styles.durationChipOn
+                              : styles.durationChipOff
+                          }`}
+                        >
+                          {preset.label}
+                        </button>
+                      );
+                    })}
                   </div>
+                  <p className={modal.helper}>
+                    El mes cierra el mismo día (19 ago → 19 sept). Semanas y
+                    días son corridos.
+                  </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-3 pt-2">
+              <div className="flex items-center gap-3">
                 <input
                   type="checkbox"
                   id="is_active"
@@ -451,29 +488,26 @@ const GymPlansManagement = forwardRef<GymPlansManagementRef>((props, ref) => {
                   onChange={(e) =>
                     setFormData({ ...formData, is_active: e.target.checked })
                   }
-                  className="w-5 h-5 rounded border-gray-300 text-[#85ea10] focus:ring-[#85ea10] cursor-pointer"
+                  className="h-4 w-4 cursor-pointer rounded border-gray-300 text-[#85ea10] focus:ring-[#85ea10]"
                 />
                 <label
                   htmlFor="is_active"
-                  className="text-sm font-medium text-[#164151] dark:text-white cursor-pointer"
+                  className="cursor-pointer text-sm font-medium text-[#164151] dark:text-white"
                 >
                   Plan activo
                 </label>
               </div>
 
-              <div className="flex items-center justify-end gap-4 pt-6 border-t border-gray-200 dark:border-white/10">
+              <div className={modal.footer}>
                 <button
                   type="button"
                   onClick={handleCancel}
-                  className="px-6 py-3 rounded-lg bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-[#164151] dark:text-white font-medium transition-colors"
+                  className={modal.btnCancel}
                 >
                   Cancelar
                 </button>
-                <button
-                  type="submit"
-                  className="px-6 py-3 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-white/90 font-semibold transition-colors flex items-center gap-2"
-                >
-                  <Save className="w-4 h-4" />
+                <button type="submit" className={modal.btnPrimary}>
+                  <Save className="h-4 w-4" />
                   {editingPlan ? 'Actualizar' : 'Crear'}
                 </button>
               </div>
@@ -549,105 +583,171 @@ const GymPlansManagement = forwardRef<GymPlansManagementRef>((props, ref) => {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {filteredPlans.map((plan) => {
-              const activeTotal = plan.active_users_count || 0;
-              return (
-              <div
-                key={plan.id}
-                className={`group relative overflow-hidden rounded-2xl border border-gray-200/90 dark:border-white/[0.07] bg-white dark:bg-[#0c1628] pl-5 pr-4 py-5 shadow-sm dark:shadow-none ${
-                  !plan.is_active ? 'opacity-60' : ''
-                }`}
-              >
-                <div className="flex items-start justify-between gap-3 mb-4">
-                  <div className="min-w-0 flex-1">
-                    <h3 className="text-base font-bold tracking-tight text-[#164151] dark:text-white mb-1">
-                      {plan.name}
-                    </h3>
-                    {plan.description && (
-                      <p className="text-sm text-[#164151]/65 dark:text-white/50 line-clamp-2 leading-snug">
-                        {plan.description}
-                      </p>
-                    )}
-                  </div>
-                  {!plan.is_active && (
-                    <span className="shrink-0 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide bg-gray-200/90 dark:bg-white/10 text-gray-600 dark:text-white/55 rounded-md">
-                      Inactivo
-                    </span>
-                  )}
-                </div>
-
-                <div className="space-y-3 mb-5">
-                  <div className="flex items-baseline justify-between gap-3">
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-white/40">
+        <div className={styles.tableShell}>
+          <div className={styles.tableWrap}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th className={`${styles.th} ${styles.thLeft}`}>
+                    <button
+                      type="button"
+                      onClick={() => handleSort('name')}
+                      className={styles.sortButton}
+                    >
+                      Plan
+                      <SortIcon active={sortKey === 'name'} direction={sortDir} />
+                    </button>
+                  </th>
+                  <th className={`${styles.th} ${styles.thLeft}`}>Estado</th>
+                  <th className={`${styles.th} ${styles.thRight}`}>
+                    <button
+                      type="button"
+                      onClick={() => handleSort('price')}
+                      className={`${styles.sortButton} ml-auto`}
+                    >
                       Precio
-                    </span>
-                    <span className="text-lg font-bold tabular-nums text-[#164151] dark:text-white">
-                      $
-                      {parseFloat(plan.price.toString()).toLocaleString(
-                        'es-CO',
-                      )}{' '}
-                      <span className="text-xs font-semibold text-gray-500 dark:text-white/35">
-                        COP
-                      </span>
-                    </span>
-                  </div>
-                  <div className="flex items-baseline justify-between gap-3">
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-white/40">
+                      <SortIcon active={sortKey === 'price'} direction={sortDir} />
+                    </button>
+                  </th>
+                  <th className={`${styles.th} ${styles.thRight}`}>
+                    <button
+                      type="button"
+                      onClick={() => handleSort('duration')}
+                      className={`${styles.sortButton} ml-auto`}
+                    >
                       Duración
-                    </span>
-                    <span className="text-sm font-semibold text-[#164151] dark:text-white">
-                      {plan.duration_days} días
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between gap-3 pt-3 border-t border-gray-100 dark:border-white/[0.06]">
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-white/40 flex items-center gap-1.5">
-                      <Users className="w-3.5 h-3.5 text-[#85ea10]/90" />
-                      Clientes activos
-                    </span>
-                    <div className="flex flex-col items-end gap-1">
-                      <ActiveClientAvatarStack
-                        previewIds={plan.active_client_preview_ids}
-                        total={activeTotal}
+                      <SortIcon
+                        active={sortKey === 'duration'}
+                        direction={sortDir}
                       />
-                      {activeTotal > 0 ? (
-                        <span className="text-[10px] font-medium tabular-nums text-gray-500 dark:text-white/35">
-                          {activeTotal}{' '}
-                          {activeTotal === 1 ? 'membresía' : 'membresías'}
+                    </button>
+                  </th>
+                  <th className={`${styles.th} ${styles.thRight}`}>
+                    <button
+                      type="button"
+                      onClick={() => handleSort('clients')}
+                      className={`${styles.sortButton} ml-auto`}
+                    >
+                      Clientes
+                      <SortIcon
+                        active={sortKey === 'clients'}
+                        direction={sortDir}
+                      />
+                    </button>
+                  </th>
+                  <th className={`${styles.th} ${styles.thRight}`}>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sortedPlans.map((plan) => {
+                  const activeTotal = plan.active_users_count || 0;
+                  const detailHref = `/admin/gym-plans/${plan.id}`;
+                  return (
+                    <tr
+                      key={plan.id}
+                      className={`${styles.row} ${!plan.is_active ? 'opacity-60' : ''}`}
+                      onClick={() => router.push(detailHref)}
+                    >
+                      <td className={styles.td}>
+                        <Link
+                          href={detailHref}
+                          className={styles.planName}
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          {plan.name}
+                        </Link>
+                        {plan.description ? (
+                          <p className={styles.planDesc}>{plan.description}</p>
+                        ) : null}
+                      </td>
+                      <td className={styles.td}>
+                        <span
+                          className={
+                            plan.is_active
+                              ? styles.badgeActive
+                              : styles.badgeInactive
+                          }
+                        >
+                          {plan.is_active ? 'Activo' : 'Inactivo'}
                         </span>
-                      ) : null}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 pt-4 border-t border-gray-200/90 dark:border-white/[0.07]">
-                  <Link
-                    href={`/admin/gym-plans/${plan.id}`}
-                    className="flex-1 px-3 py-2.5 rounded-xl bg-[#164151] text-white hover:bg-[#1a4d5f] dark:bg-[#164151] dark:hover:bg-[#1a4d5f] transition-colors flex items-center justify-center gap-2 text-sm font-semibold shadow-sm"
-                  >
-                    <Eye className="w-3.5 h-3.5 text-current" />
-                    Ver detalle
-                  </Link>
-                  <button
-                    type="button"
-                    onClick={() => handleEdit(plan)}
-                    className="flex-1 px-3 py-2.5 rounded-xl border border-gray-200/90 dark:border-white/15 bg-gray-50/80 dark:bg-white/[0.06] text-[#164151] dark:text-white hover:bg-gray-100 dark:hover:bg-white/10 transition-colors flex items-center justify-center gap-2 text-sm font-semibold"
-                  >
-                    <Edit className="w-3.5 h-3.5 text-current" />
-                    Editar
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteClick(plan)}
-                    className="shrink-0 px-3 py-2.5 rounded-xl bg-red-500/12 dark:bg-red-500/15 text-red-700 dark:text-red-400 hover:bg-red-500/20 transition-colors border border-red-500/25 dark:border-red-500/30"
-                    aria-label="Eliminar plan"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-            );
-            })}
+                      </td>
+                      <td className={`${styles.td} text-right`}>
+                        <span className={styles.price}>
+                          $
+                          {parseFloat(plan.price.toString()).toLocaleString(
+                            'es-CO',
+                          )}
+                        </span>
+                        <span className={styles.priceCurrency}>COP</span>
+                      </td>
+                      <td
+                        className={`${styles.td} text-right tabular-nums whitespace-nowrap`}
+                      >
+                        {formatGymPlanDuration(plan.duration_days)}
+                      </td>
+                      <td className={`${styles.td} text-right`}>
+                        <span
+                          className={
+                            activeTotal > 0
+                              ? styles.clientCount
+                              : styles.clientCountEmpty
+                          }
+                        >
+                          {activeTotal}
+                        </span>
+                      </td>
+                      <td className={`${styles.td} text-right`}>
+                        <div className="inline-flex items-center justify-end gap-0.5">
+                          <Link
+                            href={detailHref}
+                            onClick={(event) => event.stopPropagation()}
+                            className={styles.actionBtn}
+                            title="Ver detalle"
+                            aria-label={`Ver detalle de ${plan.name}`}
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Link>
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              handleEdit(plan);
+                            }}
+                            className={styles.actionBtn}
+                            title="Editar"
+                            aria-label={`Editar ${plan.name}`}
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              handleDeleteClick(plan);
+                            }}
+                            className={styles.actionDanger}
+                            title="Eliminar"
+                            aria-label={`Eliminar ${plan.name}`}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <div className={styles.footer}>
+            <p className={styles.footerText}>
+              {filteredPlans.length}{' '}
+              {filteredPlans.length === 1 ? 'plan' : 'planes'}
+              <span className="mx-2 text-gray-300 dark:text-white/20">·</span>
+              {totalActiveClients}{' '}
+              {totalActiveClients === 1 ? 'cliente activo' : 'clientes activos'}
+            </p>
+          </div>
         </div>
       )}
 

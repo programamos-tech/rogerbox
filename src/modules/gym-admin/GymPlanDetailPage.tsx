@@ -2,203 +2,266 @@
 
 import {
   ArrowLeft,
-  Calendar,
-  CheckCircle,
+  ArrowUpDown,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  ChevronsLeft,
+  ChevronsRight,
+  Eye,
   Filter,
+  MessageCircle,
   Search,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import {
   formatMembershipDayLabel,
-  formatDateOnlyLocal,
   getMembershipPeriodProgress,
   getTodayYmdColombia,
   parseLocalDate,
 } from '@/lib/dateUtils';
+import { getGymWhatsappHref } from '@/lib/gymClientDisplay';
 import { useGymPlanOverview } from '@/modules/gym-admin/hooks/useGymPlanOverview';
-import { gymPlanDetailStyles as s } from '@/modules/gym-admin/styles';
+import { formatGymPlanDuration } from '@/modules/gym-admin/utils/gym-plan-duration.util';
+import { gymPlanClientsStyles as t } from '@/modules/gym-admin/styles';
 import type { GymPlanOverviewMembership } from '@/modules/gym-admin/types';
-import { GymSeededAvatar } from '@/shared/components/GymSeededAvatar';
 
-function PlanClientGroupCard({
+type ClientRowStatus = 'expired' | 'ending_soon' | 'current';
+type ClientSortKey = 'name' | 'status' | 'end' | 'progress';
+type SortDir = 'asc' | 'desc';
+type MembershipFilter = 'all' | 'expired' | 'ending_soon' | 'current';
+
+const PAGE_SIZE = 25;
+
+/** Orden por defecto: vencidos → por vencer → al día */
+const STATUS_ORDER: Record<ClientRowStatus, number> = {
+  expired: 0,
+  ending_soon: 1,
+  current: 2,
+};
+
+/** Membresía a mostrar: la más reciente que ya empezó (futuros → Anticipos por revisar). */
+function pickRosterMembership(
+  memberships: GymPlanOverviewMembership[],
+  today: Date,
+): GymPlanOverviewMembership {
+  const started = memberships.filter((m) => {
+    const start = parseLocalDate(m.start_date);
+    start.setHours(0, 0, 0, 0);
+    return start <= today;
+  });
+  return started[0] || memberships[0];
+}
+
+function getClientRowMeta(
+  memberships: GymPlanOverviewMembership[],
+  today: Date,
+) {
+  const latest = pickRosterMembership(memberships, today);
+  const client = latest.client_info;
+  const href =
+    client?.user_id != null && client.user_id !== ''
+      ? `/admin/users/${client.user_id}`
+      : null;
+  const period = getMembershipPeriodProgress(
+    latest.start_date,
+    latest.end_date,
+    today,
+  );
+  const endDate = parseLocalDate(latest.end_date);
+  const isExpired = today > endDate;
+  const status: ClientRowStatus = isExpired
+    ? 'expired'
+    : period.endingSoon
+      ? 'ending_soon'
+      : 'current';
+  const pctWidth = isExpired ? 100 : Math.round(period.pct);
+  const whatsappHref = getGymWhatsappHref(client?.whatsapp);
+  const whatsappLabel = whatsappHref ? client?.whatsapp || null : null;
+
+  return {
+    latest,
+    client,
+    href,
+    period,
+    status,
+    whatsappHref,
+    whatsappLabel,
+    pctWidth,
+    startMs: parseLocalDate(latest.start_date).getTime(),
+    endMs: endDate.getTime(),
+    startLabel: formatMembershipDayLabel(parseLocalDate(latest.start_date)),
+    endLabel: formatMembershipDayLabel(endDate),
+  };
+}
+
+function statusLabel(status: ClientRowStatus) {
+  if (status === 'expired') return 'Vencido';
+  if (status === 'ending_soon') return 'Por vencer';
+  return 'Al día';
+}
+
+function statusClass(status: ClientRowStatus) {
+  if (status === 'expired') return t.badgeExpired;
+  if (status === 'ending_soon') return t.badgeEndingSoon;
+  return t.badgePeriod;
+}
+
+function progressFillClass(status: ClientRowStatus) {
+  if (status === 'expired') return t.progressFillExpired;
+  if (status === 'ending_soon') return t.progressFillSoon;
+  return t.progressFill;
+}
+
+function remainingLabel(
+  status: ClientRowStatus,
+  period: ReturnType<typeof getMembershipPeriodProgress>,
+) {
+  if (status === 'expired') return 'Vencido';
+  if (status === 'ending_soon') {
+    return `${period.daysLeft} ${period.daysLeft === 1 ? 'día' : 'días'} · por vencer`;
+  }
+  return `${Math.round(period.pct)}% · ${period.daysLeft} ${period.daysLeft === 1 ? 'día' : 'días'}`;
+}
+
+function SortIcon({
+  active,
+  direction,
+}: {
+  active: boolean;
+  direction: SortDir;
+}) {
+  if (!active) {
+    return <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />;
+  }
+  return direction === 'asc' ? (
+    <ChevronUp className="w-3.5 h-3.5" />
+  ) : (
+    <ChevronDown className="w-3.5 h-3.5" />
+  );
+}
+
+const PlanClientTableRow = memo(function PlanClientTableRow({
   memberships,
   today,
+  onOpen,
 }: {
   memberships: GymPlanOverviewMembership[];
   today: Date;
+  onOpen: (href: string) => void;
 }) {
-  const latestMembership = memberships[0];
-  const c = latestMembership.client_info;
-  const href =
-    c?.user_id != null && c.user_id !== ''
-      ? `/admin/users/${c.user_id}`
-      : null;
-  const seed = latestMembership.client_info_id || '—';
-  const period = getMembershipPeriodProgress(
-    latestMembership.start_date,
-    latestMembership.end_date,
-    today,
-  );
-  const endDate = parseLocalDate(latestMembership.end_date);
-  const isExpiredPeriod = today > endDate;
-  const isScheduled = period.notStarted;
-  const expiredCount = memberships.filter((m) => {
-    const e = parseLocalDate(m.end_date);
-    return today > e;
-  }).length;
-
-  let barClass =
-    'h-full rounded-full transition-[width] duration-300 bg-[#85ea10]';
-  let trackRing = '';
-  if (isExpiredPeriod) {
-    barClass =
-      'h-full rounded-full bg-red-500/80 dark:bg-red-500/70';
-  } else if (isScheduled) {
-    barClass = 'h-full rounded-full bg-cyan-500/50';
-  } else if (period.endingSoon) {
-    barClass =
-      'h-full rounded-full bg-gradient-to-r from-[#85ea10] to-amber-500';
-    trackRing = 'ring-1 ring-amber-500/45';
-  }
-
-  const pctWidth = isExpiredPeriod
-    ? 100
-    : isScheduled
-      ? 0
-      : Math.round(period.pct);
+  const meta = getClientRowMeta(memberships, today);
+  const name = meta.client?.name ?? 'Sin nombre';
 
   return (
-    <article className="rounded-2xl border border-gray-200/80 bg-white/60 p-4 shadow-sm dark:border-white/10 dark:bg-white/[0.03]">
-      <div className="flex gap-3">
-        <GymSeededAvatar
-          seed={seed}
-          size={44}
-          className="h-11 w-11 shrink-0 rounded-full"
-          alt=""
-        />
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-start justify-between gap-2">
-            <div className="min-w-0">
-              {href ? (
-                <Link
-                  href={href}
-                  className="text-base font-semibold leading-snug text-[#164151] dark:text-white hover:underline decoration-[#85ea10]/70 underline-offset-2"
-                >
-                  {c?.name ?? 'Sin nombre'}
-                </Link>
-              ) : (
-                <p className="text-base font-semibold text-[#164151] dark:text-white">
-                  {c?.name ?? 'Sin nombre'}
-                </p>
-              )}
-              {c?.document_id ? (
-                <p className="mt-0.5 text-[11px] text-gray-500 dark:text-white/45 tabular-nums">
-                  Doc. {c.document_id}
-                </p>
-              ) : null}
-            </div>
-            <div className="flex shrink-0 flex-col items-end gap-1">
-              {isExpiredPeriod ? (
-                <span className="inline-flex items-center rounded-md border border-red-500/35 bg-red-500/10 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-red-700 dark:text-red-400">
-                  Vencido
-                </span>
-              ) : isScheduled ? (
-                <span className="inline-flex items-center gap-1 rounded-md border border-cyan-500/40 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-cyan-700 dark:text-cyan-400">
-                  <Calendar className="h-3.5 w-3.5" />
-                  Próximo
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1 rounded-md border border-gray-200/90 bg-gray-50 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-gray-700 dark:border-white/15 dark:bg-white/[0.06] dark:text-white/85">
-                  <CheckCircle className="h-3.5 w-3.5 shrink-0 text-[#85ea10]" />
-                  En período
-                </span>
-              )}
-              {href ? (
-                <Link href={href} className={`${s.link} text-sm`}>
-                  Ver ficha
-                </Link>
-              ) : (
-                <span className="text-xs text-gray-500 dark:text-white/40">
-                  Sin cuenta web
-                </span>
-              )}
-            </div>
-          </div>
-
-          <div className="mt-3">
-            <div
-              className={`relative h-2 w-full overflow-hidden rounded-full bg-gray-200/90 dark:bg-white/10 ${trackRing}`}
-              role="progressbar"
-              aria-valuenow={pctWidth}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-label="Progreso del período de la membresía"
-            >
-              <div
-                className={barClass}
-                style={{ width: `${pctWidth}%` }}
-              />
-            </div>
-            <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[10px] text-gray-500 dark:text-white/45">
-              <span>
-                Inicio{' '}
-                <span className="font-medium text-[#164151] dark:text-white/80">
-                  {formatMembershipDayLabel(
-                    parseLocalDate(latestMembership.start_date),
-                  )}
-                </span>
-              </span>
-              <span>
-                Fin{' '}
-                <span className="font-medium text-[#164151] dark:text-white/80">
-                  {formatMembershipDayLabel(
-                    parseLocalDate(latestMembership.end_date),
-                  )}
-                </span>
-              </span>
-            </div>
-            <p className="mt-1 text-[10px] text-gray-500 dark:text-white/40">
-              {isExpiredPeriod ? (
-                <>
-                  El período finalizó el{' '}
-                  {formatDateOnlyLocal(latestMembership.end_date, {
-                    day: '2-digit',
-                    month: 'long',
-                    year: 'numeric',
-                  })}
-                </>
-              ) : isScheduled ? (
-                <>
-                  Comienza en {period.daysToStart}{' '}
-                  {period.daysToStart === 1 ? 'día' : 'días'}
-                </>
-              ) : period.endingSoon ? (
-                <span className="font-semibold text-amber-700 dark:text-amber-400">
-                  Quedan {period.daysLeft}{' '}
-                  {period.daysLeft === 1 ? 'día' : 'días'} — por vencer
-                </span>
-              ) : (
-                <>
-                  {Math.round(period.pct)}% del período · {period.daysLeft}{' '}
-                  {period.daysLeft === 1 ? 'día restante' : 'días restantes'}
-                </>
-              )}
-            </p>
-            {expiredCount > 1 ? (
-              <p className="mt-1 text-[10px] font-medium text-amber-700 dark:text-amber-400">
-                Historial: {expiredCount} períodos vencidos para este cliente.
-              </p>
-            ) : null}
-          </div>
+    <tr
+      className={meta.href ? t.row : t.rowStatic}
+      onClick={meta.href ? () => onOpen(meta.href as string) : undefined}
+    >
+      <td className={t.td}>
+        {meta.href ? (
+          <Link
+            href={meta.href}
+            className={t.planName}
+            onClick={(event) => event.stopPropagation()}
+          >
+            {name}
+          </Link>
+        ) : (
+          <p className={t.planName}>{name}</p>
+        )}
+        {meta.client?.document_id ? (
+          <p className={t.planDesc}>Doc. {meta.client.document_id}</p>
+        ) : null}
+      </td>
+      <td className={t.td}>
+        <span className={statusClass(meta.status)}>
+          {statusLabel(meta.status)}
+        </span>
+      </td>
+      <td className={t.td}>
+        <span className={t.periodDates}>
+          {meta.startLabel}
+          <span className={t.periodSep}>→</span>
+          {meta.endLabel}
+        </span>
+      </td>
+      <td className={`${t.td} ${t.progressCell}`}>
+        <div
+          className={t.progressTrack}
+          role="progressbar"
+          aria-valuenow={meta.pctWidth}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label="Progreso del período"
+        >
+          <div
+            className={progressFillClass(meta.status)}
+            style={{ width: `${meta.pctWidth}%` }}
+          />
         </div>
-      </div>
-    </article>
+        <p
+          className={
+            meta.status === 'ending_soon' ? t.progressMetaWarn : t.progressMeta
+          }
+        >
+          {remainingLabel(meta.status, meta.period)}
+        </p>
+      </td>
+      <td className={t.td}>
+        {meta.whatsappHref && meta.whatsappLabel ? (
+          <a
+            href={meta.whatsappHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(event) => event.stopPropagation()}
+            className={t.whatsappLink}
+          >
+            {meta.whatsappLabel}
+          </a>
+        ) : (
+          <span className={t.historyMuted}>—</span>
+        )}
+      </td>
+      <td className={`${t.td} text-right`}>
+        <div className="inline-flex items-center justify-end gap-0.5">
+          {meta.whatsappHref ? (
+            <a
+              href={meta.whatsappHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(event) => event.stopPropagation()}
+              className={t.actionBtn}
+              title="WhatsApp"
+              aria-label={`WhatsApp de ${name}`}
+            >
+              <MessageCircle className="w-4 h-4" />
+            </a>
+          ) : null}
+          {meta.href ? (
+            <Link
+              href={meta.href}
+              onClick={(event) => event.stopPropagation()}
+              className={t.actionBtn}
+              title="Ver ficha"
+              aria-label={`Ver ficha de ${name}`}
+            >
+              <Eye className="w-4 h-4" />
+            </Link>
+          ) : null}
+          {!meta.whatsappHref && !meta.href ? (
+            <span className={t.historyMuted}>—</span>
+          ) : null}
+        </div>
+      </td>
+    </tr>
   );
-}
+});
 
 export function GymPlanDetailPage() {
   const params = useParams();
@@ -220,9 +283,11 @@ export function GymPlanDetailPage() {
   const { data, isLoading, isError, error, refetch } =
     useGymPlanOverview(planId);
   const [clientSearch, setClientSearch] = useState('');
-  const [membershipStateFilter, setMembershipStateFilter] = useState<
-    'all' | 'active' | 'scheduled' | 'expired'
-  >('all');
+  const [membershipStateFilter, setMembershipStateFilter] =
+    useState<MembershipFilter>('all');
+  const [sortKey, setSortKey] = useState<ClientSortKey>('status');
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
+  const [currentPage, setCurrentPage] = useState(1);
 
   const today = useMemo(() => {
     const d = parseLocalDate(getTodayYmdColombia());
@@ -232,7 +297,15 @@ export function GymPlanDetailPage() {
 
   const planMemberships = useMemo(() => {
     if (!data) return [];
-    const active = [...data.active_memberships].sort(
+    // Excluir períodos futuros (van a Anticipos por revisar en Facturas).
+    const startedOnly = (rows: GymPlanOverviewMembership[]) =>
+      rows.filter((m) => {
+        const start = parseLocalDate(m.start_date);
+        start.setHours(0, 0, 0, 0);
+        return start <= today;
+      });
+
+    const active = startedOnly([...data.active_memberships]).sort(
       (a, b) =>
         parseLocalDate(a.end_date).getTime() -
         parseLocalDate(b.end_date).getTime(),
@@ -243,24 +316,27 @@ export function GymPlanDetailPage() {
         parseLocalDate(a.end_date).getTime(),
     );
     return [...active, ...expired];
-  }, [data]);
+  }, [data, today]);
 
   const filteredMemberships = useMemo(() => {
     const q = clientSearch.trim().toLowerCase();
     return planMemberships.filter((m) => {
-      const endDate = parseLocalDate(m.end_date);
-      const isExpiredPeriod = today > endDate;
       const period = getMembershipPeriodProgress(
         m.start_date,
         m.end_date,
         today,
       );
-      const isScheduled = period.notStarted;
+      const endDate = parseLocalDate(m.end_date);
+      const isExpiredPeriod = today > endDate;
+      const status: ClientRowStatus = isExpiredPeriod
+        ? 'expired'
+        : period.endingSoon
+          ? 'ending_soon'
+          : 'current';
 
-      if (membershipStateFilter === 'active' && (isExpiredPeriod || isScheduled))
+      if (membershipStateFilter !== 'all' && status !== membershipStateFilter) {
         return false;
-      if (membershipStateFilter === 'scheduled' && !isScheduled) return false;
-      if (membershipStateFilter === 'expired' && !isExpiredPeriod) return false;
+      }
 
       if (!q) return true;
       const name = (m.client_info?.name || '').toLowerCase();
@@ -281,20 +357,93 @@ export function GymPlanDetailPage() {
       groups.set(clientKey, current);
     }
 
-    return Array.from(groups.values())
-      .map((memberships) =>
-        memberships.sort(
-          (a, b) =>
-            parseLocalDate(b.end_date).getTime() -
-            parseLocalDate(a.end_date).getTime(),
-        ),
-      )
-      .sort((a, b) => {
-        const aName = (a[0]?.client_info?.name || '').toLowerCase();
-        const bName = (b[0]?.client_info?.name || '').toLowerCase();
-        return aName.localeCompare(bName, 'es');
-      });
+    return Array.from(groups.values()).map((memberships) =>
+      memberships.sort(
+        (a, b) =>
+          parseLocalDate(b.end_date).getTime() -
+          parseLocalDate(a.end_date).getTime(),
+      ),
+    );
   }, [filteredMemberships]);
+
+  const sortedClientGroups = useMemo(() => {
+    const list = [...groupedMembershipsByClient];
+    const dir = sortDir === 'asc' ? 1 : -1;
+    list.sort((a, b) => {
+      const metaA = getClientRowMeta(a, today);
+      const metaB = getClientRowMeta(b, today);
+
+      // Siempre: vencidos → por vencer → al día
+      const byStatus =
+        STATUS_ORDER[metaA.status] - STATUS_ORDER[metaB.status];
+      if (byStatus !== 0) return byStatus;
+
+      if (sortKey === 'end' || sortKey === 'status') {
+        if (metaA.status === 'expired') {
+          return (metaB.endMs - metaA.endMs) * dir;
+        }
+        return (metaA.endMs - metaB.endMs) * dir;
+      }
+      if (sortKey === 'progress') {
+        return (metaA.pctWidth - metaB.pctWidth) * dir;
+      }
+      const aName = (metaA.client?.name || '').toLowerCase();
+      const bName = (metaB.client?.name || '').toLowerCase();
+      return aName.localeCompare(bName, 'es') * dir;
+    });
+    return list;
+  }, [groupedMembershipsByClient, sortKey, sortDir, today]);
+
+  const clientSummary = useMemo(() => {
+    let expired = 0;
+    let endingSoon = 0;
+    let current = 0;
+    for (const group of groupedMembershipsByClient) {
+      const { status } = getClientRowMeta(group, today);
+      if (status === 'expired') expired += 1;
+      else if (status === 'ending_soon') endingSoon += 1;
+      else current += 1;
+    }
+    return {
+      total: groupedMembershipsByClient.length,
+      expired,
+      endingSoon,
+      current,
+    };
+  }, [groupedMembershipsByClient, today]);
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(sortedClientGroups.length / PAGE_SIZE),
+  );
+  const safePage = Math.min(currentPage, totalPages);
+  const pagedClientGroups = useMemo(() => {
+    const start = (safePage - 1) * PAGE_SIZE;
+    return sortedClientGroups.slice(start, start + PAGE_SIZE);
+  }, [sortedClientGroups, safePage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [clientSearch, membershipStateFilter, sortKey, sortDir]);
+
+  const handleSort = useCallback(
+    (key: ClientSortKey) => {
+      if (sortKey === key) {
+        setSortDir((current) => (current === 'asc' ? 'desc' : 'asc'));
+        return;
+      }
+      setSortKey(key);
+      setSortDir(key === 'name' || key === 'status' ? 'asc' : 'desc');
+    },
+    [sortKey],
+  );
+
+  const openClient = useCallback(
+    (href: string) => {
+      router.push(href);
+    },
+    [router],
+  );
 
   useEffect(() => {
     if (authLoading) return;
@@ -375,89 +524,76 @@ export function GymPlanDetailPage() {
       activeTab="gym-plans"
     >
       <div className="w-full max-w-none">
-        <div className="pb-8 border-b border-gray-200/60 dark:border-white/[0.06] flex flex-col xl:flex-row xl:items-end xl:justify-between gap-5 xl:gap-8">
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-white/40">
-              Precio de lista
-            </p>
-            <p className="mt-2 text-3xl sm:text-4xl font-bold tabular-nums text-[#164151] dark:text-white tracking-tight">
-              ${Number(plan.price).toLocaleString('es-CO')}{' '}
-              <span className="text-lg sm:text-xl font-semibold text-gray-500 dark:text-white/40">
-                COP
-              </span>
-            </p>
-            <p className="mt-5 text-sm text-gray-600 dark:text-white/60">
-              <span className="text-gray-500 dark:text-white/40">Duración: </span>
-              <span className="font-semibold text-[#164151] dark:text-white">
-                {plan.duration_days} días
-              </span>
-              <span className="mx-2 text-gray-400 dark:text-white/25">·</span>
-              <span className="text-gray-500 dark:text-white/45">Catálogo: </span>
-              {plan.is_active ? (
-                <span className="font-semibold text-[#85ea10]">Activo</span>
-              ) : (
-                <span className="text-gray-500 dark:text-white/45">Inactivo</span>
-              )}
-            </p>
+        <div className={t.detailToolbar}>
+          <div className={t.detailMetaRow}>
+            <span className={t.detailPrice}>
+              ${Number(plan.price).toLocaleString('es-CO')}
+              <span className={t.detailPriceCurrency}>COP</span>
+            </span>
+            <span className={t.detailMetaSep}>·</span>
+            <span className={t.detailMetaMuted}>
+              {formatGymPlanDuration(plan.duration_days)}
+            </span>
+            <span className={t.detailMetaSep}>·</span>
+            {plan.is_active ? (
+              <span className={t.badgeActive}>Activo</span>
+            ) : (
+              <span className={t.badgeInactive}>Inactivo</span>
+            )}
             {plan.description ? (
-              <p className="mt-6 pt-6 border-t border-gray-200/80 dark:border-white/[0.08] text-sm text-gray-600 dark:text-white/55 leading-relaxed">
-                {plan.description}
-              </p>
+              <>
+                <span className={`${t.detailMetaSep} hidden xl:inline`}>·</span>
+                <span className={t.detailDesc} title={plan.description}>
+                  {plan.description}
+                </span>
+              </>
             ) : null}
           </div>
 
-          <div className="w-full xl:w-auto xl:min-w-[620px]">
-            <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
-              <div className="relative flex-1 sm:min-w-[360px]">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-white/35" />
+          <div className={t.detailActions}>
+            <div className={t.detailSearch}>
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400 dark:text-white/35" />
               <input
                 type="text"
                 value={clientSearch}
                 onChange={(e) => setClientSearch(e.target.value)}
-                placeholder="Buscar cliente por nombre o cédula"
-                className="w-full rounded-xl border border-gray-200/80 bg-white/70 pl-9 pr-3 py-2.5 text-sm text-[#164151] outline-none transition focus:border-[#85ea10]/55 focus:ring-2 focus:ring-[#85ea10]/20 dark:border-white/10 dark:bg-white/[0.03] dark:text-white"
+                placeholder="Buscar cliente…"
+                className={t.detailSearchInput}
               />
-              </div>
-              <div className="relative sm:w-[210px]">
-                <Filter className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-white/35" />
-                <select
-                  value={membershipStateFilter}
-                  onChange={(e) =>
-                    setMembershipStateFilter(
-                      e.target.value as
-                        | 'all'
-                        | 'active'
-                        | 'scheduled'
-                        | 'expired',
-                    )
-                  }
-                  className="w-full appearance-none rounded-xl border border-gray-200/80 bg-white/70 pl-9 pr-3 py-2.5 text-sm text-[#164151] outline-none transition focus:border-[#85ea10]/55 focus:ring-2 focus:ring-[#85ea10]/20 dark:border-white/10 dark:bg-white/[0.03] dark:text-white"
-                >
-                  <option value="all">Estado: Todos</option>
-                  <option value="active">En período</option>
-                  <option value="scheduled">Próximo</option>
-                  <option value="expired">Vencido</option>
-                </select>
-              </div>
-              <button
-                type="button"
-                onClick={() => router.push(backHref)}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#164151] text-white hover:bg-[#1a4d5f] px-3 py-2.5 text-sm font-semibold transition-colors"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                Volver
-              </button>
             </div>
+            <div className={t.detailFilter}>
+              <Filter className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400 dark:text-white/35" />
+              <select
+                value={membershipStateFilter}
+                onChange={(e) =>
+                  setMembershipStateFilter(e.target.value as MembershipFilter)
+                }
+                className={t.detailFilterSelect}
+              >
+                <option value="all">Todos</option>
+                <option value="expired">Vencidos</option>
+                <option value="ending_soon">Por vencer</option>
+                <option value="current">Al día</option>
+              </select>
+            </div>
+            <button
+              type="button"
+              onClick={() => router.push(backHref)}
+              className={t.detailBackBtn}
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              Volver
+            </button>
           </div>
         </div>
 
-        <section className="pt-8">
-          <h2 className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-white/40">
-            Clientes con este plan
-          </h2>
-          <p className="mb-6 text-[10px] leading-snug text-gray-500 dark:text-white/35">
-            Progreso del período de cada membresía (vigentes y vencidos).
-          </p>
+        <section>
+          <div className={t.detailSectionHead}>
+            <h2 className={t.detailSectionTitle}>Clientes con este plan</h2>
+            <p className={t.detailSectionHelper}>
+              Vigentes y vencidos · anticipos se revisan en Pagos
+            </p>
+          </div>
           {groupedMembershipsByClient.length === 0 ? (
             <p className="py-12 text-center text-sm text-gray-500 dark:text-white/45 border-t border-b border-gray-200/80 dark:border-white/[0.08]">
               {planMemberships.length === 0
@@ -465,14 +601,175 @@ export function GymPlanDetailPage() {
                 : 'No hay clientes que coincidan con ese filtro.'}
             </p>
           ) : (
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {groupedMembershipsByClient.map((clientMemberships) => (
-                <PlanClientGroupCard
-                  key={clientMemberships[0].id}
-                  memberships={clientMemberships}
-                  today={today}
-                />
-              ))}
+            <div className={t.tableShell}>
+              <div className={t.tableWrap}>
+                <table className={t.table}>
+                  <thead>
+                    <tr>
+                      <th className={`${t.th} ${t.thLeft}`}>
+                        <button
+                          type="button"
+                          onClick={() => handleSort('name')}
+                          className={t.sortButton}
+                        >
+                          Cliente
+                          <SortIcon
+                            active={sortKey === 'name'}
+                            direction={sortDir}
+                          />
+                        </button>
+                      </th>
+                      <th className={`${t.th} ${t.thLeft}`}>
+                        <button
+                          type="button"
+                          onClick={() => handleSort('status')}
+                          className={t.sortButton}
+                        >
+                          Estado
+                          <SortIcon
+                            active={sortKey === 'status'}
+                            direction={sortDir}
+                          />
+                        </button>
+                      </th>
+                      <th className={`${t.th} ${t.thLeft}`}>
+                        <button
+                          type="button"
+                          onClick={() => handleSort('end')}
+                          className={t.sortButton}
+                        >
+                          Período
+                          <SortIcon
+                            active={sortKey === 'end'}
+                            direction={sortDir}
+                          />
+                        </button>
+                      </th>
+                      <th className={`${t.th} ${t.thLeft}`}>
+                        <button
+                          type="button"
+                          onClick={() => handleSort('progress')}
+                          className={t.sortButton}
+                        >
+                          Progreso
+                          <SortIcon
+                            active={sortKey === 'progress'}
+                            direction={sortDir}
+                          />
+                        </button>
+                      </th>
+                      <th className={`${t.th} ${t.thLeft}`}>WhatsApp</th>
+                      <th className={`${t.th} ${t.thRight}`}>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pagedClientGroups.map((clientMemberships) => (
+                      <PlanClientTableRow
+                        key={clientMemberships[0].id}
+                        memberships={clientMemberships}
+                        today={today}
+                        onOpen={openClient}
+                      />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className={t.pager}>
+                <p className={t.footerText}>
+                  {clientSummary.total}{' '}
+                  {clientSummary.total === 1 ? 'cliente' : 'clientes'}
+                  <span className="mx-2 text-gray-300 dark:text-white/20">
+                    ·
+                  </span>
+                  {clientSummary.expired} vencidos
+                  <span className="mx-2 text-gray-300 dark:text-white/20">
+                    ·
+                  </span>
+                  {clientSummary.endingSoon} por vencer
+                  <span className="mx-2 text-gray-300 dark:text-white/20">
+                    ·
+                  </span>
+                  {clientSummary.current} al día
+                  <span className="mx-2 text-gray-300 dark:text-white/20">
+                    ·
+                  </span>
+                  pág. {safePage}/{totalPages}
+                </p>
+                {totalPages > 1 ? (
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      className={t.pagerBtn}
+                      disabled={safePage <= 1}
+                      onClick={() => setCurrentPage(1)}
+                      aria-label="Primera página"
+                    >
+                      <ChevronsLeft className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      className={t.pagerBtn}
+                      disabled={safePage <= 1}
+                      onClick={() =>
+                        setCurrentPage((p) => Math.max(1, p - 1))
+                      }
+                      aria-label="Página anterior"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                      .filter((page) => {
+                        if (totalPages <= 7) return true;
+                        if (page === 1 || page === totalPages) return true;
+                        return Math.abs(page - safePage) <= 1;
+                      })
+                      .map((page, idx, arr) => {
+                        const prev = arr[idx - 1];
+                        const showEllipsis = prev != null && page - prev > 1;
+                        return (
+                          <span key={page} className="inline-flex items-center gap-1">
+                            {showEllipsis ? (
+                              <span className="px-1 text-xs text-gray-400">
+                                …
+                              </span>
+                            ) : null}
+                            <button
+                              type="button"
+                              className={
+                                page === safePage
+                                  ? t.pagerBtnActive
+                                  : t.pagerBtnPage
+                              }
+                              onClick={() => setCurrentPage(page)}
+                            >
+                              {page}
+                            </button>
+                          </span>
+                        );
+                      })}
+                    <button
+                      type="button"
+                      className={t.pagerBtn}
+                      disabled={safePage >= totalPages}
+                      onClick={() =>
+                        setCurrentPage((p) => Math.min(totalPages, p + 1))
+                      }
+                      aria-label="Página siguiente"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      className={t.pagerBtn}
+                      disabled={safePage >= totalPages}
+                      onClick={() => setCurrentPage(totalPages)}
+                      aria-label="Última página"
+                    >
+                      <ChevronsRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : null}
+              </div>
             </div>
           )}
         </section>

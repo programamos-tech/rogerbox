@@ -2,6 +2,7 @@
 
 import {
   AlertTriangle,
+  ArrowLeft,
   Ban,
   BookOpen,
   Calendar,
@@ -13,7 +14,6 @@ import {
   LogOut,
   Mail,
   MapPin,
-  MessageSquare,
   PenLine,
   Phone,
   Ruler,
@@ -27,13 +27,23 @@ import {
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { isPlaceholderGymWhatsapp } from '@/lib/gymClientDisplay';
+import {
+  getGymWhatsappHref,
+  isPlaceholderGymWhatsapp,
+} from '@/lib/gymClientDisplay';
+import { gymUserDetailStyles as adminT } from '@/modules/gym-admin/styles';
+import { WhatsAppIcon } from '@/shared/components/WhatsAppIcon';
+import { GymClientPurchasesTable } from '@/modules/gym-admin';
+import { GymClientCreditBanner } from '@/modules/gym-admin/components/GymClientCreditBanner';
+import { GymPendingAdvancesPanel } from '@/modules/gym-admin/components/GymPendingAdvancesPanel';
+import { useGymClientCredit } from '@/modules/gym-admin/hooks/useGymClientCredit';
 import {
   formatDateOnlyLocal,
   getMembershipPeriodProgress,
   periodEndFromStart,
 } from '@/lib/dateUtils';
 import { DatePickerField } from '@/shared/components/DatePickerField';
+import { GymClientPaymentStatusBadge } from '@/shared/components/GymClientPaymentStatusBadge';
 import { GymSeededAvatar } from '@/shared/components/GymSeededAvatar';
 import { pickLatestExpiredMembershipPerPlan } from '@/shared/utils/gym-membership-admin.util';
 /** Nombre en ficha admin: full_name y name de perfil (y sede física) antes que first/last sueltos. */
@@ -484,7 +494,7 @@ export interface UserDetailContentProps {
   setEditForm: (v: any) => void;
   handleSave: () => void;
   saveError: string;
-  loadUserData: () => Promise<void>;
+  loadUserData: (opts?: { quiet?: boolean }) => Promise<void>;
   weightRecords: any[];
   loadingWeightRecords: boolean;
   /** Admin-only: omit when isSelf */
@@ -556,10 +566,27 @@ export function UserDetailContent({
 }: UserDetailContentProps) {
   const router = useRouter();
 
+  const adminClientInfoId = !isSelf
+    ? String(
+        userData.client_info_id ||
+          userData.gym_memberships?.[0]?.client_info_id ||
+          '',
+      ) || null
+    : null;
+  const { data: creditData, refetch: refetchCredit } =
+    useGymClientCredit(adminClientInfoId);
+  const creditBalance = creditData?.balance ?? 0;
+
   return (
     <>
       <div className="flex-1 overflow-y-auto">
-        <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div
+          className={
+            isSelf
+              ? 'w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8'
+              : adminT.page
+          }
+        >
           {/* Un solo card: foto + nombre (solo cuando el usuario ve su propio perfil) */}
           {isSelf && onSaveAvatar && (
             <ProfilePhotoAndNameCard
@@ -588,17 +615,9 @@ export function UserDetailContent({
             />
           )}
 
-          {/* Ficha estilo comprobante (admin) */}
+          {/* Ficha compacta ERP (admin) */}
           {!isSelf &&
             (() => {
-              const memberships = userData.gym_memberships || [];
-              const totalMemberships = memberships.filter(
-                (m: any) => m.status !== 'cancelled',
-              ).length;
-              const totalPaid = memberships.reduce((sum: number, m: any) => {
-                return sum + (m.payment?.amount || 0);
-              }, 0);
-
               const displayName = resolveAdminClientDisplayName(userData);
 
               const avatarSeed = String(
@@ -614,15 +633,6 @@ export function UserDetailContent({
                   ? `${String(userData.avatar_url)}${String(userData.avatar_url).includes('?') ? '&' : '?'}v=${userData.updated_at || ''}`
                   : null;
 
-              const userTypeLabel =
-                userData.userType === 'both'
-                  ? 'Físico + Online'
-                  : userData.userType === 'physical'
-                    ? 'Sede física'
-                    : userData.userType === 'online'
-                      ? 'Sede en línea'
-                      : 'Sin productos';
-
               const waRaw = userData.phone || userData.whatsapp;
               const waHero =
                 waRaw && isPlaceholderGymWhatsapp(String(waRaw))
@@ -633,121 +643,156 @@ export function UserDetailContent({
               const waPending =
                 waRaw && isPlaceholderGymWhatsapp(String(waRaw));
 
-                      return (
-                <div className="mb-2 space-y-4">
-                  <div
-                    className="relative overflow-hidden text-[#164151] dark:text-white"
-                    role="article"
-                    aria-label="Resumen del cliente"
-                  >
-                    <div className="relative z-10">
-                      <div className="border-b border-gray-200/80 pb-6 dark:border-white/[0.08]">
-                        <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between lg:gap-10">
-                          <div className="flex min-w-0 flex-1 items-start gap-4 sm:gap-5">
-                            {displayAvatarUrl ? (
-                              <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-full ring-2 ring-gray-200/80 shadow-sm dark:ring-white/12 sm:h-[88px] sm:w-[88px]">
-                                <img
-                                  src={displayAvatarUrl}
-                                  alt=""
-                                  className="h-full w-full object-cover"
-                                />
-                              </div>
-                            ) : (
-                              <GymSeededAvatar
-                                seed={avatarSeed}
-                                size={88}
-                                className="shrink-0 rounded-full ring-2 ring-gray-200/80 shadow-sm dark:ring-white/12"
-                                alt=""
-                              />
-                            )}
-                            <div className="min-w-0 flex-1">
-                              <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-white/40">
-                                Quién compró
-                              </p>
-                              <p className="text-2xl font-bold leading-tight tracking-tight text-[#164151] dark:text-white sm:text-3xl break-words">
-                                {displayName}
-                              </p>
-                              <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-gray-600 dark:text-white/60">
-                                {userData.document_id ? (
-                                  <span className="tabular-nums">
-                                    Doc. {userData.document_id}
-                                  </span>
-                                ) : null}
-                                {userData.email ? (
-                                  <span className="break-all">
-                                    {userData.email}
-                                  </span>
-                                ) : null}
-                                {waHero ? (
-                                  <span className="tabular-nums">
-                                    WhatsApp {waHero}
-                                  </span>
-                                ) : null}
-                                {waPending ? (
-                                  <span className="text-xs italic text-gray-500 dark:text-white/45">
-                                    WhatsApp pendiente
-                                  </span>
-                                ) : null}
-                              </div>
-                            </div>
-                          </div>
+              const birthdayMeta = (() => {
+                if (userData.birth_date) {
+                  const birthDate = parseLocalDate(
+                    String(userData.birth_date).slice(0, 10),
+                  );
+                  const todayAge = new Date();
+                  todayAge.setHours(0, 0, 0, 0);
+                  let age = todayAge.getFullYear() - birthDate.getFullYear();
+                  const monthDiff = todayAge.getMonth() - birthDate.getMonth();
+                  const dayDiff = todayAge.getDate() - birthDate.getDate();
+                  if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {
+                    age -= 1;
+                  }
+                  const label = birthDate.toLocaleDateString('es-ES', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric',
+                  });
+                  return `${label} (${age} años)`;
+                }
+                if (userData.birth_year) {
+                  const age =
+                    new Date().getFullYear() - Number(userData.birth_year);
+                  return `${userData.birth_year} (${age} años)`;
+                }
+                return null;
+              })();
 
-                          <div className="grid w-full grid-cols-2 gap-x-6 gap-y-4 border-t border-gray-200/60 pt-5 sm:grid-cols-4 lg:w-auto lg:min-w-0 lg:max-w-xl lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0 dark:border-white/[0.08]">
-                            <div className="min-w-0">
-                              <div className="mb-1 flex items-center gap-1.5">
-                                <Users className="h-3.5 w-3.5 shrink-0 text-[#85ea10]" />
-                                <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:text-white/45">
-                                  Tipo
-                                </span>
-                              </div>
-                              <p className="text-sm font-semibold leading-snug text-[#164151] dark:text-white">
-                                {userTypeLabel}
-                              </p>
-                            </div>
-                            <div className="min-w-0">
-                              <div className="mb-1 flex items-center gap-1.5">
-                                <FileText className="h-3.5 w-3.5 shrink-0 text-[#85ea10]" />
-                                <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:text-white/45">
-                                  Membresías
-                                </span>
-                              </div>
-                              <p className="text-sm font-semibold tabular-nums text-[#164151] dark:text-white">
-                                {totalMemberships}
-                              </p>
-                            </div>
-                            <div className="min-w-0">
-                              <div className="mb-1 flex items-center gap-1.5">
-                                <DollarSign className="h-3.5 w-3.5 shrink-0 text-[#85ea10]" />
-                                <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:text-white/45">
-                                  Total abonado
-                                </span>
-                              </div>
-                              <p className="text-sm font-semibold tabular-nums text-[#164151] dark:text-white">
-                                ${totalPaid.toLocaleString('es-CO')}
-                              </p>
-                            </div>
-                            <div className="min-w-0">
-                              <div className="mb-1 flex items-center gap-1.5">
-                                <CheckCircle className="h-3.5 w-3.5 shrink-0 text-[#85ea10]" />
-                                <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:text-white/45">
-                                  Estado
-                                </span>
-                              </div>
-                              <p className="mt-0.5">
-                                {userData.is_inactive ? (
-                                  <span className="inline-flex items-center rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:text-amber-300">
-                                    Inactivo
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex items-center rounded-full bg-[#85ea10]/15 px-2 py-0.5 text-xs font-semibold text-[#85ea10]">
-                                    Activo
-                                  </span>
-                                )}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
+              return (
+                <div className={adminT.clientHeader}>
+                  <div className={adminT.clientIdentity}>
+                    {displayAvatarUrl ? (
+                      <div className={adminT.clientAvatar}>
+                        <img
+                          src={displayAvatarUrl}
+                          alt=""
+                          className="h-full w-full object-cover"
+                        />
                       </div>
+                    ) : (
+                      <GymSeededAvatar
+                        seed={avatarSeed}
+                        size={56}
+                        className={`${adminT.clientAvatar} object-cover`}
+                        alt=""
+                      />
+                    )}
+                    <div className="min-w-0">
+                      <div className={adminT.clientNameRow}>
+                        <p className={adminT.clientName}>{displayName}</p>
+                        <GymClientPaymentStatusBadge
+                          memberships={userData.gym_memberships}
+                          activeCoursePurchases={
+                            userData.activeCoursePurchases
+                          }
+                          isInactive={userData.is_inactive}
+                          renewalFollowupDismissedPlanIds={
+                            userData.renewal_followup_dismissed_plan_ids
+                          }
+                          size="md"
+                        />
+                      </div>
+                      <div className={adminT.clientMeta}>
+                        {userData.document_id ? (
+                          <span className="tabular-nums">
+                            Doc. {userData.document_id}
+                          </span>
+                        ) : null}
+                        {userData.email ? (
+                          <span className="break-all">{userData.email}</span>
+                        ) : null}
+                        {waHero ? (
+                          <span className="tabular-nums">WhatsApp {waHero}</span>
+                        ) : null}
+                        {waPending ? (
+                          <span className="italic">WhatsApp pendiente</span>
+                        ) : null}
+                        {birthdayMeta ? (
+                          <span>Cumpleaños {birthdayMeta}</span>
+                        ) : null}
+                      </div>
+                      {saveError ? (
+                        <p className="mt-1.5 text-sm font-medium text-red-600 dark:text-red-400">
+                          {saveError}
+                        </p>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <div className={adminT.clientAside}>
+                    <div className={adminT.detailActions}>
+                      <button
+                        type="button"
+                        onClick={() => router.push('/admin?tab=users')}
+                        className={adminT.toolbarBtn}
+                        title="Volver a clientes"
+                      >
+                        <ArrowLeft className="h-3.5 w-3.5" />
+                        Volver
+                      </button>
+                      {isEditing ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (onCancelEdit) {
+                                onCancelEdit();
+                              } else {
+                                setIsEditing(false);
+                              }
+                            }}
+                            className={adminT.toolbarBtn}
+                            title="Cancelar"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                            Cancelar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleSave}
+                            disabled={isSaving}
+                            className={adminT.toolbarBtnPrimary}
+                            title={isSaving ? 'Guardando…' : 'Guardar'}
+                          >
+                            <CheckCircle className="h-3.5 w-3.5" />
+                            {isSaving ? 'Guardando…' : 'Guardar'}
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => setIsEditing(true)}
+                            className={adminT.toolbarBtn}
+                            title="Editar"
+                          >
+                            <Edit className="h-3.5 w-3.5" />
+                            Editar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setShowDeleteModal(true)}
+                            className={adminT.toolbarBtnDanger}
+                            title="Eliminar"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            Eliminar
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -844,7 +889,7 @@ export function UserDetailContent({
                                 throw new Error('Error al actualizar estado');
                               }
 
-                              await loadUserData();
+                              await loadUserData({ quiet: true });
                             } catch (error) {
                               alert('Error al inactivar el usuario');
                             }
@@ -879,7 +924,7 @@ export function UserDetailContent({
                                 throw new Error('Error al actualizar estado');
                               }
 
-                              await loadUserData();
+                              await loadUserData({ quiet: true });
                             } catch (error) {
                               alert('Error al activar el usuario');
                             }
@@ -910,8 +955,9 @@ export function UserDetailContent({
                   );
                 })()}
 
-              {/* Datos de contacto — solo admin (sin encabezado de sección) */}
-              {!isSelf && (
+              {/* Datos de contacto — solo admin al editar o si hay dirección */}
+              {!isSelf &&
+                (isEditing || userData.address || saveError) && (
                 <div className="pb-8 border-b border-gray-200/60 dark:border-white/[0.06]">
                   {saveError && (
                     <div className="mb-4 p-3 bg-red-50 dark:bg-red-500/20 border border-red-200 dark:border-red-500/30 rounded-lg">
@@ -1079,74 +1125,35 @@ export function UserDetailContent({
                             />
                           </div>
                         </div>
-                      </>
-                    )}
-
-                    {!isEditing &&
-                      (userData.birth_date || userData.birth_year) && (
                         <div className="flex items-center gap-3 py-3">
                           <Calendar className="w-5 h-5 text-gray-400" />
-                          <div>
-                            <p className="text-xs text-gray-500 dark:text-white/40">
+                          <div className="flex-1">
+                            <p className="text-xs text-gray-500 dark:text-white/40 mb-1">
                               Fecha de nacimiento
                             </p>
-                            <p className="text-sm font-medium text-[#164151] dark:text-white">
-                              {userData.birth_date
-                                ? (() => {
-                                    const birthDate = new Date(
-                                      userData.birth_date,
-                                    );
-                                    const today = new Date();
-                                    const age =
-                                      today.getFullYear() -
-                                      birthDate.getFullYear();
-                                    const monthDiff =
-                                      today.getMonth() - birthDate.getMonth();
-                                    const dayDiff =
-                                      today.getDate() - birthDate.getDate();
-                                    const finalAge =
-                                      monthDiff < 0 ||
-                                      (monthDiff === 0 && dayDiff < 0)
-                                        ? age - 1
-                                        : age;
-                                    return `${birthDate.toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })} (${finalAge} años)`;
-                                  })()
-                                : userData.birth_year
-                                  ? `${userData.birth_year} (${new Date().getFullYear() - userData.birth_year} años)`
-                                  : 'No especificado'}
-                            </p>
+                            <input
+                              type="date"
+                              value={
+                                editForm.birth_date ||
+                                (editForm.birth_year
+                                  ? `${editForm.birth_year}-01-01`
+                                  : '')
+                              }
+                              onChange={(e) => {
+                                const year = e.target.value
+                                  ? new Date(e.target.value).getFullYear()
+                                  : '';
+                                setEditForm({
+                                  ...editForm,
+                                  birth_date: e.target.value,
+                                  birth_year: year,
+                                });
+                              }}
+                              className="w-full px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded-lg text-sm text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50"
+                            />
                           </div>
                         </div>
-                      )}
-
-                    {isEditing && (
-                      <div className="flex items-center gap-3 py-3">
-                        <Calendar className="w-5 h-5 text-gray-400" />
-                        <div className="flex-1">
-                          <p className="text-xs text-gray-500 dark:text-white/40 mb-1">
-                            Fecha de nacimiento
-                          </p>
-                          <input
-                            type="date"
-                            value={
-                              editForm.birth_date || editForm.birth_year
-                                ? `${editForm.birth_year || new Date().getFullYear()}-01-01`
-                                : ''
-                            }
-                            onChange={(e) => {
-                              const year = e.target.value
-                                ? new Date(e.target.value).getFullYear()
-                                : '';
-                              setEditForm({
-                                ...editForm,
-                                birth_date: e.target.value,
-                                birth_year: year,
-                              });
-                            }}
-                            className="w-full px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded-lg text-sm text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50"
-                          />
-                        </div>
-                      </div>
+                      </>
                     )}
 
                   </div>
@@ -1402,10 +1409,222 @@ export function UserDetailContent({
               )}
             </div>
 
-            {/* Resumen comercial + historiales — ancho completo; dos columnas internas en lg */}
+            {/* Compras unificadas — solo admin */}
+            {!isSelf ? (
+              <div className="order-1 space-y-6 lg:order-1 lg:col-span-12 lg:row-start-1 w-full min-w-0">
+                <div className={adminT.sectionStack}>
+                  <div>
+                    <div className={adminT.detailSectionHead}>
+                      <h2 className={adminT.detailSectionTitle}>
+                        Compras en Rogerbox
+                      </h2>
+                      <span className={adminT.detailSectionHelper}>
+                        Total facturado = facturas gym + cursos
+                      </span>
+                    </div>
+                    {adminClientInfoId ? (
+                      <div className="mb-4 space-y-3">
+                        <GymPendingAdvancesPanel
+                          clientInfoId={adminClientInfoId}
+                          onResolved={() => {
+                            void loadUserData({ quiet: true });
+                            void refetchCredit();
+                          }}
+                        />
+                        <GymClientCreditBanner
+                          clientInfoId={adminClientInfoId}
+                          balance={creditBalance}
+                        />
+                      </div>
+                    ) : null}
+                    {(() => {
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      const memberships = userData.gym_memberships || [];
+                      const coursePurchases = userData.course_purchases || [];
+                      const activeMemberships = memberships.filter(
+                        (m: any) =>
+                          m.status !== 'cancelled' &&
+                          parseLocalDate(m.end_date) >= today,
+                      );
+                      const currentMembership =
+                        [...activeMemberships]
+                          .filter(
+                            (m: any) => parseLocalDate(m.start_date) <= today,
+                          )
+                          .sort(
+                            (a: any, b: any) =>
+                              parseLocalDate(b.end_date).getTime() -
+                              parseLocalDate(a.end_date).getTime(),
+                          )[0] ||
+                        [...activeMemberships].sort(
+                          (a: any, b: any) =>
+                            parseLocalDate(a.start_date).getTime() -
+                            parseLocalDate(b.start_date).getTime(),
+                        )[0] ||
+                        null;
+
+                      const planName = (() => {
+                        if (!currentMembership) return 'Sin vigencia';
+                        const raw = currentMembership.plan;
+                        if (Array.isArray(raw)) {
+                          return raw[0]?.name || 'Plan';
+                        }
+                        return raw?.name || 'Plan';
+                      })();
+
+                      const vigenciaLabel = currentMembership
+                        ? formatDateOnlyLocal(
+                            String(currentMembership.end_date).slice(0, 10),
+                            {
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric',
+                            },
+                            'es-CO',
+                          )
+                        : memberships.some(
+                              (m: any) =>
+                                m.status !== 'cancelled' &&
+                                parseLocalDate(m.end_date) < today,
+                            )
+                          ? 'Por renovar'
+                          : '—';
+
+                      const membershipPeriods = memberships.filter(
+                        (m: any) => m.status !== 'cancelled',
+                      ).length;
+                      const gymPaid = memberships.reduce(
+                        (sum: number, m: any) =>
+                          sum + (Number(m.payment?.amount) || 0),
+                        0,
+                      );
+                      const coursesPaid = coursePurchases.reduce(
+                        (sum: number, p: any) =>
+                          sum + (Number(p.purchase_price) || 0),
+                        0,
+                      );
+                      const totalFacturado = gymPaid + coursesPaid;
+                      const coursesCount = coursePurchases.length;
+
+                      const clienteDesde = (() => {
+                        const dates = memberships
+                          .map((m: any) =>
+                            m.start_date
+                              ? parseLocalDate(
+                                  String(m.start_date).slice(0, 10),
+                                )
+                              : null,
+                          )
+                          .filter(Boolean) as Date[];
+                        if (dates.length === 0) return '—';
+                        const oldest = dates.reduce((a, b) =>
+                          a.getTime() < b.getTime() ? a : b,
+                        );
+                        return oldest.toLocaleDateString('es-ES', {
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric',
+                        });
+                      })();
+
+                      const canalLabel =
+                        userData.userType === 'both'
+                          ? 'Físico + Online'
+                          : userData.userType === 'physical'
+                            ? 'Sede física'
+                            : userData.userType === 'online'
+                              ? 'Sede en línea'
+                              : 'Sin productos';
+
+                      const summaryItems = [
+                        { label: 'Canal', value: canalLabel },
+                        { label: 'Plan vigente', value: planName },
+                        { label: 'Fin vigencia', value: vigenciaLabel },
+                        {
+                          label: 'Periodos gym',
+                          value: String(membershipPeriods),
+                        },
+                        { label: 'Cursos', value: String(coursesCount) },
+                        {
+                          label: 'Total facturado',
+                          value: `$${totalFacturado.toLocaleString('es-CO')} COP`,
+                        },
+                        {
+                          label: 'Saldo a favor',
+                          value: `$${creditBalance.toLocaleString('es-CO')} COP`,
+                          emphasize: creditBalance > 0,
+                        },
+                        { label: 'Cliente desde', value: clienteDesde },
+                        {
+                          label: 'Restricciones',
+                          value: userData.medical_restrictions
+                            ? String(userData.medical_restrictions).trim() ||
+                              'Sí'
+                            : 'Ninguna',
+                        },
+                      ];
+
+                      return (
+                        <div className={adminT.summaryStrip}>
+                          {summaryItems.map((item) => (
+                            <div
+                              key={item.label}
+                              className={adminT.summaryItem}
+                              title={item.value}
+                            >
+                              <span className={adminT.summaryLabel}>
+                                {item.label}
+                              </span>
+                              <span
+                                className={
+                                  item.emphasize
+                                    ? `${adminT.summaryValue} text-[#3f7d08] dark:text-[#85ea10]`
+                                    : adminT.summaryValue
+                                }
+                              >
+                                {item.value}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
+                    <GymClientPurchasesTable
+                      userData={userData}
+                      editingStartDateMembershipId={
+                        editingStartDateMembershipId
+                      }
+                      newStartDate={newStartDate}
+                      setNewStartDate={setNewStartDate}
+                      isUpdatingStartDate={isUpdatingStartDate}
+                      handleStartEditStartDate={handleStartEditStartDate}
+                      handleCancelEditStartDate={handleCancelEditStartDate}
+                      handleSaveStartDate={handleSaveStartDate}
+                      openCancelMembershipModal={openCancelMembershipModal}
+                      cancellingMembershipId={cancellingMembershipId}
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : (
+            <>
+            {/* Resumen comercial + historiales */}
             <div className="order-1 space-y-6 lg:order-1 lg:col-span-12 lg:row-start-1 w-full min-w-0">
-              <div className="grid grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-6 xl:gap-8 lg:items-start">
-                <div className="min-w-0 space-y-6 lg:space-y-8 lg:border-r lg:border-gray-200/60 lg:pr-6 xl:pr-8 dark:lg:border-white/[0.08]">
+              <div
+                className={
+                  isSelf
+                    ? 'grid grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-6 xl:gap-8 lg:items-start'
+                    : adminT.sectionStack
+                }
+              >
+                <div
+                  className={
+                    isSelf
+                      ? 'min-w-0 space-y-6 lg:space-y-8 lg:border-r lg:border-gray-200/60 lg:pr-6 xl:pr-8 dark:lg:border-white/[0.08]'
+                      : 'min-w-0 space-y-6'
+                  }
+                >
               {/* Productos Activos - Solo para usuarios "Al día" o "Parcial" */}
               {(() => {
                 const today = new Date();
@@ -1429,11 +1648,19 @@ export function UserDetailContent({
                   activeMemberships.length > 0 || hasActiveCourses;
 
                 return (
-                  <div className="pb-8 sm:pb-10 border-b border-gray-200/60 dark:border-white/[0.06]">
+                  <div
+                    className={
+                      isSelf
+                        ? 'pb-8 sm:pb-10 border-b border-gray-200/60 dark:border-white/[0.06]'
+                        : ''
+                    }
+                  >
                     {!isSelf && (
-                      <h2 className="mb-4 text-xs font-semibold uppercase tracking-normal text-gray-500 dark:text-white/40">
-                        Resumen comercial
-                      </h2>
+                      <div className={adminT.detailSectionHead}>
+                        <h2 className={adminT.detailSectionTitle}>
+                          Resumen comercial
+                        </h2>
+                      </div>
                     )}
                     <div className="space-y-6">
                       {!hasActiveProducts ? (
@@ -1442,8 +1669,235 @@ export function UserDetailContent({
                         </p>
                       ) : (
                         <>
-                          {/* Planes sede física — card único con barra de progreso */}
-                          {activeMemberships.length > 0 && (
+                          {/* Planes sede física */}
+                          {activeMemberships.length > 0 && !isSelf ? (
+                            <div className={adminT.tableShell}>
+                              <div className={adminT.tableWrap}>
+                                <table className={adminT.table}>
+                                  <thead>
+                                    <tr>
+                                      <th
+                                        className={`${adminT.th} ${adminT.thLeft}`}
+                                      >
+                                        Plan
+                                      </th>
+                                      <th
+                                        className={`${adminT.th} ${adminT.thLeft}`}
+                                      >
+                                        Periodo
+                                      </th>
+                                      <th
+                                        className={`${adminT.th} ${adminT.thLeft}`}
+                                      >
+                                        Estado
+                                      </th>
+                                      <th
+                                        className={`${adminT.th} ${adminT.thLeft}`}
+                                      >
+                                        Factura
+                                      </th>
+                                      <th
+                                        className={`${adminT.th} ${adminT.actionsCellTh}`}
+                                      >
+                                        Acciones
+                                      </th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {activeMemberships
+                                      .sort(
+                                        (a: any, b: any) =>
+                                          new Date(a.start_date).getTime() -
+                                          new Date(b.start_date).getTime(),
+                                      )
+                                      .map((membership: any) => {
+                                        const startDate = parseLocalDate(
+                                          membership.start_date,
+                                        );
+                                        const isScheduled = startDate > today;
+                                        const period =
+                                          getMembershipPeriodProgress(
+                                            membership.start_date,
+                                            membership.end_date,
+                                            today,
+                                          );
+                                        const statusBadge = isScheduled
+                                          ? adminT.badgeScheduled
+                                          : period.endingSoon
+                                            ? adminT.badgeEndingSoon
+                                            : adminT.badgePeriod;
+
+                                        return (
+                                          <tr
+                                            key={membership.id}
+                                            className={adminT.rowStatic}
+                                          >
+                                            <td className={adminT.td}>
+                                              <p className={adminT.planName}>
+                                                <MembershipPlanName
+                                                  membership={membership}
+                                                  canOpenDetail
+                                                />
+                                              </p>
+                                            </td>
+                                            <td className={adminT.td}>
+                                              {editingStartDateMembershipId ===
+                                              membership.id ? (
+                                                <div className="flex flex-wrap items-center gap-1.5">
+                                                  <DatePickerField
+                                                    id={`membership-start-${membership.id}`}
+                                                    value={newStartDate}
+                                                    onChange={(iso) =>
+                                                      setNewStartDate(iso)
+                                                    }
+                                                    disabled={
+                                                      isUpdatingStartDate
+                                                    }
+                                                    aria-label="Fecha de inicio del plan"
+                                                    className="min-w-[140px] max-w-[180px]"
+                                                    triggerClassName="py-1.5 min-h-[32px] text-xs rounded-lg border-gray-300 dark:border-white/20 bg-white dark:bg-gray-800/90"
+                                                  />
+                                                  <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                      handleSaveStartDate(
+                                                        membership.id,
+                                                      )
+                                                    }
+                                                    disabled={
+                                                      isUpdatingStartDate
+                                                    }
+                                                    className="px-2 py-1 text-xs bg-[#85ea10] text-[#164151] rounded-lg hover:bg-[#85ea10]/80 transition-colors disabled:opacity-50"
+                                                    title="Guardar fecha"
+                                                  >
+                                                    {isUpdatingStartDate
+                                                      ? '…'
+                                                      : '✓'}
+                                                  </button>
+                                                  <button
+                                                    type="button"
+                                                    onClick={
+                                                      handleCancelEditStartDate
+                                                    }
+                                                    disabled={
+                                                      isUpdatingStartDate
+                                                    }
+                                                    className="px-2 py-1 text-xs bg-gray-200 dark:bg-white/10 text-gray-700 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-white/20 transition-colors disabled:opacity-50"
+                                                    title="Cancelar"
+                                                  >
+                                                    ✕
+                                                  </button>
+                                                </div>
+                                              ) : (
+                                                <span
+                                                  className={adminT.periodDates}
+                                                >
+                                                  {formatMembershipDayLabel(
+                                                    parseLocalDate(
+                                                      membership.start_date,
+                                                    ),
+                                                  )}
+                                                  <span
+                                                    className={adminT.periodSep}
+                                                  >
+                                                    →
+                                                  </span>
+                                                  {formatMembershipDayLabel(
+                                                    parseLocalDate(
+                                                      membership.end_date,
+                                                    ),
+                                                  )}
+                                                </span>
+                                              )}
+                                            </td>
+                                            <td className={adminT.td}>
+                                              <span className={statusBadge}>
+                                                {isScheduled
+                                                  ? 'Próximo'
+                                                  : period.endingSoon
+                                                    ? 'Por vencer'
+                                                    : 'Al día'}
+                                              </span>
+                                            </td>
+                                            <td className={adminT.td}>
+                                              {membership.payment
+                                                ?.invoice_number ? (
+                                                membership.payment.id ? (
+                                                  <Link
+                                                    href={`/admin/payments/${membership.payment.id}`}
+                                                    className={
+                                                      adminT.invoiceLink
+                                                    }
+                                                  >
+                                                    <FileText className="h-3.5 w-3.5" />
+                                                    #
+                                                    {
+                                                      membership.payment
+                                                        .invoice_number
+                                                    }
+                                                  </Link>
+                                                ) : (
+                                                  <span className="text-xs tabular-nums text-gray-500 dark:text-white/45">
+                                                    #
+                                                    {
+                                                      membership.payment
+                                                        .invoice_number
+                                                    }
+                                                  </span>
+                                                )
+                                              ) : (
+                                                <span className={adminT.historyMuted}>
+                                                  —
+                                                </span>
+                                              )}
+                                            </td>
+                                            <td className={adminT.td}>
+                                              <div
+                                                className={adminT.actionsCell}
+                                              >
+                                                <button
+                                                  type="button"
+                                                  onClick={() =>
+                                                    handleStartEditStartDate(
+                                                      membership,
+                                                    )
+                                                  }
+                                                  className={adminT.actionBtn}
+                                                  title="Editar fecha de inicio"
+                                                >
+                                                  <Edit className="h-4 w-4" />
+                                                </button>
+                                                <button
+                                                  type="button"
+                                                  onClick={() =>
+                                                    openCancelMembershipModal(
+                                                      membership,
+                                                    )
+                                                  }
+                                                  disabled={
+                                                    cancellingMembershipId ===
+                                                    membership.id
+                                                  }
+                                                  className={adminT.actionDanger}
+                                                  title="Cancelar membresía"
+                                                >
+                                                  {cancellingMembershipId ===
+                                                  membership.id ? (
+                                                    <div className="w-4 h-4 border-2 border-red-300 border-t-red-600 rounded-full animate-spin" />
+                                                  ) : (
+                                                    <X className="h-4 w-4" />
+                                                  )}
+                                                </button>
+                                              </div>
+                                            </td>
+                                          </tr>
+                                        );
+                                      })}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          ) : activeMemberships.length > 0 ? (
                             <div className="overflow-hidden rounded-xl border border-gray-200/80 bg-gray-50/50 dark:border-white/[0.08] dark:bg-white/[0.02]">
                               <div className="divide-y divide-gray-200/70 dark:divide-white/[0.08]">
                                 {activeMemberships
@@ -1692,7 +2146,7 @@ export function UserDetailContent({
                                   })}
                               </div>
                             </div>
-                          )}
+                          ) : null}
 
                           {/* Cursos activos */}
                           {hasActiveCourses && (
@@ -1961,10 +2415,208 @@ export function UserDetailContent({
                 }
 
                 return (
-                  <div className="pb-8 border-b border-gray-200/60 dark:border-white/[0.06]">
-                    <h2 className="mb-4 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-white/40">
-                      Planes que necesitan renovación
-                    </h2>
+                  <div className={isSelf ? 'pb-8 border-b border-gray-200/60 dark:border-white/[0.06]' : ''}>
+                    <div className={adminT.detailSectionHead}>
+                      <h2 className={adminT.detailSectionTitle}>
+                        Planes que necesitan renovación
+                      </h2>
+                    </div>
+                    {!isSelf ? (
+                      <div className={adminT.tableShell}>
+                        <div className={adminT.tableWrap}>
+                          <table className={adminT.table}>
+                            <thead>
+                              <tr>
+                                <th className={`${adminT.th} ${adminT.thLeft}`}>
+                                  Plan
+                                </th>
+                                <th className={`${adminT.th} ${adminT.thLeft}`}>
+                                  Periodo
+                                </th>
+                                <th className={`${adminT.th} ${adminT.thLeft}`}>
+                                  Estado
+                                </th>
+                                <th className={`${adminT.th} ${adminT.thLeft}`}>
+                                  Factura
+                                </th>
+                                <th
+                                  className={`${adminT.th} ${adminT.actionsCellTh}`}
+                                >
+                                  Acciones
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {expiredMemberships.map((membership: any) => {
+                                const planName =
+                                  resolveMembershipPlanData(membership).name;
+                                const endDateFormatted = parseLocalDate(
+                                  membership.end_date,
+                                ).toLocaleDateString('es-ES', {
+                                  day: '2-digit',
+                                  month: 'long',
+                                  year: 'numeric',
+                                });
+
+                                let clientInfoId: string | null = null;
+                                if (userData.isUnregisteredClient) {
+                                  clientInfoId = userData.id;
+                                } else {
+                                  clientInfoId =
+                                    membership.client_info_id ||
+                                    userData.client_info_id ||
+                                    userData.gym_memberships?.[0]
+                                      ?.client_info_id ||
+                                    null;
+                                }
+                                const planId =
+                                  resolveMembershipPlanData(membership).id;
+
+                                const handleRenew = () => {
+                                  const resolved =
+                                    resolveAdminClientDisplayName(userData);
+                                  const clientName =
+                                    resolved !== 'Sin nombre'
+                                      ? resolved
+                                      : 'Cliente';
+                                  const whatsappNumber = (
+                                    userData.whatsapp ||
+                                    userData.phone ||
+                                    ''
+                                  ).replace(/\D/g, '');
+                                  if (!whatsappNumber) return;
+                                  const message = encodeURIComponent(
+                                    `Hola ${clientName}, tu plan "${planName}" finalizó el ${endDateFormatted}. ¿Deseas renovar tu membresía para continuar?`,
+                                  );
+                                  window.open(
+                                    `https://wa.me/${whatsappNumber}?text=${message}`,
+                                    '_blank',
+                                  );
+                                };
+
+                                const whatsappHref = getGymWhatsappHref(
+                                  userData.whatsapp || userData.phone,
+                                );
+
+                                return (
+                                  <tr
+                                    key={membership.id}
+                                    className={adminT.rowStatic}
+                                  >
+                                    <td className={adminT.td}>
+                                      <p className={adminT.planName}>
+                                        <MembershipPlanName
+                                          membership={membership}
+                                          canOpenDetail
+                                        />
+                                      </p>
+                                    </td>
+                                    <td className={adminT.td}>
+                                      <span className={adminT.periodDates}>
+                                        {formatMembershipDayLabel(
+                                          parseLocalDate(membership.start_date),
+                                        )}
+                                        <span className={adminT.periodSep}>
+                                          →
+                                        </span>
+                                        {formatMembershipDayLabel(
+                                          parseLocalDate(membership.end_date),
+                                        )}
+                                      </span>
+                                    </td>
+                                    <td className={adminT.td}>
+                                      {userData.is_inactive ? (
+                                        <span
+                                          className={adminT.badgeInactiveClient}
+                                        >
+                                          Inactivo
+                                        </span>
+                                      ) : (
+                                        <span className={adminT.badgeRenew}>
+                                          Renovar
+                                        </span>
+                                      )}
+                                    </td>
+                                    <td className={adminT.td}>
+                                      {membership.payment?.invoice_number ? (
+                                        membership.payment.id ? (
+                                          <Link
+                                            href={`/admin/payments/${membership.payment.id}`}
+                                            className={adminT.invoiceLink}
+                                          >
+                                            <FileText className="h-3.5 w-3.5" />
+                                            #{membership.payment.invoice_number}
+                                          </Link>
+                                        ) : (
+                                          <span className="text-xs tabular-nums text-gray-500 dark:text-white/45">
+                                            #{membership.payment.invoice_number}
+                                          </span>
+                                        )
+                                      ) : (
+                                        <span className={adminT.historyMuted}>
+                                          —
+                                        </span>
+                                      )}
+                                    </td>
+                                    <td className={adminT.td}>
+                                      <div className={adminT.actionsCell}>
+                                        {whatsappHref ? (
+                                          <button
+                                            type="button"
+                                            onClick={handleRenew}
+                                            className={adminT.whatsappAction}
+                                            title="Invitar a renovar por WhatsApp"
+                                          >
+                                            <WhatsAppIcon className="h-4 w-4" />
+                                          </button>
+                                        ) : null}
+                                        {clientInfoId ? (
+                                          <button
+                                            type="button"
+                                            onClick={() =>
+                                              router.push(
+                                                `/admin?tab=gym-payments&clientId=${clientInfoId}${planId ? `&planId=${planId}` : ''}`,
+                                              )
+                                            }
+                                            className={adminT.actionBtn}
+                                            title="Registrar pago"
+                                          >
+                                            <CreditCard className="h-4 w-4" />
+                                          </button>
+                                        ) : null}
+                                        {membership.status !== 'cancelled' ? (
+                                          <button
+                                            type="button"
+                                            onClick={() =>
+                                              openCancelMembershipModal(
+                                                membership,
+                                              )
+                                            }
+                                            disabled={
+                                              cancellingMembershipId ===
+                                              membership.id
+                                            }
+                                            className={adminT.actionDanger}
+                                            title="Cancelar membresía"
+                                          >
+                                            {cancellingMembershipId ===
+                                            membership.id ? (
+                                              <div className="w-4 h-4 border-2 border-red-300 border-t-red-600 rounded-full animate-spin" />
+                                            ) : (
+                                              <X className="h-4 w-4" />
+                                            )}
+                                          </button>
+                                        ) : null}
+                                      </div>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    ) : (
                     <div className="divide-y divide-gray-200/70 dark:divide-white/[0.08]">
                       {expiredMemberships.map((membership: any) => {
                           const endDate = parseLocalDate(membership.end_date);
@@ -1983,51 +2635,20 @@ export function UserDetailContent({
                                       <p className="text-base font-semibold text-[#164151] dark:text-white">
                                         <MembershipPlanName
                                           membership={membership}
-                                          canOpenDetail={!isSelf}
+                                          canOpenDetail={false}
                                         />
                                       </p>
                                     </div>
                                     <div className="flex shrink-0 items-center gap-2">
-                                      {(() => {
-                                        // Solo mostrar "Inactivo" si el usuario está marcado como inactivo en la BD
-                                        if (userData.is_inactive) {
-                                          return (
-                                            <span className="inline-flex items-center gap-1 rounded-md border border-red-500/40 bg-red-500/5 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-red-700 dark:border-red-500/35 dark:text-red-400">
-                                              Inactivo
-                                            </span>
-                                          );
-                                        }
-
-                                        // Si no está inactivo, siempre mostrar "Renovar"
-                                        return (
-                                          <span className="inline-flex items-center gap-1 rounded-md border border-orange-500/45 bg-orange-500/[0.07] px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-orange-800 dark:border-orange-500/40 dark:text-orange-400">
-                                            Renovar
-                                          </span>
-                                        );
-                                      })()}
-                                      {!isSelf &&
-                                        membership.status !== 'cancelled' && (
-                                          <button
-                                            onClick={() =>
-                                              openCancelMembershipModal(
-                                                membership,
-                                              )
-                                            }
-                                            disabled={
-                                              cancellingMembershipId ===
-                                              membership.id
-                                            }
-                                            className="p-1.5 rounded-lg text-[#164151]/45 transition-colors hover:bg-[#164151]/10 hover:text-[#164151] disabled:opacity-50 dark:text-white/40 dark:hover:bg-white/10 dark:hover:text-white"
-                                            title="Cancelar membresía"
-                                          >
-                                            {cancellingMembershipId ===
-                                            membership.id ? (
-                                              <div className="w-4 h-4 border-2 border-[#164151]/30 border-t-[#85ea10] rounded-full animate-spin dark:border-white/20" />
-                                            ) : (
-                                              <X className="h-4 w-4" strokeWidth={2} />
-                                            )}
-                                          </button>
-                                        )}
+                                      {userData.is_inactive ? (
+                                        <span className="inline-flex items-center gap-1 rounded-md border border-red-500/40 bg-red-500/5 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-red-700 dark:border-red-500/35 dark:text-red-400">
+                                          Inactivo
+                                        </span>
+                                      ) : (
+                                        <span className="inline-flex items-center gap-1 rounded-md border border-orange-500/45 bg-orange-500/[0.07] px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-orange-800 dark:border-orange-500/40 dark:text-orange-400">
+                                          Renovar
+                                        </span>
+                                      )}
                                     </div>
                                   </div>
                                   <p className="mt-3 text-xs text-gray-500 dark:text-white/50">
@@ -2042,9 +2663,7 @@ export function UserDetailContent({
                                   </p>
                                   <p className="mt-1 text-xs text-gray-500 dark:text-white/50">
                                     Venció:{' '}
-                                    {parseLocalDate(
-                                      membership.end_date,
-                                    ).toLocaleDateString('es-ES', {
+                                    {endDate.toLocaleDateString('es-ES', {
                                       day: '2-digit',
                                       month: 'long',
                                       year: 'numeric',
@@ -2054,208 +2673,234 @@ export function UserDetailContent({
                                     payment={membership.payment}
                                   />
                               </div>
-                              <div className="mt-3 pt-3 border-t border-gray-200 dark:border-white/10 space-y-2">
-                                {/* Botón Invitar a renovar (WhatsApp) - solo admin */}
-                                {!isSelf &&
-                                (userData.whatsapp || userData.phone) ? (
-                                  (() => {
-                                    const planName =
-                                      membership.plan?.name || 'tu plan';
-                                    const endDateFormatted = parseLocalDate(
-                                      membership.end_date,
-                                    ).toLocaleDateString('es-ES', {
-                                      day: '2-digit',
-                                      month: 'long',
-                                      year: 'numeric',
-                                    });
-
-                                    const handleRenew = () => {
-                                      const resolved =
-                                        resolveAdminClientDisplayName(userData);
-                                      const clientName =
-                                        resolved !== 'Sin nombre'
-                                          ? resolved
-                                          : 'Cliente';
-                                      const whatsappNumber = (
-                                        userData.whatsapp ||
-                                        userData.phone ||
-                                        ''
-                                      ).replace(/\D/g, '');
-
-                                      if (!whatsappNumber) return;
-
-                                      const message = encodeURIComponent(
-                                        `Hola ${clientName}, tu plan "${planName}" finalizó el ${endDateFormatted}. ¿Deseas renovar tu membresía para continuar?`,
-                                      );
-
-                                      const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${message}`;
-                                      window.open(whatsappUrl, '_blank');
-                                    };
-
-                                    return (
-                                      <button
-                                        onClick={handleRenew}
-                                        className="w-full px-4 py-2 rounded-lg border border-white/15 bg-white/5 text-[#164151] transition-colors hover:bg-white/10 flex items-center justify-center gap-2 text-sm font-medium dark:text-white/90 dark:hover:bg-white/10"
-                                      >
-                                        <MessageSquare className="w-4 h-4" />
-                                        Invitar a renovar
-                                      </button>
-                                    );
-                                  })()
-                                ) : (
-                                  <p className="text-xs text-gray-400 dark:text-white/40 text-center">
-                                    No hay número de contacto disponible
-                                  </p>
-                                )}
-
-                                {/* Botón Registrar Pago - solo admin */}
-                                {!isSelf &&
-                                  (() => {
-                                    // Obtener el client_info_id correcto
-                                    let clientInfoId: string | null = null;
-
-                                    if (userData.isUnregisteredClient) {
-                                      // Cliente físico sin registro online
-                                      clientInfoId = userData.id;
-                                    } else {
-                                      // Usuario registrado: usar client_info_id de la membresía o del userData
-                                      clientInfoId =
-                                        membership.client_info_id ||
-                                        userData.client_info_id ||
-                                        userData.gym_memberships?.[0]
-                                          ?.client_info_id ||
-                                        null;
-                                    }
-
-                                    const planId = membership.plan?.id || null;
-
-                                    if (!clientInfoId) {
-                                      return (
-                                        <p className="text-xs text-gray-400 dark:text-white/40 text-center">
-                                          No se puede registrar pago: falta
-                                          información del cliente
-                                        </p>
-                                      );
-                                    }
-
-                                    const handleRegisterPayment = () => {
-                                      router.push(
-                                        `/admin?tab=gym-payments&clientId=${clientInfoId}${planId ? `&planId=${planId}` : ''}`,
-                                      );
-                                    };
-
-                                    return (
-                                      <button
-                                        onClick={handleRegisterPayment}
-                                        className="w-full px-4 py-2 rounded-lg bg-[#164151] dark:bg-white text-white dark:text-[#164151] hover:bg-[#1a4d5f] dark:hover:bg-gray-100 transition-colors flex items-center justify-center gap-2 text-sm font-semibold"
-                                      >
-                                        <CreditCard className="w-4 h-4" />
-                                        Registrar Pago
-                                      </button>
-                                    );
-                                  })()}
-                              </div>
                             </div>
                           );
                         })}
                     </div>
+                    )}
                   </div>
                 );
               })()}
 
                 </div>
                 <div className="min-w-0 space-y-6 lg:space-y-8">
-              {/* Historial de facturación: listado de facturas asociadas a períodos ya cerrados */}
-              <div className="pb-8 border-b border-gray-200/60 dark:border-white/[0.06] lg:pb-0 lg:border-b-0">
-                <h2 className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-white/40">
-                  Historial de facturación
-                </h2>
-                <p className="mb-4 text-[10px] leading-snug text-gray-500 dark:text-white/35">
-                  Facturas registradas por período cerrado (vencido o cancelado).
-                </p>
-                <div className="divide-y divide-gray-200/70 dark:divide-white/[0.08]">
-                  {!userData.gym_memberships ||
-                  userData.gym_memberships.length === 0 ? (
-                    <p className="text-sm text-gray-500 dark:text-white/50 py-4">
-                      No hay facturas en el historial.
-                    </p>
-                  ) : (
-                    (() => {
-                      const todayHist = new Date();
-                      todayHist.setHours(0, 0, 0, 0);
-                      const finishedMemberships = (
-                        userData.gym_memberships as any[]
-                      )
-                        .filter((m: any) => {
-                          if (m.status === 'cancelled') return true;
-                          return parseLocalDate(m.end_date) < todayHist;
-                        })
-                        .sort(
-                          (a: any, b: any) =>
-                            new Date(b.end_date).getTime() -
-                            new Date(a.end_date).getTime(),
-                        );
-
-                      if (finishedMemberships.length === 0) {
-                        return (
-                          <p className="text-sm text-gray-500 dark:text-white/50 py-4">
-                            No hay facturas en el historial.
-                          </p>
-                        );
-                      }
-
-                      return finishedMemberships.map((membership: any) => {
-                        const endDate = parseLocalDate(membership.end_date);
-                        const isCancelled =
-                          membership.status === 'cancelled';
-
-                        return (
-                          <div
-                            key={membership.id}
-                            className="py-5 first:pt-0"
-                          >
-                            <div className="flex flex-wrap items-start justify-between gap-2 mb-2">
-                              <p className="text-sm font-medium text-[#164151] dark:text-white">
-                                <MembershipPlanName
-                                  membership={membership}
-                                  canOpenDetail={!isSelf}
-                                />
-                              </p>
-                              {isCancelled && (
-                                <span className="inline-flex shrink-0 items-center gap-1 rounded-md border border-gray-300/80 bg-gray-100/80 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-gray-600 dark:border-white/15 dark:bg-white/10 dark:text-white/60">
-                                  Cancelada
-                                </span>
-                              )}
-                            </div>
-                            <div className="space-y-1">
-                              <p className="text-xs text-gray-500 dark:text-white/50">
-                                Inicio de período:{' '}
-                                {parseLocalDate(
-                                  membership.start_date,
-                                ).toLocaleDateString('es-ES', {
-                                  day: '2-digit',
-                                  month: 'long',
-                                  year: 'numeric',
-                                })}
-                              </p>
-                              <p className="text-xs text-gray-500 dark:text-white/50">
-                                Fin de período:{' '}
-                                {endDate.toLocaleDateString('es-ES', {
-                                  day: '2-digit',
-                                  month: 'long',
-                                  year: 'numeric',
-                                })}
-                              </p>
-                              <MembershipInvoiceLink
-                                payment={membership.payment}
-                              />
-                            </div>
-                          </div>
-                        );
-                      });
-                    })()
-                  )}
+              {/* Historial de facturación */}
+              <div
+                className={
+                  isSelf
+                    ? 'pb-8 border-b border-gray-200/60 dark:border-white/[0.06] lg:pb-0 lg:border-b-0'
+                    : ''
+                }
+              >
+                <div className={adminT.detailSectionHead}>
+                  <h2 className={adminT.detailSectionTitle}>
+                    Historial de facturación
+                  </h2>
+                  {!isSelf ? (
+                    <span className={adminT.detailSectionHelper}>
+                      Períodos cerrados (vencidos o cancelados)
+                    </span>
+                  ) : null}
                 </div>
+                {isSelf ? (
+                  <p className="mb-4 text-[10px] leading-snug text-gray-500 dark:text-white/35">
+                    Facturas registradas por período cerrado (vencido o
+                    cancelado).
+                  </p>
+                ) : null}
+                {!userData.gym_memberships ||
+                userData.gym_memberships.length === 0 ? (
+                  <p className="text-sm text-gray-500 dark:text-white/50 py-4">
+                    No hay facturas en el historial.
+                  </p>
+                ) : (
+                  (() => {
+                    const todayHist = new Date();
+                    todayHist.setHours(0, 0, 0, 0);
+                    const finishedMemberships = (
+                      userData.gym_memberships as any[]
+                    )
+                      .filter((m: any) => {
+                        if (m.status === 'cancelled') return true;
+                        return parseLocalDate(m.end_date) < todayHist;
+                      })
+                      .sort(
+                        (a: any, b: any) =>
+                          new Date(b.end_date).getTime() -
+                          new Date(a.end_date).getTime(),
+                      );
+
+                    if (finishedMemberships.length === 0) {
+                      return (
+                        <p className="text-sm text-gray-500 dark:text-white/50 py-4">
+                          No hay facturas en el historial.
+                        </p>
+                      );
+                    }
+
+                    if (!isSelf) {
+                      return (
+                        <div className={adminT.tableShell}>
+                          <div className={adminT.tableWrap}>
+                            <table className={adminT.table}>
+                              <thead>
+                                <tr>
+                                  <th
+                                    className={`${adminT.th} ${adminT.thLeft}`}
+                                  >
+                                    Plan
+                                  </th>
+                                  <th
+                                    className={`${adminT.th} ${adminT.thLeft}`}
+                                  >
+                                    Periodo
+                                  </th>
+                                  <th
+                                    className={`${adminT.th} ${adminT.thLeft}`}
+                                  >
+                                    Estado
+                                  </th>
+                                  <th
+                                    className={`${adminT.th} ${adminT.thLeft}`}
+                                  >
+                                    Factura
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {finishedMemberships.map((membership: any) => {
+                                  const isCancelled =
+                                    membership.status === 'cancelled';
+                                  const isExpired =
+                                    !isCancelled &&
+                                    parseLocalDate(membership.end_date) <
+                                      todayHist;
+
+                                  return (
+                                    <tr
+                                      key={membership.id}
+                                      className={adminT.rowStatic}
+                                    >
+                                      <td className={adminT.td}>
+                                        <p className={adminT.planName}>
+                                          <MembershipPlanName
+                                            membership={membership}
+                                            canOpenDetail
+                                          />
+                                        </p>
+                                      </td>
+                                      <td className={adminT.td}>
+                                        <span className={adminT.periodDates}>
+                                          {formatMembershipDayLabel(
+                                            parseLocalDate(
+                                              membership.start_date,
+                                            ),
+                                          )}
+                                          <span className={adminT.periodSep}>
+                                            →
+                                          </span>
+                                          {formatMembershipDayLabel(
+                                            parseLocalDate(membership.end_date),
+                                          )}
+                                        </span>
+                                      </td>
+                                      <td className={adminT.td}>
+                                        {isCancelled ? (
+                                          <span className={adminT.badgeCancelled}>
+                                            Cancelada
+                                          </span>
+                                        ) : isExpired ? (
+                                          <span className={adminT.badgeExpired}>
+                                            Vencido
+                                          </span>
+                                        ) : (
+                                          <span className={adminT.badgePeriod}>
+                                            Cerrado
+                                          </span>
+                                        )}
+                                      </td>
+                                      <td className={adminT.td}>
+                                        {membership.payment?.invoice_number ? (
+                                          membership.payment.id ? (
+                                            <Link
+                                              href={`/admin/payments/${membership.payment.id}`}
+                                              className={adminT.invoiceLink}
+                                            >
+                                              <FileText className="h-3.5 w-3.5" />
+                                              #{membership.payment.invoice_number}
+                                            </Link>
+                                          ) : (
+                                            <span className="text-xs tabular-nums text-gray-500 dark:text-white/45">
+                                              #{membership.payment.invoice_number}
+                                            </span>
+                                          )
+                                        ) : (
+                                          <span className={adminT.historyMuted}>
+                                            —
+                                          </span>
+                                        )}
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="divide-y divide-gray-200/70 dark:divide-white/[0.08]">
+                        {finishedMemberships.map((membership: any) => {
+                      const endDate = parseLocalDate(membership.end_date);
+                      const isCancelled = membership.status === 'cancelled';
+
+                      return (
+                        <div key={membership.id} className="py-5 first:pt-0">
+                          <div className="flex flex-wrap items-start justify-between gap-2 mb-2">
+                            <p className="text-sm font-medium text-[#164151] dark:text-white">
+                              <MembershipPlanName
+                                membership={membership}
+                                canOpenDetail={false}
+                              />
+                            </p>
+                            {isCancelled && (
+                              <span className="inline-flex shrink-0 items-center gap-1 rounded-md border border-gray-300/80 bg-gray-100/80 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-gray-600 dark:border-white/15 dark:bg-white/10 dark:text-white/60">
+                                Cancelada
+                              </span>
+                            )}
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-xs text-gray-500 dark:text-white/50">
+                              Inicio de período:{' '}
+                              {parseLocalDate(
+                                membership.start_date,
+                              ).toLocaleDateString('es-ES', {
+                                day: '2-digit',
+                                month: 'long',
+                                year: 'numeric',
+                              })}
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-white/50">
+                              Fin de período:{' '}
+                              {endDate.toLocaleDateString('es-ES', {
+                                day: '2-digit',
+                                month: 'long',
+                                year: 'numeric',
+                              })}
+                            </p>
+                            <MembershipInvoiceLink
+                              payment={membership.payment}
+                            />
+                          </div>
+                        </div>
+                      );
+                        })}
+                      </div>
+                    );
+                  })()
+                )}
               </div>
 
               {/* Cursos */}
@@ -2318,6 +2963,8 @@ export function UserDetailContent({
                 </div>
               </div>
             </div>
+            </>
+            )}
           </div>
         </div>
       </div>

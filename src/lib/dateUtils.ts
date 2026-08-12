@@ -24,39 +24,73 @@ export function addDays(date: Date, days: number): Date {
   return result;
 }
 
+function toYmdLocal(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 /**
- * Convierte duration_days del plan a meses para cálculo mes a mes (30 → 1, 60 → 2, 90 → 3).
+ * 30 / 60 / 90… se tratan como meses calendario, no como días corridos.
+ * 15, 7, etc. siguen siendo días.
+ */
+export function isGymCalendarMonthDuration(durationDays: number): boolean {
+  const days = Number(durationDays);
+  return Number.isFinite(days) && days >= 30 && days % 30 === 0;
+}
+
+/**
+ * Convierte duration_days del plan a meses (30 → 1, 60 → 2).
+ * Devuelve 0 si el plan es por días (15, 7, …).
  */
 export function durationDaysToMonths(durationDays: number): number {
-  if (!durationDays || durationDays <= 0) return 1;
-  return Math.max(1, Math.round(durationDays / 30));
+  if (!isGymCalendarMonthDuration(durationDays)) return 0;
+  return durationDays / 30;
 }
 
 /**
  * Fecha de fin de período de facturación: inicio + (duration_days - 1) días (inclusive).
  * Ej: plan 15 días desde 12/03 → fin 26/03 (12 al 26 = 15 días).
+ * Usar en cursos. Las membresías del gym van por `membershipEndDateFromStart`.
  */
 export function periodEndFromStart(
   startDate: Date,
   durationDays: number,
 ): string {
   const days = Math.max(1, Number(durationDays) || 30);
-  const end = addDays(startDate, days - 1);
-  const y = end.getFullYear();
-  const m = String(end.getMonth() + 1).padStart(2, '0');
-  const d = String(end.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
+  return toYmdLocal(addDays(startDate, days - 1));
 }
 
 /**
- * Fecha de fin de membresía / facturación según `duration_days` del plan (días corridos, inclusive).
- * Ej: 7 días desde el 10/05 → fin 16/05; 15 días → inicio + 14 días.
+ * Fin de membresía gym:
+ * - Mensual (30, 60, 90…): mismo día del mes, N meses después (19 ago → 19 sept).
+ * - Semanas / días (7, 14, 15…): corridos inclusive.
  */
 export function membershipEndDateFromStart(
   startDate: Date,
   durationDays: number,
 ): string {
-  return periodEndFromStart(startDate, durationDays);
+  const days = Math.max(1, Number(durationDays) || 30);
+  if (isGymCalendarMonthDuration(days)) {
+    return toYmdLocal(addCalendarMonths(startDate, days / 30));
+  }
+  return periodEndFromStart(startDate, days);
+}
+
+/**
+ * Inicio del siguiente período al encadenar un pago anticipado.
+ * Mensual: el mismo día de cierre (19 sept → 19 oct).
+ * Por días: el día siguiente al fin (sin solapar).
+ */
+export function membershipNextStartFromEnd(
+  endDate: Date,
+  durationDays: number,
+): Date {
+  if (isGymCalendarMonthDuration(durationDays)) {
+    return new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+  }
+  return addDays(endDate, 1);
 }
 
 /** Parsea YYYY-MM-DD como fecha local (evita UTC). */

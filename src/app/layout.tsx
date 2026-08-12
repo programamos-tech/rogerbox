@@ -86,18 +86,17 @@ export default function RootLayout({
             `,
           }}
         />
-        {/* Script para detectar el tema del sistema y aplicar clase dark */}
+        {/* Aplica tema guardado (claro / oscuro / sistema) antes del paint */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
               (function() {
                 try {
-                  var darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
-                  function updateTheme(e) {
-                    document.documentElement.classList.toggle('dark', e.matches);
-                  }
-                  updateTheme(darkQuery);
-                  darkQuery.addEventListener('change', updateTheme);
+                  var stored = localStorage.getItem('app-theme');
+                  var mode = (stored === 'light' || stored === 'dark' || stored === 'system') ? stored : 'system';
+                  var dark = mode === 'dark' || (mode !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+                  document.documentElement.classList.toggle('dark', dark);
+                  document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
                 } catch (e) {}
               })();
             `,

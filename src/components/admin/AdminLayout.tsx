@@ -5,6 +5,7 @@ import {
   Bell,
   BookOpen,
   ChevronLeft,
+  ClipboardList,
   CreditCard,
   Dumbbell,
   FileText,
@@ -16,13 +17,16 @@ import {
   Settings,
   ShoppingCart,
   Users,
+  Wallet,
   Zap,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { GymSeededAvatar } from '@/shared/components/GymSeededAvatar';
+import { ThemeToggle } from '@/shared/components/ThemeToggle';
 
+/** Misma estructura que el sidebar de `/admin` (page.tsx). */
 const menuSections = [
   {
     title: 'Principal',
@@ -39,22 +43,28 @@ const menuSections = [
     title: 'Sede Física',
     items: [
       {
-        id: 'users',
-        label: 'Usuarios',
-        icon: Users,
-        description: 'Gestiona usuarios y clientes físicos',
-      },
-      {
         id: 'gym-plans',
         label: 'Planes',
         icon: Dumbbell,
         description: 'Gestionar planes del gimnasio',
       },
       {
+        id: 'users',
+        label: 'Clientes',
+        icon: Users,
+        description: 'Gestiona clientes de la sede física',
+      },
+      {
         id: 'gym-payments',
         label: 'Pagos',
         icon: CreditCard,
         description: 'Facturar planes a clientes físicos',
+      },
+      {
+        id: 'gym-expenses',
+        label: 'Egresos',
+        icon: Wallet,
+        description: 'Registrar egresos de sede física',
       },
     ],
   },
@@ -63,9 +73,10 @@ const menuSections = [
     items: [
       {
         id: 'sales',
-        label: 'Ventas',
+        label: 'Ventas en línea',
         icon: ShoppingCart,
-        description: 'Historial de compras',
+        description:
+          'Historial de compras online (pasarela Wompi — cursos, no sede física)',
       },
       {
         id: 'courses',
@@ -77,7 +88,7 @@ const menuSections = [
         id: 'complements',
         label: 'Retos semanales',
         icon: Play,
-        description: 'Videos de retos por día',
+        description: 'Videos de retos por día (semana)',
       },
       {
         id: 'banners',
@@ -90,6 +101,17 @@ const menuSections = [
         label: 'Blogs',
         icon: FileText,
         description: 'Artículos nutricionales',
+      },
+    ],
+  },
+  {
+    title: 'Sistema',
+    items: [
+      {
+        id: 'activities',
+        label: 'Actividades',
+        icon: ClipboardList,
+        description: 'Bitácora de acciones en la plataforma',
       },
     ],
   },
@@ -116,6 +138,14 @@ export default function AdminLayout({
   const { user: authUser, profile } = useSupabaseAuth();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    const width = sidebarCollapsed ? '4rem' : '14rem';
+    document.documentElement.style.setProperty('--admin-sidebar-width', width);
+    return () => {
+      document.documentElement.style.removeProperty('--admin-sidebar-width');
+    };
+  }, [sidebarCollapsed]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white dark:from-[#0a1628] dark:to-gray-900 flex">
@@ -156,9 +186,7 @@ export default function AdminLayout({
           )}
           {sidebarCollapsed && (
             <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">
-                R
-              </span>
+              <span className="text-white font-bold text-sm">R</span>
             </div>
           )}
           <button
@@ -189,8 +217,9 @@ export default function AdminLayout({
                       onClick={() => {
                         router.push(
                           item.id === 'overview'
-                            ? '/admin'
+                            ? '/admin?tab=overview'
                             : `/admin?tab=${item.id}`,
+                          { scroll: false },
                         );
                         setMobileMenuOpen(false);
                       }}
@@ -221,23 +250,34 @@ export default function AdminLayout({
             </div>
           ))}
         </nav>
-
       </aside>
 
       <main
         className={`flex-1 flex flex-col min-h-screen ${sidebarCollapsed ? 'md:ml-16' : 'md:ml-56'}`}
       >
-        <header className="h-16 bg-white dark:bg-[#0b1422] border-b border-gray-200/80 dark:border-white/10 flex items-center gap-3 px-3 md:px-5 lg:px-6 sticky top-0 z-30">
-          <button
-            onClick={() => setMobileMenuOpen(true)}
-            className="md:hidden w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-white/10 text-[#164151]/80 dark:text-white/80"
-          >
-            <Menu className="w-4 h-4" />
-          </button>
+        <header className="h-[4.25rem] bg-white dark:bg-[#0b1422] border-b border-gray-200/80 dark:border-white/10 flex items-center gap-4 md:gap-6 px-3 md:px-5 lg:px-6 sticky top-0 z-30">
+          <div className="flex items-center gap-3 shrink-0 min-w-0 md:w-44 lg:w-52">
+            <button
+              onClick={() => setMobileMenuOpen(true)}
+              className="md:hidden w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-white/10 text-[#164151]/80 dark:text-white/80"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            <div className="hidden md:block min-w-0">
+              <p className="text-sm font-bold text-[#164151] dark:text-white truncate leading-tight">
+                {title}
+              </p>
+              {description ? (
+                <p className="text-[11px] text-gray-500 dark:text-white/45 truncate leading-tight">
+                  {description}
+                </p>
+              ) : null}
+            </div>
+          </div>
 
-          <div className="flex-1 max-w-3xl">
+          <div className="relative flex-1 min-w-0 max-w-3xl mx-auto">
             <div className="h-10 rounded-full border border-gray-200 dark:border-white/10 bg-[#f8fafc] dark:bg-[#111b2b] flex items-center gap-2 px-4">
-              <Search className="w-4 h-4 text-gray-400 dark:text-white/50" />
+              <Search className="w-5 h-5 text-gray-400 dark:text-white/50" />
               <input
                 type="text"
                 placeholder="Buscar cliente por nombre, cédula o correo..."
@@ -246,33 +286,47 @@ export default function AdminLayout({
             </div>
           </div>
 
-          <div className="flex items-center gap-2 md:gap-2.5 ml-auto">
-            <button
-              onClick={() => router.push('/admin?tab=gym-payments&newInvoice=1')}
-              className="w-8 h-8 rounded-full bg-[#1b1f24] text-white inline-flex items-center justify-center hover:bg-[#0f1115] transition-colors"
-              title="Crear factura"
-            >
-              <Plus className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => router.push('/dashboard')}
-              className="h-8 px-3 rounded-full border border-gray-200 dark:border-white/12 bg-white dark:bg-[#111b2b] text-[#164151] dark:text-white text-[11px] font-semibold hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
-              title="Ir a plataforma"
-            >
-              Ir a plataforma
-            </button>
-            {headerRight && <div className="hidden sm:flex">{headerRight}</div>}
-            <button className="hidden sm:inline-flex w-8 h-8 rounded-full text-[#164151]/70 dark:text-white/70 hover:bg-gray-100 dark:hover:bg-white/10 items-center justify-center transition-colors">
-              <Zap className="w-4 h-4" />
-            </button>
-            <button className="hidden sm:inline-flex w-8 h-8 rounded-full text-[#164151]/70 dark:text-white/70 hover:bg-gray-100 dark:hover:bg-white/10 items-center justify-center transition-colors">
-              <Settings className="w-4 h-4" />
-            </button>
-            <button className="relative inline-flex w-8 h-8 rounded-full text-[#164151]/70 dark:text-white/70 hover:bg-gray-100 dark:hover:bg-white/10 items-center justify-center transition-colors">
-              <Bell className="w-4 h-4" />
-              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
-            </button>
-            <div className="flex items-center gap-2 pl-2 md:pl-3 border-l border-gray-200 dark:border-white/10 ml-1">
+          <div className="flex items-center gap-3 shrink-0">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() =>
+                  router.push('/admin?tab=gym-payments&newInvoice=1')
+                }
+                className="w-10 h-10 rounded-full bg-[#1b1f24] text-white inline-flex items-center justify-center hover:bg-[#0f1115] transition-colors"
+                title="Crear factura"
+              >
+                <Plus className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => router.push('/dashboard')}
+                className="h-10 px-3.5 rounded-full border border-gray-200 dark:border-white/12 bg-white dark:bg-[#111b2b] text-[#164151] dark:text-white text-xs font-semibold hover:bg-gray-100 dark:hover:bg-white/10 transition-colors whitespace-nowrap"
+                title="Ir a plataforma"
+              >
+                Ir a plataforma
+              </button>
+              {headerRight && (
+                <div className="hidden sm:flex">{headerRight}</div>
+              )}
+            </div>
+
+            <div className="hidden sm:block w-px h-6 bg-gray-200 dark:bg-white/10" />
+
+            <div className="flex items-center gap-1">
+              <ThemeToggle />
+              <button className="hidden sm:inline-flex w-10 h-10 rounded-full text-[#164151]/70 dark:text-white/70 hover:bg-gray-100 dark:hover:bg-white/10 items-center justify-center transition-colors">
+                <Zap className="w-5 h-5" />
+              </button>
+              <button className="hidden sm:inline-flex w-10 h-10 rounded-full text-[#164151]/70 dark:text-white/70 hover:bg-gray-100 dark:hover:bg-white/10 items-center justify-center transition-colors">
+                <Settings className="w-5 h-5" />
+              </button>
+              <button className="relative inline-flex w-10 h-10 rounded-full text-[#164151]/70 dark:text-white/70 hover:bg-gray-100 dark:hover:bg-white/10 items-center justify-center transition-colors">
+                <Bell className="w-5 h-5" />
+                <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
+              </button>
+            </div>
+
+            <div className="hidden sm:block w-px h-6 bg-gray-200 dark:bg-white/10" />
+            <div className="flex items-center gap-2.5 min-w-0">
               {(() => {
                 const avatarUrl =
                   authUser?.user_metadata?.avatar_url ||

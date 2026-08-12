@@ -175,6 +175,46 @@ export interface GymPaymentUpdate {
   updated_at?: string;
 }
 
+export type GymCreditType = 'deposit' | 'apply' | 'adjust' | 'refund';
+
+export interface GymClientCredit {
+  id: string;
+  client_info_id: string;
+  amount: number;
+  type: GymCreditType;
+  payment_id?: string | null;
+  membership_id?: string | null;
+  notes?: string | null;
+  store_id?: string | null;
+  created_by?: string | null;
+  created_at: string;
+}
+
+export interface GymClientCreditInsert {
+  client_info_id: string;
+  amount: number;
+  type: GymCreditType;
+  payment_id?: string | null;
+  membership_id?: string | null;
+  notes?: string;
+}
+
+export interface GymPendingAdvance {
+  membership_id: string;
+  client_info_id: string;
+  client_name: string;
+  document_id: string;
+  plan_id: string;
+  plan_name: string;
+  start_date: string;
+  end_date: string;
+  payment_id: string | null;
+  payment_amount: number | null;
+  invoice_number: string | null;
+  payment_date: string | null;
+  credit_balance: number;
+}
+
 export type GymExpensePaymentMethod = PaymentMethod;
 
 export interface GymExpense {

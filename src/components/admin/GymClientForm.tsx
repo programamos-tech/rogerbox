@@ -11,6 +11,7 @@ import {
   X,
 } from 'lucide-react';
 import { useState } from 'react';
+import { adminFormModalStyles as modal } from '@/modules/gym-admin/styles';
 import { DatePickerField } from '@/shared/components/DatePickerField';
 import type { GymClientInfoInsert } from '@/types/gym';
 
@@ -43,7 +44,6 @@ export default function GymClientForm({
     e.preventDefault();
     setError('');
 
-    // Validaciones
     if (!formData.document_id.trim()) {
       setError('La cédula es obligatoria');
       return;
@@ -61,7 +61,6 @@ export default function GymClientForm({
       setError('El WhatsApp es obligatorio');
       return;
     }
-    // Validar que el WhatsApp tenga al menos 10 dígitos
     const digitsOnly = formData.whatsapp.replace(/\D/g, '');
     if (digitsOnly.length < 10) {
       setError('El WhatsApp debe tener al menos 10 dígitos');
@@ -85,8 +84,7 @@ export default function GymClientForm({
       const data = await response.json();
 
       if (!response.ok) {
-        const errorMessage = data.error || 'Error al guardar cliente';
-        throw new Error(errorMessage);
+        throw new Error(data.error || 'Error al guardar cliente');
       }
 
       onSuccess();
@@ -115,44 +113,37 @@ export default function GymClientForm({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-white/10 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="p-6 border-b border-gray-200 dark:border-white/10 flex items-center justify-between">
-          <h3 className="text-lg font-bold text-[#164151] dark:text-white">
+    <div className={modal.overlay}>
+      <div className={modal.panel}>
+        <div className={modal.header}>
+          <h3 className={modal.title}>
             {clientToEdit ? 'Editar Cliente' : 'Nuevo Cliente Físico'}
           </h3>
           <button
+            type="button"
             onClick={handleClose}
-            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-[#164151]/80 dark:text-white/60"
+            className={modal.closeBtn}
           >
-            <X className="w-4 h-4" />
+            <X className="h-4 w-4" />
           </button>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {error && (
-            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-              <p className="text-red-600 dark:text-red-400 text-sm font-medium">
+        <form onSubmit={handleSubmit} className={modal.body}>
+          {error ? (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-900/20">
+              <p className="text-sm font-medium text-red-600 dark:text-red-400">
                 {error}
               </p>
             </div>
-          )}
+          ) : null}
 
-          {/* Campos Obligatorios */}
           <div className="space-y-4">
-            <h4 className="text-sm font-semibold text-[#164151] dark:text-white uppercase tracking-wider">
-              Campos Obligatorios
-            </h4>
+            <h4 className={modal.sectionTitle}>Campos obligatorios</h4>
 
-            {/* Cédula */}
             <div>
-              <label className="block text-sm font-semibold text-[#164151] dark:text-white mb-2">
-                Cédula *
-              </label>
+              <label className={modal.label}>Cédula *</label>
               <div className="relative">
-                <CreditCard className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <CreditCard className={modal.inputIcon} />
                 <input
                   type="text"
                   required
@@ -163,25 +154,22 @@ export default function GymClientForm({
                       document_id: e.target.value.replace(/[^0-9-]/g, ''),
                     })
                   }
-                  className="w-full pl-12 pr-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50"
+                  className={modal.inputWithIcon}
                   placeholder="1234567890"
                   disabled={!!clientToEdit}
                 />
               </div>
-              <p className="text-xs text-gray-500 dark:text-white/40 mt-1">
+              <p className={modal.helper}>
                 {clientToEdit
                   ? 'La cédula no se puede modificar'
                   : 'Se usará para vincular cuando se registre en RogerBox'}
               </p>
             </div>
 
-            {/* Nombre */}
             <div>
-              <label className="block text-sm font-semibold text-[#164151] dark:text-white mb-2">
-                Nombre Completo *
-              </label>
+              <label className={modal.label}>Nombre completo *</label>
               <div className="relative">
-                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <User className={modal.inputIcon} />
                 <input
                   type="text"
                   required
@@ -189,19 +177,16 @@ export default function GymClientForm({
                   onChange={(e) =>
                     setFormData({ ...formData, name: e.target.value })
                   }
-                  className="w-full pl-12 pr-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50"
+                  className={modal.inputWithIcon}
                   placeholder="Juan Pérez"
                 />
               </div>
             </div>
 
-            {/* WhatsApp */}
             <div>
-              <label className="block text-sm font-semibold text-[#164151] dark:text-white mb-2">
-                WhatsApp *
-              </label>
+              <label className={modal.label}>WhatsApp *</label>
               <div className="relative">
-                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Phone className={modal.inputIcon} />
                 <input
                   type="text"
                   required
@@ -209,47 +194,38 @@ export default function GymClientForm({
                   onChange={(e) =>
                     setFormData({ ...formData, whatsapp: e.target.value })
                   }
-                  className="w-full pl-12 pr-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50"
+                  className={modal.inputWithIcon}
                   placeholder="3001234567 (mínimo 10 dígitos)"
                 />
               </div>
             </div>
           </div>
 
-          {/* Campos Opcionales */}
-          <div className="space-y-4 pt-4 border-t border-gray-200 dark:border-white/10">
-            <h4 className="text-sm font-semibold text-[#164151] dark:text-white uppercase tracking-wider">
-              Campos Opcionales
-            </h4>
+          <div className="space-y-4 border-t border-gray-200 pt-5 dark:border-white/10">
+            <h4 className={modal.sectionTitle}>Campos opcionales</h4>
 
-            {/* Email */}
             <div>
-              <label className="block text-sm font-semibold text-[#164151] dark:text-white mb-2">
-                Email
-              </label>
+              <label className={modal.label}>Email</label>
               <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Mail className={modal.inputIcon} />
                 <input
                   type="email"
                   value={formData.email || ''}
                   onChange={(e) =>
                     setFormData({ ...formData, email: e.target.value })
                   }
-                  className="w-full pl-12 pr-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50"
+                  className={modal.inputWithIcon}
                   placeholder="correo@ejemplo.com"
                 />
               </div>
-              <p className="text-xs text-gray-500 dark:text-white/40 mt-1">
+              <p className={modal.helper}>
                 Para invitación a registrarse en RogerBox
               </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              {/* Fecha de Nacimiento */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className="block text-sm font-semibold text-[#164151] dark:text-white mb-2">
-                  Fecha de Nacimiento
-                </label>
+                <label className={modal.label}>Fecha de nacimiento</label>
                 <DatePickerField
                   id="gym-client-birth-date"
                   value={formData.birth_date || ''}
@@ -258,17 +234,14 @@ export default function GymClientForm({
                   }
                   aria-label="Fecha de nacimiento"
                   className="w-full"
-                  triggerClassName="py-3 bg-gray-50 dark:bg-white/5 border-gray-200 dark:border-white/10 focus:ring-2 focus:ring-[#85ea10]/50"
+                  triggerClassName="py-2.5 text-sm bg-gray-50 dark:bg-white/5 border-gray-200 dark:border-white/10 focus:ring-2 focus:ring-[#85ea10]/50"
                 />
               </div>
 
-              {/* Peso */}
               <div>
-                <label className="block text-sm font-semibold text-[#164151] dark:text-white mb-2">
-                  Peso (kg)
-                </label>
+                <label className={modal.label}>Peso (kg)</label>
                 <div className="relative">
-                  <Scale className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <Scale className={modal.inputIcon} />
                   <input
                     type="number"
                     step="0.1"
@@ -282,20 +255,19 @@ export default function GymClientForm({
                           : undefined,
                       })
                     }
-                    className="w-full pl-12 pr-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50"
+                    className={modal.inputWithIcon}
                     placeholder="70.5"
                   />
                 </div>
               </div>
             </div>
 
-            {/* Restricciones Médicas */}
             <div>
-              <label className="block text-sm font-semibold text-[#164151] dark:text-white mb-2">
-                Restricciones/Historial Clínico
+              <label className={modal.label}>
+                Restricciones / historial clínico
               </label>
               <div className="relative">
-                <FileText className="absolute left-4 top-3 w-4 h-4 text-gray-400" />
+                <FileText className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-gray-400" />
                 <textarea
                   value={formData.medical_restrictions || ''}
                   onChange={(e) =>
@@ -304,7 +276,7 @@ export default function GymClientForm({
                       medical_restrictions: e.target.value,
                     })
                   }
-                  className="w-full pl-12 pr-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 resize-none"
+                  className={`${modal.inputWithIcon} resize-none`}
                   rows={3}
                   placeholder="Lesiones, condiciones médicas, restricciones de ejercicio..."
                 />
@@ -312,27 +284,26 @@ export default function GymClientForm({
             </div>
           </div>
 
-          {/* Footer */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200 dark:border-white/10">
+          <div className={modal.footer}>
             <button
               type="button"
               onClick={handleClose}
               disabled={isLoading}
-              className="px-5 py-2.5 rounded-lg border border-gray-200 dark:border-white/10 text-[#164151] dark:text-white hover:bg-gray-50 dark:hover:bg-white/5 transition-colors disabled:opacity-50"
+              className={modal.btnCancel}
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={isLoading}
-              className="px-5 py-2.5 rounded-lg bg-[#85ea10] text-black font-semibold hover:bg-[#85ea10]/90 transition-colors flex items-center gap-2 disabled:opacity-50"
+              className={modal.btnPrimary}
             >
-              <Save className="w-4 h-4" />
+              <Save className="h-4 w-4" />
               {isLoading
                 ? 'Guardando...'
                 : clientToEdit
                   ? 'Actualizar'
-                  : 'Crear Cliente'}
+                  : 'Crear cliente'}
             </button>
           </div>
         </form>

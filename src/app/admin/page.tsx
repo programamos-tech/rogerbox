@@ -34,7 +34,6 @@ import {
   MapPin,
   Menu,
   MessageSquare,
-  Phone,
   Play,
   Plus,
   RefreshCw,
@@ -67,6 +66,11 @@ import GymExpensesManagement from '@/components/admin/GymExpensesManagement';
 import GymPlansManagement, {
   type GymPlansManagementRef,
 } from '@/components/admin/GymPlansManagement';
+import {
+  gymClientsColWidths,
+  gymClientsListStyles as clientsListStyles,
+} from '@/modules/gym-admin/styles';
+import { WhatsAppIcon } from '@/shared/components/WhatsAppIcon';
 // Admin dashboard component
 import QuickLoading from '@/components/QuickLoading';
 import UnderConstruction from '@/components/UnderConstruction';
@@ -77,6 +81,7 @@ import {
 } from '@/shared/components/DailyBirthdaysModal';
 import { GymClientPaymentStatusBadge } from '@/shared/components/GymClientPaymentStatusBadge';
 import { GymSeededAvatar } from '@/shared/components/GymSeededAvatar';
+import { ThemeToggle } from '@/shared/components/ThemeToggle';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { formatDateOnlyLocal, parseLocalDate } from '@/lib/dateUtils';
 import {
@@ -369,32 +374,35 @@ const formatGoals = (goals: string | string[] | null | undefined): string => {
 /** Avatar en listado admin: foto de perfil si existe, si no ilustración por id de cliente. */
 function AdminUserListAvatar({
   user,
+  size = 32,
 }: {
   user: {
     id: string;
     avatar_url?: string | null;
     avatar_updated_at?: string | null;
   };
+  size?: number;
 }) {
   const raw =
     typeof user.avatar_url === 'string' ? user.avatar_url.trim() : '';
+  const box = `h-8 w-8 shrink-0 rounded-full ring-1 ring-gray-200/80 dark:ring-white/12`;
   if (raw) {
     const src = `${raw}${raw.includes('?') ? '&' : '?'}v=${user.avatar_updated_at || ''}`;
     return (
       <img
         src={src}
         alt=""
-        width={36}
-        height={36}
-        className="h-9 w-9 shrink-0 rounded-full object-cover ring-1 ring-gray-200/80 dark:ring-white/12"
+        width={size}
+        height={size}
+        className={`${box} object-cover`}
       />
     );
   }
   return (
     <GymSeededAvatar
       seed={String(user.id)}
-      size={36}
-      className="h-9 w-9 shrink-0 rounded-full ring-1 ring-gray-200/80 dark:ring-white/12"
+      size={size}
+      className={box}
       alt=""
     />
   );
@@ -432,6 +440,15 @@ function AdminDashboardContent() {
   const [editingClient, setEditingClient] = useState<any | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Ancho del sidebar para overlays/modales (blur solo sobre el contenido)
+  useEffect(() => {
+    const width = sidebarCollapsed ? '4rem' : '14rem';
+    document.documentElement.style.setProperty('--admin-sidebar-width', width);
+    return () => {
+      document.documentElement.style.removeProperty('--admin-sidebar-width');
+    };
+  }, [sidebarCollapsed]);
   const [headerSearchTerm, setHeaderSearchTerm] = useState('');
   const [headerSearchResults, setHeaderSearchResults] = useState<any[]>([]);
   const [headerSearchLoading, setHeaderSearchLoading] = useState(false);
@@ -475,6 +492,9 @@ function AdminDashboardContent() {
   });
   const gymPlansRef = useRef<GymPlansManagementRef>(null);
   const gymPaymentsRef = useRef<GymPaymentsManagementRef>(null);
+  /** Evita re-bootstrap del panel cuando Supabase refresca el objeto `user`. */
+  const adminDataUserIdRef = useRef<string | null>(null);
+  const adminShellReadyRef = useRef(false);
   const [productsModal, setProductsModal] = useState<{
     isOpen: boolean;
     user: any | null;
@@ -550,7 +570,14 @@ function AdminDashboardContent() {
   );
   const [reopenBirthdaysModal, setReopenBirthdaysModal] = useState(false);
 
-  // Leer query param 'tab' y establecer activeTab al cargar
+  const goToAdminTab = (tabId: string, extraParams?: Record<string, string>) => {
+    setActiveTab(tabId);
+    const params = new URLSearchParams({ tab: tabId, ...extraParams });
+    // replaceState evita navegación de Next + Suspense (flash de pantalla completa).
+    window.history.replaceState(null, '', `/admin?${params.toString()}`);
+  };
+
+  // Leer query param 'tab' (entrada externa / deep link) sin forzar remount del shell.
   useEffect(() => {
     const tabParam = searchParams.get('tab');
     const validTabs = menuSections.flatMap((section) =>
@@ -558,38 +585,37 @@ function AdminDashboardContent() {
     );
 
     if (tabParam && validTabs.includes(tabParam)) {
-      // Si hay un tab válido en la URL, usarlo
-      setActiveTab(tabParam);
+      setActiveTab((prev) => (prev === tabParam ? prev : tabParam));
     } else if (!tabParam) {
-      // Si no hay tab en la URL, establecer el default y actualizar la URL
       const defaultTab = 'overview';
-      setActiveTab(defaultTab);
-      // Solo actualizar la URL si realmente no hay parámetro (evitar loops)
-      if (window.location.search !== `?tab=${defaultTab}`) {
-        router.replace(`/admin?tab=${defaultTab}`, { scroll: false });
+      setActiveTab((prev) => (prev === defaultTab ? prev : defaultTab));
+      if (!window.location.search.includes('tab=')) {
+        window.history.replaceState(null, '', `/admin?tab=${defaultTab}`);
       }
     }
-  }, [searchParams, router]);
+  }, [searchParams]);
 
-  // Verificar si es admin
+  // Bootstrap del panel: una sola vez por usuario admin (no en cada TOKEN_REFRESHED).
   useEffect(() => {
-    if (!authLoading && !user) {
+    if (authLoading) return;
+
+    if (!user) {
+      adminDataUserIdRef.current = null;
+      adminShellReadyRef.current = false;
       router.push('/login');
       return;
     }
 
-    if (!authLoading) {
-      if (!isAdmin) {
-        setLoading(false);
-        router.push('/dashboard');
-        return;
-      }
-
-      if (user) {
-        loadAdminData();
-      }
+    if (!isAdmin) {
+      setLoading(false);
+      router.push('/dashboard');
+      return;
     }
-  }, [authLoading, user, isAdmin, router]);
+
+    if (adminDataUserIdRef.current === user.id) return;
+    adminDataUserIdRef.current = user.id;
+    void loadAdminData();
+  }, [authLoading, user?.id, isAdmin, router]);
 
   // Cargar datos cuando se cambie de pestaña
   useEffect(() => {
@@ -674,7 +700,7 @@ function AdminDashboardContent() {
 
     const timer = window.setTimeout(() => {
       gymPaymentsRef.current?.openCreateModal();
-      router.replace('/admin?tab=gym-payments', { scroll: false });
+      window.history.replaceState(null, '', '/admin?tab=gym-payments');
     }, 120);
 
     return () => window.clearTimeout(timer);
@@ -754,8 +780,9 @@ function AdminDashboardContent() {
   }, [dateFilter, customStartDate, customEndDate, sedeFilter, activeTab]);
 
   const loadAdminData = async () => {
+    const blockShell = !adminShellReadyRef.current;
     try {
-      setLoading(true);
+      if (blockShell) setLoading(true);
       const response = await fetch('/api/admin/dashboard-stats');
       const data = await response.json();
 
@@ -764,9 +791,10 @@ function AdminDashboardContent() {
       }
 
       setStats(data);
+      adminShellReadyRef.current = true;
     } catch (error) {
     } finally {
-      setLoading(false);
+      if (blockShell) setLoading(false);
     }
   };
 
@@ -1797,8 +1825,7 @@ function AdminDashboardContent() {
                     <button
                       key={item.id}
                       onClick={() => {
-                        setActiveTab(item.id);
-                        router.push(`/admin?tab=${item.id}`, { scroll: false });
+                        goToAdminTab(item.id);
                         setMobileMenuOpen(false);
                       }}
                       className={`
@@ -1833,20 +1860,30 @@ function AdminDashboardContent() {
 
       {/* Main Content */}
       <main
-        className={`flex-1 flex flex-col min-h-screen ${sidebarCollapsed ? 'md:ml-16' : 'md:ml-56'}`}
+        className={`flex-1 flex flex-col min-h-screen min-w-0 overflow-x-hidden ${sidebarCollapsed ? 'md:ml-16' : 'md:ml-56'}`}
       >
         {/* Top Header */}
-        <header className="h-16 bg-white dark:bg-[#0b1422] border-b border-gray-200/80 dark:border-white/10 flex items-center gap-3 px-3 md:px-5 lg:px-6 sticky top-0 z-30">
-          <button
-            onClick={() => setMobileMenuOpen(true)}
-            className="md:hidden w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-white/10 text-[#164151]/80 dark:text-white/80"
-          >
-            <Menu className="w-4 h-4" />
-          </button>
+        <header className="h-[4.25rem] bg-white dark:bg-[#0b1422] border-b border-gray-200/80 dark:border-white/10 flex items-center gap-4 md:gap-6 px-3 md:px-5 lg:px-6 sticky top-0 z-30">
+          <div className="flex items-center gap-3 shrink-0 min-w-0 md:w-44 lg:w-52">
+            <button
+              onClick={() => setMobileMenuOpen(true)}
+              className="md:hidden w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-white/10 text-[#164151]/80 dark:text-white/80"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            <div className="hidden md:block min-w-0">
+              <p className="text-sm font-bold text-[#164151] dark:text-white truncate leading-tight">
+                {activeItem.label}
+              </p>
+              <p className="text-[11px] text-gray-500 dark:text-white/45 truncate leading-tight">
+                {activeItem.description}
+              </p>
+            </div>
+          </div>
 
-          <div className="flex-1 max-w-3xl relative">
+          <div className="relative flex-1 min-w-0 max-w-3xl mx-auto">
             <div className="h-10 rounded-full border border-gray-200 dark:border-white/10 bg-[#f8fafc] dark:bg-[#111b2b] flex items-center gap-2 px-4">
-              <Search className="w-4 h-4 text-gray-400 dark:text-white/50" />
+              <Search className="w-5 h-5 text-gray-400 dark:text-white/50" />
               <input
                 type="text"
                 placeholder="Buscar cliente por nombre, cédula o correo..."
@@ -2026,85 +2063,93 @@ function AdminDashboardContent() {
             )}
           </div>
 
-          <div className="flex items-center gap-2 md:gap-2.5 ml-auto">
-            <button
-              onClick={() => {
-                if (activeTab === 'gym-payments') {
-                  gymPaymentsRef.current?.openCreateModal();
-                  return;
-                }
-                router.push('/admin?tab=gym-payments&newInvoice=1', {
-                  scroll: false,
-                });
-              }}
-              className="w-8 h-8 rounded-full bg-[#1b1f24] text-white inline-flex items-center justify-center hover:bg-[#0f1115] transition-colors"
-              title="Crear factura"
-            >
-              <Plus className="w-4 h-4" />
-            </button>
+          <div className="flex items-center gap-3 shrink-0">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  if (activeTab !== 'gym-payments') {
+                    goToAdminTab('gym-payments');
+                  }
+                  // Abrir modal en el mismo tick o tras montar la pestaña (sin depender de searchParams).
+                  window.setTimeout(
+                    () => gymPaymentsRef.current?.openCreateModal(),
+                    activeTab === 'gym-payments' ? 0 : 120,
+                  );
+                }}
+                className="w-10 h-10 rounded-full bg-[#1b1f24] text-white inline-flex items-center justify-center hover:bg-[#0f1115] transition-colors"
+                title="Crear factura"
+              >
+                <Plus className="w-5 h-5" />
+              </button>
 
-            <button
-              onClick={() => router.push('/dashboard')}
-              className="h-8 px-3 rounded-full border border-gray-200 dark:border-white/12 bg-white dark:bg-[#111b2b] text-[#164151] dark:text-white text-[11px] font-semibold hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
-              title="Ir a plataforma"
-            >
-              Ir a plataforma
-            </button>
+              <button
+                onClick={() => router.push('/dashboard')}
+                className="h-10 px-3.5 rounded-full border border-gray-200 dark:border-white/12 bg-white dark:bg-[#111b2b] text-[#164151] dark:text-white text-xs font-semibold hover:bg-gray-100 dark:hover:bg-white/10 transition-colors whitespace-nowrap"
+                title="Ir a plataforma"
+              >
+                Ir a plataforma
+              </button>
 
-            {activeTab === 'users' && (
-              <>
+              {activeTab === 'users' && (
                 <button
                   onClick={() => loadUsers()}
-                  className="w-8 h-8 rounded-full border border-gray-200 dark:border-white/12 text-[#164151]/80 dark:text-white/75 inline-flex items-center justify-center hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
+                  className="w-10 h-10 rounded-full border border-gray-200 dark:border-white/12 text-[#164151]/80 dark:text-white/75 inline-flex items-center justify-center hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
                   title="Actualizar lista de clientes"
                 >
-                  <RefreshCw className="w-3.5 h-3.5" />
+                  <RefreshCw className="w-5 h-5" />
                 </button>
-              </>
-            )}
+              )}
 
-            {activeTab === 'gym-payments' && (
-              <>
+              {activeTab === 'gym-payments' && (
                 <button
                   onClick={() => gymPaymentsRef.current?.refresh()}
-                  className="w-8 h-8 rounded-full border border-gray-200 dark:border-white/12 text-[#164151]/80 dark:text-white/75 inline-flex items-center justify-center hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
+                  className="w-10 h-10 rounded-full border border-gray-200 dark:border-white/12 text-[#164151]/80 dark:text-white/75 inline-flex items-center justify-center hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
                   title="Actualizar pagos"
                 >
-                  <RefreshCw className="w-3.5 h-3.5" />
+                  <RefreshCw className="w-5 h-5" />
                 </button>
-              </>
-            )}
+              )}
+            </div>
 
-            <button className="hidden sm:inline-flex w-8 h-8 rounded-full text-[#164151]/70 dark:text-white/70 hover:bg-gray-100 dark:hover:bg-white/10 items-center justify-center transition-colors">
-              <Zap className="w-4 h-4" />
-            </button>
-            <button className="hidden sm:inline-flex w-8 h-8 rounded-full text-[#164151]/70 dark:text-white/70 hover:bg-gray-100 dark:hover:bg-white/10 items-center justify-center transition-colors">
-              <Settings className="w-4 h-4" />
-            </button>
-            <button className="relative inline-flex w-8 h-8 rounded-full text-[#164151]/70 dark:text-white/70 hover:bg-gray-100 dark:hover:bg-white/10 items-center justify-center transition-colors">
-              <Bell className="w-4 h-4" />
-              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
-            </button>
+            <div className="hidden sm:block w-px h-6 bg-gray-200 dark:bg-white/10" />
 
-            <div className="flex items-center gap-2 pl-2 md:pl-3 border-l border-gray-200 dark:border-white/10 ml-1">
+            <div className="flex items-center gap-1">
+              <ThemeToggle />
+              <button className="hidden sm:inline-flex w-10 h-10 rounded-full text-[#164151]/70 dark:text-white/70 hover:bg-gray-100 dark:hover:bg-white/10 items-center justify-center transition-colors">
+                <Zap className="w-5 h-5" />
+              </button>
+              <button className="hidden sm:inline-flex w-10 h-10 rounded-full text-[#164151]/70 dark:text-white/70 hover:bg-gray-100 dark:hover:bg-white/10 items-center justify-center transition-colors">
+                <Settings className="w-5 h-5" />
+              </button>
+              <button className="relative inline-flex w-10 h-10 rounded-full text-[#164151]/70 dark:text-white/70 hover:bg-gray-100 dark:hover:bg-white/10 items-center justify-center transition-colors">
+                <Bell className="w-5 h-5" />
+                <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
+              </button>
+            </div>
+
+            <div className="hidden sm:block w-px h-6 bg-gray-200 dark:bg-white/10" />
+
+            <div className="flex items-center gap-2.5 min-w-0">
               <GymSeededAvatar
                 seed={String(user?.id || profile?.id || 'admin')}
-                size={32}
-                className="w-8 h-8 rounded-full ring-1 ring-gray-200/80"
+                size={36}
+                className="w-9 h-9 rounded-full ring-1 ring-gray-200/80 shrink-0"
                 alt="Avatar del usuario"
               />
-              <div className="leading-tight">
+              <div className="leading-tight hidden lg:block min-w-0">
                 <p className="text-[12px] font-semibold text-[#164151] dark:text-white truncate max-w-[8rem]">
                   {user?.user_metadata?.name || profile?.name || 'Admin'}
                 </p>
-                <p className="text-[10px] text-gray-500 dark:text-white/50">Propietario</p>
+                <p className="text-[10px] text-gray-500 dark:text-white/50">
+                  Propietario
+                </p>
               </div>
             </div>
           </div>
         </header>
 
         {/* Page Content */}
-        <div className="flex-1 p-4 md:p-6 lg:p-8 pb-20">
+        <div className="flex-1 min-w-0 p-4 md:p-6 lg:p-8 pb-20">
           {/* Overview Tab - Nuevo Dashboard de Ingresos */}
           {activeTab === 'overview' && (
             <div className="space-y-6">
@@ -3432,13 +3477,12 @@ function AdminDashboardContent() {
 
           {/* Users Tab */}
           {activeTab === 'users' && (
-            <div className="space-y-6">
+            <div className="space-y-4">
               {/* Search and Filters Bar */}
-              <div className="bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl border border-gray-200 dark:border-white/10 p-4 shadow-sm dark:shadow-none">
-                <div className="flex flex-col sm:flex-row gap-4">
-                  {/* Search */}
-                  <div className="flex-1 relative">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-white/40" />
+              <div className={clientsListStyles.toolbar}>
+                <div className={clientsListStyles.toolbarRow}>
+                  <div className={clientsListStyles.searchWrap}>
+                    <Search className={clientsListStyles.searchIcon} />
                     <input
                       type="text"
                       placeholder="Buscar por cédula, nombre o correo..."
@@ -3447,22 +3491,20 @@ function AdminDashboardContent() {
                         setUserSearchTerm(e.target.value);
                         setCurrentPage(1);
                       }}
-                      className="w-full pl-12 pr-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-[#164151] dark:text-white placeholder-gray-400 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 focus:border-[#85ea10]/50 transition-all"
+                      className={clientsListStyles.searchInput}
                     />
                   </div>
 
-                  {/* Filters - Side by side on mobile, flexible on larger screens */}
-                  <div className="grid grid-cols-2 sm:flex sm:flex-row gap-2 sm:gap-4">
-                    {/* Type Filter */}
-                    <div className="relative">
-                      <Filter className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 dark:text-white/40" />
+                  <div className={clientsListStyles.filtersRow}>
+                    <div className={clientsListStyles.filterWrap}>
+                      <Filter className={clientsListStyles.filterIcon} />
                       <select
                         value={userTypeFilter}
                         onChange={(e) => {
                           setUserTypeFilter(e.target.value);
                           setCurrentPage(1);
                         }}
-                        className="w-full pl-8 sm:pl-12 pr-4 sm:pr-10 py-2.5 sm:py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-[11px] sm:text-sm text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 appearance-none cursor-pointer"
+                        className={clientsListStyles.filterSelect}
                       >
                         <option value="all">Clientes: Todos</option>
                         <option value="physical">Solo físicos</option>
@@ -3471,16 +3513,15 @@ function AdminDashboardContent() {
                       </select>
                     </div>
 
-                    {/* Payment Status Filter */}
-                    <div className="relative">
-                      <Filter className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 dark:text-white/40" />
+                    <div className={clientsListStyles.filterWrap}>
+                      <Filter className={clientsListStyles.filterIcon} />
                       <select
                         value={paymentStatusFilter}
                         onChange={(e) => {
                           setPaymentStatusFilter(e.target.value);
                           setCurrentPage(1);
                         }}
-                        className="w-full pl-8 sm:pl-12 pr-4 sm:pr-10 py-2.5 sm:py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-[11px] sm:text-sm text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 appearance-none cursor-pointer"
+                        className={clientsListStyles.filterSelect}
                       >
                         <option value="all">Estado: Todos</option>
                         <option value="active">Al día</option>
@@ -3508,7 +3549,7 @@ function AdminDashboardContent() {
                       setEditingClient(null);
                       setShowClientForm(true);
                     }}
-                    className="sm:ml-auto h-11 px-4 rounded-xl bg-[#164151] text-white hover:bg-[#1a4d5f] font-semibold text-sm inline-flex items-center justify-center gap-2 transition-colors"
+                    className={clientsListStyles.primaryBtn}
                     title="Crear cliente físico"
                   >
                     <Plus className="w-4 h-4" />
@@ -3518,7 +3559,7 @@ function AdminDashboardContent() {
               </div>
 
               {/* Users Table */}
-              <div className="bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl border border-gray-200 dark:border-white/10 overflow-hidden shadow-sm dark:shadow-none">
+              <div className={clientsListStyles.tableShell}>
                 {loadingUsers ? (
                   <LoadingState message="Cargando clientes..." />
                 ) : users.length === 0 ? (
@@ -3541,34 +3582,51 @@ function AdminDashboardContent() {
                   />
                 ) : (
                   <>
-                    <div className="hidden md:block overflow-x-auto">
-                      <table className="w-full min-w-[800px]">
+                    <div className={`hidden md:block ${clientsListStyles.tableWrap}`}>
+                      <table className={clientsListStyles.table}>
+                        <colgroup>
+                          <col style={{ width: gymClientsColWidths.client }} />
+                          <col style={{ width: gymClientsColWidths.doc }} />
+                          <col style={{ width: gymClientsColWidths.products }} />
+                          <col style={{ width: gymClientsColWidths.type }} />
+                          <col style={{ width: gymClientsColWidths.status }} />
+                          <col style={{ width: gymClientsColWidths.actions }} />
+                        </colgroup>
                         <thead>
-                          <tr className="border-b border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-transparent">
-                            <th className="text-left px-3 md:px-4 py-3 md:py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
+                          <tr>
+                            <th
+                              className={`${clientsListStyles.th} ${clientsListStyles.thLeft}`}
+                            >
                               Cliente
                             </th>
-                            <th className="text-left px-3 md:px-4 py-3 md:py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
+                            <th
+                              className={`${clientsListStyles.th} ${clientsListStyles.thLeft}`}
+                            >
                               Documento
                             </th>
-                            <th className="text-left px-3 md:px-4 py-3 md:py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
+                            <th
+                              className={`${clientsListStyles.th} ${clientsListStyles.thLeft}`}
+                            >
                               Productos
                             </th>
-                            <th className="text-left px-3 md:px-4 py-3 md:py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
+                            <th
+                              className={`${clientsListStyles.th} ${clientsListStyles.thLeft}`}
+                            >
                               Tipo
                             </th>
-                            <th className="text-left px-3 md:px-4 py-3 md:py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
-                              WhatsApp
-                            </th>
-                            <th className="text-left px-3 md:px-4 py-3 md:py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
+                            <th
+                              className={`${clientsListStyles.th} ${clientsListStyles.thLeft}`}
+                            >
                               Estado
                             </th>
-                            <th className="text-right px-3 md:px-4 py-3 md:py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
+                            <th
+                              className={`${clientsListStyles.th} ${clientsListStyles.actionsCellTh}`}
+                            >
                               Acciones
                             </th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-100 dark:divide-white/5">
+                        <tbody>
                           {users.map((user) => {
                             // Calcular si tiene más de 30 días sin pagar (fechas locales)
                             const today = getGymAdminToday();
@@ -3613,49 +3671,45 @@ function AdminDashboardContent() {
                                   !isAdminUser &&
                                   router.push(`/admin/users/${user.id}`)
                                 }
-                                className={`${isAdminUser ? '' : 'hover:bg-gray-100 dark:hover:bg-white/10 cursor-pointer hover:border-[#85ea10]/30'} transition-all group border-l-4 border-transparent ${
-                                  isInactive
-                                    ? 'opacity-60 bg-gray-50 dark:bg-gray-900/30'
-                                    : ''
+                                className={`${isAdminUser ? clientsListStyles.rowStatic : clientsListStyles.row} ${
+                                  isInactive ? clientsListStyles.rowInactive : ''
                                 }`}
                               >
-                                <td className="px-3 md:px-4 py-3 md:py-4">
-                                  <div className="flex min-w-0 items-center gap-3">
+                                <td className={clientsListStyles.td}>
+                                  <div className="flex min-w-0 items-center gap-2.5">
                                     <AdminUserListAvatar user={user} />
                                     <div className="min-w-0 flex-1">
-                                      <div className="flex items-center gap-2">
-                                        <p className="truncate text-sm font-medium text-[#164151] dark:text-white">
+                                      <div className="flex items-center gap-1.5">
+                                        <p className={clientsListStyles.clientName}>
                                           {user.name ||
                                             user.full_name ||
                                             'Sin nombre'}
                                         </p>
                                         {!user.isUnregisteredClient && (
-                                          <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[#85ea10]">
-                                            <Check className="h-2.5 w-2.5 stroke-[3] text-white" />
+                                          <div className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full bg-[#85ea10]">
+                                            <Check className="h-2 w-2 stroke-[3] text-white" />
                                           </div>
                                         )}
                                       </div>
-                                      <p className="mt-0.5 truncate text-xs text-[#164151]/60 dark:text-white/50">
+                                      <p className={clientsListStyles.clientEmail}>
                                         {user.email || 'Sin email'}
                                       </p>
                                     </div>
                                   </div>
                                 </td>
-                                <td className="px-3 md:px-4 py-3 md:py-4">
+                                <td className={clientsListStyles.td}>
                                   {user.document_id ? (
-                                    <div className="flex items-center gap-1.5">
-                                      <CreditCard className="w-3 h-3 text-gray-400" />
-                                      <span className="text-xs font-medium text-[#164151] dark:text-white">
-                                        {user.document_id}
-                                      </span>
-                                    </div>
+                                    <span className={clientsListStyles.docCell}>
+                                      <CreditCard className="w-3 h-3 text-gray-400 dark:text-white/35" />
+                                      {user.document_id}
+                                    </span>
                                   ) : (
-                                    <span className="text-xs text-gray-400 dark:text-white/40">
-                                      -
+                                    <span className="text-xs text-gray-400 dark:text-white/35">
+                                      —
                                     </span>
                                   )}
                                 </td>
-                                <td className="px-3 md:px-4 py-3 md:py-4">
+                                <td className={clientsListStyles.td}>
                                   <div onClick={(e) => e.stopPropagation()}>
                                     {(() => {
                                       const allMemberships =
@@ -3669,7 +3723,7 @@ function AdminDashboardContent() {
 
                                       if (allProducts.length === 0) {
                                         return (
-                                          <span className="text-sm font-medium text-gray-500 dark:text-white/50">
+                                          <span className="text-sm text-gray-400 dark:text-white/35">
                                             Sin productos
                                           </span>
                                         );
@@ -3712,7 +3766,7 @@ function AdminDashboardContent() {
 
                                       if (!firstProduct) {
                                         return (
-                                          <span className="text-sm font-medium text-gray-500 dark:text-white/50">
+                                          <span className="text-sm text-gray-400 dark:text-white/35">
                                             Sin productos
                                           </span>
                                         );
@@ -3721,18 +3775,18 @@ function AdminDashboardContent() {
                                       return (
                                         <button
                                           onClick={handleClick}
-                                          className="text-left hover:opacity-80 transition-opacity cursor-pointer flex items-center gap-1.5"
+                                          className="flex w-full min-w-0 items-center gap-1.5 text-left transition-opacity hover:opacity-80 cursor-pointer"
                                           title={
                                             hasMoreProducts
                                               ? `Ver todos los productos (${allProducts.length})`
-                                              : undefined
+                                              : firstProduct.name
                                           }
                                         >
-                                          <span className="text-sm font-medium text-[#164151] dark:text-white">
+                                          <span className={clientsListStyles.productName}>
                                             {firstProduct.name}
                                           </span>
                                           {hasMoreProducts && (
-                                            <span className="w-5 h-5 flex items-center justify-center rounded-full bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-white/60 text-xs font-semibold hover:bg-gray-200 dark:hover:bg-white/20 transition-colors">
+                                            <span className={clientsListStyles.productMore}>
                                               +{allProducts.length - 1}
                                             </span>
                                           )}
@@ -3741,82 +3795,48 @@ function AdminDashboardContent() {
                                     })()}
                                   </div>
                                 </td>
-                                <td className="px-3 md:px-4 py-3 md:py-4">
+                                <td className={clientsListStyles.td}>
                                   <div>
                                     {user.userType === 'both' && (
-                                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-[#164151]/15 text-[#164151] dark:bg-white/10 dark:text-white/70">
+                                      <span className={clientsListStyles.typeBadgeBoth}>
                                         Ambos
                                       </span>
                                     )}
                                     {user.userType === 'physical' && (
-                                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-[#164151]/15 text-[#164151] dark:bg-white/10 dark:text-white/70">
+                                      <span className={clientsListStyles.typeBadge}>
                                         <Dumbbell className="w-3 h-3" />
                                         Físico
                                       </span>
                                     )}
                                     {user.userType === 'online' && (
-                                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-cyan-100 text-cyan-700 dark:bg-cyan-500/15 dark:text-cyan-400">
+                                      <span className={clientsListStyles.typeBadgeOnline}>
                                         <Globe className="w-3 h-3" />
                                         Online
                                       </span>
                                     )}
                                     {user.userType === 'none' && (
-                                      <span className="text-xs text-gray-400 dark:text-white/40">
-                                        -
+                                      <span className="text-xs text-gray-400 dark:text-white/35">
+                                        —
                                       </span>
                                     )}
                                   </div>
                                 </td>
-                                <td className="px-3 md:px-4 py-3 md:py-4">
-                                  {(() => {
-                                    const wa = user.phone || user.whatsapp;
-                                    const isPlaceholder =
-                                      wa &&
-                                      wa.replace(/\D/g, '') === '0000000000';
-                                    if (isPlaceholder) {
-                                      return (
-                                        <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                                          Pendiente
-                                        </span>
-                                      );
+                                <td className={clientsListStyles.td}>
+                                  <GymClientPaymentStatusBadge
+                                    memberships={user.gym_memberships}
+                                    activeCoursePurchases={
+                                      user.activeCoursePurchases
                                     }
-                                    if (wa) {
-                                      return (
-                                        <a
-                                          href={`https://wa.me/${wa.replace(/\D/g, '')}`}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-colors"
-                                        >
-                                          <Phone className="w-3 h-3" />
-                                          {wa}
-                                        </a>
-                                      );
+                                    isInactive={user.is_inactive}
+                                    renewalFollowupDismissedPlanIds={
+                                      user.renewal_followup_dismissed_plan_ids
                                     }
-                                    return (
-                                      <span className="text-xs text-gray-400 dark:text-white/40">
-                                        -
-                                      </span>
-                                    );
-                                  })()}
+                                    size="sm"
+                                  />
                                 </td>
-                                <td className="px-3 md:px-4 py-3 md:py-4">
-                                  <div>
-                                    <GymClientPaymentStatusBadge
-                                      memberships={user.gym_memberships}
-                                      activeCoursePurchases={
-                                        user.activeCoursePurchases
-                                      }
-                                      isInactive={user.is_inactive}
-                                      renewalFollowupDismissedPlanIds={
-                                        user.renewal_followup_dismissed_plan_ids
-                                      }
-                                    />
-                                  </div>
-                                </td>
-                                <td className="px-3 md:px-4 py-3 md:py-4">
+                                <td className={clientsListStyles.td}>
                                   <div
-                                    className="flex items-center justify-end gap-2"
+                                    className={clientsListStyles.actionsCell}
                                     onClick={(e) => e.stopPropagation()}
                                   >
                                     {/* Botón Recordatorio/Inactivar - visible solo cuando tiene estado "Renovar" (planes vencidos) */}
@@ -3932,7 +3952,7 @@ function AdminDashboardContent() {
                                         return (
                                           <button
                                             onClick={handleInactivate}
-                                            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-gray-500 transition-colors hover:text-[#164151] dark:text-white/40 dark:hover:text-white"
+                                            className={clientsListStyles.actionBtn}
                                             title="Inactivar usuario (30 días sin pagar)"
                                           >
                                             <Ban className="w-4 h-4" />
@@ -3991,10 +4011,10 @@ function AdminDashboardContent() {
                                       return (
                                         <button
                                           onClick={handleReminder}
-                                          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-gray-500 transition-colors hover:text-[#164151] dark:text-white/40 dark:hover:text-white"
-                                          title="Enviar recordatorio de renovación"
+                                          className={clientsListStyles.whatsappAction}
+                                          title="WhatsApp: recordatorio de renovación"
                                         >
-                                          <MessageSquare className="w-4 h-4" />
+                                          <WhatsAppIcon className="w-4 h-4" />
                                         </button>
                                       );
                                     })()}
@@ -4122,11 +4142,7 @@ function AdminDashboardContent() {
                                                 isDismiss,
                                               )
                                             }
-                                            className={
-                                              isDismiss
-                                                ? 'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-amber-700 transition-colors hover:text-amber-600 dark:text-amber-400 dark:hover:text-amber-300'
-                                                : 'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-slate-600 transition-colors hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
-                                            }
+                                            className={`${clientsListStyles.actionBtn} ${isDismiss ? 'text-amber-700 dark:text-amber-400' : ''}`}
                                             title={
                                               isDismiss
                                                 ? `No insistir: ${single.label}`
@@ -4158,7 +4174,7 @@ function AdminDashboardContent() {
                                                     : user.id,
                                               );
                                             }}
-                                            className="inline-flex h-8 w-8 shrink-0 items-center justify-center gap-0.5 rounded-md px-0.5 text-amber-800 transition-colors hover:text-amber-700 dark:text-amber-300 dark:hover:text-amber-200"
+                                            className={`${clientsListStyles.actionBtn} gap-0.5 text-amber-800 dark:text-amber-300`}
                                             title="Seguimiento de renovación por plan"
                                           >
                                             {showDismissPrimary ? (
@@ -4238,7 +4254,7 @@ function AdminDashboardContent() {
                                               `/admin/users/${user.id}`,
                                             )
                                           }
-                                          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-gray-500 transition-colors hover:text-[#164151] dark:text-white/40 dark:hover:text-white"
+                                          className={clientsListStyles.actionBtn}
                                           title="Ver detalles"
                                         >
                                           <Eye className="w-4 h-4" />
@@ -4249,7 +4265,7 @@ function AdminDashboardContent() {
                                               `/admin/users/${user.id}?edit=true`,
                                             )
                                           }
-                                          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-gray-500 transition-colors hover:text-[#164151] dark:text-white/40 dark:hover:text-white"
+                                          className={clientsListStyles.actionBtn}
                                           title="Editar"
                                         >
                                           <Edit className="w-4 h-4" />
@@ -4266,7 +4282,7 @@ function AdminDashboardContent() {
                     </div>
 
                     {/* Card view para móviles */}
-                    <div className="md:hidden divide-y divide-gray-100 dark:divide-white/5">
+                    <div className={clientsListStyles.mobileList}>
                       {users.map((user) => {
                         const memberships = user.gym_memberships || [];
                         const gymStatus =
@@ -4405,9 +4421,10 @@ function AdminDashboardContent() {
                                         : `https://wa.me/${phone}`;
                                       window.open(whatsappUrl, '_blank');
                                     }}
-                                    className="p-2.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full hover:bg-emerald-500/20 transition-colors"
+                                    className="p-2.5 bg-[#25D366]/15 text-[#25D366] rounded-full hover:bg-[#25D366]/25 transition-colors"
+                                    title="WhatsApp"
                                   >
-                                    <MessageSquare className="w-5 h-5 flex-shrink-0" />
+                                    <WhatsAppIcon className="w-5 h-5 flex-shrink-0" />
                                   </button>
                                 )}
                             </div>
@@ -4475,36 +4492,19 @@ function AdminDashboardContent() {
                     </div>
 
                     {/* Pagination Controls */}
-                    <div className="px-6 py-4 mb-16 border-t border-gray-200 dark:border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4">
-                      <div className="text-sm text-gray-500 dark:text-white/40">
-                        Mostrando{' '}
-                        <span className="text-[#164151] dark:text-white font-medium">
-                          {(currentPage - 1) * usersPerPage + 1}
-                        </span>{' '}
-                        a{' '}
-                        <span className="text-[#164151] dark:text-white font-medium">
-                          {Math.min(
-                            currentPage * usersPerPage,
-                            usersListTotal,
-                          )}
-                        </span>{' '}
-                        de{' '}
-                        <span className="text-[#164151] dark:text-white font-medium">
-                          {usersListTotal}
-                        </span>{' '}
-                        clientes
-                      </div>
+                    <div className={clientsListStyles.pager}>
+                      <p className={clientsListStyles.footerText}>
+                        Mostrando {(currentPage - 1) * usersPerPage + 1}–
+                        {Math.min(currentPage * usersPerPage, usersListTotal)} de{' '}
+                        {usersListTotal} clientes
+                      </p>
 
                       <div className="flex items-center gap-2">
                         {/* First Page Button */}
                         <button
                           onClick={() => setCurrentPage(1)}
                           disabled={currentPage === 1}
-                          className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${
-                            currentPage === 1
-                              ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
-                              : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
-                          }`}
+                          className={currentPage === 1 ? `${clientsListStyles.pagerBtn} opacity-40 pointer-events-none` : clientsListStyles.pagerBtn}
                           title="Primera página"
                         >
                           <ChevronsLeft className="w-4 h-4" />
@@ -4516,11 +4516,7 @@ function AdminDashboardContent() {
                             setCurrentPage((prev) => Math.max(1, prev - 1))
                           }
                           disabled={currentPage === 1}
-                          className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${
-                            currentPage === 1
-                              ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
-                              : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
-                          }`}
+                          className={currentPage === 1 ? `${clientsListStyles.pagerBtn} opacity-40 pointer-events-none` : clientsListStyles.pagerBtn}
                           title="Página anterior"
                         >
                           <ChevronLeft className="w-4 h-4" />
@@ -4552,7 +4548,7 @@ function AdminDashboardContent() {
                                 <button
                                   key={1}
                                   onClick={() => setCurrentPage(1)}
-                                  className="w-9 h-9 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 transition-all cursor-pointer text-sm"
+                                  className={clientsListStyles.pagerBtnPage}
                                 >
                                   1
                                 </button>,
@@ -4574,11 +4570,7 @@ function AdminDashboardContent() {
                                 <button
                                   key={i}
                                   onClick={() => setCurrentPage(i)}
-                                  className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all text-sm cursor-pointer ${
-                                    currentPage === i
-                                      ? 'bg-[#164151] text-white font-semibold'
-                                      : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20'
-                                  }`}
+                                  className={currentPage === i ? clientsListStyles.pagerBtnActive : clientsListStyles.pagerBtnPage}
                                 >
                                   {i}
                                 </button>,
@@ -4600,7 +4592,7 @@ function AdminDashboardContent() {
                                 <button
                                   key={totalPages}
                                   onClick={() => setCurrentPage(totalPages)}
-                                  className="w-9 h-9 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 transition-all cursor-pointer text-sm"
+                                  className={clientsListStyles.pagerBtnPage}
                                 >
                                   {totalPages}
                                 </button>,
@@ -4621,11 +4613,7 @@ function AdminDashboardContent() {
                           disabled={
                             currentPage === totalPages || totalPages === 0
                           }
-                          className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${
-                            currentPage === totalPages || totalPages === 0
-                              ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
-                              : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
-                          }`}
+                          className={currentPage === totalPages || totalPages === 0 ? `${clientsListStyles.pagerBtn} opacity-40 pointer-events-none` : clientsListStyles.pagerBtn}
                           title="Página siguiente"
                         >
                           <ChevronRight className="w-4 h-4" />
@@ -4637,11 +4625,7 @@ function AdminDashboardContent() {
                           disabled={
                             currentPage === totalPages || totalPages === 0
                           }
-                          className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${
-                            currentPage === totalPages || totalPages === 0
-                              ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
-                              : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
-                          }`}
+                          className={currentPage === totalPages || totalPages === 0 ? `${clientsListStyles.pagerBtn} opacity-40 pointer-events-none` : clientsListStyles.pagerBtn}
                           title="Última página"
                         >
                           <ChevronsRight className="w-4 h-4" />
@@ -5115,7 +5099,7 @@ function AdminDashboardContent() {
 
 export default function AdminDashboard() {
   return (
-    <Suspense fallback={<QuickLoading />}>
+    <Suspense fallback={null}>
       <AdminDashboardContent />
     </Suspense>
   );

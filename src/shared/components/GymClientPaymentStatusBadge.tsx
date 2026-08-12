@@ -12,6 +12,7 @@ import {
 import {
   allRenewalPlansDismissed,
   buildGymRenewalAdminContext,
+  buildRenewalPlanMenuOptions,
   computeClientGymAdminStatus,
   renewalPendingPlanIdsFromMemberships,
   summarizeGymPlansPerClient,
@@ -32,16 +33,16 @@ const sizeClasses: Record<
   { base: string; compact: string; icon: string }
 > = {
   sm: {
-    base: 'text-[10px] px-2 py-0.5 rounded-full font-bold uppercase',
+    base: 'text-[11px] px-2 py-0.5 rounded-full font-semibold',
     compact:
-      'text-[9px] px-2 py-0.5 rounded-full font-bold uppercase leading-tight max-w-[11rem] text-center',
+      'text-[11px] px-2 py-0.5 rounded-full font-semibold leading-tight max-w-[16rem]',
     icon: 'w-3 h-3 shrink-0',
   },
   md: {
-    base: 'text-xs px-2.5 py-1 rounded-full font-medium',
+    base: 'text-sm px-2.5 py-1 rounded-full font-semibold',
     compact:
-      'text-[10px] px-2.5 py-1.5 rounded-lg font-medium leading-tight sm:rounded-full sm:text-xs',
-    icon: 'w-3 h-3 shrink-0',
+      'text-sm px-2.5 py-1 rounded-full font-semibold leading-tight max-w-[18rem]',
+    icon: 'w-3.5 h-3.5 shrink-0',
   },
 };
 
@@ -151,6 +152,13 @@ export function GymClientPaymentStatusBadge({
     );
   }
 
+  const renewCount = buildRenewalPlanMenuOptions(
+    ctx.expiredNeedingRenewal,
+  ).length;
+  const vigentesCount = summaries.filter(
+    (s) => s.kind === 'current' || s.kind === 'scheduled',
+  ).length;
+
   if (gymStatus === 'renewal') {
     if (renewalDismissed) {
       return (
@@ -167,7 +175,7 @@ export function GymClientPaymentStatusBadge({
         className={`inline-flex items-center gap-1.5 ${classes.base} bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400`}
       >
         <AlertTriangle className={classes.icon} />
-        Renovar
+        {renewCount > 1 ? `${renewCount} por renovar` : 'Renovar'}
       </span>
     );
   }
@@ -186,19 +194,27 @@ export function GymClientPaymentStatusBadge({
     if (renewalDismissed) {
       return (
         <span
-          className={`inline-flex max-w-[14rem] flex-col gap-0.5 sm:flex-row sm:items-center sm:max-w-none ${classes.compact} bg-slate-100 dark:bg-slate-500/20 text-slate-700 dark:text-slate-300`}
+          className={`inline-flex items-center gap-1.5 ${classes.base} bg-slate-100 dark:bg-slate-500/20 text-slate-700 dark:text-slate-300`}
         >
           <Ban className={classes.icon} />
-          <span>Activo + Renovación descartada</span>
+          {vigentesCount > 0
+            ? 'Activo · Renovación descartada'
+            : 'Renovación descartada'}
         </span>
       );
     }
     return (
       <span
-        className={`inline-flex max-w-[14rem] flex-col gap-0.5 sm:flex-row sm:items-center sm:max-w-none ${classes.compact} bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300`}
+        className={`inline-flex items-center gap-1.5 ${classes.base} bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300`}
       >
         <Bell className={classes.icon} />
-        <span>Activo + Renovación pendiente</span>
+        {vigentesCount > 0
+          ? renewCount > 1
+            ? `Activo · ${renewCount} por renovar`
+            : 'Activo · Renovar'
+          : renewCount > 1
+            ? `${renewCount} por renovar`
+            : 'Renovar'}
       </span>
     );
   }

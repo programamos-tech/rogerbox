@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
-    const body: GymPaymentInsert = await request.json();
+    const body = await request.json();
     const {
       membership_id,
       client_info_id,
@@ -125,14 +125,16 @@ export async function POST(request: NextRequest) {
       invoice_number,
       notes,
       user_id,
-    } = body;
+    } = body as GymPaymentInsert & { credit_applied?: number };
+    const creditApplied = Math.max(0, Number(body.credit_applied) || 0);
 
     // Validaciones
     if (
       !membership_id ||
       !client_info_id ||
       !plan_id ||
-      !amount ||
+      amount === undefined ||
+      amount === null ||
       !payment_method ||
       !payment_date ||
       !period_start ||
@@ -144,9 +146,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (amount <= 0) {
+    if (Number(amount) < 0) {
       return NextResponse.json(
-        { error: 'El monto debe ser mayor a 0' },
+        { error: 'El monto no puede ser negativo' },
+        { status: 400 },
+      );
+    }
+
+    if (Number(amount) === 0 && creditApplied <= 0) {
+      return NextResponse.json(
+        { error: 'El monto debe ser mayor a 0 o usar saldo a favor' },
         { status: 400 },
       );
     }
@@ -175,9 +184,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
     // Verificar si la membresía ya tiene un pago registrado
     const { data: existingPayment, error: existingPaymentError } =
       await supabaseAdmin
@@ -197,20 +203,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verificar la fecha de inicio de la membresía para determinar si es pago anticipado
-    const membershipStartDate = new Date(membership.end_date);
-    membershipStartDate.setHours(0, 0, 0, 0);
+    if (creditApplied > 0) {
+      const { data: creditRows, error: creditBalError } = await supabaseAdmin
+        .from('gym_client_credits')
+        .select('amount')
+        .eq('client_info_id', client_info_id);
 
-    // Obtener la fecha de inicio real de la membresía
-    const { data: membershipFull, error: membershipFullError } =
-      await supabaseAdmin
-        .from('gym_memberships')
-        .select('start_date')
-        .eq('id', membership_id)
-        .single();
+      if (creditBalError) {
+        return NextResponse.json(
+          { error: 'Error al consultar saldo a favor' },
+          { status: 500 },
+        );
+      }
 
-    const isAdvancePayment =
-      membershipFull && new Date(membershipFull.start_date) > today;
+      const balance = (creditRows || []).reduce(
+        (sum, row) => sum + Number(row.amount || 0),
+        0,
+      );
+      if (creditApplied > balance + 0.001) {
+        return NextResponse.json(
+          {
+            error: `Saldo insuficiente. Disponible: $${balance.toLocaleString('es-CO')}`,
+          },
+          { status: 400 },
+        );
+      }
+    }
 
     // Obtener user_id: primero del parámetro, luego de la membresía, luego del client_info
     let finalUserId = user_id || membership.user_id || null;
@@ -289,6 +307,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (creditApplied > 0) {
+      const { error: applyError } = await supabaseAdmin
+        .from('gym_client_credits')
+        .insert({
+          client_info_id,
+          amount: -creditApplied,
+          type: 'apply',
+          payment_id: data.id,
+          membership_id,
+          notes: `Aplicado a factura #${finalInvoiceNumber}`,
+          store_id: storeIdForPayment,
+          created_by: user?.id,
+        });
+
+      if (applyError) {
+        await supabaseAdmin.from('gym_payments').delete().eq('id', data.id);
+        return NextResponse.json(
+          { error: 'Error al aplicar saldo a favor' },
+          { status: 500 },
+        );
+      }
+    }
+
     // Actualizar la membresía a 'active' si estaba en otro estado
     if (membership.status !== 'active') {
       await supabaseAdmin
@@ -305,6 +346,7 @@ export async function POST(request: NextRequest) {
       details: {
         payment_id: data.id,
         amount,
+        credit_applied: creditApplied,
         payment_method,
         client_info_id,
         client_name: data.client_info?.name || null,
@@ -313,7 +355,11 @@ export async function POST(request: NextRequest) {
         period_start,
         period_end,
         payment_date,
-        description: `Pago sede física: $${Number(amount).toLocaleString()}`,
+        description: `Pago sede física: $${Number(amount).toLocaleString()}${
+          creditApplied > 0
+            ? ` + saldo $${creditApplied.toLocaleString('es-CO')}`
+            : ''
+        }`,
       },
       store_id: storeIdForPayment,
     });

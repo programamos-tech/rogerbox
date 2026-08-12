@@ -17,6 +17,7 @@ import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useUnifiedCourses } from '@/hooks/useUnifiedCourses';
 import { trackCourseView } from '@/lib/analytics';
 import type { UnifiedCourse } from '@/services/unifiedCoursesService';
+import { ThemeToggle } from '@/shared/components/ThemeToggle';
 
 /** Slugs / códigos de categoría → etiqueta en español para la tienda */
 const CATEGORY_LABEL_ES: Record<string, string> = {
@@ -269,6 +270,7 @@ export default function HomePage() {
             </button>
 
             <nav className="flex items-center gap-4 sm:gap-6">
+              <ThemeToggle variant="nav" />
               <button
                 type="button"
                 onClick={() => scrollToCourses()}
@@ -349,8 +351,8 @@ export default function HomePage() {
               </div>
               <div className="md:col-span-5 md:flex md:justify-end">
                 <p className="text-xs sm:text-sm text-white/88 leading-snug max-w-sm md:text-right drop-shadow line-clamp-3 md:line-clamp-4">
-                  Tu plataforma de cursos HIIT en línea. Cada día una nueva clase
-                  te espera, empieza hoy.
+                  Tu plataforma de cursos HIIT en línea. Cada día una nueva
+                  clase te espera, empieza hoy.
                 </p>
               </div>
             </div>
@@ -363,27 +365,25 @@ export default function HomePage() {
         className="relative z-10 scroll-mt-16 px-4 sm:px-6 md:px-12 lg:px-20 xl:px-32 pt-4 pb-8 sm:pt-5 sm:pb-10 bg-gray-50 dark:bg-transparent"
       >
         <div className="max-w-7xl mx-auto">
-          {!loadingCourses &&
-            !coursesError &&
-            coursesByCategory.length > 1 && (
-              <div className="mb-4 -mx-0.5">
-                <div className="flex flex-wrap gap-1.5">
-                  {coursesByCategory.map(([name, list]) => (
-                    <button
-                      key={name}
-                      type="button"
-                      onClick={() => scrollToCategory(name)}
-                      className="rounded-full border border-gray-200 dark:border-white/15 bg-white dark:bg-white/5 px-2.5 py-1 text-xs font-medium text-gray-800 dark:text-gray-100 hover:border-[#85ea10]/60 hover:bg-[#85ea10]/10 transition-colors"
-                    >
-                      {name}
-                      <span className="text-gray-400 dark:text-gray-500 ml-1 font-normal">
-                        ({list.length})
-                      </span>
-                    </button>
-                  ))}
-                </div>
+          {!loadingCourses && !coursesError && coursesByCategory.length > 1 && (
+            <div className="mb-4 -mx-0.5">
+              <div className="flex flex-wrap gap-1.5">
+                {coursesByCategory.map(([name, list]) => (
+                  <button
+                    key={name}
+                    type="button"
+                    onClick={() => scrollToCategory(name)}
+                    className="rounded-full border border-gray-200 dark:border-white/15 bg-white dark:bg-white/5 px-2.5 py-1 text-xs font-medium text-gray-800 dark:text-gray-100 hover:border-[#85ea10]/60 hover:bg-[#85ea10]/10 transition-colors"
+                  >
+                    {name}
+                    <span className="text-gray-400 dark:text-gray-500 ml-1 font-normal">
+                      ({list.length})
+                    </span>
+                  </button>
+                ))}
               </div>
-            )}
+            </div>
+          )}
 
           {loadingCourses && (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
@@ -428,8 +428,7 @@ export default function HomePage() {
                         {categoryName}
                       </h3>
                       <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400">
-                        {list.length}{' '}
-                        {list.length === 1 ? 'curso' : 'cursos'}
+                        {list.length} {list.length === 1 ? 'curso' : 'cursos'}
                       </p>
                     </div>
                     {idx > 0 && (

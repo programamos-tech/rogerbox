@@ -20,6 +20,7 @@ import { createPortal } from 'react-dom';
 import { useIsAdmin } from '@/hooks/auth/useIsAdmin';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useUserPurchases } from '@/hooks/useUserPurchases';
+import { ThemeToggle } from '@/shared/components/ThemeToggle';
 
 const FEED_LAST_VISIT_KEY = 'rogerbox_feed_last_visit_at';
 
@@ -157,6 +158,7 @@ export default function DashboardNavbar({
                 <span className="hidden sm:inline">Clases</span>
               </button>
             )}
+            <ThemeToggle variant="nav" />
             <div className="relative" data-notifications-dropdown>
               <button
                 onClick={() => setShowNotifications(!showNotifications)}

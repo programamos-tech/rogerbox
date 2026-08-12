@@ -10,12 +10,9 @@ import {
   ChevronsLeft,
   ChevronsRight,
   CreditCard,
-  DollarSign,
   Download,
-  Eye,
-  FileText,
   Filter,
-  MessageSquare,
+  Plus,
   Save,
   Search,
   X,
@@ -34,8 +31,18 @@ import {
   membershipEndDateFromStart,
   parseLocalDate,
 } from '@/lib/dateUtils';
+import {
+  fetchClientCreditBalance,
+  postClientCredit,
+} from '@/modules/gym-admin/services/gym-client-credits.service';
+import {
+  adminFormModalStyles as modal,
+  gymPaymentsListStyles as styles,
+} from '@/modules/gym-admin/styles';
+import { formatGymPlanDuration } from '@/modules/gym-admin/utils/gym-plan-duration.util';
 import { DatePickerField } from '@/shared/components/DatePickerField';
 import { GymSeededAvatar } from '@/shared/components/GymSeededAvatar';
+import { WhatsAppIcon } from '@/shared/components/WhatsAppIcon';
 import type {
   GymClientInfo,
   GymPayment,
@@ -118,31 +125,47 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
     const [expiredMembershipToPay, setExpiredMembershipToPay] =
       useState<any>(null);
     const [discountPercent, setDiscountPercent] = useState<number>(0);
-    const [isAdvancePayment, setIsAdvancePayment] = useState(false);
-    /** Membresía vigente del mismo plan que encadena el pago anticipado (para verificar fechas en pantalla). */
-    const [advanceMembershipSnapshot, setAdvanceMembershipSnapshot] = useState<{
+    /** Membresía vigente del mismo plan (exige decidir: renovar hoy o abonar saldo). */
+    const [activePlanSnapshot, setActivePlanSnapshot] = useState<{
       id: string;
       planName: string;
       startDate: string;
       endDate: string;
       status: string;
     } | null>(null);
-    /** Decisión del admin cuando ya hay un período vigente del mismo plan. */
-    const [advanceDecision, setAdvanceDecision] = useState<
-      'today' | 'advance' | null
+    /** Decisión cuando ya hay período vigente del mismo plan. */
+    const [renewalDecision, setRenewalDecision] = useState<
+      'today' | 'credit' | null
     >(null);
-    /** Opciones de fechas para renovar (desde hoy) o pagar anticipado (encadenado). */
     const [renewalOptions, setRenewalOptions] = useState<{
       todayStart: string;
       todayEnd: string;
-      advanceStart: string;
-      advanceEnd: string;
       currentEnd: string;
     } | null>(null);
+    const [creditBalance, setCreditBalance] = useState(0);
+    const [applyCredit, setApplyCredit] = useState(false);
+    const [creditToApply, setCreditToApply] = useState(0);
     const [amountFieldFocused, setAmountFieldFocused] = useState(false);
     const [urlParamsProcessed, setUrlParamsProcessed] = useState(false);
-    /** Si viene en la URL (ej. ficha cliente → Renovar), no pisar inicio con pago anticipado. */
+    /** Si viene en la URL (ej. ficha cliente → Renovar), fijar inicio del período. */
     const forcedPeriodStartRef = useRef<string | null>(null);
+
+    const loadClientCredit = async (clientInfoId: string) => {
+      try {
+        const { balance } = await fetchClientCreditBalance(clientInfoId);
+        setCreditBalance(balance);
+        if (balance > 0) {
+          setApplyCredit(true);
+        } else {
+          setApplyCredit(false);
+          setCreditToApply(0);
+        }
+      } catch {
+        setCreditBalance(0);
+        setApplyCredit(false);
+        setCreditToApply(0);
+      }
+    };
 
     useEffect(() => {
       loadData();
@@ -206,6 +229,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
               setHasActiveMembership(false);
               setCheckingMembership(false);
               setExpiredMembershipToPay(null);
+              void loadClientCredit(client.id);
             }
 
             // Luego establecer el plan si existe
@@ -268,6 +292,17 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
       }
     }, [selectedPlan?.id, selectedClient?.id]);
 
+    // Si hay saldo a favor y está activo “usar saldo”, ajustar monto a aplicar.
+    useEffect(() => {
+      if (!applyCredit || creditBalance <= 0) return;
+      const base = Number(formData.amount) || 0;
+      const effective =
+        discountPercent > 0
+          ? Math.round(base * (1 - Math.min(99, discountPercent) / 100))
+          : base;
+      setCreditToApply(Math.min(creditBalance, Math.max(0, effective)));
+    }, [applyCredit, creditBalance, formData.amount, discountPercent]);
+
     // Mantener period_end en sync cuando cambia el plan (amount, duration) — por días del plan
     useEffect(() => {
       if (selectedPlan && formData.period_start) {
@@ -293,9 +328,8 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
       setError('');
       setHasActiveMembership(false);
       setExpiredMembershipToPay(null);
-      setIsAdvancePayment(false);
-      setAdvanceMembershipSnapshot(null);
-      setAdvanceDecision(null);
+      setActivePlanSnapshot(null);
+      setRenewalDecision(null);
       setRenewalOptions(null);
 
       const planForCalc = planForDuration ?? selectedPlan;
@@ -317,7 +351,6 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
           period_end: periodEndStr,
         }));
         setHasActiveMembership(false);
-        setIsAdvancePayment(false);
         setExpiredMembershipToPay(null);
         setError('');
         forcedPeriodStartRef.current = null;
@@ -335,13 +368,16 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
           const today = new Date();
           today.setHours(0, 0, 0, 0);
 
-          // Misma lógica que el POST de membresías: período no vencido del mismo plan (el de fin más lejano primero).
+          // Solo período en curso (inicio ≤ hoy ≤ fin). Futuros van a “Anticipos por revisar”.
           const candidates = (memberships as any[]).filter((m) => {
+            const startDate = new Date(m.start_date);
+            startDate.setHours(0, 0, 0, 0);
             const endDate = new Date(m.end_date);
             endDate.setHours(0, 0, 0, 0);
             return (
               m.plan_id === planId &&
               m.status !== 'cancelled' &&
+              startDate <= today &&
               endDate >= today
             );
           });
@@ -350,31 +386,13 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
               new Date(b.end_date).getTime() - new Date(a.end_date).getTime(),
           )[0];
 
-          // Si hay membresía vigente del MISMO plan, el admin debe elegir
-          // explícitamente: renovar desde hoy o pago anticipado (encadenado).
+          // Vigente del mismo plan → renovar desde hoy o abonar saldo (sin membresía futura).
           if (activeMembershipForThisPlan) {
             const planDuration = planForCalc?.duration_days ?? 30;
-
-            // Parsear end_date como fecha local (evitar UTC) para que "día siguiente" sea correcto
             const endStr = String(
               activeMembershipForThisPlan.end_date || '',
             ).slice(0, 10);
-            const [y, m, d] = endStr.split('-').map(Number);
-            const latestEndDate =
-              y && m && d
-                ? new Date(y, m - 1, d)
-                : new Date(activeMembershipForThisPlan.end_date);
 
-            // Opción anticipada: empieza el día siguiente al fin del período actual
-            const advanceStartDate = new Date(latestEndDate);
-            advanceStartDate.setDate(advanceStartDate.getDate() + 1);
-            const advanceStartStr = toLocalDateString(advanceStartDate);
-            const advanceEndStr = membershipEndDateFromStart(
-              advanceStartDate,
-              planDuration,
-            );
-
-            // Opción renovar desde hoy
             const todayStartDate = new Date();
             const todayStartStr = toLocalDateString(todayStartDate);
             const todayEndStr = membershipEndDateFromStart(
@@ -390,7 +408,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
               planForCalc?.name ||
               'Plan';
 
-            setAdvanceMembershipSnapshot({
+            setActivePlanSnapshot({
               id: String(activeMembershipForThisPlan.id),
               planName: String(planNameFromMem),
               startDate: String(
@@ -405,28 +423,23 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
             setRenewalOptions({
               todayStart: todayStartStr,
               todayEnd: todayEndStr,
-              advanceStart: advanceStartStr,
-              advanceEnd: advanceEndStr,
               currentEnd: endStr,
             });
-
-            // Pendiente de decisión: no encadenar en silencio
-            setAdvanceDecision(null);
-            setIsAdvancePayment(false);
+            setRenewalDecision(null);
             setHasActiveMembership(false);
             setError('');
-
-            // Default visual: período anticipado (se confirma abajo)
             setFormData((prev) => ({
               ...prev,
-              period_start: advanceStartStr,
-              period_end: advanceEndStr,
+              period_start: todayStartStr,
+              period_end: todayEndStr,
             }));
           } else {
-            // No hay membresía activa para ESTE plan, fechas normales (desde hoy) — por días del plan
             const planDuration = planForCalc?.duration_days ?? 30;
             const startDate = new Date();
-            const periodEndStr = membershipEndDateFromStart(startDate, planDuration);
+            const periodEndStr = membershipEndDateFromStart(
+              startDate,
+              planDuration,
+            );
 
             setFormData((prev) => ({
               ...prev,
@@ -437,9 +450,8 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
             setError('');
             setHasActiveMembership(false);
             setExpiredMembershipToPay(null);
-            setIsAdvancePayment(false);
-            setAdvanceMembershipSnapshot(null);
-            setAdvanceDecision(null);
+            setActivePlanSnapshot(null);
+            setRenewalDecision(null);
             setRenewalOptions(null);
           }
         }
@@ -498,13 +510,15 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
       setHasActiveMembership(false);
       setCheckingMembership(false);
       setExpiredMembershipToPay(null);
+      setCreditToApply(0);
+      void loadClientCredit(client.id);
     };
 
     const handlePlanSelect = (plan: GymPlan) => {
       setSelectedPlan(plan);
     };
 
-    /** Renovar desde hoy (no encadenar): el período empieza hoy. */
+    /** Renovar desde hoy: crea membresía + factura ahora. */
     const chooseRenewToday = () => {
       if (!renewalOptions) return;
       setFormData((prev) => ({
@@ -512,31 +526,21 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
         period_start: renewalOptions.todayStart,
         period_end: renewalOptions.todayEnd,
       }));
-      setAdvanceDecision('today');
-      setIsAdvancePayment(false);
+      setRenewalDecision('today');
     };
 
-    /** Pago anticipado: el período se encadena tras el período vigente. */
-    const chooseAdvance = () => {
-      if (!renewalOptions) return;
-      setFormData((prev) => ({
-        ...prev,
-        period_start: renewalOptions.advanceStart,
-        period_end: renewalOptions.advanceEnd,
-      }));
-      setAdvanceDecision('advance');
-      setIsAdvancePayment(true);
+    /** Abonar saldo: cobra sin crear membresía. */
+    const chooseCreditDeposit = () => {
+      setRenewalDecision('credit');
     };
 
-    /** Volver a elegir entre renovar hoy / anticipado. */
-    const resetAdvanceDecision = () => {
-      setAdvanceDecision(null);
-      setIsAdvancePayment(false);
+    const resetRenewalDecision = () => {
+      setRenewalDecision(null);
       if (renewalOptions) {
         setFormData((prev) => ({
           ...prev,
-          period_start: renewalOptions.advanceStart,
-          period_end: renewalOptions.advanceEnd,
+          period_start: renewalOptions.todayStart,
+          period_end: renewalOptions.todayEnd,
         }));
       }
     };
@@ -553,74 +557,65 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
           return;
         }
 
-        // Si ya hay un período vigente del mismo plan, exigir decisión explícita
-        if (advanceMembershipSnapshot && advanceDecision === null) {
+        if (activePlanSnapshot && renewalDecision === null) {
           setError(
-            'Este cliente ya tiene el plan vigente. Elige "Renovar desde hoy" o "Pago anticipado" antes de continuar.',
+            'Este cliente ya tiene el plan vigente. Elige "Renovar desde hoy" o "Abonar saldo a favor".',
           );
           setIsSubmitting(false);
           return;
         }
 
-        // Verificar membresías existentes
-        const membershipsRes = await fetch(
-          `/api/admin/gym/memberships?client_info_id=${formData.client_info_id}`,
-        );
-        let membershipId: string;
-
-        if (membershipsRes.ok) {
-          // Siempre crear una nueva membresía para este pago (1 membresía = 1 período = 1 pago).
-          // Renovación = nueva membresía con el período elegido + nuevo pago.
-          const membershipRes = await fetch('/api/admin/gym/memberships', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              client_info_id: formData.client_info_id,
-              plan_id: formData.plan_id,
-              start_date: formData.period_start,
-              end_date: formData.period_end,
-              status: 'active',
-            }),
-          });
-
-          if (!membershipRes.ok) {
-            const errorData = await membershipRes.json();
-            throw new Error(errorData.error || 'Error al crear membresía');
-          }
-
-          const membershipData = await membershipRes.json();
-          membershipId = membershipData.id;
-        } else {
-          // Si no se puede verificar membresías, crear nueva membresía
-          const membershipRes = await fetch('/api/admin/gym/memberships', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              client_info_id: formData.client_info_id,
-              plan_id: formData.plan_id,
-              start_date: formData.period_start,
-              end_date: formData.period_end,
-              status: 'active',
-            }),
-          });
-
-          if (!membershipRes.ok) {
-            const errorData = await membershipRes.json();
-            throw new Error(errorData.error || 'Error al crear membresía');
-          }
-
-          const membershipData = await membershipRes.json();
-          membershipId = membershipData.id;
-        }
-
-        // Monto final con descuento aplicado
         const baseAmount = formData.amount;
         const effectiveAmount =
           discountPercent > 0
             ? Math.round(baseAmount * (1 - Math.min(99, discountPercent) / 100))
             : baseAmount;
 
-        // Registrar el pago
+        // Solo abono: no crea membresía ni factura de período
+        if (renewalDecision === 'credit') {
+          if (effectiveAmount <= 0) {
+            throw new Error('El monto del abono debe ser mayor a 0');
+          }
+          await postClientCredit({
+            client_info_id: formData.client_info_id,
+            amount: effectiveAmount,
+            type: 'deposit',
+            notes:
+              formData.notes?.trim() ||
+              `Abono a favor · ${selectedPlan?.name || 'plan'}`,
+          });
+          resetForm();
+          setShowForm(false);
+          loadPayments();
+          return;
+        }
+
+        const creditApplied =
+          applyCredit && creditToApply > 0
+            ? Math.min(creditToApply, creditBalance, effectiveAmount)
+            : 0;
+        const cashAmount = Math.max(0, effectiveAmount - creditApplied);
+
+        const membershipRes = await fetch('/api/admin/gym/memberships', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            client_info_id: formData.client_info_id,
+            plan_id: formData.plan_id,
+            start_date: formData.period_start,
+            end_date: formData.period_end,
+            status: 'active',
+          }),
+        });
+
+        if (!membershipRes.ok) {
+          const errorData = await membershipRes.json();
+          throw new Error(errorData.error || 'Error al crear membresía');
+        }
+
+        const membershipData = await membershipRes.json();
+        const membershipId = membershipData.id as string;
+
         const paymentRes = await fetch('/api/admin/gym/payments', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -628,7 +623,8 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
             membership_id: membershipId,
             client_info_id: formData.client_info_id,
             plan_id: formData.plan_id,
-            amount: effectiveAmount,
+            amount: cashAmount,
+            credit_applied: creditApplied,
             payment_method: formData.payment_method,
             payment_date: formData.payment_date,
             period_start: formData.period_start,
@@ -642,10 +638,9 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
           throw new Error(errorData.error || 'Error al registrar pago');
         }
 
-        // Éxito - simplemente recargar y cerrar el formulario
         resetForm();
         setShowForm(false);
-        loadPayments(); // Recargar lista de pagos
+        loadPayments();
       } catch (error: any) {
         setError(error.message || 'Error al procesar el pago');
       } finally {
@@ -671,10 +666,12 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
       setHasActiveMembership(false);
       setCheckingMembership(false);
       setExpiredMembershipToPay(null);
-      setIsAdvancePayment(false);
-      setAdvanceMembershipSnapshot(null);
-      setAdvanceDecision(null);
+      setActivePlanSnapshot(null);
+      setRenewalDecision(null);
       setRenewalOptions(null);
+      setCreditBalance(0);
+      setApplyCredit(false);
+      setCreditToApply(0);
       setUrlParamsProcessed(false);
       setDiscountPercent(0);
       setAmountFieldFocused(false);
@@ -703,6 +700,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
               ...prev,
               client_info_id: clientId,
             }));
+            void loadClientCredit(clientId);
           }
         }
 
@@ -992,29 +990,23 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
       <div className="space-y-6 pb-20">
         {/* Form Modal */}
         {showForm && (
-          <div className="fixed inset-0 z-50 overflow-y-auto overflow-x-hidden bg-black/50 dark:bg-black/70 backdrop-blur-sm">
-            <div className="flex min-h-full items-center justify-center p-3 sm:p-4">
-              <div className="my-4 sm:my-6 w-full max-w-4xl flex flex-col bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-white/10 shadow-2xl">
-              <div className="shrink-0 px-5 py-4 sm:px-6 border-b border-gray-200/90 dark:border-white/[0.08] flex items-center justify-between gap-3">
-                <h3 className="text-base sm:text-lg font-semibold tracking-tight text-[#164151] dark:text-white/95">
-                  Registrar Pago
-                </h3>
+          <div className={modal.overlay}>
+            <div className={modal.panel}>
+              <div className={modal.header}>
+                <h3 className={modal.title}>Registrar pago</h3>
                 <button
                   type="button"
                   onClick={() => {
                     setShowForm(false);
                     resetForm();
                   }}
-                  className="w-9 h-9 shrink-0 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-[#164151]/80 dark:text-white/60 transition-colors"
+                  className={modal.closeBtn}
                 >
-                  <X className="w-5 h-5" />
+                  <X className="h-4 w-4" />
                 </button>
               </div>
 
-              <form
-                onSubmit={handleSubmit}
-                className="px-5 py-5 sm:px-6 sm:pb-6 space-y-5 sm:space-y-6"
-              >
+              <form onSubmit={handleSubmit} className={modal.body}>
                 {error && (
                   <div className="p-2.5 sm:p-3 bg-red-50 dark:bg-red-500/20 border border-red-200 dark:border-red-500/30 rounded-lg">
                     <p className="text-xs sm:text-sm text-red-600 dark:text-red-400">
@@ -1023,9 +1015,9 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                   </div>
                 )}
 
-                {/* Decisión: plan vigente del mismo plan → renovar hoy o anticipado */}
-                {advanceMembershipSnapshot &&
-                  advanceDecision === null &&
+                {/* Decisión: plan vigente → renovar hoy o abonar saldo */}
+                {activePlanSnapshot &&
+                  renewalDecision === null &&
                   renewalOptions &&
                   !error && (
                     <div className="p-3.5 sm:p-4 bg-amber-50 dark:bg-amber-500/[0.06] border border-amber-200/90 dark:border-amber-500/20 rounded-xl space-y-3">
@@ -1036,7 +1028,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                         <div className="min-w-0 flex-1">
                           <p className="text-xs font-semibold text-[#164151] dark:text-white/90">
                             Este cliente ya tiene{' '}
-                            {advanceMembershipSnapshot.planName} vigente hasta{' '}
+                            {activePlanSnapshot.planName} vigente hasta{' '}
                             {formatDateOnlyLocal(renewalOptions.currentEnd, {
                               day: '2-digit',
                               month: 'long',
@@ -1044,8 +1036,9 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                             })}
                           </p>
                           <p className="text-[11px] text-[#164151]/65 dark:text-white/50 mt-0.5 leading-relaxed">
-                            Elige cómo registrar este pago. No se creará ningún
-                            período sin tu confirmación.
+                            No se crea una membresía futura. Puedes renovar el
+                            período desde hoy o abonar saldo a favor para usarlo
+                            después.
                           </p>
                         </div>
                       </div>
@@ -1075,139 +1068,60 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
 
                         <button
                           type="button"
-                          onClick={chooseAdvance}
+                          onClick={chooseCreditDeposit}
                           className="rounded-lg border border-gray-200/90 dark:border-white/[0.1] bg-white/70 dark:bg-white/[0.04] px-3 py-2.5 text-left hover:border-[#85ea10]/40 hover:bg-[#85ea10]/[0.04] transition-colors"
                         >
                           <p className="text-sm font-semibold text-[#164151] dark:text-white/95">
-                            Pago anticipado
+                            Abonar saldo a favor
                           </p>
-                          <p className="text-[11px] text-[#164151]/70 dark:text-white/55 mt-1 tabular-nums">
-                            {formatDateOnlyLocal(renewalOptions.advanceStart, {
-                              day: '2-digit',
-                              month: 'short',
-                            })}{' '}
-                            →{' '}
-                            {formatDateOnlyLocal(renewalOptions.advanceEnd, {
-                              day: '2-digit',
-                              month: 'short',
-                              year: 'numeric',
-                            })}
+                          <p className="text-[11px] text-[#164151]/70 dark:text-white/55 mt-1">
+                            Sin membresía nueva. Queda disponible para cuando
+                            renueve.
                           </p>
                         </button>
                       </div>
                     </div>
                   )}
 
-                {/* Pago anticipado: plan vigente + nuevo período */}
-                {isAdvancePayment && !error && advanceMembershipSnapshot && (
-                  <div className="p-3.5 sm:p-4 bg-slate-50 dark:bg-white/[0.03] border border-slate-200/90 dark:border-white/[0.08] rounded-xl space-y-3">
-                    <div className="flex items-start gap-3">
-                      <div className="w-8 h-8 rounded-full bg-slate-200/80 dark:bg-white/[0.06] flex items-center justify-center flex-shrink-0">
-                        <Calendar className="w-4 h-4 text-slate-600 dark:text-white/50" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="text-xs font-semibold text-[#164151] dark:text-white/90">
-                            Pago anticipado
-                          </p>
-                          {renewalOptions && (
-                            <button
-                              type="button"
-                              onClick={resetAdvanceDecision}
-                              className="text-[11px] font-medium text-slate-500 hover:text-[#164151] dark:text-white/50 dark:hover:text-white shrink-0"
-                            >
-                              Cambiar
-                            </button>
-                          )}
-                        </div>
-                        <p className="text-[11px] text-[#164151]/65 dark:text-white/50 mt-0.5 leading-relaxed">
-                          Revisa el período que ya tiene cubierto y el que se
-                          creará con este pago (mismo plan). Puedes corregir el
-                          inicio del nuevo período abajo si hace falta.
-                        </p>
-                      </div>
+                {renewalDecision === 'credit' && activePlanSnapshot && (
+                  <div className="p-3.5 sm:p-4 bg-slate-50 dark:bg-white/[0.03] border border-slate-200/90 dark:border-white/[0.08] rounded-xl space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-xs font-semibold text-[#164151] dark:text-white/90">
+                        Abono a saldo a favor
+                      </p>
+                      <button
+                        type="button"
+                        onClick={resetRenewalDecision}
+                        className="text-[11px] font-medium text-slate-500 hover:text-[#164151] dark:text-white/50 dark:hover:text-white"
+                      >
+                        Cambiar
+                      </button>
                     </div>
+                    <p className="text-[11px] text-[#164151]/65 dark:text-white/50 leading-relaxed">
+                      Se registrará el monto como saldo del cliente. No se crea
+                      período ni factura de membresía. Plan de referencia:{' '}
+                      {activePlanSnapshot.planName}.
+                    </p>
+                  </div>
+                )}
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-slate-200/80 dark:border-white/[0.06]">
-                      <div className="rounded-lg bg-white/70 dark:bg-white/[0.04] border border-slate-200/70 dark:border-white/[0.07] px-3 py-2.5">
-                        <p className="text-[10px] font-medium uppercase tracking-wide text-[#164151]/55 dark:text-white/45 mb-1.5">
-                          Plan actual (vigente)
-                        </p>
-                        <p className="text-sm font-medium text-[#164151] dark:text-white/95 leading-snug">
-                          {advanceMembershipSnapshot.planName}
-                        </p>
-                        <p className="text-[11px] text-[#164151]/75 dark:text-white/60 mt-1.5 tabular-nums">
-                          <span className="text-[#164151]/55 dark:text-white/45">
-                            Desde{' '}
-                          </span>
-                          {formatDateOnlyLocal(advanceMembershipSnapshot.startDate, {
-                            day: '2-digit',
-                            month: 'short',
-                            year: 'numeric',
-                          })}
-                          <span className="mx-1 text-[#164151]/40 dark:text-white/35">
-                            →
-                          </span>
-                          <span className="text-[#164151]/55 dark:text-white/45">
-                            hasta{' '}
-                          </span>
-                          {formatDateOnlyLocal(advanceMembershipSnapshot.endDate, {
-                            day: '2-digit',
-                            month: 'short',
-                            year: 'numeric',
-                          })}
-                        </p>
-                        <p className="text-[10px] text-[#164151]/50 dark:text-white/40 mt-1">
-                          Estado: {advanceMembershipSnapshot.status}
-                        </p>
-                      </div>
-
-                      <div className="rounded-lg bg-[#85ea10]/[0.07] dark:bg-[#85ea10]/[0.08] border border-[#85ea10]/20 dark:border-[#85ea10]/15 px-3 py-2.5">
-                        <p className="text-[10px] font-medium uppercase tracking-wide text-[#164151]/60 dark:text-white/50 mb-1.5">
-                          Nuevo período (este pago)
-                        </p>
-                        <p className="text-sm font-medium text-[#164151] dark:text-white/95 leading-snug">
-                          {selectedPlan?.name ?? advanceMembershipSnapshot.planName}
-                        </p>
-                        <p className="text-[11px] text-[#164151]/80 dark:text-white/65 mt-1.5 tabular-nums">
-                          <span className="text-[#164151]/55 dark:text-white/45">
-                            Inicio{' '}
-                          </span>
-                          <strong>
-                            {formatDateOnlyLocal(formData.period_start, {
-                              day: '2-digit',
-                              month: 'long',
-                              year: 'numeric',
-                            })}
-                          </strong>
-                        </p>
-                        <p className="text-[11px] text-[#164151]/75 dark:text-white/60 mt-0.5 tabular-nums">
-                          Fin{' '}
-                          {formatDateOnlyLocal(formData.period_end, {
-                            day: '2-digit',
-                            month: 'short',
-                            year: 'numeric',
-                          })}{' '}
-                          <span className="text-[#164151]/50 dark:text-white/40">
-                            ({selectedPlan?.duration_days ?? 30} días del plan)
-                          </span>
-                        </p>
-                      </div>
-                    </div>
-
-                    <p className="text-[10px] text-[#164151]/55 dark:text-white/45 leading-relaxed">
-                      El nuevo período empieza el día{' '}
-                      <strong className="font-medium text-[#164151]/75 dark:text-white/55">
-                        siguiente
-                      </strong>{' '}
-                      al último día del período actual (
-                      {formatDateOnlyLocal(advanceMembershipSnapshot.endDate, {
+                {renewalDecision === 'today' && activePlanSnapshot && (
+                  <div className="p-3 sm:p-3.5 bg-[#85ea10]/[0.07] dark:bg-[#85ea10]/[0.08] border border-[#85ea10]/20 dark:border-[#85ea10]/15 rounded-xl flex items-center justify-between gap-2">
+                    <p className="text-[11px] text-[#164151]/80 dark:text-white/70">
+                      Renovación desde hoy · {activePlanSnapshot.planName} sigue
+                      vigente hasta{' '}
+                      {formatDateOnlyLocal(activePlanSnapshot.endDate, {
                         day: '2-digit',
                         month: 'short',
-                        year: 'numeric',
                       })}
-                      ).
                     </p>
+                    <button
+                      type="button"
+                      onClick={resetRenewalDecision}
+                      className="text-[11px] font-medium text-slate-500 hover:text-[#164151] dark:text-white/50 dark:hover:text-white shrink-0"
+                    >
+                      Cambiar
+                    </button>
                   </div>
                 )}
 
@@ -1233,6 +1147,16 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                             {selectedClient.document_id} •{' '}
                             {selectedClient.whatsapp}
                           </p>
+                          {creditBalance > 0 ? (
+                            <p className="mt-1 text-[11px] font-semibold text-[#85ea10] tabular-nums">
+                              Saldo a favor: $
+                              {creditBalance.toLocaleString('es-CO')}
+                            </p>
+                          ) : (
+                            <p className="mt-1 text-[11px] text-gray-400 dark:text-white/35">
+                              Saldo a favor: $0
+                            </p>
+                          )}
                         </div>
                       </div>
                       <button
@@ -1240,6 +1164,9 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                         onClick={() => {
                           setSelectedClient(null);
                           setFormData({ ...formData, client_info_id: '' });
+                          setCreditBalance(0);
+                          setApplyCredit(false);
+                          setCreditToApply(0);
                         }}
                         className="text-xs text-gray-500 hover:text-[#164151] dark:hover:text-white"
                       >
@@ -1322,7 +1249,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                             ${plan.price.toLocaleString('es-CO')}
                           </span>
                           <span className="text-[11px] text-gray-500 dark:text-white/60 whitespace-nowrap">
-                            {plan.duration_days} días
+                            {formatGymPlanDuration(plan.duration_days)}
                           </span>
                         </div>
                       </button>
@@ -1421,6 +1348,96 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                       </div>
                     </div>
 
+                    {renewalDecision !== 'credit' &&
+                      creditBalance > 0 &&
+                      selectedClient && (
+                        <div className="p-3 sm:p-3.5 rounded-xl border border-[#85ea10]/25 bg-[#85ea10]/[0.06] dark:bg-[#85ea10]/[0.08] space-y-2">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={applyCredit}
+                              onChange={(e) => {
+                                const on = e.target.checked;
+                                setApplyCredit(on);
+                                if (on) {
+                                  const base = formData.amount;
+                                  const effective =
+                                    discountPercent > 0
+                                      ? Math.round(
+                                          base *
+                                            (1 -
+                                              Math.min(99, discountPercent) /
+                                                100),
+                                        )
+                                      : base;
+                                  setCreditToApply(
+                                    Math.min(creditBalance, effective),
+                                  );
+                                } else {
+                                  setCreditToApply(0);
+                                }
+                              }}
+                              className="w-4 h-4 rounded border-gray-300 text-[#85ea10] focus:ring-[#85ea10]"
+                            />
+                            <span className="text-xs font-semibold text-[#164151] dark:text-white">
+                              Usar saldo a favor ($
+                              {creditBalance.toLocaleString('es-CO')})
+                            </span>
+                          </label>
+                          {applyCredit ? (
+                            <div className="flex items-center gap-2">
+                              <span className="text-[11px] text-[#164151]/60 dark:text-white/50">
+                                Aplicar $
+                              </span>
+                              <input
+                                type="number"
+                                min={0}
+                                max={creditBalance}
+                                value={creditToApply || ''}
+                                onChange={(e) => {
+                                  const v =
+                                    e.target.value === ''
+                                      ? 0
+                                      : Number(e.target.value);
+                                  const base = formData.amount;
+                                  const effective =
+                                    discountPercent > 0
+                                      ? Math.round(
+                                          base *
+                                            (1 -
+                                              Math.min(99, discountPercent) /
+                                                100),
+                                        )
+                                      : base;
+                                  setCreditToApply(
+                                    Math.min(
+                                      creditBalance,
+                                      effective,
+                                      Math.max(0, v),
+                                    ),
+                                  );
+                                }}
+                                className="w-32 px-2.5 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 tabular-nums"
+                              />
+                              <span className="text-[11px] text-[#164151]/55 dark:text-white/45">
+                                Cobrar en caja: $
+                                {Math.max(
+                                  0,
+                                  (discountPercent > 0
+                                    ? Math.round(
+                                        formData.amount *
+                                          (1 -
+                                            Math.min(99, discountPercent) /
+                                              100),
+                                      )
+                                    : formData.amount) - creditToApply,
+                                ).toLocaleString('es-CO')}
+                              </span>
+                            </div>
+                          ) : null}
+                        </div>
+                      )}
+
                     {discountPercent > 0 && (
                       <div className="p-3 sm:p-3.5 bg-gray-50 dark:bg-white/[0.03] rounded-xl border border-gray-200/80 dark:border-white/[0.08]">
                         <div className="flex items-center justify-between gap-3">
@@ -1440,9 +1457,15 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                   </>
                 )}
 
-                {/* Fechas (calendario RogerBox, sin picker nativo) */}
+                {/* Fechas: en abono solo fecha de pago; en membresía también período */}
                 {selectedPlan && (
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
+                  <div
+                    className={`grid grid-cols-1 gap-4 md:gap-6 ${
+                      renewalDecision === 'credit'
+                        ? 'sm:grid-cols-1 max-w-sm'
+                        : 'sm:grid-cols-3'
+                    }`}
+                  >
                     <div className="min-w-0">
                       <label
                         htmlFor="gym-payment-date"
@@ -1460,75 +1483,61 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                       />
                     </div>
 
-                    <div className="min-w-0">
-                      <label
-                        htmlFor="gym-period-start"
-                        className="block text-xs font-medium tracking-wide text-[#164151]/80 dark:text-white/70 mb-2 leading-snug"
-                      >
-                        Inicio período *
-                        {isAdvancePayment && (
-                          <span className="block sm:inline sm:ml-1 text-[10px] font-normal text-slate-500 dark:text-white/45">
-                            (editable)
-                          </span>
-                        )}
-                      </label>
-                      <DatePickerField
-                        id="gym-period-start"
-                        value={formData.period_start}
-                        onChange={(iso) => {
-                          const startDate = parseLocalDate(iso);
-                          if (selectedPlan) {
-                            const durationDays =
-                              selectedPlan.duration_days ?? 30;
-                            const periodEndStr = membershipEndDateFromStart(
-                              startDate,
-                              durationDays,
-                            );
-                            setFormData({
-                              ...formData,
-                              period_start: iso,
-                              period_end: periodEndStr,
-                            });
-                          } else {
-                            setFormData({
-                              ...formData,
-                              period_start: iso,
-                            });
-                          }
-                        }}
-                        triggerClassName={
-                          isAdvancePayment
-                            ? 'border-slate-200/90 dark:border-white/[0.1] bg-slate-50 dark:bg-white/[0.04] hover:border-slate-300 dark:hover:border-white/15'
-                            : ''
-                        }
-                        aria-label="Inicio del período"
-                      />
-                    </div>
+                    {renewalDecision !== 'credit' ? (
+                      <>
+                        <div className="min-w-0">
+                          <label
+                            htmlFor="gym-period-start"
+                            className="block text-xs font-medium tracking-wide text-[#164151]/80 dark:text-white/70 mb-2 leading-snug"
+                          >
+                            Inicio período *
+                          </label>
+                          <DatePickerField
+                            id="gym-period-start"
+                            value={formData.period_start}
+                            onChange={(iso) => {
+                              const startDate = parseLocalDate(iso);
+                              if (selectedPlan) {
+                                const durationDays =
+                                  selectedPlan.duration_days ?? 30;
+                                const periodEndStr =
+                                  membershipEndDateFromStart(
+                                    startDate,
+                                    durationDays,
+                                  );
+                                setFormData({
+                                  ...formData,
+                                  period_start: iso,
+                                  period_end: periodEndStr,
+                                });
+                              } else {
+                                setFormData({
+                                  ...formData,
+                                  period_start: iso,
+                                });
+                              }
+                            }}
+                            aria-label="Inicio del período"
+                          />
+                        </div>
 
-                    <div className="min-w-0">
-                      <label
-                        htmlFor="gym-period-end"
-                        className="block text-xs font-medium tracking-wide text-[#164151]/80 dark:text-white/70 mb-2 leading-snug"
-                      >
-                        Fin período *
-                        {isAdvancePayment && (
-                          <span className="block sm:inline sm:ml-1 text-[10px] font-normal text-slate-500 dark:text-white/45">
-                            (auto)
-                          </span>
-                        )}
-                      </label>
-                      <DatePickerField
-                        id="gym-period-end"
-                        value={formData.period_end}
-                        readOnly
-                        readOnlyInnerClassName={
-                          isAdvancePayment
-                            ? 'w-full pl-10 pr-3 py-2.5 text-sm rounded-xl border cursor-not-allowed border-slate-200/90 dark:border-white/[0.1] bg-slate-100/80 dark:bg-white/[0.05] text-[#164151] dark:text-white/90'
-                            : 'w-full pl-10 pr-3 py-2.5 text-sm rounded-xl border cursor-not-allowed border-gray-200 dark:border-white/[0.08] bg-gray-100/90 dark:bg-white/[0.06] text-[#164151] dark:text-white/90'
-                        }
-                        aria-label="Fin del período (calculado)"
-                      />
-                    </div>
+                        <div className="min-w-0">
+                          <label
+                            htmlFor="gym-period-end"
+                            className="block text-xs font-medium tracking-wide text-[#164151]/80 dark:text-white/70 mb-2 leading-snug"
+                          >
+                            Fin período *
+                          </label>
+                          <DatePickerField
+                            id="gym-period-end"
+                            value={formData.period_end}
+                            readOnly
+                            readOnlyInnerClassName="w-full pl-10 pr-3 py-2.5 text-sm rounded-xl border cursor-not-allowed border-gray-200 dark:border-white/[0.08] bg-gray-100/90 dark:bg-white/[0.06] text-[#164151] dark:text-white/90"
+                            aria-label="Fin del período (calculado)"
+                          />
+                        </div>
+                      </>
+                    ) : null}
                   </div>
                 )}
 
@@ -1548,15 +1557,14 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                   />
                 </div>
 
-                {/* Botones */}
-                <div className="flex items-center justify-end gap-3 pt-5 mt-1 border-t border-gray-200/90 dark:border-white/[0.08]">
+                <div className={modal.footer}>
                   <button
                     type="button"
                     onClick={() => {
                       setShowForm(false);
                       resetForm();
                     }}
-                    className="px-5 py-2.5 text-sm rounded-xl border border-gray-200 dark:border-white/[0.1] bg-transparent hover:bg-gray-50 dark:hover:bg-white/[0.04] text-[#164151]/90 dark:text-white/85 font-medium transition-colors"
+                    className={modal.btnCancel}
                   >
                     Cancelar
                   </button>
@@ -1568,51 +1576,55 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                       !selectedPlan ||
                       hasActiveMembership ||
                       checkingMembership ||
-                      (!!advanceMembershipSnapshot && advanceDecision === null)
+                      (!!activePlanSnapshot && renewalDecision === null)
                     }
-                    className="px-5 py-2.5 text-sm rounded-xl bg-[#164151] dark:bg-white text-white dark:text-gray-900 hover:bg-[#0f303d] dark:hover:bg-white/95 font-medium transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                    className={modal.btnPrimary}
                   >
-                    <Save className="w-4 h-4" />
+                    <Save className="h-4 w-4" />
                     {isSubmitting
                       ? 'Registrando...'
                       : checkingMembership
                         ? 'Verificando...'
-                        : 'Registrar Pago'}
+                        : renewalDecision === 'credit'
+                          ? 'Registrar abono'
+                          : 'Registrar pago'}
                   </button>
                 </div>
               </form>
-              </div>
             </div>
           </div>
         )}
 
         {/* Contenido Principal */}
-        <div className="space-y-6">
-          {/* Buscador y Filtros */}
-          {payments.length > 0 && (
-            <div className="bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl border border-gray-200 dark:border-white/10 p-4">
-              <div className="flex flex-col sm:flex-row gap-4">
-                {/* Buscador */}
-                <div className="flex-1 relative">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
-                  <input
-                    type="text"
-                    value={paymentSearchTerm}
-                    onChange={(e) => setPaymentSearchTerm(e.target.value)}
-                    placeholder="Buscar por factura, nombre o cédula..."
-                    className="w-full pl-10 sm:pl-12 pr-4 py-2.5 sm:py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-[#164151] dark:text-white placeholder-gray-400 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 focus:border-[#85ea10]/50 transition-all text-[11px] sm:text-sm"
-                  />
-                </div>
+        <div className="space-y-4">
+          <div className={styles.toolbar}>
+            <div className={styles.toolbarRow}>
+              <div className={styles.searchWrap}>
+                <Search className={styles.searchIcon} />
+                <input
+                  type="text"
+                  value={paymentSearchTerm}
+                  onChange={(e) => {
+                    setPaymentSearchTerm(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  placeholder="Buscar por factura, nombre o cédula..."
+                  className={styles.searchInput}
+                />
+              </div>
 
-                {/* Filtro por Plan */}
-                <div className="sm:w-64 relative">
-                  <Filter className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+              <div className={styles.filtersRow}>
+                <div className={styles.filterWrap}>
+                  <Filter className={styles.filterIcon} />
                   <select
                     value={selectedPlanFilter}
-                    onChange={(e) => setSelectedPlanFilter(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 sm:py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 focus:border-[#85ea10]/50 transition-all text-[11px] sm:text-sm appearance-none cursor-pointer"
+                    onChange={(e) => {
+                      setSelectedPlanFilter(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    className={styles.filterSelect}
                   >
-                    <option value="all">Todos los planes</option>
+                    <option value="all">Planes: Todos</option>
                     {plans.map((plan) => (
                       <option key={plan.id} value={plan.id}>
                         {plan.name}
@@ -1621,216 +1633,247 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                   </select>
                 </div>
 
-                {/* Filtro por estado (anulados / vigentes) */}
-                <div className="sm:w-52 relative">
-                  <Filter className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                <div className={styles.filterWrap}>
+                  <Filter className={styles.filterIcon} />
                   <select
                     value={statusFilter}
-                    onChange={(e) =>
+                    onChange={(e) => {
                       setStatusFilter(
                         e.target.value as 'all' | 'active' | 'voided',
-                      )
-                    }
-                    className="w-full pl-10 pr-4 py-2.5 sm:py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-[#164151] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#85ea10]/50 focus:border-[#85ea10]/50 transition-all text-[11px] sm:text-sm appearance-none cursor-pointer"
+                      );
+                      setCurrentPage(1);
+                    }}
+                    className={styles.filterSelect}
                   >
-                    <option value="all">Todos los pagos</option>
+                    <option value="all">Estado: Todos</option>
                     <option value="active">Vigentes</option>
-                    <option value="voided">Anulados</option>
+                    <option value="voided">Anuladas</option>
                   </select>
                 </div>
-
-                <button
-                  onClick={() => {
-                    resetForm();
-                    setShowForm(true);
-                  }}
-                  className="sm:w-auto px-4 py-2.5 sm:py-3 rounded-xl bg-[#164151] text-white hover:bg-[#1a4d5f] font-semibold text-[11px] sm:text-sm inline-flex items-center justify-center gap-2 transition-colors"
-                  title="Registrar pago"
-                >
-                  <Save className="w-4 h-4" />
-                  Nuevo pago
-                </button>
               </div>
-            </div>
-          )}
 
-          {/* Lista de Pagos */}
+              <button
+                type="button"
+                onClick={() => {
+                  resetForm();
+                  setShowForm(true);
+                }}
+                className={styles.primaryBtn}
+                title="Registrar pago"
+              >
+                <Plus className="w-4 h-4" />
+                Nuevo pago
+              </button>
+            </div>
+          </div>
+
           {loadingPayments ? (
             <div className="flex items-center justify-center py-12">
-              <div className="w-8 h-8 border-2 border-[#85ea10] border-t-transparent rounded-full animate-spin"></div>
+              <div className="w-8 h-8 border-2 border-[#85ea10] border-t-transparent rounded-full animate-spin" />
             </div>
           ) : payments.length === 0 ? (
-            <div className="bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl border border-gray-200 dark:border-white/10 p-12 text-center">
-              <CreditCard className="w-16 h-16 text-gray-300 dark:text-white/20 mx-auto mb-4" />
-              <p className="text-[#164151] dark:text-white font-medium mb-2 text-lg">
+            <div className={`${styles.tableShell} p-12 text-center`}>
+              <CreditCard className="w-12 h-12 text-gray-300 dark:text-white/20 mx-auto mb-4" />
+              <p className="text-[#164151] dark:text-white font-medium mb-2">
                 No hay pagos registrados
               </p>
-              <p className="text-sm text-[#164151]/60 dark:text-white/60 mb-6">
+              <p className="text-sm text-[#164151]/60 dark:text-white/60">
                 Registra el primer pago para comenzar
               </p>
             </div>
           ) : (
-            <div className="bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl border border-gray-200 dark:border-white/10 overflow-hidden">
-              <div className="hidden md:block overflow-x-auto">
-                <table className="w-full min-w-[900px]">
+            <div className={styles.tableShell}>
+              <div className={styles.tableWrap}>
+                <table className={styles.table}>
                   <thead>
-                    <tr className="border-b border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-transparent">
-                      <th className="text-left px-3 md:px-4 py-3 md:py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
-                        ID Factura
+                    <tr>
+                      <th className={`${styles.th} ${styles.thLeft}`}>
+                        Factura
                       </th>
-                      <th className="text-left px-3 md:px-4 py-3 md:py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
+                      <th className={`${styles.th} ${styles.thLeft}`}>
                         Cliente
                       </th>
-                      <th className="text-left px-3 md:px-4 py-3 md:py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
-                        Plan
-                      </th>
-                      <th className="text-left px-3 md:px-4 py-3 md:py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
+                      <th className={`${styles.th} ${styles.thLeft}`}>Plan</th>
+                      <th className={`${styles.th} ${styles.thRight}`}>
                         Monto
                       </th>
-                      <th className="text-left px-3 md:px-4 py-3 md:py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
+                      <th className={`${styles.th} ${styles.thLeft}`}>
                         Método
                       </th>
-                      <th className="text-left px-3 md:px-4 py-3 md:py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
-                        Fecha de Pago
+                      <th className={`${styles.th} ${styles.thLeft}`}>
+                        Fecha
                       </th>
-                      <th className="text-left px-3 md:px-4 py-3 md:py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
+                      <th className={`${styles.th} ${styles.thLeft}`}>
                         Período
                       </th>
-                      <th className="text-left px-3 md:px-4 py-3 md:py-4 text-xs font-semibold text-gray-500 dark:text-white/40 uppercase tracking-wider">
-                        Factura
+                      <th className={`${styles.th} ${styles.thLeft}`}>
+                        Estado
+                      </th>
+                      <th
+                        className={`${styles.th} ${styles.thLeft} ${styles.actionsCellTh}`}
+                      >
+                        Acciones
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100 dark:divide-white/5">
+                  <tbody>
                     {totalFilteredPayments === 0 ? (
                       <tr>
-                        <td colSpan={8} className="px-4 py-12 text-center">
+                        <td colSpan={9} className={`${styles.td} py-12 text-center`}>
                           <p className="text-sm text-[#164151]/60 dark:text-white/60">
                             No se encontraron pagos con los filtros aplicados
                           </p>
                         </td>
                       </tr>
                     ) : (
-                      paginatedPayments.map(({ payment, originalIndex }) => (
-                        <tr
-                          key={payment.id}
-                          onClick={() =>
-                            router.push(`/admin/payments/${payment.id}`)
-                          }
-                          className={`transition-colors cursor-pointer ${
-                            payment.status === 'voided'
-                              ? 'bg-red-50/60 dark:bg-red-500/5'
-                              : 'hover:bg-gray-50 dark:hover:bg-white/5'
-                          }`}
-                        >
-                          <td className="px-3 md:px-4 py-3 md:py-4">
-                            <p className="text-sm font-semibold text-[#164151] dark:text-white">
-                              {payment.invoice_number
-                                ? `#${payment.invoice_number.padStart(3, '0')}`
-                                : `#${(originalIndex + 1).toString().padStart(3, '0')}`}
-                            </p>
-                          </td>
-                          <td className="px-3 md:px-4 py-3 md:py-4">
-                            <div>
-                              <p className="text-sm font-medium text-[#164151] dark:text-white">
+                      paginatedPayments.map(({ payment, originalIndex }) => {
+                        const isVoided = payment.status === 'voided';
+                        const invoiceLabel = payment.invoice_number
+                          ? `#${payment.invoice_number.padStart(3, '0')}`
+                          : `#${(originalIndex + 1).toString().padStart(3, '0')}`;
+                        const methodLabel =
+                          payment.payment_method === 'cash'
+                            ? 'Efectivo'
+                            : payment.payment_method === 'transfer'
+                              ? 'Transferencia'
+                              : 'Mixto';
+
+                        return (
+                          <tr
+                            key={payment.id}
+                            onClick={() =>
+                              router.push(`/admin/payments/${payment.id}`)
+                            }
+                            className={
+                              isVoided ? styles.rowVoided : styles.row
+                            }
+                            title={
+                              isVoided
+                                ? payment.voided_reason || 'Factura anulada'
+                                : undefined
+                            }
+                          >
+                            <td className={styles.td}>
+                              <p
+                                className={
+                                  isVoided
+                                    ? styles.invoiceIdVoided
+                                    : styles.invoiceId
+                                }
+                              >
+                                {invoiceLabel}
+                              </p>
+                            </td>
+                            <td className={styles.td}>
+                              <p
+                                className={`${styles.clientName} ${isVoided ? styles.mutedCell : ''}`}
+                              >
                                 {payment.client_info?.name || 'Sin nombre'}
                               </p>
-                              <p className="text-xs text-[#164151]/60 dark:text-white/50">
-                                {payment.client_info?.document_id || '-'}
+                              <p className={styles.clientEmail}>
+                                {payment.client_info?.document_id || '—'}
                               </p>
-                            </div>
-                          </td>
-                          <td className="px-3 md:px-4 py-3 md:py-4">
-                            <p className="text-xs font-medium text-[#164151] dark:text-white">
-                              {payment.plan?.name || 'Plan'}
-                            </p>
-                          </td>
-                          <td className="px-3 md:px-4 py-3 md:py-4">
-                            <p className="text-sm font-semibold text-[#164151] dark:text-white">
-                              ${payment.amount.toLocaleString('es-CO')}
-                            </p>
-                          </td>
-                          <td className="px-3 md:px-4 py-3 md:py-4">
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-white/80">
-                              {payment.payment_method === 'cash'
-                                ? 'Efectivo'
-                                : payment.payment_method === 'transfer'
-                                  ? 'Transferencia'
-                                  : 'Mixto'}
-                            </span>
-                          </td>
-                          <td className="px-3 md:px-4 py-3 md:py-4">
-                            <p className="text-xs text-[#164151] dark:text-white">
-                              {formatDateOnlyLocal(payment.payment_date, {
-                                day: '2-digit',
-                                month: 'short',
-                                year: 'numeric',
-                              })}
-                            </p>
-                          </td>
-                          <td className="px-3 md:px-4 py-3 md:py-4">
-                            <p className="text-xs text-[#164151] dark:text-white">
-                              {formatDateOnlyLocal(payment.period_start, {
-                                day: '2-digit',
-                                month: 'short',
-                              })}{' '}
-                              -{' '}
-                              {formatDateOnlyLocal(payment.period_end, {
-                                day: '2-digit',
-                                month: 'short',
-                                year: 'numeric',
-                              })}
-                            </p>
-                          </td>
-                          <td className="px-3 md:px-4 py-3 md:py-4">
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleSendReceiptWhatsApp(payment);
-                                }}
-                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-500/30 transition-colors"
-                                title="Enviar comprobante por WhatsApp"
+                            </td>
+                            <td className={styles.td}>
+                              <p
+                                className={`${styles.productName} ${isVoided ? styles.mutedCell : ''}`}
                               >
-                                <MessageSquare className="w-3.5 h-3.5" />
-                                <span className="hidden sm:inline">
-                                  WhatsApp
-                                </span>
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDownloadInvoice(payment);
-                                }}
-                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-[#85ea10]/20 dark:bg-[#85ea10]/30 text-[#164151] dark:text-[#85ea10] hover:bg-[#85ea10]/30 dark:hover:bg-[#85ea10]/40 transition-colors"
-                                title="Descargar factura"
+                                {payment.plan?.name || 'Plan'}
+                              </p>
+                            </td>
+                            <td className={`${styles.td} text-right`}>
+                              <p
+                                className={
+                                  isVoided ? styles.amountVoided : styles.amount
+                                }
                               >
-                                <Download className="w-3.5 h-3.5" />
-                                <span className="hidden sm:inline">
-                                  {payment.invoice_number
-                                    ? `Fact. ${payment.invoice_number.padStart(3, '0')}`
-                                    : 'Factura'}
+                                ${payment.amount.toLocaleString('es-CO')}
+                              </p>
+                            </td>
+                            <td className={styles.td}>
+                              <span className={styles.methodBadge}>
+                                {methodLabel}
+                              </span>
+                            </td>
+                            <td className={styles.td}>
+                              <p
+                                className={`${styles.dateCell} ${isVoided ? styles.mutedCell : ''}`}
+                              >
+                                {formatDateOnlyLocal(payment.payment_date, {
+                                  day: '2-digit',
+                                  month: 'short',
+                                  year: 'numeric',
+                                })}
+                              </p>
+                            </td>
+                            <td className={styles.td}>
+                              <p
+                                className={`${styles.periodCell} ${isVoided ? styles.mutedCell : ''}`}
+                              >
+                                {formatDateOnlyLocal(payment.period_start, {
+                                  day: '2-digit',
+                                  month: 'short',
+                                })}
+                                <span className={styles.periodSep}>—</span>
+                                {formatDateOnlyLocal(payment.period_end, {
+                                  day: '2-digit',
+                                  month: 'short',
+                                  year: 'numeric',
+                                })}
+                              </p>
+                            </td>
+                            <td className={styles.td}>
+                              {isVoided ? (
+                                <span className={styles.badgeVoided}>
+                                  <XCircle className="h-3 w-3" />
+                                  Anulada
                                 </span>
-                              </button>
-                              {payment.status === 'voided' && (
-                                <span
-                                  className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-gray-200/80 dark:bg-white/10 text-gray-500 dark:text-white/50 flex-shrink-0"
-                                  title="Anulada"
-                                >
-                                  <XCircle className="w-4 h-4" />
+                              ) : (
+                                <span className={styles.badgeActive}>
+                                  Vigente
                                 </span>
                               )}
-                            </div>
-                          </td>
-                        </tr>
-                      ))
+                            </td>
+                            <td className={styles.td}>
+                              <div className={styles.actionsCell}>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleSendReceiptWhatsApp(payment);
+                                  }}
+                                  className={styles.whatsappAction}
+                                  title="Enviar comprobante por WhatsApp"
+                                >
+                                  <WhatsAppIcon className="w-4 h-4" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDownloadInvoice(payment);
+                                  }}
+                                  className={styles.downloadBtn}
+                                  title="Descargar factura"
+                                >
+                                  <Download className="w-3.5 h-3.5" />
+                                  <span className="hidden lg:inline">
+                                    {payment.invoice_number
+                                      ? `Fact. ${payment.invoice_number.padStart(3, '0')}`
+                                      : 'PDF'}
+                                  </span>
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
                     )}
                   </tbody>
                 </table>
               </div>
 
-              {/* Vista de móviles (Card view) */}
-              <div className="md:hidden divide-y divide-gray-100 dark:divide-white/5">
+              <div className={styles.mobileList}>
                 {totalFilteredPayments === 0 ? (
                   <div className="p-12 text-center">
                     <p className="text-sm text-[#164151]/60 dark:text-white/60">
@@ -1838,267 +1881,216 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                     </p>
                   </div>
                 ) : (
-                  paginatedPayments.map(({ payment, originalIndex }) => (
-                    <div
-                      key={payment.id}
-                      onClick={() =>
-                        router.push(`/admin/payments/${payment.id}`)
-                      }
-                      className={`p-4 transition-colors cursor-pointer ${
-                        payment.status === 'voided'
-                          ? 'bg-red-50/70 dark:bg-red-500/5'
-                          : 'bg-white dark:bg-gray-900 active:bg-gray-50 dark:active:bg-white/5'
-                      }`}
-                    >
-                      <div className="flex justify-between items-start mb-3">
-                        <div>
-                          <span className="text-[10px] font-bold text-gray-400 dark:text-white/30 uppercase tracking-widest block mb-1">
-                            {payment.invoice_number
-                              ? `Factura #${payment.invoice_number.padStart(3, '0')}`
-                              : `Pago #${(originalIndex + 1).toString().padStart(3, '0')}`}
-                          </span>
-                          <h4 className="text-sm font-bold text-[#164151] dark:text-white">
-                            {payment.client_info?.name || 'Sin nombre'}
-                          </h4>
-                          <p className="text-xs text-[#164151]/50 dark:text-white/40">
-                            CC: {payment.client_info?.document_id || '-'}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm font-black text-[#164151] dark:text-[#85ea10]">
+                  paginatedPayments.map(({ payment, originalIndex }) => {
+                    const isVoided = payment.status === 'voided';
+                    const invoiceLabel = payment.invoice_number
+                      ? `#${payment.invoice_number.padStart(3, '0')}`
+                      : `#${(originalIndex + 1).toString().padStart(3, '0')}`;
+
+                    return (
+                      <div
+                        key={payment.id}
+                        onClick={() =>
+                          router.push(`/admin/payments/${payment.id}`)
+                        }
+                        className={`p-4 cursor-pointer ${
+                          isVoided
+                            ? 'bg-red-50/70 dark:bg-red-500/[0.07]'
+                            : 'bg-white dark:bg-[#0c1628] active:bg-gray-50 dark:active:bg-white/5'
+                        }`}
+                      >
+                        <div className="flex justify-between items-start gap-3 mb-3">
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2 mb-1">
+                              <span
+                                className={
+                                  isVoided
+                                    ? styles.invoiceIdVoided
+                                    : styles.invoiceId
+                                }
+                              >
+                                {invoiceLabel}
+                              </span>
+                              {isVoided ? (
+                                <span className={styles.badgeVoided}>
+                                  <XCircle className="h-3 w-3" />
+                                  Anulada
+                                </span>
+                              ) : (
+                                <span className={styles.badgeActive}>
+                                  Vigente
+                                </span>
+                              )}
+                            </div>
+                            <p className={styles.clientName}>
+                              {payment.client_info?.name || 'Sin nombre'}
+                            </p>
+                            <p className={styles.clientEmail}>
+                              Doc. {payment.client_info?.document_id || '—'}
+                            </p>
+                          </div>
+                          <p
+                            className={
+                              isVoided ? styles.amountVoided : styles.amount
+                            }
+                          >
                             ${payment.amount.toLocaleString('es-CO')}
                           </p>
-                          <span className="inline-block mt-1 px-2 py-0.5 rounded-md bg-gray-100 dark:bg-white/10 text-[9px] font-bold text-gray-600 dark:text-white/60 uppercase">
-                            {payment.payment_method === 'cash'
-                              ? 'Efectivo'
-                              : payment.payment_method === 'transfer'
-                                ? 'Transf.'
-                                : 'Mixto'}
-                          </span>
                         </div>
-                      </div>
 
-                      <div className="flex items-center justify-between text-[11px]">
-                        <div className="flex flex-col gap-0.5">
-                          <div className="flex items-center gap-1.5 text-[#164151]/60 dark:text-white/40">
-                            <Calendar className="w-3 h-3" />
-                            <span>
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="min-w-0 space-y-0.5">
+                            <p className="flex items-center gap-1.5 text-xs text-[#164151]/60 dark:text-white/45">
+                              <Calendar className="w-3 h-3 shrink-0" />
                               {formatDateOnlyLocal(payment.payment_date, {
                                 day: '2-digit',
                                 month: 'short',
                                 year: 'numeric',
                               })}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-1.5 text-[#164151]/40 dark:text-white/20">
-                            <CreditCard className="w-3 h-3" />
-                            <span className="font-semibold">
+                            </p>
+                            <p className="flex items-center gap-1.5 text-xs text-[#164151]/50 dark:text-white/35 truncate">
+                              <CreditCard className="w-3 h-3 shrink-0" />
                               {payment.plan?.name || 'Plan'}
-                            </span>
+                            </p>
+                            {isVoided && payment.voided_reason ? (
+                              <p className="text-[11px] text-red-700/80 dark:text-red-400/80 line-clamp-2">
+                                {payment.voided_reason}
+                              </p>
+                            ) : null}
                           </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleSendReceiptWhatsApp(payment);
-                            }}
-                            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400 font-bold active:scale-95 transition-all"
-                            title="Enviar por WhatsApp"
-                          >
-                            <MessageSquare className="w-3.5 h-3.5" />
-                            <span>WhatsApp</span>
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDownloadInvoice(payment);
-                            }}
-                            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#85ea10]/20 dark:bg-[#85ea10]/30 text-[#164151] dark:text-[#85ea10] font-bold active:scale-95 transition-all"
-                          >
-                            <Download className="w-3.5 h-3.5" />
-                            <span>PDF</span>
-                          </button>
-                          {payment.status === 'voided' && (
-                            <span
-                              className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-gray-200/80 dark:bg-white/10 text-gray-500 dark:text-white/50 flex-shrink-0"
-                              title="Anulada"
+                          <div className={styles.actionsCell}>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleSendReceiptWhatsApp(payment);
+                              }}
+                              className={styles.whatsappAction}
+                              title="Enviar por WhatsApp"
                             >
-                              <XCircle className="w-4 h-4" />
-                            </span>
-                          )}
+                              <WhatsAppIcon className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDownloadInvoice(payment);
+                              }}
+                              className={styles.downloadBtn}
+                              title="Descargar PDF"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                              PDF
+                            </button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
 
-              {/* Paginación */}
-              {totalFilteredPayments > 0 && totalPages > 1 && (
-                <div className="px-6 py-4 border-t border-gray-200 dark:border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4">
-                  <div className="text-sm text-gray-500 dark:text-white/40">
-                    Mostrando{' '}
-                    <span className="text-[#164151] dark:text-white font-medium">
-                      {startIndex + 1}
-                    </span>{' '}
-                    a{' '}
-                    <span className="text-[#164151] dark:text-white font-medium">
-                      {Math.min(endIndex, totalFilteredPayments)}
-                    </span>{' '}
-                    de{' '}
-                    <span className="text-[#164151] dark:text-white font-medium">
-                      {totalFilteredPayments}
-                    </span>{' '}
-                    pagos
-                  </div>
+              {totalFilteredPayments > 0 && (
+                <div className={styles.pager}>
+                  <p className={styles.footerText}>
+                    {startIndex + 1}–
+                    {Math.min(endIndex, totalFilteredPayments)} de{' '}
+                    {totalFilteredPayments} pagos
+                  </p>
 
-                  <div className="flex items-center gap-2">
-                    {/* First Page Button */}
-                    <button
-                      onClick={() => setCurrentPage(1)}
-                      disabled={currentPage === 1}
-                      className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${
-                        currentPage === 1
-                          ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
-                          : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
-                      }`}
-                      title="Primera página"
-                    >
-                      <ChevronsLeft className="w-4 h-4" />
-                    </button>
-
-                    {/* Previous Page Button */}
-                    <button
-                      onClick={() =>
-                        setCurrentPage((prev) => Math.max(1, prev - 1))
-                      }
-                      disabled={currentPage === 1}
-                      className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${
-                        currentPage === 1
-                          ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
-                          : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
-                      }`}
-                      title="Página anterior"
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                    </button>
-
-                    {/* Page Numbers */}
-                    <div className="hidden sm:flex items-center gap-1">
-                      {(() => {
-                        const pages = [];
-                        const maxVisiblePages = 5;
-                        let startPage = Math.max(
-                          1,
-                          currentPage - Math.floor(maxVisiblePages / 2),
-                        );
-                        const endPage = Math.min(
-                          totalPages,
-                          startPage + maxVisiblePages - 1,
-                        );
-
-                        if (endPage - startPage + 1 < maxVisiblePages) {
-                          startPage = Math.max(
-                            1,
-                            endPage - maxVisiblePages + 1,
-                          );
+                  {totalPages > 1 ? (
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setCurrentPage(1)}
+                        disabled={currentPage === 1}
+                        className={styles.pagerBtn}
+                        title="Primera página"
+                      >
+                        <ChevronsLeft className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setCurrentPage((prev) => Math.max(1, prev - 1))
                         }
+                        disabled={currentPage === 1}
+                        className={styles.pagerBtn}
+                        title="Página anterior"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                      </button>
 
-                        if (startPage > 1) {
-                          pages.push(
-                            <button
-                              key={1}
-                              onClick={() => setCurrentPage(1)}
-                              className="w-9 h-9 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 transition-all cursor-pointer text-sm"
-                            >
-                              1
-                            </button>,
-                          );
-                          if (startPage > 2) {
-                            pages.push(
+                      <div className="hidden sm:flex items-center gap-1">
+                        {Array.from({ length: totalPages }, (_, i) => i + 1)
+                          .filter((page) => {
+                            if (totalPages <= 5) return true;
+                            if (page === 1 || page === totalPages) return true;
+                            return Math.abs(page - currentPage) <= 1;
+                          })
+                          .reduce<(number | '…')[]>((acc, page, idx, arr) => {
+                            if (idx > 0) {
+                              const prev = arr[idx - 1];
+                              if (typeof prev === 'number' && page - prev > 1) {
+                                acc.push('…');
+                              }
+                            }
+                            acc.push(page);
+                            return acc;
+                          }, [])
+                          .map((page, idx) =>
+                            page === '…' ? (
                               <span
-                                key="ellipsis-start"
-                                className="px-2 text-gray-400 dark:text-white/40"
+                                key={`e-${idx}`}
+                                className="px-1 text-gray-400 dark:text-white/35"
                               >
-                                ...
-                              </span>,
-                            );
-                          }
-                        }
-
-                        for (let i = startPage; i <= endPage; i++) {
-                          pages.push(
-                            <button
-                              key={i}
-                              onClick={() => setCurrentPage(i)}
-                              className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all text-sm cursor-pointer ${
-                                currentPage === i
-                                  ? 'bg-[#164151] text-white font-semibold'
-                                  : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20'
-                              }`}
-                            >
-                              {i}
-                            </button>,
-                          );
-                        }
-
-                        if (endPage < totalPages) {
-                          if (endPage < totalPages - 1) {
-                            pages.push(
-                              <span
-                                key="ellipsis-end"
-                                className="px-2 text-gray-400 dark:text-white/40"
+                                …
+                              </span>
+                            ) : (
+                              <button
+                                key={page}
+                                type="button"
+                                onClick={() => setCurrentPage(page)}
+                                className={
+                                  currentPage === page
+                                    ? styles.pagerBtnActive
+                                    : styles.pagerBtnPage
+                                }
                               >
-                                ...
-                              </span>,
-                            );
-                          }
-                          pages.push(
-                            <button
-                              key={totalPages}
-                              onClick={() => setCurrentPage(totalPages)}
-                              className="w-9 h-9 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 transition-all cursor-pointer text-sm"
-                            >
-                              {totalPages}
-                            </button>,
-                          );
-                        }
+                                {page}
+                              </button>
+                            ),
+                          )}
+                      </div>
 
-                        return pages;
-                      })()}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setCurrentPage((prev) =>
+                            Math.min(totalPages, prev + 1),
+                          )
+                        }
+                        disabled={
+                          currentPage === totalPages || totalPages === 0
+                        }
+                        className={styles.pagerBtn}
+                        title="Página siguiente"
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCurrentPage(totalPages)}
+                        disabled={
+                          currentPage === totalPages || totalPages === 0
+                        }
+                        className={styles.pagerBtn}
+                        title="Última página"
+                      >
+                        <ChevronsRight className="w-4 h-4" />
+                      </button>
                     </div>
-
-                    {/* Next Page Button */}
-                    <button
-                      onClick={() =>
-                        setCurrentPage((prev) => Math.min(totalPages, prev + 1))
-                      }
-                      disabled={currentPage === totalPages || totalPages === 0}
-                      className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${
-                        currentPage === totalPages || totalPages === 0
-                          ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
-                          : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
-                      }`}
-                      title="Página siguiente"
-                    >
-                      <ChevronRight className="w-4 h-4" />
-                    </button>
-
-                    {/* Last Page Button */}
-                    <button
-                      onClick={() => setCurrentPage(totalPages)}
-                      disabled={currentPage === totalPages || totalPages === 0}
-                      className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${
-                        currentPage === totalPages || totalPages === 0
-                          ? 'bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-white/20 cursor-not-allowed'
-                          : 'bg-gray-100 dark:bg-white/10 text-[#164151]/90 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer'
-                      }`}
-                      title="Última página"
-                    >
-                      <ChevronsRight className="w-4 h-4" />
-                    </button>
-                  </div>
+                  ) : null}
                 </div>
               )}
             </div>
