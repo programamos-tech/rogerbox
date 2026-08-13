@@ -4,7 +4,6 @@ import {
   getTodayYmdColombia,
   parseLocalDate,
 } from '@/lib/dateUtils';
-import { STORE_ID_FISICA } from '@/lib/logs-service';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getUser } from '@/lib/supabase-server';
 import type { GymCommandCenterResponse } from '@/modules/gym-admin/types';
@@ -222,7 +221,6 @@ export async function GET() {
         supabaseAdmin
           .from('gym_expenses')
           .select('amount, expense_date')
-          .eq('store_id', STORE_ID_FISICA)
           .gte('expense_date', yesterday)
           .lt('expense_date', tomorrow),
         supabaseAdmin
@@ -239,24 +237,14 @@ export async function GET() {
           .order('name', { ascending: true }),
       ]);
 
-    if (paymentsRes.error) {
-      return NextResponse.json(
-        { error: 'Error al obtener pagos' },
-        { status: 500 },
-      );
-    }
-    if (expensesRes.error) {
-      return NextResponse.json(
-        { error: 'Error al obtener egresos' },
-        { status: 500 },
-      );
-    }
-    if (ordersRes.error) {
-      return NextResponse.json(
-        { error: 'Error al obtener ventas en línea' },
-        { status: 500 },
-      );
-    }
+    const payments = (
+      paymentsRes.error ? [] : paymentsRes.data || []
+    ) as PaymentRow[];
+    const expenses = (
+      expensesRes.error ? [] : expensesRes.data || []
+    ) as ExpenseRow[];
+    const orders = (ordersRes.error ? [] : ordersRes.data || []) as OrderRow[];
+    const birthdayRows = birthdaysRes.error ? [] : birthdaysRes.data || [];
 
     type ClientBucket = {
       client_info_id: string;
@@ -461,7 +449,6 @@ export async function GET() {
     renewAll.sort((a, b) => a.days - b.days);
     advancesAll.sort((a, b) => a.days - b.days);
 
-    const payments = (paymentsRes.data || []) as PaymentRow[];
     const paymentDated = payments.map((p) => ({
       amount: Number(p.amount || 0),
       method: p.payment_method || '',
@@ -483,7 +470,6 @@ export async function GET() {
       yesterday,
     );
 
-    const expenses = (expensesRes.data || []) as ExpenseRow[];
     const expenseDated = expenses.map((e) => ({
       amount: Number(e.amount || 0),
       date: toYmd(e.expense_date),
@@ -491,7 +477,6 @@ export async function GET() {
     const expensesToday = sumByDate(expenseDated, today);
     const expensesYesterday = sumByDate(expenseDated, yesterday);
 
-    const orders = (ordersRes.data || []) as OrderRow[];
     const todayOrders = orders.filter(
       (o) => colombiaYmdFromIso(o.created_at) === today,
     );
@@ -511,7 +496,7 @@ export async function GET() {
     }
 
     const birthdayClients = filterBirthdayClients(
-      birthdaysRes.data || [],
+      birthdayRows,
       today,
       today,
       today,
