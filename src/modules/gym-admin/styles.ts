@@ -333,6 +333,15 @@ export const commandCenterStyles = {
   kpiDeltaUp: 'text-emerald-600 dark:text-emerald-400',
   kpiDeltaDown: 'text-red-600 dark:text-red-400',
   kpiDeltaFlat: 'text-gray-500 dark:text-white/45',
+  chartsGrid: 'grid grid-cols-1 gap-4 xl:grid-cols-2',
+  chartPanel:
+    'flex flex-col min-h-0 h-[16rem] bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 shadow-lg overflow-hidden',
+  chartBody: 'flex-1 min-h-0 px-2 pb-2',
+  chartTooltip:
+    'rounded-xl border border-gray-200 bg-white px-3 py-2 shadow-lg dark:border-white/10 dark:bg-gray-900',
+  chartTooltipLabel: 'text-[11px] text-gray-500 dark:text-white/50',
+  chartTooltipValue:
+    'text-sm font-semibold tabular-nums text-[#164151] dark:text-white',
   split: 'grid grid-cols-1 gap-4 xl:grid-cols-3',
   secondaryGrid: 'grid grid-cols-1 gap-4 md:grid-cols-2',
   panel:
@@ -358,7 +367,7 @@ export const commandCenterStyles = {
     'px-5 pt-3 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-white/40',
   row: 'flex items-center gap-3 px-5 py-2.5 hover:bg-gray-50/80 dark:hover:bg-white/[0.04] transition-colors',
   avatar:
-    'w-9 h-9 rounded-full bg-[#164151]/10 dark:bg-white/10 flex items-center justify-center text-sm font-semibold text-[#164151] dark:text-white shrink-0',
+    'w-9 h-9 rounded-full overflow-hidden shrink-0 ring-1 ring-gray-200/80 dark:ring-white/12',
   rowBody: 'min-w-0 flex-1',
   rowName: 'text-sm font-semibold text-[#164151] dark:text-white truncate',
   rowMeta: 'text-[11px] text-gray-500 dark:text-white/50 truncate',

@@ -44,6 +44,7 @@ export interface CommandCenterQueuePerson {
   date: string;
   days: number;
   whatsapp: string | null;
+  avatar_url?: string | null;
   amount?: number | null;
 }
 
@@ -54,6 +55,7 @@ export interface CommandCenterBirthdayPerson {
   document_id: string;
   age: number;
   whatsapp: string | null;
+  avatar_url?: string | null;
 }
 
 export interface GymCommandCenterResponse {
@@ -91,5 +93,9 @@ export interface GymCommandCenterResponse {
       advances: number;
       birthdays: number;
     };
+  };
+  charts: {
+    revenueWeek: { date: string; label: string; amount: number }[];
+    planMix: { name: string; count: number }[];
   };
 }

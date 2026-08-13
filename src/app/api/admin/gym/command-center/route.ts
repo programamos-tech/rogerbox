@@ -77,6 +77,7 @@ type ClientInfoRow = {
   user_id?: string | null;
   is_inactive?: boolean | null;
   birth_date?: string | null;
+  avatar_url?: string | null;
 };
 
 type PlanRow = { id?: string; name?: string | null };
@@ -166,7 +167,7 @@ async function fetchAllMemberships(): Promise<MembershipRow[]> {
 
   const clients = await fetchByIds<ClientInfoRow>(
     'gym_client_info',
-    'id, name, document_id, whatsapp, user_id, is_inactive, birth_date',
+    'id, name, document_id, whatsapp, user_id, is_inactive, birth_date, avatar_url',
     raw.map((m) => m.client_info_id),
   );
   const plans = await fetchByIds<PlanRow>(
@@ -206,6 +207,7 @@ export async function GET() {
     const todayRef = dayOnly(parseLocalDate(today));
     const ago30Ref = dayOnly(parseLocalDate(ago30));
     const tomorrow = ymdAdd(today, 1);
+    const weekStart = ymdAdd(today, -6);
     const startIso = `${yesterday}T00:00:00.000-05:00`;
     const endIso = `${today}T23:59:59.999-05:00`;
 
@@ -216,7 +218,7 @@ export async function GET() {
           .from('gym_payments')
           .select('amount, payment_method, payment_date')
           .or('status.eq.active,status.is.null')
-          .gte('payment_date', yesterday)
+          .gte('payment_date', weekStart)
           .lt('payment_date', tomorrow),
         supabaseAdmin
           .from('gym_expenses')
@@ -232,7 +234,9 @@ export async function GET() {
           .lte('created_at', endIso),
         supabaseAdmin
           .from('gym_client_info')
-          .select('id, name, document_id, whatsapp, user_id, birth_date')
+          .select(
+            'id, name, document_id, whatsapp, user_id, birth_date, avatar_url',
+          )
           .not('birth_date', 'is', null)
           .order('name', { ascending: true }),
       ]);
@@ -244,13 +248,16 @@ export async function GET() {
       expensesRes.error ? [] : expensesRes.data || []
     ) as ExpenseRow[];
     const orders = (ordersRes.error ? [] : ordersRes.data || []) as OrderRow[];
-    const birthdayRows = birthdaysRes.error ? [] : birthdaysRes.data || [];
+    const birthdayRows = (
+      birthdaysRes.error ? [] : birthdaysRes.data || []
+    ) as ClientInfoRow[];
 
     type ClientBucket = {
       client_info_id: string;
       name: string;
       document_id: string;
       whatsapp: string | null;
+      avatar_url: string | null;
       user_id: string | null;
       is_inactive: boolean;
       current: MembershipRow[];
@@ -273,6 +280,7 @@ export async function GET() {
           name: client?.name || 'Sin nombre',
           document_id: client?.document_id || '',
           whatsapp: client?.whatsapp || null,
+          avatar_url: client?.avatar_url?.trim() || null,
           user_id: client?.user_id || null,
           is_inactive: Boolean(client?.is_inactive),
           current: [],
@@ -309,6 +317,7 @@ export async function GET() {
     let endingSoonCount = 0;
     let expiredCount = 0;
     let active30d = 0;
+    const planMixMap = new Map<string, number>();
 
     const latestEnd = (rows: MembershipRow[]) =>
       [...rows].sort(
@@ -340,6 +349,9 @@ export async function GET() {
       if (bucket.current.length > 0) {
         activeCount += 1;
         const current = soonestEnd(bucket.current);
+        const plan = unwrap(current.plan);
+        const planName = plan?.name || 'Plan';
+        planMixMap.set(planName, (planMixMap.get(planName) || 0) + 1);
         const period = getMembershipPeriodProgress(
           current.start_date,
           current.end_date,
@@ -357,6 +369,7 @@ export async function GET() {
             date: toYmd(current.end_date),
             days: period.daysLeft,
             whatsapp: bucket.whatsapp,
+            avatar_url: bucket.avatar_url,
           });
         }
       } else if (
@@ -381,6 +394,7 @@ export async function GET() {
           date: toYmd(expired.end_date),
           days: daysOverdue,
           whatsapp: bucket.whatsapp,
+          avatar_url: bucket.avatar_url,
         });
       }
 
@@ -404,6 +418,7 @@ export async function GET() {
             ),
           ),
           whatsapp: bucket.whatsapp,
+          avatar_url: bucket.avatar_url,
           amount: null,
         });
       }
@@ -495,6 +510,42 @@ export async function GET() {
       vsYesterdayPct = 100;
     }
 
+    const amountByDate = new Map<string, number>();
+    for (const p of paymentDated) {
+      amountByDate.set(p.date, (amountByDate.get(p.date) || 0) + p.amount);
+    }
+    const revenueWeek: { date: string; label: string; amount: number }[] = [];
+    for (let i = 6; i >= 0; i -= 1) {
+      const date = ymdAdd(today, -i);
+      const raw = parseLocalDate(date).toLocaleDateString('es-CO', {
+        weekday: 'short',
+      });
+      const cleaned = raw.replace(/\./g, '');
+      const label = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+      revenueWeek.push({
+        date,
+        label,
+        amount: amountByDate.get(date) || 0,
+      });
+    }
+
+    const sortedPlans = [...planMixMap.entries()]
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count);
+    const PLAN_MIX_TOP = 6;
+    const planMix =
+      sortedPlans.length <= PLAN_MIX_TOP
+        ? sortedPlans
+        : [
+            ...sortedPlans.slice(0, PLAN_MIX_TOP),
+            {
+              name: 'Otros',
+              count: sortedPlans
+                .slice(PLAN_MIX_TOP)
+                .reduce((sum, item) => sum + item.count, 0),
+            },
+          ];
+
     const birthdayClients = filterBirthdayClients(
       birthdayRows,
       today,
@@ -502,11 +553,12 @@ export async function GET() {
       today,
     ).map((c) => ({
       client_info_id: c.id,
-      href: clientHref((c as { user_id?: string | null }).user_id, c.id),
-      name: c.name,
+      href: clientHref(c.user_id, c.id),
+      name: c.name || 'Sin nombre',
       document_id: c.document_id || '',
       age: c.age,
       whatsapp: c.whatsapp || null,
+      avatar_url: c.avatar_url?.trim() || null,
     }));
 
     const payload: GymCommandCenterResponse = {
@@ -544,6 +596,10 @@ export async function GET() {
           advances: advancesAll.length,
           birthdays: birthdayClients.length,
         },
+      },
+      charts: {
+        revenueWeek,
+        planMix,
       },
     };
 

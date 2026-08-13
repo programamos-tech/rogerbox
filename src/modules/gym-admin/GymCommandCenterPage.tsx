@@ -12,6 +12,7 @@ import {
   Users,
   Wallet,
 } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { memo, type ReactNode, useCallback, useMemo, useState } from 'react';
 import { formatDateOnlyLocal } from '@/lib/dateUtils';
@@ -23,6 +24,7 @@ import type {
   CommandCenterQueuePerson,
 } from '@/modules/gym-admin/types';
 import { formatCopHidden } from '@/modules/gym-admin/utils/gym-money.util';
+import { GymSeededAvatar } from '@/shared/components/GymSeededAvatar';
 import { WhatsAppIcon } from '@/shared/components/WhatsAppIcon';
 import { buildBirthdayWhatsappUrl } from '@/shared/utils/birthday.util';
 
@@ -30,6 +32,24 @@ type GymCommandCenterPageProps = {
   onOpenCash: () => void;
   onGoToTab: (tabId: string) => void;
 };
+
+const EMPTY_CHARTS = { revenueWeek: [], planMix: [] };
+
+const CommandCenterCharts = dynamic(
+  () =>
+    import('@/modules/gym-admin/components/CommandCenterCharts').then(
+      (mod) => mod.CommandCenterCharts,
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <div className={t.chartsGrid}>
+        <div className={`${t.skeleton} h-64`} />
+        <div className={`${t.skeleton} h-64`} />
+      </div>
+    ),
+  },
+);
 
 function formatTodayTitle(ymd: string) {
   const label = formatDateOnlyLocal(
@@ -82,24 +102,48 @@ function renewMessage(person: CommandCenterQueuePerson) {
   return `Hola ${person.name}, tu plan "${person.plan_name}" vence el ${when} (${days}). ¿Lo renovamos?`;
 }
 
+const QueueAvatar = memo(function QueueAvatar({
+  seed,
+  avatarUrl,
+}: {
+  seed: string;
+  avatarUrl?: string | null;
+}) {
+  const raw = typeof avatarUrl === 'string' ? avatarUrl.trim() : '';
+  if (raw) {
+    return (
+      <img
+        src={raw}
+        alt=""
+        width={36}
+        height={36}
+        className={`${t.avatar} object-cover`}
+      />
+    );
+  }
+  return <GymSeededAvatar seed={seed} size={36} className={t.avatar} alt="" />;
+});
+
 const QueueRow = memo(function QueueRow({
   href,
   name,
   meta,
   whatsappHref,
   badge,
+  seed,
+  avatarUrl,
 }: {
   href: string;
   name: string;
   meta: string;
   whatsappHref: string | null;
   badge?: string;
+  seed: string;
+  avatarUrl?: string | null;
 }) {
   return (
     <div className={t.row}>
-      <div className={t.avatar} aria-hidden>
-        {(name || '?').charAt(0).toUpperCase()}
-      </div>
+      <QueueAvatar seed={seed} avatarUrl={avatarUrl} />
       <Link href={href} className={t.rowBody}>
         <p className={t.rowName}>{name}</p>
         <p className={t.rowMeta}>{meta}</p>
@@ -202,9 +246,14 @@ export function GymCommandCenterPage({
             <div key={i} className={t.skeleton} />
           ))}
         </div>
-        <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-          <div className={`${t.skeleton} h-80`} />
-          <div className={`${t.skeleton} h-80`} />
+        <div className={t.chartsGrid}>
+          <div className={`${t.skeleton} h-64`} />
+          <div className={`${t.skeleton} h-64`} />
+        </div>
+        <div className={t.split}>
+          {[1, 2, 3].map((i) => (
+            <div key={i} className={`${t.skeleton} ${t.queueCardHeight}`} />
+          ))}
         </div>
       </div>
     );
@@ -354,6 +403,11 @@ export function GymCommandCenterPage({
         </button>
       </div>
 
+      <CommandCenterCharts
+        charts={data.charts ?? EMPTY_CHARTS}
+        hideMoney={hideMoney}
+      />
+
       <div className={t.split}>
         <QueueCard
           title="Cobrar"
@@ -366,6 +420,8 @@ export function GymCommandCenterPage({
               key={`collect-${person.client_info_id}`}
               href={person.href}
               name={person.name}
+              seed={person.client_info_id}
+              avatarUrl={person.avatar_url}
               meta={`${person.plan_name} · venció hace ${person.days} ${person.days === 1 ? 'día' : 'días'}`}
               whatsappHref={whatsappWithText(
                 person.whatsapp,
@@ -387,6 +443,8 @@ export function GymCommandCenterPage({
               key={`renew-${person.client_info_id}`}
               href={person.href}
               name={person.name}
+              seed={person.client_info_id}
+              avatarUrl={person.avatar_url}
               meta={`${person.plan_name} · ${formatDateOnlyLocal(person.date, { day: 'numeric', month: 'short' })}`}
               badge={person.days === 1 ? 'Hoy' : `${person.days} días`}
               whatsappHref={whatsappWithText(
@@ -474,6 +532,8 @@ export function GymCommandCenterPage({
               key={`adv-${person.client_info_id}`}
               href={person.href}
               name={person.name}
+              seed={person.client_info_id}
+              avatarUrl={person.avatar_url}
               meta={`${person.plan_name} · empieza ${formatDateOnlyLocal(person.date, { day: 'numeric', month: 'short' })}${person.amount != null ? ` · ${money(person.amount)}` : ''}`}
               whatsappHref={getGymWhatsappHref(person.whatsapp)}
             />
@@ -491,6 +551,8 @@ export function GymCommandCenterPage({
               key={`bd-${person.client_info_id}`}
               href={person.href}
               name={person.name}
+              seed={person.client_info_id}
+              avatarUrl={person.avatar_url}
               meta={`${person.age} años`}
               whatsappHref={buildBirthdayWhatsappUrl(
                 person.name,
