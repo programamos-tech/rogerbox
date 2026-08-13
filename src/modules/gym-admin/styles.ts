@@ -303,3 +303,69 @@ export const gymUserDetailStyles = {
   whatsappAction:
     'inline-flex items-center justify-center w-8 h-8 rounded-lg text-[#25D366] hover:bg-[#25D366]/10 transition-colors shrink-0',
 } as const;
+
+export const commandCenterStyles = {
+  page: 'space-y-6',
+  header:
+    'flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between',
+  title: 'text-xl font-semibold text-[#164151] dark:text-white capitalize',
+  subtitle: 'text-sm text-gray-500 dark:text-white/50 mt-0.5',
+  headerActions: 'flex flex-wrap items-center gap-2',
+  iconBtn:
+    'inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 text-[#164151]/70 transition-colors hover:bg-gray-50 dark:border-white/12 dark:text-white/70 dark:hover:bg-white/10',
+  ghostBtn:
+    'inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 text-sm font-semibold text-[#164151] transition-colors hover:bg-gray-50 dark:border-white/12 dark:bg-transparent dark:text-white dark:hover:bg-white/[0.06]',
+  kpiGrid: 'grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4',
+  kpiCard:
+    'w-full text-left bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 p-5 shadow-lg transition-colors hover:border-[#164151]/20 dark:hover:border-white/30',
+  kpiCardStatic:
+    'bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 p-5 shadow-lg',
+  kpiTop: 'flex items-center gap-3 mb-3',
+  kpiIcon:
+    'w-9 h-9 rounded-lg flex items-center justify-center shrink-0',
+  kpiLabel:
+    'text-xs font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide',
+  kpiHint: 'text-[10px] text-gray-500 dark:text-white/50',
+  kpiValue:
+    'text-2xl font-semibold tabular-nums text-[#164151] dark:text-white',
+  kpiDelta: 'text-xs mt-1 tabular-nums',
+  kpiDeltaUp: 'text-emerald-600 dark:text-emerald-400',
+  kpiDeltaDown: 'text-red-600 dark:text-red-400',
+  kpiDeltaFlat: 'text-gray-500 dark:text-white/45',
+  split:
+    'grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(20rem,1fr)]',
+  panel:
+    'bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 shadow-lg',
+  panelHeader:
+    'flex items-center justify-between gap-3 px-5 pt-5 pb-3',
+  panelTitle:
+    'text-sm font-semibold text-[#164151] dark:text-white uppercase tracking-wide',
+  panelHint: 'text-xs text-gray-500 dark:text-white/50 mt-0.5',
+  sectionLabel:
+    'px-5 pt-3 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-white/40',
+  row: 'flex items-center gap-3 px-5 py-2.5 hover:bg-gray-50/80 dark:hover:bg-white/[0.04] transition-colors',
+  avatar:
+    'w-9 h-9 rounded-full bg-[#164151]/10 dark:bg-white/10 flex items-center justify-center text-sm font-semibold text-[#164151] dark:text-white shrink-0',
+  rowBody: 'min-w-0 flex-1',
+  rowName: 'text-sm font-semibold text-[#164151] dark:text-white truncate',
+  rowMeta: 'text-[11px] text-gray-500 dark:text-white/50 truncate',
+  rowActions: 'flex items-center gap-1 shrink-0',
+  empty: 'px-5 py-10 text-center text-sm text-gray-500 dark:text-white/50',
+  cashLine:
+    'flex items-center justify-between gap-3 text-sm px-5 py-2',
+  cashLabel: 'text-gray-500 dark:text-white/50',
+  cashValue:
+    'font-semibold tabular-nums text-[#164151] dark:text-white',
+  cashNet:
+    'flex items-center justify-between gap-3 px-5 py-3 border-t border-gray-200 dark:border-white/10',
+  cashNetLabel:
+    'text-sm font-semibold text-[#164151] dark:text-white',
+  cashNetValue:
+    'text-lg font-bold tabular-nums text-[#164151] dark:text-white',
+  onlineRow:
+    'mx-5 mb-5 mt-2 rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50/80 dark:bg-white/[0.04] px-4 py-3 text-left transition-colors hover:bg-gray-100/80 dark:hover:bg-white/[0.07]',
+  errorBox:
+    'rounded-2xl border border-red-200 dark:border-red-500/20 bg-red-50/70 dark:bg-red-500/10 p-6 text-center',
+  skeleton:
+    'animate-pulse rounded-2xl border border-gray-200 dark:border-white/10 bg-white dark:bg-gray-900 h-28',
+} as const;

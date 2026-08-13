@@ -35,7 +35,7 @@ const menuSections = [
         id: 'overview',
         label: 'Dashboard',
         icon: BarChart3,
-        description: 'Resumen general',
+        description: 'Centro de mando',
       },
     ],
   },

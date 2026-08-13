@@ -34,3 +34,62 @@ export interface GymPlanOverviewResponse {
   cancelled_memberships: GymPlanOverviewMembership[];
   inactive_clients: GymPlanInactiveClientRow[];
 }
+
+export interface CommandCenterQueuePerson {
+  client_info_id: string;
+  href: string;
+  name: string;
+  document_id: string;
+  plan_name: string;
+  date: string;
+  days: number;
+  whatsapp: string | null;
+  amount?: number | null;
+}
+
+export interface CommandCenterBirthdayPerson {
+  client_info_id: string;
+  href: string;
+  name: string;
+  document_id: string;
+  age: number;
+  whatsapp: string | null;
+}
+
+export interface GymCommandCenterResponse {
+  today: string;
+  kpis: {
+    active: { count: number; vs30d: number };
+    endingSoon: { count: number; days: number };
+    expired: { count: number };
+    netToday: {
+      amount: number;
+      income: number;
+      expenses: number;
+      vsYesterdayPct: number | null;
+    };
+  };
+  cash: {
+    income: number;
+    cash: number;
+    transfer: number;
+    mixed: number;
+    expenses: number;
+    net: number;
+    invoiceCount: number;
+    onlineIncome: number;
+    onlineCount: number;
+  };
+  queue: {
+    collect: CommandCenterQueuePerson[];
+    renew: CommandCenterQueuePerson[];
+    advances: CommandCenterQueuePerson[];
+    birthdays: CommandCenterBirthdayPerson[];
+    totals: {
+      collect: number;
+      renew: number;
+      advances: number;
+      birthdays: number;
+    };
+  };
+}

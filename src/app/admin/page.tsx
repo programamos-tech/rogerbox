@@ -66,6 +66,7 @@ import GymExpensesManagement from '@/components/admin/GymExpensesManagement';
 import GymPlansManagement, {
   type GymPlansManagementRef,
 } from '@/components/admin/GymPlansManagement';
+import { GymCommandCenterPage } from '@/modules/gym-admin/GymCommandCenterPage';
 import {
   gymClientsColWidths,
   gymClientsListStyles as clientsListStyles,
@@ -248,7 +249,7 @@ const menuSections = [
         id: 'overview',
         label: 'Dashboard',
         icon: BarChart3,
-        description: 'Resumen general',
+        description: 'Centro de mando',
       },
     ],
   },
@@ -569,9 +570,17 @@ function AdminDashboardContent() {
     !authLoading && isAdmin && !!user,
   );
   const [reopenBirthdaysModal, setReopenBirthdaysModal] = useState(false);
+  const [overviewView, setOverviewView] = useState<'command' | 'caja'>(() =>
+    searchParams.get('view') === 'caja' ? 'caja' : 'command',
+  );
 
   const goToAdminTab = (tabId: string, extraParams?: Record<string, string>) => {
     setActiveTab(tabId);
+    if (tabId === 'overview' && extraParams?.view === 'caja') {
+      setOverviewView('caja');
+    } else if (tabId === 'overview') {
+      setOverviewView('command');
+    }
     const params = new URLSearchParams({ tab: tabId, ...extraParams });
     // replaceState evita navegación de Next + Suspense (flash de pantalla completa).
     window.history.replaceState(null, '', `/admin?${params.toString()}`);
@@ -586,6 +595,11 @@ function AdminDashboardContent() {
 
     if (tabParam && validTabs.includes(tabParam)) {
       setActiveTab((prev) => (prev === tabParam ? prev : tabParam));
+      if (tabParam === 'overview') {
+        setOverviewView(
+          searchParams.get('view') === 'caja' ? 'caja' : 'command',
+        );
+      }
     } else if (!tabParam) {
       const defaultTab = 'overview';
       setActiveTab((prev) => (prev === defaultTab ? prev : defaultTab));
@@ -627,7 +641,7 @@ function AdminDashboardContent() {
       loadSales();
     } else if (activeTab === 'activities') {
       loadActivities(1, '', 'all', 'all');
-    } else if (activeTab === 'overview') {
+    } else if (activeTab === 'overview' && overviewView === 'caja') {
       // Cargar ingresos del día actual por defecto
       const today = new Date();
       // Usar fecha local en lugar de ISO para evitar problemas de zona horaria
@@ -639,7 +653,7 @@ function AdminDashboardContent() {
       loadWeeklyData();
       loadBirthdayClients(todayStr, todayStr);
     }
-  }, [activeTab]);
+  }, [activeTab, overviewView]);
 
   useEffect(() => {
     if (activeTab !== 'activities') return;
@@ -741,7 +755,7 @@ function AdminDashboardContent() {
 
   // Cargar ingresos cuando cambien los filtros
   useEffect(() => {
-    if (activeTab === 'overview') {
+    if (activeTab === 'overview' && overviewView === 'caja') {
       let startDate = '';
       let endDate = '';
 
@@ -777,7 +791,14 @@ function AdminDashboardContent() {
         }
       }
     }
-  }, [dateFilter, customStartDate, customEndDate, sedeFilter, activeTab]);
+  }, [
+    dateFilter,
+    customStartDate,
+    customEndDate,
+    sedeFilter,
+    activeTab,
+    overviewView,
+  ]);
 
   const loadAdminData = async () => {
     const blockShell = !adminShellReadyRef.current;
@@ -2150,9 +2171,25 @@ function AdminDashboardContent() {
 
         {/* Page Content */}
         <div className="flex-1 min-w-0 p-4 md:p-6 lg:p-8 pb-20">
-          {/* Overview Tab - Nuevo Dashboard de Ingresos */}
-          {activeTab === 'overview' && (
+          {/* Overview Tab - Centro de mando */}
+          {activeTab === 'overview' && overviewView === 'command' && (
+            <GymCommandCenterPage
+              onOpenCash={() => goToAdminTab('overview', { view: 'caja' })}
+              onGoToTab={goToAdminTab}
+            />
+          )}
+
+          {/* Overview Tab - Caja del día (vista secundaria) */}
+          {activeTab === 'overview' && overviewView === 'caja' && (
             <div className="space-y-6">
+              <button
+                type="button"
+                onClick={() => goToAdminTab('overview')}
+                className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#164151] dark:text-white hover:underline"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                Centro de mando
+              </button>
               {/* Filtros */}
               <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-white/10 p-6">
                 <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
