@@ -99,6 +99,7 @@ function periodHeading(
 ) {
   if (from === to) return formatTodayTitle(from);
   if (preset === '7d') return 'Últimos 7 días';
+  if (preset === 'year') return `Año ${from.slice(0, 4)}`;
   if (preset === 'month') {
     const label = formatDateOnlyLocal(
       from,
@@ -308,8 +309,13 @@ export function GymCommandCenterPage({
   );
 
   const heading = useMemo(
-    () => periodHeading(preset, period.from, period.to),
-    [preset, period.from, period.to],
+    () =>
+      periodHeading(
+        preset,
+        data?.period?.from ?? period.from,
+        data?.period?.to ?? period.to,
+      ),
+    [preset, data?.period?.from, data?.period?.to, period.from, period.to],
   );
 
   if (isLoading && !data) {

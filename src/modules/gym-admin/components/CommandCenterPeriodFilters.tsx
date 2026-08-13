@@ -9,6 +9,7 @@ const PRESETS: { id: CommandCenterPeriodPreset; label: string }[] = [
   { id: 'yesterday', label: 'Ayer' },
   { id: '7d', label: '7 días' },
   { id: 'month', label: 'Mes' },
+  { id: 'year', label: 'Año' },
   { id: 'day', label: 'Día' },
   { id: 'range', label: 'Rango' },
 ];

@@ -7,12 +7,12 @@ import {
 import { supabaseAdmin } from '@/lib/supabase';
 import { getUser } from '@/lib/supabase-server';
 import type { GymCommandCenterResponse } from '@/modules/gym-admin/types';
+import { COMMAND_CENTER_MAX_PERIOD_DAYS } from '@/modules/gym-admin/utils/command-center-period.util';
 import { filterBirthdayClients } from '@/shared/utils/birthday.util';
 
 const QUEUE_LIMIT = 80;
 const PAGE_SIZE = 1000;
 const ENDING_SOON_DAYS = 7;
-const MAX_PERIOD_DAYS = 90;
 const YMD_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 function normalizeEmail(val?: string | null) {
@@ -74,8 +74,8 @@ function parsePeriod(
   if (to > today) to = today;
   if (from > today) from = today;
   const days = daysInclusive(from, to);
-  if (days > MAX_PERIOD_DAYS) {
-    from = ymdAdd(to, -(MAX_PERIOD_DAYS - 1));
+  if (days > COMMAND_CENTER_MAX_PERIOD_DAYS) {
+    from = ymdAdd(to, -(COMMAND_CENTER_MAX_PERIOD_DAYS - 1));
   }
   return { from, to };
 }
@@ -191,6 +191,22 @@ async function fetchPaged<T>(
   return out;
 }
 
+async function fetchPagedSafe<T>(
+  query: (
+    from: number,
+    to: number,
+  ) => PromiseLike<{
+    data: T[] | null;
+    error: { message?: string } | null;
+  }>,
+): Promise<T[]> {
+  try {
+    return await fetchPaged(query);
+  } catch {
+    return [];
+  }
+}
+
 async function fetchByIds<T extends { id?: string }>(
   table: 'gym_client_info' | 'gym_plans',
   columns: string,
@@ -268,27 +284,39 @@ export async function GET(request: Request) {
     const startIso = `${prevFrom}T00:00:00.000-05:00`;
     const endIso = `${to}T23:59:59.999-05:00`;
 
-    const [memberships, paymentsRes, expensesRes, ordersRes, birthdaysRes] =
+    const [memberships, payments, expenses, orders, birthdaysRes] =
       await Promise.all([
         fetchAllMemberships(),
-        supabaseAdmin
-          .from('gym_payments')
-          .select('amount, payment_method, payment_date')
-          .or('status.eq.active,status.is.null')
-          .gte('payment_date', prevFrom)
-          .lt('payment_date', fetchUntil),
-        supabaseAdmin
-          .from('gym_expenses')
-          .select('amount, expense_date')
-          .gte('expense_date', prevFrom)
-          .lt('expense_date', fetchUntil),
-        supabaseAdmin
-          .from('orders')
-          .select('amount, created_at')
-          .eq('status', 'approved')
-          .not('course_id', 'is', null)
-          .gte('created_at', startIso)
-          .lte('created_at', endIso),
+        fetchPagedSafe<PaymentRow>((fromIdx, toIdx) =>
+          supabaseAdmin
+            .from('gym_payments')
+            .select('amount, payment_method, payment_date')
+            .or('status.eq.active,status.is.null')
+            .gte('payment_date', prevFrom)
+            .lt('payment_date', fetchUntil)
+            .order('id', { ascending: true })
+            .range(fromIdx, toIdx),
+        ),
+        fetchPagedSafe<ExpenseRow>((fromIdx, toIdx) =>
+          supabaseAdmin
+            .from('gym_expenses')
+            .select('amount, expense_date')
+            .gte('expense_date', prevFrom)
+            .lt('expense_date', fetchUntil)
+            .order('id', { ascending: true })
+            .range(fromIdx, toIdx),
+        ),
+        fetchPagedSafe<OrderRow>((fromIdx, toIdx) =>
+          supabaseAdmin
+            .from('orders')
+            .select('amount, created_at')
+            .eq('status', 'approved')
+            .not('course_id', 'is', null)
+            .gte('created_at', startIso)
+            .lte('created_at', endIso)
+            .order('id', { ascending: true })
+            .range(fromIdx, toIdx),
+        ),
         supabaseAdmin
           .from('gym_client_info')
           .select('id, name, document_id, whatsapp, user_id, birth_date')
@@ -296,13 +324,6 @@ export async function GET(request: Request) {
           .order('name', { ascending: true }),
       ]);
 
-    const payments = (
-      paymentsRes.error ? [] : paymentsRes.data || []
-    ) as PaymentRow[];
-    const expenses = (
-      expensesRes.error ? [] : expensesRes.data || []
-    ) as ExpenseRow[];
-    const orders = (ordersRes.error ? [] : ordersRes.data || []) as OrderRow[];
     const birthdayRows = (
       birthdaysRes.error ? [] : birthdaysRes.data || []
     ) as ClientInfoRow[];

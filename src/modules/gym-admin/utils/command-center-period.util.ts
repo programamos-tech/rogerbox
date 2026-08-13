@@ -5,8 +5,11 @@ export type CommandCenterPeriodPreset =
   | 'yesterday'
   | '7d'
   | 'month'
+  | 'year'
   | 'day'
   | 'range';
+
+export const COMMAND_CENTER_MAX_PERIOD_DAYS = 366;
 
 export function ymdAddLocal(ymd: string, days: number): string {
   const d = parseLocalDate(ymd);
@@ -44,7 +47,10 @@ export function resolveCommandCenterPeriod({
     return { from: ymdAddLocal(today, -6), to: today };
   }
   if (preset === 'month') {
-    return { from: `${today.slice(0, 7)}-01`, to: today };
+    return clampPeriod(`${today.slice(0, 7)}-01`, today);
+  }
+  if (preset === 'year') {
+    return clampPeriod(`${today.slice(0, 4)}-01-01`, today);
   }
   if (preset === 'day') {
     const ymd = day || today;
@@ -58,9 +64,24 @@ export function resolveCommandCenterPeriod({
       from = to;
       to = swap;
     }
-    return { from, to };
+    return clampPeriod(from, to);
   }
   return { from: today, to: today };
+}
+
+function clampPeriod(from: string, to: string): { from: string; to: string } {
+  let start = from;
+  let end = to;
+  if (start > end) {
+    const swap = start;
+    start = end;
+    end = swap;
+  }
+  const days = daysInclusive(start, end);
+  if (days > COMMAND_CENTER_MAX_PERIOD_DAYS) {
+    start = ymdAddLocal(end, -(COMMAND_CENTER_MAX_PERIOD_DAYS - 1));
+  }
+  return { from: start, to: end };
 }
 
 export function getCommandCenterToday(): string {
