@@ -60,6 +60,7 @@ export interface CommandCenterBirthdayPerson {
 
 export interface GymCommandCenterResponse {
   today: string;
+  period: { from: string; to: string };
   kpis: {
     active: { count: number; vs30d: number };
     endingSoon: { count: number; days: number };

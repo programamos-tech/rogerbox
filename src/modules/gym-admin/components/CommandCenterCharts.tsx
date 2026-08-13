@@ -22,6 +22,7 @@ type Charts = GymCommandCenterResponse['charts'];
 type CommandCenterChartsProps = {
   charts: Charts;
   hideMoney: boolean;
+  revenueTitle: string;
 };
 
 type TooltipViewProps = {
@@ -78,6 +79,7 @@ function CountTooltip({ active, payload, label }: TooltipViewProps) {
 export const CommandCenterCharts = memo(function CommandCenterCharts({
   charts,
   hideMoney,
+  revenueTitle,
 }: CommandCenterChartsProps) {
   const { resolvedTheme } = useTheme();
   const dark = resolvedTheme === 'dark';
@@ -99,7 +101,7 @@ export const CommandCenterCharts = memo(function CommandCenterCharts({
       <section className={t.chartPanel}>
         <div className={t.panelHeader}>
           <div className="min-w-0">
-            <h2 className={t.panelTitle}>Ingresos 7 días</h2>
+            <h2 className={t.panelTitle}>{revenueTitle}</h2>
             <p className={t.panelHint}>
               Sede física · efectivo, transferencia y mixto
             </p>
@@ -132,6 +134,11 @@ export const CommandCenterCharts = memo(function CommandCenterCharts({
                 tick={{ fill: axis, fontSize: 11 }}
                 axisLine={false}
                 tickLine={false}
+                interval={
+                  charts.revenueWeek.length > 12
+                    ? Math.ceil(charts.revenueWeek.length / 8)
+                    : 0
+                }
               />
               <YAxis
                 tick={{ fill: axis, fontSize: 11 }}
@@ -159,7 +166,7 @@ export const CommandCenterCharts = memo(function CommandCenterCharts({
                 stroke={accent}
                 strokeWidth={2}
                 fill="url(#commandRevenueFill)"
-                dot={false}
+                dot={charts.revenueWeek.length === 1}
                 activeDot={{ r: 4, fill: accent }}
               />
             </AreaChart>

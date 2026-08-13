@@ -313,6 +313,13 @@ export const commandCenterStyles = {
   title: 'text-xl font-semibold text-[#164151] dark:text-white capitalize',
   subtitle: 'text-sm text-gray-500 dark:text-white/50 mt-0.5',
   headerActions: 'flex flex-wrap items-center gap-2',
+  filterRow: 'flex flex-wrap items-center gap-2',
+  filterChipOn:
+    'inline-flex h-8 items-center rounded-lg bg-[#164151] px-3 text-sm font-semibold text-white dark:bg-[#85ea10] dark:text-[#164151]',
+  filterChipOff:
+    'inline-flex h-8 items-center rounded-lg border border-gray-200 bg-white px-3 text-sm font-semibold text-[#164151] transition-colors hover:bg-gray-50 dark:border-white/12 dark:bg-transparent dark:text-white dark:hover:bg-white/[0.06]',
+  filterDateTrigger:
+    'h-8 rounded-lg border border-gray-200 bg-white px-3 text-sm font-semibold text-[#164151] dark:border-white/12 dark:bg-transparent dark:text-white',
   iconBtn:
     'inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 text-[#164151]/70 transition-colors hover:bg-gray-50 dark:border-white/12 dark:text-white/70 dark:hover:bg-white/10',
   ghostBtn:

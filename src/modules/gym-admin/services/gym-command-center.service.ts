@@ -1,7 +1,11 @@
 import type { GymCommandCenterResponse } from '@/modules/gym-admin/types';
 
-export async function fetchGymCommandCenter(): Promise<GymCommandCenterResponse> {
-  const res = await fetch('/api/admin/gym/command-center');
+export async function fetchGymCommandCenter(
+  from: string,
+  to: string,
+): Promise<GymCommandCenterResponse> {
+  const params = new URLSearchParams({ from, to });
+  const res = await fetch(`/api/admin/gym/command-center?${params}`);
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     throw new Error(

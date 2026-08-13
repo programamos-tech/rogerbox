@@ -12,6 +12,8 @@ import { filterBirthdayClients } from '@/shared/utils/birthday.util';
 const QUEUE_LIMIT = 80;
 const PAGE_SIZE = 1000;
 const ENDING_SOON_DAYS = 7;
+const MAX_PERIOD_DAYS = 90;
+const YMD_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 function normalizeEmail(val?: string | null) {
   return (val || '').trim().toLowerCase();
@@ -38,6 +40,69 @@ function ymdAdd(ymd: string, days: number): string {
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
+}
+
+function isYmd(value: string): boolean {
+  if (!YMD_RE.test(value)) return false;
+  const parsed = parseLocalDate(value);
+  return (
+    parsed.getFullYear() === Number(value.slice(0, 4)) &&
+    parsed.getMonth() + 1 === Number(value.slice(5, 7)) &&
+    parsed.getDate() === Number(value.slice(8, 10))
+  );
+}
+
+function daysInclusive(from: string, to: string): number {
+  const start = parseLocalDate(from).getTime();
+  const end = parseLocalDate(to).getTime();
+  return Math.max(1, Math.round((end - start) / 86400000) + 1);
+}
+
+function parsePeriod(
+  searchParams: URLSearchParams,
+  today: string,
+): { from: string; to: string } {
+  let from = searchParams.get('from') || today;
+  let to = searchParams.get('to') || today;
+  if (!isYmd(from)) from = today;
+  if (!isYmd(to)) to = today;
+  if (from > to) {
+    const swap = from;
+    from = to;
+    to = swap;
+  }
+  if (to > today) to = today;
+  if (from > today) from = today;
+  const days = daysInclusive(from, to);
+  if (days > MAX_PERIOD_DAYS) {
+    from = ymdAdd(to, -(MAX_PERIOD_DAYS - 1));
+  }
+  return { from, to };
+}
+
+function inRange(date: string, from: string, to: string) {
+  return date >= from && date <= to;
+}
+
+function sumInRange(
+  rows: { amount: number; date: string }[],
+  from: string,
+  to: string,
+) {
+  return rows
+    .filter((row) => inRange(row.date, from, to))
+    .reduce((sum, row) => sum + row.amount, 0);
+}
+
+function chartLabel(ymd: string, dayCount: number): string {
+  const d = parseLocalDate(ymd);
+  if (dayCount <= 8) {
+    const raw = d.toLocaleDateString('es-CO', { weekday: 'short' });
+    const cleaned = raw.replace(/\./g, '');
+    return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+  }
+  if (dayCount <= 31) return String(d.getDate());
+  return d.toLocaleDateString('es-CO', { day: 'numeric', month: 'short' });
 }
 
 function toYmd(value: string | null | undefined): string {
@@ -184,16 +249,7 @@ async function fetchAllMemberships(): Promise<MembershipRow[]> {
   }));
 }
 
-function sumByDate(
-  rows: { amount: number | null; date: string }[],
-  ymd: string,
-) {
-  return rows
-    .filter((r) => r.date === ymd)
-    .reduce((sum, r) => sum + Number(r.amount || 0), 0);
-}
-
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const { user } = await getUser();
     if (!isAdminUser(user)) {
@@ -201,14 +257,16 @@ export async function GET() {
     }
 
     const today = getTodayYmdColombia();
-    const yesterday = ymdAdd(today, -1);
+    const { from, to } = parsePeriod(new URL(request.url).searchParams, today);
     const ago30 = ymdAdd(today, -30);
     const todayRef = dayOnly(parseLocalDate(today));
     const ago30Ref = dayOnly(parseLocalDate(ago30));
-    const tomorrow = ymdAdd(today, 1);
-    const weekStart = ymdAdd(today, -6);
-    const startIso = `${yesterday}T00:00:00.000-05:00`;
-    const endIso = `${today}T23:59:59.999-05:00`;
+    const periodDays = daysInclusive(from, to);
+    const prevTo = ymdAdd(from, -1);
+    const prevFrom = ymdAdd(prevTo, -(periodDays - 1));
+    const fetchUntil = ymdAdd(to, 1);
+    const startIso = `${prevFrom}T00:00:00.000-05:00`;
+    const endIso = `${to}T23:59:59.999-05:00`;
 
     const [memberships, paymentsRes, expensesRes, ordersRes, birthdaysRes] =
       await Promise.all([
@@ -217,13 +275,13 @@ export async function GET() {
           .from('gym_payments')
           .select('amount, payment_method, payment_date')
           .or('status.eq.active,status.is.null')
-          .gte('payment_date', weekStart)
-          .lt('payment_date', tomorrow),
+          .gte('payment_date', prevFrom)
+          .lt('payment_date', fetchUntil),
         supabaseAdmin
           .from('gym_expenses')
           .select('amount, expense_date')
-          .gte('expense_date', yesterday)
-          .lt('expense_date', tomorrow),
+          .gte('expense_date', prevFrom)
+          .lt('expense_date', fetchUntil),
         supabaseAdmin
           .from('orders')
           .select('amount, created_at')
@@ -466,62 +524,55 @@ export async function GET() {
       method: p.payment_method || '',
       date: toYmd(p.payment_date),
     }));
-    const todayPayments = paymentDated.filter((p) => p.date === today);
-    const incomeToday = todayPayments.reduce((s, p) => s + p.amount, 0);
-    const cashToday = todayPayments
+    const periodPayments = paymentDated.filter((p) =>
+      inRange(p.date, from, to),
+    );
+    const incomePeriod = periodPayments.reduce((s, p) => s + p.amount, 0);
+    const cashPeriod = periodPayments
       .filter((p) => p.method === 'cash')
       .reduce((s, p) => s + p.amount, 0);
-    const transferToday = todayPayments
+    const transferPeriod = periodPayments
       .filter((p) => p.method === 'transfer')
       .reduce((s, p) => s + p.amount, 0);
-    const mixedToday = todayPayments
+    const mixedPeriod = periodPayments
       .filter((p) => p.method === 'mixed')
       .reduce((s, p) => s + p.amount, 0);
-    const incomeYesterday = sumByDate(
-      paymentDated.map((p) => ({ amount: p.amount, date: p.date })),
-      yesterday,
-    );
+    const incomePrev = sumInRange(paymentDated, prevFrom, prevTo);
 
     const expenseDated = expenses.map((e) => ({
       amount: Number(e.amount || 0),
       date: toYmd(e.expense_date),
     }));
-    const expensesToday = sumByDate(expenseDated, today);
-    const expensesYesterday = sumByDate(expenseDated, yesterday);
+    const expensesPeriod = sumInRange(expenseDated, from, to);
+    const expensesPrev = sumInRange(expenseDated, prevFrom, prevTo);
 
-    const todayOrders = orders.filter(
-      (o) => colombiaYmdFromIso(o.created_at) === today,
+    const periodOrders = orders.filter((o) =>
+      inRange(colombiaYmdFromIso(o.created_at), from, to),
     );
-    const onlineIncome = todayOrders.reduce(
+    const onlineIncome = periodOrders.reduce(
       (s, o) => s + Number(o.amount || 0),
       0,
     );
 
-    const netToday = incomeToday - expensesToday;
-    const netYesterday = incomeYesterday - expensesYesterday;
+    const netPeriod = incomePeriod - expensesPeriod;
+    const netPrev = incomePrev - expensesPrev;
     let vsYesterdayPct: number | null = null;
-    if (netYesterday !== 0) {
-      vsYesterdayPct =
-        ((netToday - netYesterday) / Math.abs(netYesterday)) * 100;
-    } else if (netToday !== 0) {
+    if (netPrev !== 0) {
+      vsYesterdayPct = ((netPeriod - netPrev) / Math.abs(netPrev)) * 100;
+    } else if (netPeriod !== 0) {
       vsYesterdayPct = 100;
     }
 
     const amountByDate = new Map<string, number>();
-    for (const p of paymentDated) {
+    for (const p of periodPayments) {
       amountByDate.set(p.date, (amountByDate.get(p.date) || 0) + p.amount);
     }
     const revenueWeek: { date: string; label: string; amount: number }[] = [];
-    for (let i = 6; i >= 0; i -= 1) {
-      const date = ymdAdd(today, -i);
-      const raw = parseLocalDate(date).toLocaleDateString('es-CO', {
-        weekday: 'short',
-      });
-      const cleaned = raw.replace(/\./g, '');
-      const label = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+    for (let i = 0; i < periodDays; i += 1) {
+      const date = ymdAdd(from, i);
       revenueWeek.push({
         date,
-        label,
+        label: chartLabel(date, periodDays),
         amount: amountByDate.get(date) || 0,
       });
     }
@@ -545,9 +596,9 @@ export async function GET() {
 
     const birthdayClients = filterBirthdayClients(
       birthdayRows,
-      today,
-      today,
-      today,
+      from,
+      to,
+      to,
     ).map((c) => ({
       client_info_id: c.id,
       href: clientHref(c.user_id, c.id),
@@ -607,27 +658,28 @@ export async function GET() {
 
     const payload: GymCommandCenterResponse = {
       today,
+      period: { from, to },
       kpis: {
         active: { count: activeCount, vs30d: activeCount - active30d },
         endingSoon: { count: endingSoonCount, days: ENDING_SOON_DAYS },
         expired: { count: expiredCount },
         netToday: {
-          amount: netToday,
-          income: incomeToday,
-          expenses: expensesToday,
+          amount: netPeriod,
+          income: incomePeriod,
+          expenses: expensesPeriod,
           vsYesterdayPct,
         },
       },
       cash: {
-        income: incomeToday,
-        cash: cashToday,
-        transfer: transferToday,
-        mixed: mixedToday,
-        expenses: expensesToday,
-        net: netToday,
-        invoiceCount: todayPayments.length,
+        income: incomePeriod,
+        cash: cashPeriod,
+        transfer: transferPeriod,
+        mixed: mixedPeriod,
+        expenses: expensesPeriod,
+        net: netPeriod,
+        invoiceCount: periodPayments.length,
         onlineIncome,
-        onlineCount: todayOrders.length,
+        onlineCount: periodOrders.length,
       },
       queue: {
         collect: collectAll.slice(0, QUEUE_LIMIT),

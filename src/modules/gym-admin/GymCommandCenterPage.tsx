@@ -17,12 +17,20 @@ import Link from 'next/link';
 import { memo, type ReactNode, useCallback, useMemo, useState } from 'react';
 import { formatDateOnlyLocal } from '@/lib/dateUtils';
 import { getGymWhatsappHref } from '@/lib/gymClientDisplay';
+import { CommandCenterPeriodFilters } from '@/modules/gym-admin/components/CommandCenterPeriodFilters';
 import { useGymCommandCenter } from '@/modules/gym-admin/hooks/useGymCommandCenter';
 import { commandCenterStyles as t } from '@/modules/gym-admin/styles';
 import type {
   CommandCenterBirthdayPerson,
   CommandCenterQueuePerson,
 } from '@/modules/gym-admin/types';
+import {
+  type CommandCenterPeriodPreset,
+  daysInclusive,
+  getCommandCenterToday,
+  resolveCommandCenterPeriod,
+  ymdAddLocal,
+} from '@/modules/gym-admin/utils/command-center-period.util';
 import { formatCopHidden } from '@/modules/gym-admin/utils/gym-money.util';
 import { GymSeededAvatar } from '@/shared/components/GymSeededAvatar';
 import { WhatsAppIcon } from '@/shared/components/WhatsAppIcon';
@@ -66,11 +74,49 @@ function vs30dLabel(delta: number) {
   return `${delta} vs hace 30 días`;
 }
 
-function vsYesterdayLabel(pct: number | null) {
-  if (pct == null) return 'Sin movimiento ayer';
+function vsPrevLabel(
+  pct: number | null,
+  from: string,
+  to: string,
+  today: string,
+) {
+  if (pct == null) return 'Sin período anterior';
   const rounded = Math.round(pct);
   const sign = rounded > 0 ? '+' : '';
-  return `${sign}${rounded}% vs ayer`;
+  const suffix =
+    from === to
+      ? from === today
+        ? 'vs ayer'
+        : 'vs día anterior'
+      : 'vs período anterior';
+  return `${sign}${rounded}% ${suffix}`;
+}
+
+function periodHeading(
+  preset: CommandCenterPeriodPreset,
+  from: string,
+  to: string,
+) {
+  if (from === to) return formatTodayTitle(from);
+  if (preset === '7d') return 'Últimos 7 días';
+  if (preset === 'month') {
+    const label = formatDateOnlyLocal(
+      from,
+      { month: 'long', year: 'numeric' },
+      'es-CO',
+    );
+    return label.charAt(0).toUpperCase() + label.slice(1);
+  }
+  const start = formatDateOnlyLocal(from, { day: 'numeric', month: 'short' });
+  const end = formatDateOnlyLocal(to, { day: 'numeric', month: 'short' });
+  return `${start} – ${end}`;
+}
+
+function revenueTitle(from: string, to: string) {
+  if (from === to) return 'Ingresos del día';
+  const days = daysInclusive(from, to);
+  if (days === 7) return 'Ingresos 7 días';
+  return 'Ingresos del período';
 }
 
 function deltaClass(value: number) {
@@ -224,21 +270,49 @@ export function GymCommandCenterPage({
   onOpenCash,
   onGoToTab,
 }: GymCommandCenterPageProps) {
+  const todayYmd = useMemo(() => getCommandCenterToday(), []);
+  const [preset, setPreset] = useState<CommandCenterPeriodPreset>('today');
+  const [dayYmd, setDayYmd] = useState(todayYmd);
+  const [rangeFrom, setRangeFrom] = useState(() => ymdAddLocal(todayYmd, -6));
+  const [rangeTo, setRangeTo] = useState(todayYmd);
+  const period = useMemo(
+    () =>
+      resolveCommandCenterPeriod({
+        preset,
+        today: todayYmd,
+        day: dayYmd,
+        rangeFrom,
+        rangeTo,
+      }),
+    [preset, todayYmd, dayYmd, rangeFrom, rangeTo],
+  );
   const { data, isLoading, isError, error, refetch, isFetching } =
-    useGymCommandCenter();
+    useGymCommandCenter(period.from, period.to);
   const [hideMoney, setHideMoney] = useState(false);
+
+  const handlePreset = useCallback(
+    (next: CommandCenterPeriodPreset) => {
+      setPreset(next);
+      if (next === 'day') setDayYmd((current) => current || todayYmd);
+      if (next === 'range') {
+        setRangeFrom((current) => current || ymdAddLocal(todayYmd, -6));
+        setRangeTo((current) => current || todayYmd);
+      }
+    },
+    [todayYmd],
+  );
 
   const money = useCallback(
     (amount: number) => formatCopHidden(hideMoney, amount),
     [hideMoney],
   );
 
-  const todayTitle = useMemo(
-    () => (data?.today ? formatTodayTitle(data.today) : 'Hoy'),
-    [data?.today],
+  const heading = useMemo(
+    () => periodHeading(preset, period.from, period.to),
+    [preset, period.from, period.to],
   );
 
-  if (isLoading) {
+  if (isLoading && !data) {
     return (
       <div className={t.page}>
         <div className={t.kpiGrid}>
@@ -282,13 +356,17 @@ export function GymCommandCenterPage({
   }
 
   const { kpis, cash, queue } = data;
+  const from = data.period?.from ?? period.from;
+  const to = data.period?.to ?? period.to;
+  const isSingleDay = from === to;
+  const isToday = isSingleDay && from === todayYmd;
   const netDelta = kpis.netToday.vsYesterdayPct ?? 0;
 
   return (
     <div className={t.page}>
       <div className={t.header}>
         <div>
-          <h1 className={t.title}>{todayTitle}</h1>
+          <h1 className={t.title}>{heading}</h1>
           <p className={t.subtitle}>
             Qué hay que hacer ahora en la sede física
           </p>
@@ -322,6 +400,18 @@ export function GymCommandCenterPage({
           </button>
         </div>
       </div>
+
+      <CommandCenterPeriodFilters
+        preset={preset}
+        onPreset={handlePreset}
+        today={todayYmd}
+        day={dayYmd}
+        onDay={setDayYmd}
+        rangeFrom={rangeFrom}
+        rangeTo={rangeTo}
+        onRangeFrom={setRangeFrom}
+        onRangeTo={setRangeTo}
+      />
 
       <div className={t.kpiGrid}>
         <button
@@ -392,13 +482,15 @@ export function GymCommandCenterPage({
               )}
             </div>
             <div>
-              <p className={t.kpiLabel}>Neto del día</p>
+              <p className={t.kpiLabel}>
+                {isSingleDay ? 'Neto del día' : 'Neto del período'}
+              </p>
               <p className={t.kpiHint}>Ingresos menos egresos (sede física)</p>
             </div>
           </div>
           <p className={t.kpiValue}>{money(kpis.netToday.amount)}</p>
           <p className={`${t.kpiDelta} ${deltaClass(netDelta)}`}>
-            {vsYesterdayLabel(kpis.netToday.vsYesterdayPct)}
+            {vsPrevLabel(kpis.netToday.vsYesterdayPct, from, to, todayYmd)}
           </p>
         </button>
       </div>
@@ -406,6 +498,7 @@ export function GymCommandCenterPage({
       <CommandCenterCharts
         charts={data.charts ?? EMPTY_CHARTS}
         hideMoney={hideMoney}
+        revenueTitle={revenueTitle(from, to)}
       />
 
       <div className={t.split}>
@@ -458,7 +551,13 @@ export function GymCommandCenterPage({
         <section className={`${t.panel} ${t.queueCardHeight}`}>
           <div className={t.panelHeader}>
             <div>
-              <h2 className={t.panelTitle}>Caja de hoy</h2>
+              <h2 className={t.panelTitle}>
+                {isToday
+                  ? 'Caja de hoy'
+                  : isSingleDay
+                    ? 'Caja del día'
+                    : 'Caja del período'}
+              </h2>
               <p className={t.panelHint}>
                 {cash.invoiceCount}{' '}
                 {cash.invoiceCount === 1 ? 'factura' : 'facturas'} en sede
@@ -513,7 +612,8 @@ export function GymCommandCenterPage({
               </p>
               <p className="text-sm font-medium text-[#164151] dark:text-white mt-0.5">
                 {money(cash.onlineIncome)} · {cash.onlineCount}{' '}
-                {cash.onlineCount === 1 ? 'venta' : 'ventas'} hoy
+                {cash.onlineCount === 1 ? 'venta' : 'ventas'}
+                {isToday ? ' hoy' : ''}
               </p>
             </button>
           </div>
@@ -542,9 +642,19 @@ export function GymCommandCenterPage({
 
         <QueueCard
           title="Cumpleaños"
-          hint="Clientes que cumplen años hoy"
+          hint={
+            isToday
+              ? 'Clientes que cumplen años hoy'
+              : isSingleDay
+                ? 'Clientes que cumplen años ese día'
+                : 'Clientes que cumplen años en el período'
+          }
           count={queue.totals.birthdays}
-          empty="Nadie cumple años hoy."
+          empty={
+            isToday
+              ? 'Nadie cumple años hoy.'
+              : 'Nadie cumple años en este período.'
+          }
         >
           {queue.birthdays.map((person: CommandCenterBirthdayPerson) => (
             <QueueRow
