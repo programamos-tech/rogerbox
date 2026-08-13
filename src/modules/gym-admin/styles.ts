@@ -53,7 +53,8 @@ export const gymPlansListStyles = {
   badgeInactive:
     'inline-flex items-center rounded-full bg-gray-100 dark:bg-white/10 px-2 py-0.5 text-[11px] font-semibold text-gray-500 dark:text-white/50',
   price: 'font-bold tabular-nums whitespace-nowrap',
-  priceCurrency: 'text-[11px] font-semibold text-gray-400 dark:text-white/35 ml-1',
+  priceCurrency:
+    'text-[11px] font-semibold text-gray-400 dark:text-white/35 ml-1',
   clientCount: 'font-semibold tabular-nums',
   clientCountEmpty: 'tabular-nums text-gray-400 dark:text-white/30',
   actionBtn:
@@ -62,7 +63,8 @@ export const gymPlansListStyles = {
     'inline-flex items-center justify-center w-9 h-9 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/15 transition-colors',
   footer:
     'flex items-center justify-between gap-3 px-4 py-3 border-t border-gray-200 dark:border-white/10 bg-gray-50/70 dark:bg-white/[0.02]',
-  footerText: 'text-xs font-medium text-gray-500 dark:text-white/45 tabular-nums',
+  footerText:
+    'text-xs font-medium text-gray-500 dark:text-white/45 tabular-nums',
   durationGrid: 'grid grid-cols-2 sm:grid-cols-3 gap-2',
   durationChip:
     'px-3 py-2.5 rounded-xl border text-sm font-semibold transition-colors',
@@ -75,8 +77,7 @@ export const gymPlansListStyles = {
 export const gymPlanClientsStyles = {
   ...gymPlansListStyles,
   table: 'w-full min-w-[980px]',
-  rowStatic:
-    'transition-colors hover:bg-gray-50/80 dark:hover:bg-white/[0.04]',
+  rowStatic: 'transition-colors hover:bg-gray-50/80 dark:hover:bg-white/[0.04]',
   badgePeriod:
     'inline-flex items-center rounded-full bg-[#85ea10]/15 px-2 py-0.5 text-[11px] font-semibold text-[#3f7d08] dark:text-[#85ea10]',
   badgeEndingSoon:
@@ -93,7 +94,8 @@ export const gymPlanClientsStyles = {
     'inline-flex h-8 min-w-8 items-center justify-center rounded-lg bg-[#164151] px-2 text-xs font-semibold text-white',
   pagerBtnPage:
     'inline-flex h-8 min-w-8 items-center justify-center rounded-lg border border-gray-200 dark:border-white/10 px-2 text-xs font-semibold text-[#164151] dark:text-white/80 hover:bg-white dark:hover:bg-white/10',
-  periodDates: 'tabular-nums whitespace-nowrap text-[#164151] dark:text-white/85',
+  periodDates:
+    'tabular-nums whitespace-nowrap text-[#164151] dark:text-white/85',
   periodSep: 'mx-1.5 text-gray-300 dark:text-white/25',
   progressCell: 'min-w-[160px]',
   progressTrack:
@@ -105,7 +107,8 @@ export const gymPlanClientsStyles = {
   progressFillExpired: 'h-full rounded-full bg-red-500/70',
   progressMeta:
     'mt-1 text-[11px] tabular-nums text-gray-500 dark:text-white/45',
-  progressMetaWarn: 'mt-1 text-[11px] font-semibold tabular-nums text-amber-700 dark:text-amber-400',
+  progressMetaWarn:
+    'mt-1 text-[11px] font-semibold tabular-nums text-amber-700 dark:text-amber-400',
   historyMuted: 'text-xs tabular-nums text-gray-400 dark:text-white/35',
   whatsappLink:
     'text-sm tabular-nums text-[#164151] dark:text-white/85 hover:text-[#85ea10] hover:underline underline-offset-2 whitespace-nowrap',
@@ -121,23 +124,20 @@ export const gymPlanClientsStyles = {
   detailMetaSep: 'text-gray-300 dark:text-white/20',
   detailDesc:
     'text-xs text-gray-500 dark:text-white/40 truncate max-w-xl hidden xl:inline',
-  detailActions: 'flex flex-wrap items-center gap-2 w-full lg:w-auto lg:shrink-0',
-  detailSearch:
-    'relative flex-1 min-w-[180px] lg:w-64 lg:flex-none',
+  detailActions:
+    'flex flex-wrap items-center gap-2 w-full lg:w-auto lg:shrink-0',
+  detailSearch: 'relative flex-1 min-w-[180px] lg:w-64 lg:flex-none',
   detailSearchInput:
     'w-full h-9 rounded-lg border border-gray-200/80 bg-white/80 pl-8 pr-2.5 text-sm text-[#164151] outline-none transition focus:border-[#85ea10]/55 focus:ring-1 focus:ring-[#85ea10]/20 dark:border-white/10 dark:bg-white/[0.03] dark:text-white',
-  detailFilter:
-    'relative w-full sm:w-[170px]',
+  detailFilter: 'relative w-full sm:w-[170px]',
   detailFilterSelect:
     'w-full h-9 appearance-none rounded-lg border border-gray-200/80 bg-white/80 pl-8 pr-2.5 text-sm text-[#164151] outline-none transition focus:border-[#85ea10]/55 focus:ring-1 focus:ring-[#85ea10]/20 dark:border-white/10 dark:bg-white/[0.03] dark:text-white',
   detailBackBtn:
     'inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-[#164151] px-3 text-sm font-semibold text-white hover:bg-[#1a4d5f] transition-colors',
-  detailSectionHead:
-    'flex flex-wrap items-baseline justify-between gap-2 mb-3',
+  detailSectionHead: 'flex flex-wrap items-baseline justify-between gap-2 mb-3',
   detailSectionTitle:
     'text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-white/40',
-  detailSectionHelper:
-    'text-[10px] text-gray-500 dark:text-white/35',
+  detailSectionHelper: 'text-[10px] text-gray-500 dark:text-white/35',
 } as const;
 
 /** Anchos de columna Clientes (inline en <col>; Tailwind en col es poco fiable) */
@@ -179,11 +179,13 @@ export const gymClientsListStyles = {
     'w-full h-9 appearance-none rounded-lg border border-gray-200/80 bg-white/80 pl-8 pr-2.5 text-xs sm:text-sm text-[#164151] outline-none transition focus:border-[#85ea10]/55 focus:ring-1 focus:ring-[#85ea10]/20 dark:border-white/10 dark:bg-white/[0.03] dark:text-white cursor-pointer',
   primaryBtn:
     'inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-[#164151] px-3.5 text-sm font-semibold text-white hover:bg-[#1a4d5f] transition-colors lg:ml-auto shrink-0',
-  clientName: 'truncate text-sm font-semibold text-[#164151] dark:text-white leading-tight',
+  clientName:
+    'truncate text-sm font-semibold text-[#164151] dark:text-white leading-tight',
   clientEmail: 'mt-0.5 truncate text-xs text-[#164151]/55 dark:text-white/40',
   docCell:
     'inline-flex max-w-full items-center gap-1 text-xs font-medium tabular-nums text-[#164151] dark:text-white/85 truncate',
-  productName: 'min-w-0 truncate text-sm font-medium text-[#164151] dark:text-white',
+  productName:
+    'min-w-0 truncate text-sm font-medium text-[#164151] dark:text-white',
   productMore:
     'inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-gray-100 dark:bg-white/10 px-1 text-[11px] font-semibold text-gray-600 dark:text-white/60',
   typeBadge:
@@ -193,7 +195,8 @@ export const gymClientsListStyles = {
   typeBadgeOnline:
     'inline-flex max-w-full items-center gap-1 rounded-full bg-cyan-500/12 px-2 py-0.5 text-[11px] font-semibold text-cyan-700 dark:text-cyan-400 truncate',
   /** Iconos al inicio de la col. para quedar junto a Estado (sin hueco) */
-  actionsCell: 'inline-flex items-center justify-start gap-0 flex-nowrap whitespace-nowrap',
+  actionsCell:
+    'inline-flex items-center justify-start gap-0 flex-nowrap whitespace-nowrap',
   actionsCellTh: 'text-left whitespace-nowrap',
   rowInactive: 'opacity-55',
   mobileList: 'md:hidden divide-y divide-gray-100 dark:divide-white/[0.04]',
@@ -211,7 +214,8 @@ export const gymPaymentsListStyles = {
     'text-sm font-semibold tabular-nums text-[#164151] dark:text-white',
   invoiceIdVoided:
     'text-sm font-semibold tabular-nums text-red-700/80 line-through decoration-red-400/80 dark:text-red-400/90',
-  amount: 'text-sm font-bold tabular-nums text-[#164151] dark:text-white whitespace-nowrap',
+  amount:
+    'text-sm font-bold tabular-nums text-[#164151] dark:text-white whitespace-nowrap',
   amountVoided:
     'text-sm font-bold tabular-nums text-red-700/70 line-through decoration-red-400/70 dark:text-red-400/80 whitespace-nowrap',
   methodBadge:
@@ -274,8 +278,7 @@ export const gymUserDetailStyles = {
   summaryStrip:
     'mb-3 grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-3 rounded-lg border border-gray-200/80 bg-gray-50/70 p-4 dark:border-white/10 dark:bg-white/[0.03]',
   summaryItem: 'min-w-0 flex flex-col gap-1',
-  summaryLabel:
-    'text-sm font-medium text-gray-500 dark:text-white/45',
+  summaryLabel: 'text-sm font-medium text-gray-500 dark:text-white/45',
   summaryValue:
     'truncate text-sm font-medium tabular-nums text-[#164151] dark:text-white',
   toolbarBtn:
@@ -306,8 +309,7 @@ export const gymUserDetailStyles = {
 
 export const commandCenterStyles = {
   page: 'space-y-6',
-  header:
-    'flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between',
+  header: 'flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between',
   title: 'text-xl font-semibold text-[#164151] dark:text-white capitalize',
   subtitle: 'text-sm text-gray-500 dark:text-white/50 mt-0.5',
   headerActions: 'flex flex-wrap items-center gap-2',
@@ -321,8 +323,7 @@ export const commandCenterStyles = {
   kpiCardStatic:
     'bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 p-5 shadow-lg',
   kpiTop: 'flex items-center gap-3 mb-3',
-  kpiIcon:
-    'w-9 h-9 rounded-lg flex items-center justify-center shrink-0',
+  kpiIcon: 'w-9 h-9 rounded-lg flex items-center justify-center shrink-0',
   kpiLabel:
     'text-xs font-semibold text-[#164151]/70 dark:text-white/60 uppercase tracking-wide',
   kpiHint: 'text-[10px] text-gray-500 dark:text-white/50',
@@ -332,15 +333,27 @@ export const commandCenterStyles = {
   kpiDeltaUp: 'text-emerald-600 dark:text-emerald-400',
   kpiDeltaDown: 'text-red-600 dark:text-red-400',
   kpiDeltaFlat: 'text-gray-500 dark:text-white/45',
-  split:
-    'grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(20rem,1fr)]',
+  split: 'grid grid-cols-1 gap-4 xl:grid-cols-3',
+  secondaryGrid: 'grid grid-cols-1 gap-4 md:grid-cols-2',
   panel:
-    'bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 shadow-lg',
-  panelHeader:
-    'flex items-center justify-between gap-3 px-5 pt-5 pb-3',
+    'flex flex-col min-h-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-200 dark:border-white/20 shadow-lg overflow-hidden',
+  panelRenew:
+    'flex flex-col min-h-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-amber-300/50 dark:border-amber-400/25 shadow-lg overflow-hidden',
+  panelHeader: 'flex items-start justify-between gap-3 px-5 pt-4 pb-3 shrink-0',
   panelTitle:
     'text-sm font-semibold text-[#164151] dark:text-white uppercase tracking-wide',
   panelHint: 'text-xs text-gray-500 dark:text-white/50 mt-0.5',
+  countBadge:
+    'inline-flex min-w-7 h-7 items-center justify-center rounded-full bg-[#164151] px-2 text-xs font-bold tabular-nums text-white dark:bg-[#85ea10] dark:text-[#164151]',
+  countBadgeWarn:
+    'inline-flex min-w-7 h-7 items-center justify-center rounded-full bg-amber-500 px-2 text-xs font-bold tabular-nums text-white',
+  countBadgeMuted:
+    'inline-flex min-w-7 h-7 items-center justify-center rounded-full bg-gray-200 px-2 text-xs font-bold tabular-nums text-gray-600 dark:bg-white/10 dark:text-white/60',
+  queueList:
+    'flex-1 min-h-0 overflow-y-auto overscroll-contain pb-2 scrollbar-hide',
+  queueCardHeight: 'h-[22rem]',
+  daysBadge:
+    'shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold tabular-nums text-amber-800 dark:bg-amber-500/20 dark:text-amber-300',
   sectionLabel:
     'px-5 pt-3 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-white/40',
   row: 'flex items-center gap-3 px-5 py-2.5 hover:bg-gray-50/80 dark:hover:bg-white/[0.04] transition-colors',
@@ -351,17 +364,13 @@ export const commandCenterStyles = {
   rowMeta: 'text-[11px] text-gray-500 dark:text-white/50 truncate',
   rowActions: 'flex items-center gap-1 shrink-0',
   empty: 'px-5 py-10 text-center text-sm text-gray-500 dark:text-white/50',
-  cashLine:
-    'flex items-center justify-between gap-3 text-sm px-5 py-2',
+  cashLine: 'flex items-center justify-between gap-3 text-sm px-5 py-2',
   cashLabel: 'text-gray-500 dark:text-white/50',
-  cashValue:
-    'font-semibold tabular-nums text-[#164151] dark:text-white',
+  cashValue: 'font-semibold tabular-nums text-[#164151] dark:text-white',
   cashNet:
     'flex items-center justify-between gap-3 px-5 py-3 border-t border-gray-200 dark:border-white/10',
-  cashNetLabel:
-    'text-sm font-semibold text-[#164151] dark:text-white',
-  cashNetValue:
-    'text-lg font-bold tabular-nums text-[#164151] dark:text-white',
+  cashNetLabel: 'text-sm font-semibold text-[#164151] dark:text-white',
+  cashNetValue: 'text-lg font-bold tabular-nums text-[#164151] dark:text-white',
   onlineRow:
     'mx-5 mb-5 mt-2 rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50/80 dark:bg-white/[0.04] px-4 py-3 text-left transition-colors hover:bg-gray-100/80 dark:hover:bg-white/[0.07]',
   errorBox:

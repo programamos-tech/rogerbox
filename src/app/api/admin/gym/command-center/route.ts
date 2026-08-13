@@ -9,7 +9,7 @@ import { getUser } from '@/lib/supabase-server';
 import type { GymCommandCenterResponse } from '@/modules/gym-admin/types';
 import { filterBirthdayClients } from '@/shared/utils/birthday.util';
 
-const QUEUE_LIMIT = 8;
+const QUEUE_LIMIT = 80;
 const PAGE_SIZE = 1000;
 const ENDING_SOON_DAYS = 7;
 

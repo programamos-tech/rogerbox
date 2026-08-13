@@ -13,7 +13,7 @@ import {
   Wallet,
 } from 'lucide-react';
 import Link from 'next/link';
-import { memo, useCallback, useMemo, useState } from 'react';
+import { memo, type ReactNode, useCallback, useMemo, useState } from 'react';
 import { formatDateOnlyLocal } from '@/lib/dateUtils';
 import { getGymWhatsappHref } from '@/lib/gymClientDisplay';
 import { useGymCommandCenter } from '@/modules/gym-admin/hooks/useGymCommandCenter';
@@ -87,11 +87,13 @@ const QueueRow = memo(function QueueRow({
   name,
   meta,
   whatsappHref,
+  badge,
 }: {
   href: string;
   name: string;
   meta: string;
   whatsappHref: string | null;
+  badge?: string;
 }) {
   return (
     <div className={t.row}>
@@ -103,6 +105,7 @@ const QueueRow = memo(function QueueRow({
         <p className={t.rowMeta}>{meta}</p>
       </Link>
       <div className={t.rowActions}>
+        {badge ? <span className={t.daysBadge}>{badge}</span> : null}
         {whatsappHref ? (
           <a
             href={whatsappHref}
@@ -127,6 +130,52 @@ const QueueRow = memo(function QueueRow({
   );
 });
 
+function QueueCard({
+  title,
+  hint,
+  count,
+  empty,
+  accent,
+  children,
+}: {
+  title: string;
+  hint: string;
+  count: number;
+  empty: string;
+  accent?: 'warn' | 'default';
+  children: ReactNode;
+}) {
+  const hasItems = count > 0;
+  return (
+    <section
+      className={`${accent === 'warn' ? t.panelRenew : t.panel} ${t.queueCardHeight}`}
+    >
+      <div className={t.panelHeader}>
+        <div className="min-w-0">
+          <h2 className={t.panelTitle}>{title}</h2>
+          <p className={t.panelHint}>{hint}</p>
+        </div>
+        <span
+          className={
+            !hasItems
+              ? t.countBadgeMuted
+              : accent === 'warn'
+                ? t.countBadgeWarn
+                : t.countBadge
+          }
+        >
+          {count}
+        </span>
+      </div>
+      {hasItems ? (
+        <div className={t.queueList}>{children}</div>
+      ) : (
+        <p className={t.empty}>{empty}</p>
+      )}
+    </section>
+  );
+}
+
 export function GymCommandCenterPage({
   onOpenCash,
   onGoToTab,
@@ -144,14 +193,6 @@ export function GymCommandCenterPage({
     () => (data?.today ? formatTodayTitle(data.today) : 'Hoy'),
     [data?.today],
   );
-
-  const queueEmpty = useMemo(() => {
-    if (!data) return false;
-    const { totals } = data.queue;
-    return (
-      totals.collect + totals.renew + totals.advances + totals.birthdays === 0
-    );
-  }, [data]);
 
   if (isLoading) {
     return (
@@ -314,103 +355,49 @@ export function GymCommandCenterPage({
       </div>
 
       <div className={t.split}>
-        <section className={t.panel}>
-          <div className={t.panelHeader}>
-            <div>
-              <h2 className={t.panelTitle}>Hacer hoy</h2>
-              <p className={t.panelHint}>
-                Cobrar, renovar, revisar anticipos y felicitar
-              </p>
-            </div>
-          </div>
+        <QueueCard
+          title="Cobrar"
+          hint="Planes vencidos, sin renovación"
+          count={queue.totals.collect}
+          empty="Nadie por cobrar hoy."
+        >
+          {queue.collect.map((person) => (
+            <QueueRow
+              key={`collect-${person.client_info_id}`}
+              href={person.href}
+              name={person.name}
+              meta={`${person.plan_name} · venció hace ${person.days} ${person.days === 1 ? 'día' : 'días'}`}
+              whatsappHref={whatsappWithText(
+                person.whatsapp,
+                collectMessage(person),
+              )}
+            />
+          ))}
+        </QueueCard>
 
-          {queueEmpty ? (
-            <p className={t.empty}>Nada pendiente. El gimnasio está al día.</p>
-          ) : (
-            <div className="pb-3">
-              {queue.collect.length > 0 ? (
-                <>
-                  <p className={t.sectionLabel}>
-                    Cobrar · {queue.totals.collect}
-                  </p>
-                  {queue.collect.map((person) => (
-                    <QueueRow
-                      key={`collect-${person.client_info_id}`}
-                      href={person.href}
-                      name={person.name}
-                      meta={`${person.plan_name} · venció hace ${person.days} ${person.days === 1 ? 'día' : 'días'}`}
-                      whatsappHref={whatsappWithText(
-                        person.whatsapp,
-                        collectMessage(person),
-                      )}
-                    />
-                  ))}
-                </>
-              ) : null}
+        <QueueCard
+          title="Por renovar"
+          hint="Vencen en los próximos 7 días"
+          count={queue.totals.renew}
+          empty="Nadie por vencer esta semana."
+          accent="warn"
+        >
+          {queue.renew.map((person) => (
+            <QueueRow
+              key={`renew-${person.client_info_id}`}
+              href={person.href}
+              name={person.name}
+              meta={`${person.plan_name} · ${formatDateOnlyLocal(person.date, { day: 'numeric', month: 'short' })}`}
+              badge={person.days === 1 ? 'Hoy' : `${person.days} días`}
+              whatsappHref={whatsappWithText(
+                person.whatsapp,
+                renewMessage(person),
+              )}
+            />
+          ))}
+        </QueueCard>
 
-              {queue.renew.length > 0 ? (
-                <>
-                  <p className={t.sectionLabel}>
-                    Renovar · {queue.totals.renew}
-                  </p>
-                  {queue.renew.map((person) => (
-                    <QueueRow
-                      key={`renew-${person.client_info_id}`}
-                      href={person.href}
-                      name={person.name}
-                      meta={`${person.plan_name} · ${person.days} ${person.days === 1 ? 'día' : 'días'} · ${formatDateOnlyLocal(person.date, { day: 'numeric', month: 'short' })}`}
-                      whatsappHref={whatsappWithText(
-                        person.whatsapp,
-                        renewMessage(person),
-                      )}
-                    />
-                  ))}
-                </>
-              ) : null}
-
-              {queue.advances.length > 0 ? (
-                <>
-                  <p className={t.sectionLabel}>
-                    Anticipos · {queue.totals.advances}
-                  </p>
-                  {queue.advances.map((person) => (
-                    <QueueRow
-                      key={`adv-${person.client_info_id}`}
-                      href={person.href}
-                      name={person.name}
-                      meta={`${person.plan_name} · empieza ${formatDateOnlyLocal(person.date, { day: 'numeric', month: 'short' })}${person.amount != null ? ` · ${money(person.amount)}` : ''}`}
-                      whatsappHref={getGymWhatsappHref(person.whatsapp)}
-                    />
-                  ))}
-                </>
-              ) : null}
-
-              {queue.birthdays.length > 0 ? (
-                <>
-                  <p className={t.sectionLabel}>
-                    Cumpleaños · {queue.totals.birthdays}
-                  </p>
-                  {queue.birthdays.map(
-                    (person: CommandCenterBirthdayPerson) => (
-                      <QueueRow
-                        key={`bd-${person.client_info_id}`}
-                        href={person.href}
-                        name={person.name}
-                        meta={`${person.age} años`}
-                        whatsappHref={buildBirthdayWhatsappUrl(
-                          person.name,
-                          person.whatsapp,
-                        )}
-                      />
-                    ),
-                  )}
-                </>
-              ) : null}
-            </div>
-          )}
-        </section>
-
-        <section className={t.panel}>
+        <section className={`${t.panel} ${t.queueCardHeight}`}>
           <div className={t.panelHeader}>
             <div>
               <h2 className={t.panelTitle}>Caja de hoy</h2>
@@ -423,7 +410,7 @@ export function GymCommandCenterPage({
             <Wallet className="w-4 h-4 text-[#164151]/50 dark:text-white/40" />
           </div>
 
-          <div className="pb-2">
+          <div className={`${t.queueList} flex flex-col`}>
             <div className={t.cashLine}>
               <span className={t.cashLabel}>Ingresos</span>
               <span className={t.cashValue}>{money(cash.income)}</span>
@@ -450,31 +437,68 @@ export function GymCommandCenterPage({
               <span className={t.cashNetLabel}>Neto</span>
               <span className={t.cashNetValue}>{money(cash.net)}</span>
             </div>
+            <button type="button" onClick={onOpenCash} className={t.onlineRow}>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-white/45">
+                Ver detalle de caja
+              </p>
+              <p className="text-sm font-medium text-[#164151] dark:text-white mt-0.5">
+                Facturas, gráfica y filtros de período
+              </p>
+            </button>
+            <button
+              type="button"
+              onClick={() => onGoToTab('sales')}
+              className={t.onlineRow}
+            >
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-white/45">
+                Academia online
+              </p>
+              <p className="text-sm font-medium text-[#164151] dark:text-white mt-0.5">
+                {money(cash.onlineIncome)} · {cash.onlineCount}{' '}
+                {cash.onlineCount === 1 ? 'venta' : 'ventas'} hoy
+              </p>
+            </button>
           </div>
-
-          <button type="button" onClick={onOpenCash} className={t.onlineRow}>
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-white/45">
-              Ver detalle de caja
-            </p>
-            <p className="text-sm font-medium text-[#164151] dark:text-white mt-0.5">
-              Facturas, gráfica y filtros de período
-            </p>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => onGoToTab('sales')}
-            className={t.onlineRow}
-          >
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-white/45">
-              Academia online
-            </p>
-            <p className="text-sm font-medium text-[#164151] dark:text-white mt-0.5">
-              {money(cash.onlineIncome)} · {cash.onlineCount}{' '}
-              {cash.onlineCount === 1 ? 'venta' : 'ventas'} hoy
-            </p>
-          </button>
         </section>
+      </div>
+
+      <div className={t.secondaryGrid}>
+        <QueueCard
+          title="Anticipos"
+          hint="Planes pagados que aún no empiezan"
+          count={queue.totals.advances}
+          empty="Sin anticipos por revisar."
+        >
+          {queue.advances.map((person) => (
+            <QueueRow
+              key={`adv-${person.client_info_id}`}
+              href={person.href}
+              name={person.name}
+              meta={`${person.plan_name} · empieza ${formatDateOnlyLocal(person.date, { day: 'numeric', month: 'short' })}${person.amount != null ? ` · ${money(person.amount)}` : ''}`}
+              whatsappHref={getGymWhatsappHref(person.whatsapp)}
+            />
+          ))}
+        </QueueCard>
+
+        <QueueCard
+          title="Cumpleaños"
+          hint="Clientes que cumplen años hoy"
+          count={queue.totals.birthdays}
+          empty="Nadie cumple años hoy."
+        >
+          {queue.birthdays.map((person: CommandCenterBirthdayPerson) => (
+            <QueueRow
+              key={`bd-${person.client_info_id}`}
+              href={person.href}
+              name={person.name}
+              meta={`${person.age} años`}
+              whatsappHref={buildBirthdayWhatsappUrl(
+                person.name,
+                person.whatsapp,
+              )}
+            />
+          ))}
+        </QueueCard>
       </div>
     </div>
   );
