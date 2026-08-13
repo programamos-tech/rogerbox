@@ -35,16 +35,17 @@ export const adminFormModalStyles = {
 
 export const gymPlansListStyles = {
   tableShell:
-    'bg-white dark:bg-[#0c1628] rounded-2xl border border-gray-200 dark:border-white/10 overflow-hidden',
+    'bg-white dark:bg-[#0c1628] rounded-2xl border border-gray-200 dark:border-white/[0.06] overflow-hidden',
   tableWrap: 'overflow-x-auto',
   table: 'w-full min-w-[860px]',
-  th: 'px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-white/40 bg-gray-50/90 dark:bg-white/[0.03] border-b border-gray-200 dark:border-white/10 whitespace-nowrap',
+  th: 'px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-white/40 bg-gray-50/90 dark:bg-white/[0.025] border-b border-gray-200 dark:border-white/[0.05] whitespace-nowrap',
   thLeft: 'text-left',
   thRight: 'text-right',
   sortButton:
     'inline-flex items-center gap-1.5 hover:text-[#164151] dark:hover:text-white transition-colors',
-  td: 'px-4 py-3.5 text-sm text-[#164151] dark:text-white/90 border-b border-gray-100 dark:border-white/[0.06]',
-  row: 'cursor-pointer transition-colors hover:bg-gray-50/80 dark:hover:bg-white/[0.04]',
+  /** En dark: sin rayas entre filas (solo hover) para lectura más liviana */
+  td: 'px-4 py-3.5 text-sm text-[#164151] dark:text-white/90 border-b border-gray-100 dark:border-transparent',
+  row: 'cursor-pointer transition-colors hover:bg-gray-50/80 dark:hover:bg-white/[0.035]',
   planName: 'font-semibold text-[#164151] dark:text-white leading-tight',
   planDesc: 'text-xs text-[#164151]/55 dark:text-white/40 mt-0.5 line-clamp-1',
   badgeActive:
@@ -156,8 +157,8 @@ export const gymClientsListStyles = {
   /** Sin min-width ni scroll horizontal: la tabla se adapta al ancho disponible */
   tableWrap: 'w-full overflow-hidden',
   table: 'w-full table-fixed',
-  th: 'px-3 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-white/40 bg-gray-50/90 dark:bg-white/[0.03] border-b border-gray-200 dark:border-white/10',
-  td: 'px-3 py-2.5 text-sm text-[#164151] dark:text-white/90 border-b border-gray-100 dark:border-white/[0.06] overflow-hidden align-middle',
+  th: 'px-3 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-white/40 bg-gray-50/90 dark:bg-white/[0.025] border-b border-gray-200 dark:border-white/[0.05]',
+  td: 'px-3 py-2.5 text-sm text-[#164151] dark:text-white/90 border-b border-gray-100 dark:border-transparent overflow-hidden align-middle',
   actionBtn:
     'inline-flex items-center justify-center w-8 h-8 rounded-lg text-[#164151]/70 dark:text-white/70 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors shrink-0',
   whatsappAction:
@@ -195,7 +196,7 @@ export const gymClientsListStyles = {
   actionsCell: 'inline-flex items-center justify-start gap-0 flex-nowrap whitespace-nowrap',
   actionsCellTh: 'text-left whitespace-nowrap',
   rowInactive: 'opacity-55',
-  mobileList: 'md:hidden divide-y divide-gray-100 dark:divide-white/[0.06]',
+  mobileList: 'md:hidden divide-y divide-gray-100 dark:divide-white/[0.04]',
 } as const;
 
 /** Lista de pagos / facturas — misma densidad que Clientes y Planes */
