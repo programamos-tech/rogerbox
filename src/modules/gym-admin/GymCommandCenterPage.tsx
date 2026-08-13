@@ -131,7 +131,7 @@ export function GymCommandCenterPage({
   onOpenCash,
   onGoToTab,
 }: GymCommandCenterPageProps) {
-  const { data, isLoading, isError, refetch, isFetching } =
+  const { data, isLoading, isError, error, refetch, isFetching } =
     useGymCommandCenter();
   const [hideMoney, setHideMoney] = useState(false);
 
@@ -175,6 +175,11 @@ export function GymCommandCenterPage({
         <p className="text-sm font-medium text-red-700 dark:text-red-300">
           No se pudo cargar el centro de mando.
         </p>
+        {error instanceof Error && error.message ? (
+          <p className="mt-2 text-xs text-red-600/80 dark:text-red-300/70">
+            {error.message}
+          </p>
+        ) : null}
         <button
           type="button"
           onClick={() => refetch()}

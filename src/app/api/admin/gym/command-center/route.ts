@@ -89,8 +89,8 @@ type MembershipRow = {
   start_date: string;
   end_date: string;
   status: string;
-  client_info: ClientInfoRow | ClientInfoRow[] | null;
-  plan: PlanRow | PlanRow[] | null;
+  client_info: ClientInfoRow | null;
+  plan: PlanRow | null;
 };
 
 type PaymentRow = {
@@ -103,42 +103,86 @@ type OrderRow = { amount: number | null; created_at?: string | null };
 
 type ExpenseRow = { amount: number | null; expense_date?: string | null };
 
-async function fetchAllMemberships(): Promise<MembershipRow[]> {
-  const out: MembershipRow[] = [];
+async function fetchPaged<T>(
+  query: (
+    from: number,
+    to: number,
+  ) => PromiseLike<{
+    data: T[] | null;
+    error: { message?: string } | null;
+  }>,
+): Promise<T[]> {
+  const out: T[] = [];
   let from = 0;
   for (;;) {
-    const { data, error } = await supabaseAdmin
-      .from('gym_memberships')
-      .select(
-        `
-        id,
-        client_info_id,
-        plan_id,
-        start_date,
-        end_date,
-        status,
-        client_info:gym_client_info (
-          id,
-          name,
-          document_id,
-          whatsapp,
-          user_id,
-          is_inactive,
-          birth_date
-        ),
-        plan:gym_plans ( id, name )
-      `,
-      )
-      .neq('status', 'cancelled')
-      .range(from, from + PAGE_SIZE - 1);
-
-    if (error) throw error;
-    const rows = (data || []) as MembershipRow[];
+    const { data, error } = await query(from, from + PAGE_SIZE - 1);
+    if (error) {
+      throw new Error(error.message || 'Error al paginar datos');
+    }
+    const rows = data || [];
     out.push(...rows);
     if (rows.length < PAGE_SIZE) break;
     from += PAGE_SIZE;
   }
   return out;
+}
+
+async function fetchByIds<T extends { id?: string }>(
+  table: 'gym_client_info' | 'gym_plans',
+  columns: string,
+  ids: string[],
+): Promise<T[]> {
+  const unique = [...new Set(ids.filter(Boolean))];
+  const out: T[] = [];
+  for (let i = 0; i < unique.length; i += PAGE_SIZE) {
+    const chunk = unique.slice(i, i + PAGE_SIZE);
+    const { data, error } = await supabaseAdmin
+      .from(table)
+      .select(columns)
+      .in('id', chunk);
+    if (error) {
+      throw new Error(error.message || `Error al obtener ${table}`);
+    }
+    out.push(...((data || []) as unknown as T[]));
+  }
+  return out;
+}
+
+async function fetchAllMemberships(): Promise<MembershipRow[]> {
+  const raw = await fetchPaged<{
+    id: string;
+    client_info_id: string;
+    plan_id: string;
+    start_date: string;
+    end_date: string;
+    status: string;
+  }>((from, to) =>
+    supabaseAdmin
+      .from('gym_memberships')
+      .select('id, client_info_id, plan_id, start_date, end_date, status')
+      .neq('status', 'cancelled')
+      .order('id', { ascending: true })
+      .range(from, to),
+  );
+
+  const clients = await fetchByIds<ClientInfoRow>(
+    'gym_client_info',
+    'id, name, document_id, whatsapp, user_id, is_inactive, birth_date',
+    raw.map((m) => m.client_info_id),
+  );
+  const plans = await fetchByIds<PlanRow>(
+    'gym_plans',
+    'id, name',
+    raw.map((m) => m.plan_id),
+  );
+  const clientById = new Map(clients.map((c) => [c.id, c]));
+  const planById = new Map(plans.map((p) => [String(p.id || ''), p]));
+
+  return raw.map((m) => ({
+    ...m,
+    client_info: clientById.get(m.client_info_id) || null,
+    plan: planById.get(m.plan_id) || null,
+  }));
 }
 
 function sumByDate(
@@ -519,10 +563,10 @@ export async function GET() {
     };
 
     return NextResponse.json(payload);
-  } catch {
-    return NextResponse.json(
-      { error: 'Error interno del servidor' },
-      { status: 500 },
-    );
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : 'Error interno del servidor';
+    console.error('[command-center]', error);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
