@@ -77,7 +77,6 @@ type ClientInfoRow = {
   user_id?: string | null;
   is_inactive?: boolean | null;
   birth_date?: string | null;
-  avatar_url?: string | null;
 };
 
 type PlanRow = { id?: string; name?: string | null };
@@ -167,7 +166,7 @@ async function fetchAllMemberships(): Promise<MembershipRow[]> {
 
   const clients = await fetchByIds<ClientInfoRow>(
     'gym_client_info',
-    'id, name, document_id, whatsapp, user_id, is_inactive, birth_date, avatar_url',
+    'id, name, document_id, whatsapp, user_id, is_inactive, birth_date',
     raw.map((m) => m.client_info_id),
   );
   const plans = await fetchByIds<PlanRow>(
@@ -234,9 +233,7 @@ export async function GET() {
           .lte('created_at', endIso),
         supabaseAdmin
           .from('gym_client_info')
-          .select(
-            'id, name, document_id, whatsapp, user_id, birth_date, avatar_url',
-          )
+          .select('id, name, document_id, whatsapp, user_id, birth_date')
           .not('birth_date', 'is', null)
           .order('name', { ascending: true }),
       ]);
@@ -280,7 +277,7 @@ export async function GET() {
           name: client?.name || 'Sin nombre',
           document_id: client?.document_id || '',
           whatsapp: client?.whatsapp || null,
-          avatar_url: client?.avatar_url?.trim() || null,
+          avatar_url: null,
           user_id: client?.user_id || null,
           is_inactive: Boolean(client?.is_inactive),
           current: [],
@@ -558,8 +555,55 @@ export async function GET() {
       document_id: c.document_id || '',
       age: c.age,
       whatsapp: c.whatsapp || null,
-      avatar_url: c.avatar_url?.trim() || null,
+      avatar_url: null as string | null,
     }));
+
+    const visiblePeople = [
+      ...collectAll.slice(0, QUEUE_LIMIT),
+      ...renewAll.slice(0, QUEUE_LIMIT),
+      ...advancesAll.slice(0, QUEUE_LIMIT),
+      ...birthdayClients,
+    ];
+    const userIds = [
+      ...new Set(
+        visiblePeople
+          .map((person) => byClient.get(person.client_info_id)?.user_id)
+          .concat(birthdayRows.map((row) => row.user_id))
+          .filter((id): id is string => Boolean(id)),
+      ),
+    ];
+    if (userIds.length > 0) {
+      try {
+        const { data: profileRows } = await supabaseAdmin
+          .from('profiles')
+          .select('id, avatar_url')
+          .in('id', userIds);
+        const avatarByUserId = new Map<string, string>();
+        for (const row of profileRows || []) {
+          const url = String(
+            (row as { avatar_url?: string | null }).avatar_url || '',
+          ).trim();
+          if (!url) continue;
+          avatarByUserId.set(String((row as { id: string }).id), url);
+        }
+        const userIdByClient = new Map<string, string | null>();
+        for (const bucket of byClient.values()) {
+          userIdByClient.set(bucket.client_info_id, bucket.user_id);
+        }
+        for (const row of birthdayRows) {
+          if (!userIdByClient.has(row.id)) {
+            userIdByClient.set(row.id, row.user_id || null);
+          }
+        }
+        for (const person of visiblePeople) {
+          const uid = userIdByClient.get(person.client_info_id);
+          if (!uid) continue;
+          person.avatar_url = avatarByUserId.get(uid) || null;
+        }
+      } catch {
+        // Sin foto de perfil el dashboard sigue con avatares ilustrados.
+      }
+    }
 
     const payload: GymCommandCenterResponse = {
       today,
