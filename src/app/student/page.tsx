@@ -28,6 +28,11 @@ import { useUserPurchases } from '@/hooks/useUserPurchases';
 import { supabase } from '@/lib/supabase';
 import { ShareCourseToFeedButton } from '@/shared/components/ShareCourseToFeedButton';
 import { sortCourseLessonsByOrder } from '@/shared/utils/course-lessons.util';
+import {
+  canUseNativeHlsFallback,
+  createMuxHlsPlayer,
+  isHlsJsPlaybackSupported,
+} from '@/shared/utils/mux-hls.util';
 
 function StudentPageContent() {
   const { user } = useSupabaseAuth();
@@ -775,33 +780,11 @@ function StudentPageContent() {
       }
     };
 
-    // Verificar soporte HLS nativo
-    if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      setVideoLoading(true);
-      video.src = videoUrl;
-      video.load();
-
-      video.addEventListener('loadeddata', () => {
-        setVideoLoading(false);
-      });
-
-      video.addEventListener('error', () => {
-        setVideoLoading(false);
-      });
-
-      video.addEventListener('ended', onVideoEnded);
-
-      video.play().catch((err) => {
-        setVideoLoading(false);
-      });
-    } else if (Hls.isSupported()) {
+    // Prefer hls.js: Chrome 142+ claims native HLS but Mux playback often fails.
+    if (isHlsJsPlaybackSupported()) {
       try {
         setVideoLoading(true);
-        const hls = new Hls({
-          enableWorker: true,
-          lowLatencyMode: false,
-          debug: false, // Deshabilitar debug para producción
-        });
+        const hls = createMuxHlsPlayer();
 
         // Agregar TODOS los listeners ANTES de cargar el source
         hls.on(Hls.Events.MANIFEST_LOADED, (event, data) => {});
@@ -892,6 +875,24 @@ function StudentPageContent() {
       } catch (err) {
         setVideoLoading(false);
       }
+    } else if (canUseNativeHlsFallback(video)) {
+      setVideoLoading(true);
+      video.src = videoUrl;
+      video.load();
+
+      video.addEventListener('loadeddata', () => {
+        setVideoLoading(false);
+      });
+
+      video.addEventListener('error', () => {
+        setVideoLoading(false);
+      });
+
+      video.addEventListener('ended', onVideoEnded);
+
+      video.play().catch(() => {
+        setVideoLoading(false);
+      });
     } else {
       setVideoLoading(false);
     }
@@ -1425,7 +1426,10 @@ function StudentPageContent() {
                       onLoadedData={() => {}}
                       onPlay={() => {}}
                     >
-                      <source src="/roger-hero.mp4" type="video/mp4" />
+                      <source
+                        src="/videos/roger-hero-optimized.mp4"
+                        type="video/mp4"
+                      />
                       Tu navegador no soporta el elemento de video.
                     </video>
 

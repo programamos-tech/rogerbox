@@ -47,13 +47,18 @@ interface UseUserPurchasesReturn {
 }
 
 export const useUserPurchases = (): UseUserPurchasesReturn => {
-  const { user } = useSupabaseAuth();
+  const { user, loading: authLoading } = useSupabaseAuth();
   const isAdmin = useIsAdmin();
   const [purchases, setPurchases] = useState<UserPurchase[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const loadPurchases = useCallback(async () => {
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
+
     if (!user?.id) {
       setPurchases([]);
       setLoading(false);
@@ -203,7 +208,7 @@ export const useUserPurchases = (): UseUserPurchasesReturn => {
     } finally {
       setLoading(false);
     }
-  }, [user?.id, isAdmin]);
+  }, [user?.id, isAdmin, authLoading]);
 
   useEffect(() => {
     loadPurchases();

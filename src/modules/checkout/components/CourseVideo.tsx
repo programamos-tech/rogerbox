@@ -5,6 +5,11 @@ import { Play, Zap } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import WompiCheckout from '@/modules/payments/checkout/WompiCheckout';
+import {
+  canUseNativeHlsFallback,
+  createMuxHlsPlayer,
+  isHlsJsPlaybackSupported,
+} from '@/shared/utils/mux-hls.util';
 import { processCheckoutIntent } from '../actions/checkout.actions';
 
 const PLACEHOLDER_IMAGE = '/images/course-placeholder.jpg';
@@ -56,15 +61,8 @@ export default function CourseVideo({
       hlsRef.current = null;
     }
 
-    if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      video.src = videoUrl;
-      video.load();
-      video.play().catch(() => {});
-      return;
-    }
-
-    if (Hls.isSupported()) {
-      const hls = new Hls({ enableWorker: true, lowLatencyMode: false });
+    if (isHlsJsPlaybackSupported()) {
+      const hls = createMuxHlsPlayer();
       hls.on(Hls.Events.ERROR, (_, data) => {
         if (data.fatal) {
           switch (data.type) {
@@ -91,6 +89,13 @@ export default function CourseVideo({
       hls.loadSource(videoUrl);
       hls.attachMedia(video);
       hlsRef.current = hls;
+      video.play().catch(() => {});
+      return;
+    }
+
+    if (canUseNativeHlsFallback(video)) {
+      video.src = videoUrl;
+      video.load();
       video.play().catch(() => {});
     }
   }, [videoStarted, videoUrl]);
