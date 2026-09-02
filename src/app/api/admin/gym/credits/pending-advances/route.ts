@@ -67,6 +67,7 @@ export async function GET(request: NextRequest) {
         payments:gym_payments (
           id,
           amount,
+          credit_applied,
           invoice_number,
           payment_date,
           status
@@ -114,7 +115,10 @@ export async function GET(request: NextRequest) {
         start_date: String(m.start_date).slice(0, 10),
         end_date: String(m.end_date).slice(0, 10),
         payment_id: activePayment?.id || null,
-        payment_amount: activePayment ? Number(activePayment.amount) : null,
+        payment_amount: activePayment
+          ? Number(activePayment.amount || 0) +
+            Number(activePayment.credit_applied || 0)
+          : null,
         invoice_number: activePayment?.invoice_number || null,
         payment_date: activePayment?.payment_date
           ? String(activePayment.payment_date).slice(0, 10)

@@ -23,13 +23,13 @@ import {
 } from '@/modules/gym-admin/styles';
 import { downloadGymPaymentInvoicePdf } from '@/modules/gym-admin/utils/gym-payment-invoice-pdf.util';
 import { GymSeededAvatar } from '@/shared/components/GymSeededAvatar';
+import {
+  gymPaymentCashAmount,
+  gymPaymentCreditApplied,
+  gymPaymentInvoiceTotal,
+  gymPaymentMethodLabel,
+} from '@/shared/utils/gym-payment-amount.util';
 import type { GymPayment } from '@/types/gym';
-
-const METHOD_LABEL: Record<string, string> = {
-  cash: 'Efectivo',
-  transfer: 'Transferencia',
-  mixed: 'Mixto',
-};
 
 export function GymPaymentDetailPage() {
   const params = useParams();
@@ -164,8 +164,10 @@ export function GymPaymentDetailPage() {
   const invoiceLabel = payment.invoice_number
     ? String(payment.invoice_number).padStart(3, '0')
     : payment.id.substring(0, 8).toUpperCase();
-  const methodLabel =
-    METHOD_LABEL[payment.payment_method] || payment.payment_method;
+  const methodLabel = gymPaymentMethodLabel(payment);
+  const invoiceTotal = gymPaymentInvoiceTotal(payment);
+  const creditApplied = gymPaymentCreditApplied(payment);
+  const cashAmount = gymPaymentCashAmount(payment);
   const clientHref = payment.client_info?.user_id
     ? `/admin/users/${payment.client_info.user_id}`
     : `/admin/users/${payment.client_info_id}`;
@@ -202,7 +204,7 @@ export function GymPaymentDetailPage() {
     { label: 'Método', value: methodLabel },
     {
       label: 'Total',
-      value: `$${payment.amount.toLocaleString('es-CO')} COP`,
+      value: `$${invoiceTotal.toLocaleString('es-CO')} COP`,
       emphasize: !isVoided,
       danger: isVoided,
     },
@@ -376,8 +378,15 @@ export function GymPaymentDetailPage() {
                   isVoided ? t.totalValueVoided : t.totalValue
                 }
               >
-                ${payment.amount.toLocaleString('es-CO')}
+                ${invoiceTotal.toLocaleString('es-CO')}
               </p>
+              {creditApplied > 0 ? (
+                <p className="mt-1 text-xs text-[#164151]/60 dark:text-white/45">
+                  {cashAmount > 0
+                    ? `$${creditApplied.toLocaleString('es-CO')} saldo a favor · $${cashAmount.toLocaleString('es-CO')} en caja`
+                    : 'Cubierto con saldo a favor'}
+                </p>
+              ) : null}
             </div>
           </section>
         </div>

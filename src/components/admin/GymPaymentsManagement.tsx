@@ -1,7 +1,5 @@
 'use client';
 
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
 import {
   Calendar,
   CheckCircle,
@@ -39,10 +37,15 @@ import {
   adminFormModalStyles as modal,
   gymPaymentsListStyles as styles,
 } from '@/modules/gym-admin/styles';
+import { downloadGymPaymentInvoicePdf } from '@/modules/gym-admin/utils/gym-payment-invoice-pdf.util';
 import { formatGymPlanDuration } from '@/modules/gym-admin/utils/gym-plan-duration.util';
 import { DatePickerField } from '@/shared/components/DatePickerField';
 import { GymSeededAvatar } from '@/shared/components/GymSeededAvatar';
 import { WhatsAppIcon } from '@/shared/components/WhatsAppIcon';
+import {
+  gymPaymentInvoiceTotal,
+  gymPaymentMethodLabel,
+} from '@/shared/utils/gym-payment-amount.util';
 import type {
   GymClientInfo,
   GymPayment,
@@ -793,156 +796,10 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
     }, [paymentSearchTerm, selectedPlanFilter, statusFilter]);
 
     const handleDownloadInvoice = async (payment: GymPayment) => {
-      // Crear un elemento temporal para renderizar la factura
-      const invoiceDiv = document.createElement('div');
-      invoiceDiv.style.width = '800px';
-      invoiceDiv.style.padding = '40px';
-      invoiceDiv.style.backgroundColor = '#ffffff';
-      invoiceDiv.style.fontFamily = 'Arial, sans-serif';
-      invoiceDiv.style.color = '#333';
-      invoiceDiv.style.position = 'absolute';
-      invoiceDiv.style.left = '-9999px';
-      invoiceDiv.style.top = '0';
-
-      const periodStartFormatted = formatDateOnlyLocal(payment.period_start, {
-        day: '2-digit',
-        month: 'long',
-        year: 'numeric',
-      });
-      const periodEndFormatted = formatDateOnlyLocal(payment.period_end, {
-        day: '2-digit',
-        month: 'long',
-        year: 'numeric',
-      });
-      const paymentDateFormatted = formatDateOnlyLocal(payment.payment_date, {
-        day: '2-digit',
-        month: 'long',
-        year: 'numeric',
-      });
-      const methodLabel =
-        payment.payment_method === 'cash'
-          ? 'Efectivo'
-          : payment.payment_method === 'transfer'
-            ? 'Transferencia'
-            : 'Mixto';
-
-      invoiceDiv.innerHTML = `
-      <div style="text-align: center; margin-bottom: 32px; padding-bottom: 24px; border-bottom: 2px solid #e5e7eb;">
-        <div style="font-size: 28px; font-weight: 900; color: #164151; letter-spacing: -0.5px; font-family: Arial, sans-serif;">
-          <strong style="font-weight: 900;">ROGER</strong><strong style="color: #85ea10; font-weight: 900;">BOX</strong>
-        </div>
-        <div style="font-size: 13px; color: #64748b; margin-top: 6px; text-transform: uppercase; letter-spacing: 0.08em;">
-          Comprobante de pago
-        </div>
-        <div style="font-size: 15px; color: #164151; font-weight: 600; margin-top: 12px;">
-          ${payment.invoice_number ? `Factura Nº ${String(payment.invoice_number).padStart(3, '0')}` : `Pago ${payment.id.substring(0, 8).toUpperCase()}`}
-        </div>
-      </div>
-
-      <div style="display: flex; gap: 24px; margin-bottom: 28px; flex-wrap: wrap;">
-        <div style="flex: 1; min-width: 220px; background: #f8fafc; padding: 16px; border-radius: 12px; border: 1px solid #e2e8f0;">
-          <div style="font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px;">Emisor</div>
-          <div style="font-size: 14px; color: #164151; font-weight: 600;">ROGERBOX</div>
-          <div style="font-size: 12px; color: #64748b; margin-top: 4px;">NIT 1102819763-9</div>
-          <div style="font-size: 12px; color: #64748b; margin-top: 2px;">Cr 54 A #25-26, Los Alpes</div>
-          <div style="font-size: 12px; color: #64748b; margin-top: 2px;">3005009487 · info@rogerbox.com</div>
-        </div>
-        <div style="flex: 1; min-width: 220px; background: #f8fafc; padding: 16px; border-radius: 12px; border: 1px solid #e2e8f0;">
-          <div style="font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px;">Cliente</div>
-          <div style="font-size: 14px; color: #164151; font-weight: 600;">${payment.client_info?.name || '—'}</div>
-          <div style="font-size: 12px; color: #64748b; margin-top: 4px;">Doc. ${payment.client_info?.document_id || '—'}</div>
-          ${payment.client_info?.whatsapp ? `<div style="font-size: 12px; color: #64748b; margin-top: 2px;">${payment.client_info.whatsapp}</div>` : ''}
-        </div>
-      </div>
-
-      <div style="background: #164151; color: #fff; padding: 14px 20px; border-radius: 12px 12px 0 0; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">
-        Detalle del plan y pago
-      </div>
-      <div style="border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 12px 12px; overflow: hidden;">
-        <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
-          <tr style="border-bottom: 1px solid #e2e8f0;">
-            <td style="padding: 14px 20px; color: #64748b; font-weight: 500; width: 38%;">Plan</td>
-            <td style="padding: 14px 20px; color: #164151; font-weight: 600;">${payment.plan?.name || 'Plan'}</td>
-          </tr>
-          <tr style="border-bottom: 1px solid #e2e8f0;">
-            <td style="padding: 14px 20px; color: #64748b; font-weight: 500;">Fecha de inicio</td>
-            <td style="padding: 14px 20px; color: #0f172a;">${periodStartFormatted}</td>
-          </tr>
-          <tr style="border-bottom: 1px solid #e2e8f0;">
-            <td style="padding: 14px 20px; color: #64748b; font-weight: 500;">Fecha de finalización</td>
-            <td style="padding: 14px 20px; color: #0f172a;">${periodEndFormatted}</td>
-          </tr>
-          <tr style="border-bottom: 1px solid #e2e8f0;">
-            <td style="padding: 14px 20px; color: #64748b; font-weight: 500;">Fecha de pago</td>
-            <td style="padding: 14px 20px; color: #0f172a;">${paymentDateFormatted}</td>
-          </tr>
-          <tr style="border-bottom: 1px solid #e2e8f0;">
-            <td style="padding: 14px 20px; color: #64748b; font-weight: 500;">Método de pago</td>
-            <td style="padding: 14px 20px; color: #0f172a;">${methodLabel}</td>
-          </tr>
-          ${
-            payment.notes
-              ? `<tr style="border-bottom: 1px solid #e2e8f0;">
-            <td style="padding: 14px 20px; color: #64748b; font-weight: 500;">Notas</td>
-            <td style="padding: 14px 20px; color: #0f172a;">${payment.notes}</td>
-          </tr>`
-              : ''
-          }
-          <tr style="background: #f0fdf4;">
-            <td style="padding: 18px 20px; color: #164151; font-weight: 700; font-size: 15px;">Total pagado</td>
-            <td style="padding: 18px 20px; color: #164151; font-weight: 800; font-size: 20px;">$${payment.amount.toLocaleString('es-CO')} COP</td>
-          </tr>
-        </table>
-      </div>
-
-      <div style="margin-top: 28px; padding: 16px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0; text-align: center;">
-        <p style="margin: 0; font-size: 12px; color: #64748b;">
-          <strong style="color: #164151;">Válido como comprobante de pago.</strong><br>
-          Generado el ${new Date().toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-        </p>
-        <p style="margin: 8px 0 0 0; font-size: 11px; color: #94a3b8;">RogerBox · www.rogerbox.co</p>
-      </div>
-    `;
-
-      document.body.appendChild(invoiceDiv);
-
       try {
-        // Convertir el HTML a canvas
-        const canvas = await html2canvas(invoiceDiv, {
-          scale: 2,
-          useCORS: true,
-          backgroundColor: '#ffffff',
-          logging: false,
-        });
-
-        // Crear PDF
-        const imgData = canvas.toDataURL('image/png');
-        const pdf = new jsPDF('p', 'mm', 'a4');
-        const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = pdf.internal.pageSize.getHeight();
-        const imgWidth = canvas.width;
-        const imgHeight = canvas.height;
-        const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
-        const imgX = (pdfWidth - imgWidth * ratio) / 2;
-        const imgY = 0;
-
-        pdf.addImage(
-          imgData,
-          'PNG',
-          imgX,
-          imgY,
-          imgWidth * ratio,
-          imgHeight * ratio,
-        );
-
-        // Descargar el PDF
-        const fileName = `factura-${payment.invoice_number || payment.id.substring(0, 8)}-${payment.payment_date}.pdf`;
-        pdf.save(fileName);
-      } catch (error) {
+        await downloadGymPaymentInvoicePdf(payment);
+      } catch {
         alert('Error al generar la factura. Por favor, intenta nuevamente.');
-      } finally {
-        // Limpiar el elemento temporal
-        document.body.removeChild(invoiceDiv);
       }
     };
 
@@ -970,8 +827,9 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
         month: 'long',
         year: 'numeric',
       });
-      const amount = payment.amount.toLocaleString('es-CO');
-      const message = `Hola ${name}, aquí está tu comprobante de pago de RogerBox:\n\n*Plan:* ${plan}\n*Período:* ${periodStart} - ${periodEnd}\n*Fecha de pago:* ${paymentDate}\n*Monto:* $${amount} COP\n\nGracias por tu pago. RogerBox · www.rogerbox.co`;
+      const amount = gymPaymentInvoiceTotal(payment).toLocaleString('es-CO');
+      const method = gymPaymentMethodLabel(payment);
+      const message = `Hola ${name}, aquí está tu comprobante de pago de RogerBox:\n\n*Plan:* ${plan}\n*Período:* ${periodStart} - ${periodEnd}\n*Fecha de pago:* ${paymentDate}\n*Método:* ${method}\n*Monto:* $${amount} COP\n\nGracias por tu pago. RogerBox · www.rogerbox.co`;
       window.open(
         `https://wa.me/${phone}?text=${encodeURIComponent(message)}`,
         '_blank',
@@ -1731,12 +1589,8 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                         const invoiceLabel = payment.invoice_number
                           ? `#${payment.invoice_number.padStart(3, '0')}`
                           : `#${(originalIndex + 1).toString().padStart(3, '0')}`;
-                        const methodLabel =
-                          payment.payment_method === 'cash'
-                            ? 'Efectivo'
-                            : payment.payment_method === 'transfer'
-                              ? 'Transferencia'
-                              : 'Mixto';
+                        const methodLabel = gymPaymentMethodLabel(payment);
+                        const invoiceTotal = gymPaymentInvoiceTotal(payment);
 
                         return (
                           <tr
@@ -1787,7 +1641,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                                   isVoided ? styles.amountVoided : styles.amount
                                 }
                               >
-                                ${payment.amount.toLocaleString('es-CO')}
+                                ${invoiceTotal.toLocaleString('es-CO')}
                               </p>
                             </td>
                             <td className={styles.td}>
@@ -1886,6 +1740,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                     const invoiceLabel = payment.invoice_number
                       ? `#${payment.invoice_number.padStart(3, '0')}`
                       : `#${(originalIndex + 1).toString().padStart(3, '0')}`;
+                    const invoiceTotal = gymPaymentInvoiceTotal(payment);
 
                     return (
                       <div
@@ -1934,7 +1789,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                               isVoided ? styles.amountVoided : styles.amount
                             }
                           >
-                            ${payment.amount.toLocaleString('es-CO')}
+                            ${invoiceTotal.toLocaleString('es-CO')}
                           </p>
                         </div>
 

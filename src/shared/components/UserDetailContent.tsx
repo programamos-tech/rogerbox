@@ -46,6 +46,7 @@ import { DatePickerField } from '@/shared/components/DatePickerField';
 import { GymClientPaymentStatusBadge } from '@/shared/components/GymClientPaymentStatusBadge';
 import { GymSeededAvatar } from '@/shared/components/GymSeededAvatar';
 import { pickLatestExpiredMembershipPerPlan } from '@/shared/utils/gym-membership-admin.util';
+import { gymPaymentInvoiceTotal } from '@/shared/utils/gym-payment-amount.util';
 /** Nombre en ficha admin: full_name y name de perfil (y sede física) antes que first/last sueltos. */
 function resolveAdminClientDisplayName(u: {
   full_name?: string | null;
@@ -1496,7 +1497,7 @@ export function UserDetailContent({
                       ).length;
                       const gymPaid = memberships.reduce(
                         (sum: number, m: any) =>
-                          sum + (Number(m.payment?.amount) || 0),
+                          sum + gymPaymentInvoiceTotal(m.payment || {}),
                         0,
                       );
                       const coursesPaid = coursePurchases.reduce(

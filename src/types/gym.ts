@@ -122,6 +122,7 @@ export interface GymPayment {
   client_info_id: string;
   plan_id: string;
   amount: number;
+  credit_applied?: number;
   payment_method: PaymentMethod;
   payment_date: string;
   period_start: string;
@@ -151,6 +152,7 @@ export interface GymPaymentInsert {
   client_info_id: string;
   plan_id: string;
   amount: number;
+  credit_applied?: number;
   payment_method: PaymentMethod;
   payment_date: string;
   period_start: string;
@@ -164,6 +166,7 @@ export interface GymPaymentInsert {
 
 export interface GymPaymentUpdate {
   amount?: number;
+  credit_applied?: number;
   payment_method?: PaymentMethod;
   payment_date?: string;
   period_start?: string;

@@ -13,6 +13,7 @@ import { gymUserDetailStyles as t } from '@/modules/gym-admin/styles';
 import { DatePickerField } from '@/shared/components/DatePickerField';
 import { WhatsAppIcon } from '@/shared/components/WhatsAppIcon';
 import { pickLatestExpiredMembershipPerPlan } from '@/shared/utils/gym-membership-admin.util';
+import { gymPaymentInvoiceTotal } from '@/shared/utils/gym-payment-amount.util';
 
 type MembershipRow = {
   kind: 'membership';
@@ -353,7 +354,11 @@ export function GymClientPurchasesTable({
               const whatsappHref = getGymWhatsappHref(
                 userData.whatsapp || userData.phone,
               );
-              const amount = Number(membership.payment?.amount) || 0;
+              const amount = gymPaymentInvoiceTotal(
+                membership.payment || {},
+              );
+              const hasInvoice =
+                Boolean(membership.payment?.invoice_number) || amount > 0;
 
               const handleRenewWhatsApp = () => {
                 const whatsappNumber = (
@@ -465,10 +470,17 @@ export function GymClientPurchasesTable({
                     )}
                   </td>
                   <td className={t.td}>
-                    {amount > 0 ? (
-                      <span className="text-sm font-semibold tabular-nums">
-                        ${amount.toLocaleString('es-CO')}
-                      </span>
+                    {hasInvoice ? (
+                      <div>
+                        <span className="text-sm font-semibold tabular-nums">
+                          ${amount.toLocaleString('es-CO')}
+                        </span>
+                        {Number(membership.payment?.credit_applied) > 0 ? (
+                          <p className="mt-0.5 text-[11px] text-gray-500 dark:text-white/40">
+                            Saldo a favor
+                          </p>
+                        ) : null}
+                      </div>
                     ) : (
                       <span className={t.historyMuted}>—</span>
                     )}

@@ -249,7 +249,7 @@ export async function GET(
                 await supabaseAdmin
                   .from('gym_payments')
                   .select(
-                    'id, membership_id, invoice_number, payment_date, amount, status',
+                    'id, membership_id, invoice_number, payment_date, amount, credit_applied, status',
                   )
                   .in('membership_id', membershipIds)
                   .order('payment_date', { ascending: false });
@@ -449,7 +449,7 @@ export async function GET(
                 await supabaseAdmin
                   .from('gym_payments')
                   .select(
-                    'id, membership_id, invoice_number, payment_date, amount, user_id, status',
+                    'id, membership_id, invoice_number, payment_date, amount, credit_applied, user_id, status',
                   )
                   .in('membership_id', membershipIds)
                   .order('payment_date', { ascending: false });

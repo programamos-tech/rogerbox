@@ -101,6 +101,10 @@ import {
   parseBirthDateYmd,
 } from '@/shared/utils/birthday.util';
 import { sortCourseLessonsByOrder } from '@/shared/utils/course-lessons.util';
+import {
+  gymPaymentInvoiceTotal,
+  gymPaymentMethodLabel,
+} from '@/shared/utils/gym-payment-amount.util';
 import { supabaseAdmin } from '@/lib/supabase';
 import { supabase } from '@/lib/supabase-browser';
 
@@ -2707,12 +2711,6 @@ function AdminDashboardContent() {
                           const paymentDate = new Date(
                             payment.created_at || payment.payment_date,
                           );
-                          const paymentMethodLabels: { [key: string]: string } =
-                            {
-                              cash: 'Efectivo',
-                              transfer: 'Transferencia',
-                              mixed: 'Mixto',
-                            };
 
                           // Determinar nombre del cliente y documento según la sede
                           const clientName =
@@ -2820,11 +2818,7 @@ function AdminDashboardContent() {
                                         Método de pago
                                       </p>
                                       <p className="text-sm font-medium text-[#164151] dark:text-white leading-tight">
-                                        {paymentMethodLabels[
-                                          payment.payment_method
-                                        ] ||
-                                          payment.payment_method ||
-                                          'Transferencia'}
+                                        {gymPaymentMethodLabel(payment)}
                                       </p>
                                     </div>
                                     <div>
@@ -2884,7 +2878,7 @@ function AdminDashboardContent() {
                                   </p>
                                   <p className="text-lg md:text-xl font-bold text-[#85ea10] leading-tight">
                                     {showRevenueNumbers
-                                      ? `$${Number(payment.amount).toLocaleString('es-CO')}`
+                                      ? `$${gymPaymentInvoiceTotal(payment).toLocaleString('es-CO')}`
                                       : '••••••'}
                                   </p>
                                 </div>

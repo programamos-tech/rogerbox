@@ -2,6 +2,12 @@ import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { formatDateOnlyLocal } from '@/lib/dateUtils';
 import { isPlaceholderGymWhatsapp } from '@/lib/gymClientDisplay';
+import {
+  gymPaymentCashAmount,
+  gymPaymentCreditApplied,
+  gymPaymentInvoiceTotal,
+  gymPaymentMethodLabel,
+} from '@/shared/utils/gym-payment-amount.util';
 import type { GymPayment } from '@/types/gym';
 
 export async function downloadGymPaymentInvoicePdf(
@@ -16,12 +22,10 @@ export async function downloadGymPaymentInvoicePdf(
   invoiceDiv.style.position = 'absolute';
   invoiceDiv.style.left = '-9999px';
 
-  const paymentMethodText =
-    payment.payment_method === 'cash'
-      ? 'Efectivo'
-      : payment.payment_method === 'transfer'
-        ? 'Transferencia'
-        : 'Mixto';
+  const paymentMethodText = gymPaymentMethodLabel(payment);
+  const cashAmount = gymPaymentCashAmount(payment);
+  const creditApplied = gymPaymentCreditApplied(payment);
+  const invoiceTotal = gymPaymentInvoiceTotal(payment);
   const periodStartFormatted = formatDateOnlyLocal(payment.period_start, {
     day: '2-digit',
     month: 'long',
@@ -111,9 +115,25 @@ export async function downloadGymPaymentInvoicePdf(
           </tr>`
               : ''
           }
+          ${
+            creditApplied > 0
+              ? `<tr style="border-bottom: 1px solid #e2e8f0;">
+            <td style="padding: 14px 20px; color: #64748b; font-weight: 500;">Saldo a favor</td>
+            <td style="padding: 14px 20px; color: #0f172a;">$${creditApplied.toLocaleString('es-CO')} COP</td>
+          </tr>`
+              : ''
+          }
+          ${
+            creditApplied > 0 && cashAmount > 0
+              ? `<tr style="border-bottom: 1px solid #e2e8f0;">
+            <td style="padding: 14px 20px; color: #64748b; font-weight: 500;">Pagado en caja</td>
+            <td style="padding: 14px 20px; color: #0f172a;">$${cashAmount.toLocaleString('es-CO')} COP</td>
+          </tr>`
+              : ''
+          }
           <tr style="background: #f0fdf4;">
-            <td style="padding: 18px 20px; color: #164151; font-weight: 700; font-size: 15px;">Total pagado</td>
-            <td style="padding: 18px 20px; color: #164151; font-weight: 800; font-size: 20px;">$${payment.amount.toLocaleString('es-CO')} COP</td>
+            <td style="padding: 18px 20px; color: #164151; font-weight: 700; font-size: 15px;">Total factura</td>
+            <td style="padding: 18px 20px; color: #164151; font-weight: 800; font-size: 20px;">$${invoiceTotal.toLocaleString('es-CO')} COP</td>
           </tr>
         </table>
       </div>

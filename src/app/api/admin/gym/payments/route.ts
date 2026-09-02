@@ -281,6 +281,7 @@ export async function POST(request: NextRequest) {
         client_info_id,
         plan_id,
         amount,
+        credit_applied: creditApplied,
         payment_method,
         payment_date,
         period_start,
