@@ -14,6 +14,7 @@ import {
 import React, { useEffect, useRef, useState } from 'react';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { complementoToRetoInUi } from '@/lib/uiRetoLabels';
+import { fetchMuxPlayback } from '@/shared/utils/mux-hls.util';
 
 interface WeeklyComplement {
   id: string;
@@ -52,6 +53,10 @@ export default function StoriesSection({
   const [isCompleted, setIsCompleted] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [muxPlayback, setMuxPlayback] = useState<{
+    playbackId: string;
+    token: string | null;
+  } | null>(null);
   const playerContainerRef = useRef<HTMLDivElement>(null);
 
   const handlePlayerPlay = () => {
@@ -131,6 +136,36 @@ export default function StoriesSection({
 
     loadCompletionStatus();
   }, [user?.id, todayComplement]);
+
+  useEffect(() => {
+    if (!showModal || !todayComplement?.mux_playback_id) {
+      setMuxPlayback(null);
+      return;
+    }
+
+    let cancelled = false;
+    void fetchMuxPlayback(todayComplement.mux_playback_id)
+      .then((playback) => {
+        if (!cancelled) {
+          setMuxPlayback({
+            playbackId: playback.playbackId,
+            token: playback.token,
+          });
+        }
+      })
+      .catch(() => {
+        if (!cancelled && todayComplement.mux_playback_id) {
+          setMuxPlayback({
+            playbackId: todayComplement.mux_playback_id,
+            token: null,
+          });
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [showModal, todayComplement?.mux_playback_id]);
 
   // Abrir modal de video
   const handlePlayClick = () => {
@@ -292,25 +327,36 @@ export default function StoriesSection({
         <div className="complement-video-modal fixed inset-0 z-50 flex flex-col bg-black">
           {/* 1. Reproductor MUX: solo play (resto oculto por CSS) */}
           <div ref={playerContainerRef} className="absolute inset-0">
-            <MuxPlayer
-              playbackId={todayComplement.mux_playback_id}
-              streamType="on-demand"
-              autoPlay
-              muted={false}
-              className="absolute inset-0 w-full h-full object-contain"
-              style={{
-                ['--controls' as string]: 'auto',
-                ['--media-accent-color' as string]: '#85ea10',
-              }}
-              envKey={process.env.NEXT_PUBLIC_MUX_DATA_ENV_KEY}
-              metadata={{
-                video_id: todayComplement.id,
-                video_title: todayComplement.title,
-                viewer_user_id: user?.id || 'anonymous',
-                video_content_type: 'complement',
-                video_series: `Semana ${todayComplement.week_number}`,
-              }}
-            />
+            {muxPlayback ? (
+              <MuxPlayer
+                playbackId={muxPlayback.playbackId}
+                tokens={
+                  muxPlayback.token
+                    ? { playback: muxPlayback.token }
+                    : undefined
+                }
+                streamType="on-demand"
+                autoPlay
+                muted={false}
+                className="absolute inset-0 w-full h-full object-contain"
+                style={{
+                  ['--controls' as string]: 'auto',
+                  ['--media-accent-color' as string]: '#85ea10',
+                }}
+                envKey={process.env.NEXT_PUBLIC_MUX_DATA_ENV_KEY}
+                metadata={{
+                  video_id: todayComplement.id,
+                  video_title: todayComplement.title,
+                  viewer_user_id: user?.id || 'anonymous',
+                  video_content_type: 'complement',
+                  video_series: `Semana ${todayComplement.week_number}`,
+                }}
+              />
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center text-white/80 text-sm">
+                Cargando video...
+              </div>
+            )}
           </div>
 
           {/* 2. Barra superior única: no tapa la zona de controles de MUX */}

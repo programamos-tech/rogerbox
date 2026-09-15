@@ -31,6 +31,8 @@ import { sortCourseLessonsByOrder } from '@/shared/utils/course-lessons.util';
 import {
   canUseNativeHlsFallback,
   createMuxHlsPlayer,
+  extractMuxPlaybackId,
+  fetchMuxPlayback,
   isHlsJsPlaybackSupported,
 } from '@/shared/utils/mux-hls.util';
 
@@ -94,6 +96,7 @@ function StudentPageContent() {
   const introVideoRef = useRef<HTMLVideoElement>(null);
   const lessonVideoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
+  const playbackInitIdRef = useRef(0);
 
   // Si hay courseId en la URL, usar esa compra; si no, no cargar ningún curso (mostraremos lista)
   const selectedPurchase = courseIdFromUrl
@@ -723,48 +726,27 @@ function StudentPageContent() {
 
   // Inicializar video de la lección con HLS
   const initializeLessonVideo = useCallback(() => {
-    const video = lessonVideoRef.current;
-    if (!video) {
-      return;
-    }
-
     if (!currentLesson) {
       return;
     }
 
-    // El playback_id puede estar en video_url, playback_id, o mux_playback_id
-    let playbackId =
+    const playbackId = extractMuxPlaybackId(
       currentLesson.video_url ||
-      currentLesson.playback_id ||
-      currentLesson.mux_playback_id;
-
+        currentLesson.playback_id ||
+        currentLesson.mux_playback_id,
+    );
     if (!playbackId) {
       return;
     }
 
-    // Limpiar el playback_id: remover espacios, URLs completas, y extraer solo el ID
-    playbackId = playbackId.trim();
+    const initId = ++playbackInitIdRef.current;
+    setVideoLoading(true);
 
-    // Si viene como URL completa, extraer solo el ID
-    if (playbackId.includes('stream.mux.com')) {
-      const match = playbackId.match(/stream\.mux\.com\/([^/?.]+)/);
-      if (match) playbackId = match[1];
-    } else if (playbackId.includes('player.mux.com')) {
-      const match = playbackId.match(/player\.mux\.com\/([^/?.]+)/);
-      if (match) playbackId = match[1];
-    } else if (playbackId.includes('.m3u8')) {
-      playbackId = playbackId.replace('.m3u8', '').trim();
-    }
-
-    const videoUrl = `https://stream.mux.com/${playbackId}.m3u8`;
-    // Verificar que el playbackId no esté vacío después de limpiar
-    if (!playbackId || playbackId.trim() === '') {
-      return;
-    }
-
-    // Verificar formato básico del playback ID (generalmente alfanumérico)
-    if (playbackId.length < 10) {
-    }
+    const startPlayback = (videoUrl: string) => {
+      const video = lessonVideoRef.current;
+      if (!video || initId !== playbackInitIdRef.current) {
+        return;
+      }
 
     // Limpiar HLS anterior
     if (hlsRef.current) {
@@ -896,6 +878,29 @@ function StudentPageContent() {
     } else {
       setVideoLoading(false);
     }
+    };
+
+    void fetchMuxPlayback(playbackId)
+      .then((playback) => startPlayback(playback.url))
+      .catch((error) => {
+        if (initId !== playbackInitIdRef.current) return;
+        setVideoLoading(false);
+        const video = lessonVideoRef.current;
+        const message =
+          error instanceof Error
+            ? error.message
+            : 'Error al autorizar el video';
+        const errorDiv = document.createElement('div');
+        errorDiv.className =
+          'absolute inset-0 bg-red-900/80 flex items-center justify-center z-50';
+        errorDiv.innerHTML = `
+          <div class="text-center text-white p-6">
+            <p class="text-xl font-bold mb-2">Error al cargar el video</p>
+            <p class="text-sm mb-4">${message}</p>
+          </div>
+        `;
+        video?.parentElement?.appendChild(errorDiv);
+      });
   }, [currentLesson, effectivePurchase]);
 
   // Manejar click en "Iniciar Clase Ahora"

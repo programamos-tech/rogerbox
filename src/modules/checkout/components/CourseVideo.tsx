@@ -8,6 +8,8 @@ import WompiCheckout from '@/modules/payments/checkout/WompiCheckout';
 import {
   canUseNativeHlsFallback,
   createMuxHlsPlayer,
+  extractMuxPlaybackId,
+  fetchMuxPlayback,
   isHlsJsPlaybackSupported,
 } from '@/shared/utils/mux-hls.util';
 import { processCheckoutIntent } from '../actions/checkout.actions';
@@ -49,8 +51,8 @@ export default function CourseVideo({
   const posterUrl = courseImage || PLACEHOLDER_IMAGE;
 
   const playbackId =
-    muxPlaybackId?.trim() || '8wRPxlLcp01JrCKhEsyq00BPSrah1qkRY01aOvr01p4suEU';
-  const videoUrl = `https://stream.mux.com/${playbackId}.m3u8`;
+    extractMuxPlaybackId(muxPlaybackId) ||
+    '8wRPxlLcp01JrCKhEsyq00BPSrah1qkRY01aOvr01p4suEU';
 
   const initVideo = useCallback(() => {
     const video = videoRef.current;
@@ -61,44 +63,55 @@ export default function CourseVideo({
       hlsRef.current = null;
     }
 
-    if (isHlsJsPlaybackSupported()) {
-      const hls = createMuxHlsPlayer();
-      hls.on(Hls.Events.ERROR, (_, data) => {
-        if (data.fatal) {
-          switch (data.type) {
-            case Hls.ErrorTypes.NETWORK_ERROR:
-              try {
-                hls.startLoad();
-              } catch {
-                hls.destroy();
-              }
-              break;
-            case Hls.ErrorTypes.MEDIA_ERROR:
-              try {
-                hls.recoverMediaError();
-              } catch {
-                hls.destroy();
-              }
-              break;
-            default:
-              hls.destroy();
-              break;
-          }
-        }
-      });
-      hls.loadSource(videoUrl);
-      hls.attachMedia(video);
-      hlsRef.current = hls;
-      video.play().catch(() => {});
-      return;
-    }
+    const attachSource = (videoUrl: string) => {
+      const current = videoRef.current;
+      if (!current) return;
 
-    if (canUseNativeHlsFallback(video)) {
-      video.src = videoUrl;
-      video.load();
-      video.play().catch(() => {});
-    }
-  }, [videoStarted, videoUrl]);
+      if (isHlsJsPlaybackSupported()) {
+        const hls = createMuxHlsPlayer();
+        hls.on(Hls.Events.ERROR, (_, data) => {
+          if (data.fatal) {
+            switch (data.type) {
+              case Hls.ErrorTypes.NETWORK_ERROR:
+                try {
+                  hls.startLoad();
+                } catch {
+                  hls.destroy();
+                }
+                break;
+              case Hls.ErrorTypes.MEDIA_ERROR:
+                try {
+                  hls.recoverMediaError();
+                } catch {
+                  hls.destroy();
+                }
+                break;
+              default:
+                hls.destroy();
+                break;
+            }
+          }
+        });
+        hls.loadSource(videoUrl);
+        hls.attachMedia(current);
+        hlsRef.current = hls;
+        current.play().catch(() => {});
+        return;
+      }
+
+      if (canUseNativeHlsFallback(current)) {
+        current.src = videoUrl;
+        current.load();
+        current.play().catch(() => {});
+      }
+    };
+
+    void fetchMuxPlayback(playbackId)
+      .then((playback) => attachSource(playback.url))
+      .catch(() => {
+        attachSource(`https://stream.mux.com/${playbackId}.m3u8`);
+      });
+  }, [videoStarted, playbackId]);
 
   useEffect(() => {
     if (videoStarted && playbackId) {
