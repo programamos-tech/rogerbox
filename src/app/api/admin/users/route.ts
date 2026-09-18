@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '50');
     const search = searchParams.get('search') || '';
-    const status = searchParams.get('status') || 'all'; // all, active, renewal, no-products, inactive, mix-pending, mix-dismissed, missing-receipt
+    const status = searchParams.get('status') || 'all'; // all, active, renewal, no-products, inactive, mix-pending, mix-dismissed, missing-receipt, with-credit
     const userType = searchParams.get('userType') || 'all'; // all, physical, online, both
     const offset = (page - 1) * limit;
 
@@ -110,6 +110,26 @@ export async function GET(request: NextRequest) {
     }
 
     const clientIds = (clients || []).map((c: { id: string }) => c.id);
+
+    const creditByClient = new Map<string, number>();
+    if (clientIds.length > 0) {
+      const { data: creditRows } = await supabaseAdmin
+        .from('gym_client_credits')
+        .select('client_info_id, amount')
+        .in('client_info_id', clientIds)
+        .limit(10000);
+      for (const row of creditRows || []) {
+        const id = String(
+          (row as { client_info_id?: string }).client_info_id || '',
+        );
+        if (!id) continue;
+        creditByClient.set(
+          id,
+          (creditByClient.get(id) || 0) +
+            Number((row as { amount?: number }).amount || 0),
+        );
+      }
+    }
 
     const userIdToClientId = new Map<string, string>();
     const membershipIdToClientId = new Map<string, string>();
@@ -411,6 +431,7 @@ export async function GET(request: NextRequest) {
         mixRenewalCategory,
         listPriority,
         hasAnyInvoiceEver,
+        credit_balance: creditByClient.get(client.id) || 0,
         /**
          * Plan de gimnasio vigente y cero facturación en sede y en línea.
          */
@@ -447,6 +468,7 @@ export async function GET(request: NextRequest) {
       missingPaymentReceipt: processedClients.filter(
         (c) => c.activeGymWithoutPaymentReceipt,
       ).length,
+      withCredit: processedClients.filter((c) => c.credit_balance > 0).length,
     };
 
     // Aplicar filtro de estado después de procesar
@@ -472,6 +494,8 @@ export async function GET(request: NextRequest) {
       processedClients = processedClients.filter(
         (c) => c.activeGymWithoutPaymentReceipt,
       );
+    } else if (status === 'with-credit') {
+      processedClients = processedClients.filter((c) => c.credit_balance > 0);
     }
 
     if (userType !== 'all') {

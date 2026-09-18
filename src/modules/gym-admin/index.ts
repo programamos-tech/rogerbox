@@ -1,3 +1,4 @@
+export { GymClientCreditBadge } from '@/modules/gym-admin/components/GymClientCreditBadge';
 export { GymClientCreditBanner } from '@/modules/gym-admin/components/GymClientCreditBanner';
 export { GymClientPurchasesTable } from '@/modules/gym-admin/components/GymClientPurchasesTable';
 export { GymPendingAdvancesPanel } from '@/modules/gym-admin/components/GymPendingAdvancesPanel';

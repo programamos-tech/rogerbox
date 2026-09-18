@@ -182,6 +182,8 @@ export const gymClientsListStyles = {
   clientName:
     'truncate text-sm font-semibold text-[#164151] dark:text-white leading-tight',
   clientEmail: 'mt-0.5 truncate text-xs text-[#164151]/55 dark:text-white/40',
+  creditBadge:
+    'inline-flex max-w-full items-center gap-1 rounded-full border border-[#85ea10]/35 bg-[#85ea10]/[0.12] px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-[#3f7d08] dark:text-[#85ea10]',
   docCell:
     'inline-flex max-w-full items-center gap-1 text-xs font-medium tabular-nums text-[#164151] dark:text-white/85 truncate',
   productName:

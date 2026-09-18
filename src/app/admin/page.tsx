@@ -66,6 +66,7 @@ import GymExpensesManagement from '@/components/admin/GymExpensesManagement';
 import GymPlansManagement, {
   type GymPlansManagementRef,
 } from '@/components/admin/GymPlansManagement';
+import { GymClientCreditBadge } from '@/modules/gym-admin/components/GymClientCreditBadge';
 import { GymCommandCenterPage } from '@/modules/gym-admin/GymCommandCenterPage';
 import {
   gymClientsColWidths,
@@ -426,7 +427,7 @@ function AdminDashboardContent() {
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [userSearchTerm, setUserSearchTerm] = useState('');
   const [userTypeFilter, setUserTypeFilter] = useState<string>('all'); // 'all', 'physical', 'online', 'both'
-  const [paymentStatusFilter, setPaymentStatusFilter] = useState<string>('all'); // 'all', 'active', 'renewal', 'no-products', 'inactive', 'missing-receipt', …
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState<string>('all'); // 'all', 'active', 'renewal', 'no-products', 'inactive', 'missing-receipt', 'with-credit', …
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [userCounts, setUserCounts] = useState({
@@ -438,6 +439,7 @@ function AdminDashboardContent() {
     mixPending: 0,
     mixDismissed: 0,
     missingPaymentReceipt: 0,
+    withCredit: 0,
   });
   const [usersListTotal, setUsersListTotal] = useState(0);
   const usersPerPage = 20;
@@ -1491,6 +1493,7 @@ function AdminDashboardContent() {
           mixPending: 0,
           mixDismissed: 0,
           missingPaymentReceipt: 0,
+          withCredit: 0,
         },
       );
     } catch (error) {
@@ -2054,6 +2057,9 @@ function AdminDashboardContent() {
                             {client.email ? `· ${client.email}` : ''}
                           </p>
                           <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                            <GymClientCreditBadge
+                              balance={client.credit_balance}
+                            />
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300">
                               {productTypeLabel}
                             </span>
@@ -3555,6 +3561,12 @@ function AdminDashboardContent() {
                         className={clientsListStyles.filterSelect}
                       >
                         <option value="all">Estado: Todos</option>
+                        <option value="with-credit">
+                          Saldo a favor
+                          {userCounts.withCredit > 0
+                            ? ` (${userCounts.withCredit})`
+                            : ''}
+                        </option>
                         <option value="active">Al día</option>
                         <option value="missing-receipt">
                           Sin facturas (sede ni web)
@@ -3601,14 +3613,18 @@ function AdminDashboardContent() {
                         ? 'No se encontraron clientes'
                         : paymentStatusFilter === 'missing-receipt'
                           ? 'Sin casos en este filtro'
-                          : 'No hay clientes registrados'
+                          : paymentStatusFilter === 'with-credit'
+                            ? 'Nadie con saldo a favor'
+                            : 'No hay clientes registrados'
                     }
                     description={
                       userSearchTerm
                         ? `No hay clientes que coincidan con "${userSearchTerm}"`
                         : paymentStatusFilter === 'missing-receipt'
                           ? 'No hay clientes con plan vigente y sin ninguna factura en sede ni orden web aprobada.'
-                          : 'Los clientes aparecerán aquí cuando se registren'
+                          : paymentStatusFilter === 'with-credit'
+                            ? 'Ningún cliente tiene saldo a favor en este momento.'
+                            : 'Los clientes aparecerán aquí cuando se registren'
                     }
                   />
                 ) : (
@@ -3725,6 +3741,10 @@ function AdminDashboardContent() {
                                       <p className={clientsListStyles.clientEmail}>
                                         {user.email || 'Sin email'}
                                       </p>
+                                      <GymClientCreditBadge
+                                        balance={user.credit_balance}
+                                        className="mt-1"
+                                      />
                                     </div>
                                   </div>
                                 </td>
@@ -4390,6 +4410,9 @@ function AdminDashboardContent() {
                                     </div>
                                   )}
                                   {statusBadge}
+                                  <GymClientCreditBadge
+                                    balance={user.credit_balance}
+                                  />
                                 </div>
                                 <div className="flex flex-col gap-1 mt-1">
                                   <p className="text-xs text-gray-500 dark:text-white/40 truncate">
