@@ -30,10 +30,6 @@ import {
   parseLocalDate,
 } from '@/lib/dateUtils';
 import {
-  fetchClientCreditBalance,
-  postClientCredit,
-} from '@/modules/gym-admin/services/gym-client-credits.service';
-import {
   adminFormModalStyles as modal,
   gymPaymentsListStyles as styles,
 } from '@/modules/gym-admin/styles';
@@ -128,7 +124,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
     const [expiredMembershipToPay, setExpiredMembershipToPay] =
       useState<any>(null);
     const [discountPercent, setDiscountPercent] = useState<number>(0);
-    /** Membresía vigente del mismo plan (exige decidir: renovar hoy o abonar saldo). */
+    /** Membresía vigente del mismo plan (exige confirmar renovación desde hoy). */
     const [activePlanSnapshot, setActivePlanSnapshot] = useState<{
       id: string;
       planName: string;
@@ -137,38 +133,18 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
       status: string;
     } | null>(null);
     /** Decisión cuando ya hay período vigente del mismo plan. */
-    const [renewalDecision, setRenewalDecision] = useState<
-      'today' | 'credit' | null
-    >(null);
+    const [renewalDecision, setRenewalDecision] = useState<'today' | null>(
+      null,
+    );
     const [renewalOptions, setRenewalOptions] = useState<{
       todayStart: string;
       todayEnd: string;
       currentEnd: string;
     } | null>(null);
-    const [creditBalance, setCreditBalance] = useState(0);
-    const [applyCredit, setApplyCredit] = useState(false);
-    const [creditToApply, setCreditToApply] = useState(0);
     const [amountFieldFocused, setAmountFieldFocused] = useState(false);
     const [urlParamsProcessed, setUrlParamsProcessed] = useState(false);
     /** Si viene en la URL (ej. ficha cliente → Renovar), fijar inicio del período. */
     const forcedPeriodStartRef = useRef<string | null>(null);
-
-    const loadClientCredit = async (clientInfoId: string) => {
-      try {
-        const { balance } = await fetchClientCreditBalance(clientInfoId);
-        setCreditBalance(balance);
-        if (balance > 0) {
-          setApplyCredit(true);
-        } else {
-          setApplyCredit(false);
-          setCreditToApply(0);
-        }
-      } catch {
-        setCreditBalance(0);
-        setApplyCredit(false);
-        setCreditToApply(0);
-      }
-    };
 
     useEffect(() => {
       loadData();
@@ -232,7 +208,6 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
               setHasActiveMembership(false);
               setCheckingMembership(false);
               setExpiredMembershipToPay(null);
-              void loadClientCredit(client.id);
             }
 
             // Luego establecer el plan si existe
@@ -294,17 +269,6 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
         );
       }
     }, [selectedPlan?.id, selectedClient?.id]);
-
-    // Si hay saldo a favor y está activo “usar saldo”, ajustar monto a aplicar.
-    useEffect(() => {
-      if (!applyCredit || creditBalance <= 0) return;
-      const base = Number(formData.amount) || 0;
-      const effective =
-        discountPercent > 0
-          ? Math.round(base * (1 - Math.min(99, discountPercent) / 100))
-          : base;
-      setCreditToApply(Math.min(creditBalance, Math.max(0, effective)));
-    }, [applyCredit, creditBalance, formData.amount, discountPercent]);
 
     // Mantener period_end en sync cuando cambia el plan (amount, duration) — por días del plan
     useEffect(() => {
@@ -389,7 +353,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
               new Date(b.end_date).getTime() - new Date(a.end_date).getTime(),
           )[0];
 
-          // Vigente del mismo plan → renovar desde hoy o abonar saldo (sin membresía futura).
+          // Vigente del mismo plan → renovar desde hoy (sin membresía futura).
           if (activeMembershipForThisPlan) {
             const planDuration = planForCalc?.duration_days ?? 30;
             const endStr = String(
@@ -513,8 +477,6 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
       setHasActiveMembership(false);
       setCheckingMembership(false);
       setExpiredMembershipToPay(null);
-      setCreditToApply(0);
-      void loadClientCredit(client.id);
     };
 
     const handlePlanSelect = (plan: GymPlan) => {
@@ -530,11 +492,6 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
         period_end: renewalOptions.todayEnd,
       }));
       setRenewalDecision('today');
-    };
-
-    /** Abonar saldo: cobra sin crear membresía. */
-    const chooseCreditDeposit = () => {
-      setRenewalDecision('credit');
     };
 
     const resetRenewalDecision = () => {
@@ -562,7 +519,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
 
         if (activePlanSnapshot && renewalDecision === null) {
           setError(
-            'Este cliente ya tiene el plan vigente. Elige "Renovar desde hoy" o "Abonar saldo a favor".',
+            'Este cliente ya tiene el plan vigente. Elige "Renovar desde hoy".',
           );
           setIsSubmitting(false);
           return;
@@ -574,30 +531,9 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
             ? Math.round(baseAmount * (1 - Math.min(99, discountPercent) / 100))
             : baseAmount;
 
-        // Solo abono: no crea membresía ni factura de período
-        if (renewalDecision === 'credit') {
-          if (effectiveAmount <= 0) {
-            throw new Error('El monto del abono debe ser mayor a 0');
-          }
-          await postClientCredit({
-            client_info_id: formData.client_info_id,
-            amount: effectiveAmount,
-            type: 'deposit',
-            notes:
-              formData.notes?.trim() ||
-              `Abono a favor · ${selectedPlan?.name || 'plan'}`,
-          });
-          resetForm();
-          setShowForm(false);
-          loadPayments();
-          return;
+        if (effectiveAmount <= 0) {
+          throw new Error('El monto debe ser mayor a 0');
         }
-
-        const creditApplied =
-          applyCredit && creditToApply > 0
-            ? Math.min(creditToApply, creditBalance, effectiveAmount)
-            : 0;
-        const cashAmount = Math.max(0, effectiveAmount - creditApplied);
 
         const membershipRes = await fetch('/api/admin/gym/memberships', {
           method: 'POST',
@@ -626,8 +562,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
             membership_id: membershipId,
             client_info_id: formData.client_info_id,
             plan_id: formData.plan_id,
-            amount: cashAmount,
-            credit_applied: creditApplied,
+            amount: effectiveAmount,
             payment_method: formData.payment_method,
             payment_date: formData.payment_date,
             period_start: formData.period_start,
@@ -672,9 +607,6 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
       setActivePlanSnapshot(null);
       setRenewalDecision(null);
       setRenewalOptions(null);
-      setCreditBalance(0);
-      setApplyCredit(false);
-      setCreditToApply(0);
       setUrlParamsProcessed(false);
       setDiscountPercent(0);
       setAmountFieldFocused(false);
@@ -703,7 +635,6 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
               ...prev,
               client_info_id: clientId,
             }));
-            void loadClientCredit(clientId);
           }
         }
 
@@ -873,7 +804,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                   </div>
                 )}
 
-                {/* Decisión: plan vigente → renovar hoy o abonar saldo */}
+                {/* Decisión: plan vigente → renovar desde hoy */}
                 {activePlanSnapshot &&
                   renewalDecision === null &&
                   renewalOptions &&
@@ -895,73 +826,34 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                           </p>
                           <p className="text-[11px] text-[#164151]/65 dark:text-white/50 mt-0.5 leading-relaxed">
                             No se crea una membresía futura. Puedes renovar el
-                            período desde hoy o abonar saldo a favor para usarlo
-                            después.
+                            período desde hoy.
                           </p>
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <button
-                          type="button"
-                          onClick={chooseRenewToday}
-                          className="rounded-lg border border-gray-200/90 dark:border-white/[0.1] bg-white/70 dark:bg-white/[0.04] px-3 py-2.5 text-left hover:border-[#85ea10]/40 hover:bg-[#85ea10]/[0.04] transition-colors"
-                        >
-                          <p className="text-sm font-semibold text-[#164151] dark:text-white/95">
-                            Renovar desde hoy
-                          </p>
-                          <p className="text-[11px] text-[#164151]/70 dark:text-white/55 mt-1 tabular-nums">
-                            {formatDateOnlyLocal(renewalOptions.todayStart, {
-                              day: '2-digit',
-                              month: 'short',
-                            })}{' '}
-                            →{' '}
-                            {formatDateOnlyLocal(renewalOptions.todayEnd, {
-                              day: '2-digit',
-                              month: 'short',
-                              year: 'numeric',
-                            })}
-                          </p>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={chooseCreditDeposit}
-                          className="rounded-lg border border-gray-200/90 dark:border-white/[0.1] bg-white/70 dark:bg-white/[0.04] px-3 py-2.5 text-left hover:border-[#85ea10]/40 hover:bg-[#85ea10]/[0.04] transition-colors"
-                        >
-                          <p className="text-sm font-semibold text-[#164151] dark:text-white/95">
-                            Abonar saldo a favor
-                          </p>
-                          <p className="text-[11px] text-[#164151]/70 dark:text-white/55 mt-1">
-                            Sin membresía nueva. Queda disponible para cuando
-                            renueve.
-                          </p>
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                {renewalDecision === 'credit' && activePlanSnapshot && (
-                  <div className="p-3.5 sm:p-4 bg-slate-50 dark:bg-white/[0.03] border border-slate-200/90 dark:border-white/[0.08] rounded-xl space-y-2">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-xs font-semibold text-[#164151] dark:text-white/90">
-                        Abono a saldo a favor
-                      </p>
                       <button
                         type="button"
-                        onClick={resetRenewalDecision}
-                        className="text-[11px] font-medium text-slate-500 hover:text-[#164151] dark:text-white/50 dark:hover:text-white"
+                        onClick={chooseRenewToday}
+                        className="w-full rounded-lg border border-gray-200/90 dark:border-white/[0.1] bg-white/70 dark:bg-white/[0.04] px-3 py-2.5 text-left hover:border-[#85ea10]/40 hover:bg-[#85ea10]/[0.04] transition-colors"
                       >
-                        Cambiar
+                        <p className="text-sm font-semibold text-[#164151] dark:text-white/95">
+                          Renovar desde hoy
+                        </p>
+                        <p className="text-[11px] text-[#164151]/70 dark:text-white/55 mt-1 tabular-nums">
+                          {formatDateOnlyLocal(renewalOptions.todayStart, {
+                            day: '2-digit',
+                            month: 'short',
+                          })}{' '}
+                          →{' '}
+                          {formatDateOnlyLocal(renewalOptions.todayEnd, {
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric',
+                          })}
+                        </p>
                       </button>
                     </div>
-                    <p className="text-[11px] text-[#164151]/65 dark:text-white/50 leading-relaxed">
-                      Se registrará el monto como saldo del cliente. No se crea
-                      período ni factura de membresía. Plan de referencia:{' '}
-                      {activePlanSnapshot.planName}.
-                    </p>
-                  </div>
-                )}
+                  )}
 
                 {renewalDecision === 'today' && activePlanSnapshot && (
                   <div className="p-3 sm:p-3.5 bg-[#85ea10]/[0.07] dark:bg-[#85ea10]/[0.08] border border-[#85ea10]/20 dark:border-[#85ea10]/15 rounded-xl flex items-center justify-between gap-2">
@@ -1005,16 +897,6 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                             {selectedClient.document_id} •{' '}
                             {selectedClient.whatsapp}
                           </p>
-                          {creditBalance > 0 ? (
-                            <p className="mt-1 text-[11px] font-semibold text-[#85ea10] tabular-nums">
-                              Saldo a favor: $
-                              {creditBalance.toLocaleString('es-CO')}
-                            </p>
-                          ) : (
-                            <p className="mt-1 text-[11px] text-gray-400 dark:text-white/35">
-                              Saldo a favor: $0
-                            </p>
-                          )}
                         </div>
                       </div>
                       <button
@@ -1022,9 +904,6 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                         onClick={() => {
                           setSelectedClient(null);
                           setFormData({ ...formData, client_info_id: '' });
-                          setCreditBalance(0);
-                          setApplyCredit(false);
-                          setCreditToApply(0);
                         }}
                         className="text-xs text-gray-500 hover:text-[#164151] dark:hover:text-white"
                       >
@@ -1206,96 +1085,6 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                       </div>
                     </div>
 
-                    {renewalDecision !== 'credit' &&
-                      creditBalance > 0 &&
-                      selectedClient && (
-                        <div className="p-3 sm:p-3.5 rounded-xl border border-[#85ea10]/25 bg-[#85ea10]/[0.06] dark:bg-[#85ea10]/[0.08] space-y-2">
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={applyCredit}
-                              onChange={(e) => {
-                                const on = e.target.checked;
-                                setApplyCredit(on);
-                                if (on) {
-                                  const base = formData.amount;
-                                  const effective =
-                                    discountPercent > 0
-                                      ? Math.round(
-                                          base *
-                                            (1 -
-                                              Math.min(99, discountPercent) /
-                                                100),
-                                        )
-                                      : base;
-                                  setCreditToApply(
-                                    Math.min(creditBalance, effective),
-                                  );
-                                } else {
-                                  setCreditToApply(0);
-                                }
-                              }}
-                              className="w-4 h-4 rounded border-gray-300 text-[#85ea10] focus:ring-[#85ea10]"
-                            />
-                            <span className="text-xs font-semibold text-[#164151] dark:text-white">
-                              Usar saldo a favor ($
-                              {creditBalance.toLocaleString('es-CO')})
-                            </span>
-                          </label>
-                          {applyCredit ? (
-                            <div className="flex items-center gap-2">
-                              <span className="text-[11px] text-[#164151]/60 dark:text-white/50">
-                                Aplicar $
-                              </span>
-                              <input
-                                type="number"
-                                min={0}
-                                max={creditBalance}
-                                value={creditToApply || ''}
-                                onChange={(e) => {
-                                  const v =
-                                    e.target.value === ''
-                                      ? 0
-                                      : Number(e.target.value);
-                                  const base = formData.amount;
-                                  const effective =
-                                    discountPercent > 0
-                                      ? Math.round(
-                                          base *
-                                            (1 -
-                                              Math.min(99, discountPercent) /
-                                                100),
-                                        )
-                                      : base;
-                                  setCreditToApply(
-                                    Math.min(
-                                      creditBalance,
-                                      effective,
-                                      Math.max(0, v),
-                                    ),
-                                  );
-                                }}
-                                className="w-32 px-2.5 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 tabular-nums"
-                              />
-                              <span className="text-[11px] text-[#164151]/55 dark:text-white/45">
-                                Cobrar en caja: $
-                                {Math.max(
-                                  0,
-                                  (discountPercent > 0
-                                    ? Math.round(
-                                        formData.amount *
-                                          (1 -
-                                            Math.min(99, discountPercent) /
-                                              100),
-                                      )
-                                    : formData.amount) - creditToApply,
-                                ).toLocaleString('es-CO')}
-                              </span>
-                            </div>
-                          ) : null}
-                        </div>
-                      )}
-
                     {discountPercent > 0 && (
                       <div className="p-3 sm:p-3.5 bg-gray-50 dark:bg-white/[0.03] rounded-xl border border-gray-200/80 dark:border-white/[0.08]">
                         <div className="flex items-center justify-between gap-3">
@@ -1315,15 +1104,9 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                   </>
                 )}
 
-                {/* Fechas: en abono solo fecha de pago; en membresía también período */}
+                {/* Fechas del pago y del período */}
                 {selectedPlan && (
-                  <div
-                    className={`grid grid-cols-1 gap-4 md:gap-6 ${
-                      renewalDecision === 'credit'
-                        ? 'sm:grid-cols-1 max-w-sm'
-                        : 'sm:grid-cols-3'
-                    }`}
-                  >
+                  <div className="grid grid-cols-1 gap-4 md:gap-6 sm:grid-cols-3">
                     <div className="min-w-0">
                       <label
                         htmlFor="gym-payment-date"
@@ -1341,9 +1124,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                       />
                     </div>
 
-                    {renewalDecision !== 'credit' ? (
-                      <>
-                        <div className="min-w-0">
+                    <div className="min-w-0">
                           <label
                             htmlFor="gym-period-start"
                             className="block text-xs font-medium tracking-wide text-[#164151]/80 dark:text-white/70 mb-2 leading-snug"
@@ -1394,8 +1175,6 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                             aria-label="Fin del período (calculado)"
                           />
                         </div>
-                      </>
-                    ) : null}
                   </div>
                 )}
 
@@ -1443,9 +1222,7 @@ const GymPaymentsManagement = forwardRef<GymPaymentsManagementRef>(
                       ? 'Registrando...'
                       : checkingMembership
                         ? 'Verificando...'
-                        : renewalDecision === 'credit'
-                          ? 'Registrar abono'
-                          : 'Registrar pago'}
+                        : 'Registrar pago'}
                   </button>
                 </div>
               </form>

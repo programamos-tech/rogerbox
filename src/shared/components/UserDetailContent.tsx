@@ -34,9 +34,7 @@ import {
 import { gymUserDetailStyles as adminT } from '@/modules/gym-admin/styles';
 import { WhatsAppIcon } from '@/shared/components/WhatsAppIcon';
 import { GymClientPurchasesTable } from '@/modules/gym-admin';
-import { GymClientCreditBanner } from '@/modules/gym-admin/components/GymClientCreditBanner';
 import { GymPendingAdvancesPanel } from '@/modules/gym-admin/components/GymPendingAdvancesPanel';
-import { useGymClientCredit } from '@/modules/gym-admin/hooks/useGymClientCredit';
 import {
   formatDateOnlyLocal,
   getMembershipPeriodProgress,
@@ -574,9 +572,6 @@ export function UserDetailContent({
           '',
       ) || null
     : null;
-  const { data: creditData, refetch: refetchCredit } =
-    useGymClientCredit(adminClientInfoId);
-  const creditBalance = creditData?.balance ?? 0;
 
   return (
     <>
@@ -1424,17 +1419,12 @@ export function UserDetailContent({
                       </span>
                     </div>
                     {adminClientInfoId ? (
-                      <div className="mb-4 space-y-3">
+                      <div className="mb-4">
                         <GymPendingAdvancesPanel
                           clientInfoId={adminClientInfoId}
                           onResolved={() => {
                             void loadUserData({ quiet: true });
-                            void refetchCredit();
                           }}
-                        />
-                        <GymClientCreditBanner
-                          clientInfoId={adminClientInfoId}
-                          balance={creditBalance}
                         />
                       </div>
                     ) : null}
@@ -1551,11 +1541,6 @@ export function UserDetailContent({
                           label: 'Total facturado',
                           value: `$${totalFacturado.toLocaleString('es-CO')} COP`,
                         },
-                        {
-                          label: 'Saldo a favor',
-                          value: `$${creditBalance.toLocaleString('es-CO')} COP`,
-                          emphasize: creditBalance > 0,
-                        },
                         { label: 'Cliente desde', value: clienteDesde },
                         {
                           label: 'Restricciones',
@@ -1577,13 +1562,7 @@ export function UserDetailContent({
                               <span className={adminT.summaryLabel}>
                                 {item.label}
                               </span>
-                              <span
-                                className={
-                                  item.emphasize
-                                    ? `${adminT.summaryValue} text-[#3f7d08] dark:text-[#85ea10]`
-                                    : adminT.summaryValue
-                                }
-                              >
+                              <span className={adminT.summaryValue}>
                                 {item.value}
                               </span>
                             </div>

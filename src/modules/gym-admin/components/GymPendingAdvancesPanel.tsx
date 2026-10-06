@@ -1,12 +1,12 @@
 'use client';
 
-import { AlertTriangle, Check, Wallet, X } from 'lucide-react';
+import { AlertTriangle, Check, X } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { formatDateOnlyLocal } from '@/lib/dateUtils';
 import {
+  discardPendingAdvance,
   fetchPendingAdvances,
-  resolvePendingAdvance,
-} from '@/modules/gym-admin/services/gym-client-credits.service';
+} from '@/modules/gym-admin/services/gym-pending-advances.service';
 import type { GymPendingAdvance } from '@/types/gym';
 
 export function GymPendingAdvancesPanel({
@@ -29,8 +29,8 @@ export function GymPendingAdvancesPanel({
       setError('');
       const data = await fetchPendingAdvances(clientInfoId);
       setItems(data);
-    } catch (e: any) {
-      setError(e.message || 'Error al cargar anticipos');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error al cargar anticipos');
     } finally {
       setLoading(false);
     }
@@ -40,18 +40,17 @@ export function GymPendingAdvancesPanel({
     load();
   }, [load]);
 
-  const handleAction = async (
-    membershipId: string,
-    action: 'convert' | 'discard',
-  ) => {
+  const handleDiscard = async (membershipId: string) => {
     try {
       setBusyId(membershipId);
       setError('');
-      await resolvePendingAdvance({ membership_id: membershipId, action });
+      await discardPendingAdvance(membershipId);
       setItems((prev) => prev.filter((i) => i.membership_id !== membershipId));
       onResolved?.();
-    } catch (e: any) {
-      setError(e.message || 'No se pudo resolver el anticipo');
+    } catch (e) {
+      setError(
+        e instanceof Error ? e.message : 'No se pudo descartar el anticipo',
+      );
     } finally {
       setBusyId(null);
     }
@@ -85,9 +84,8 @@ export function GymPendingAdvancesPanel({
               : `Anticipos por revisar (${items.length})`}
           </p>
           <p className="text-xs text-[#164151]/65 dark:text-white/50 mt-0.5 leading-relaxed">
-            {isClientScope
-              ? 'Membresía futura del flujo anterior. Convierte el pago a saldo a favor o descártalo (empieza en $0) con el contexto de este cliente.'
-              : 'Membresías futuras creadas con el flujo viejo. Decide por cliente si conviertes el pago a saldo a favor o lo descartas (empieza en $0).'}
+            Membresía futura del flujo anterior. Puedes descartarla y anular su
+            factura.
           </p>
         </div>
       </div>
@@ -143,28 +141,16 @@ export function GymPendingAdvancesPanel({
                   ' · Sin factura'
                 )}
               </p>
-              <p className="text-[11px] text-[#164151]/50 dark:text-white/40 mt-0.5">
-                Saldo actual: ${item.credit_balance.toLocaleString('es-CO')}
-              </p>
             </div>
             <div className="flex flex-wrap gap-2 shrink-0">
               <button
                 type="button"
-                disabled={busyId === item.membership_id || !item.payment_id}
-                onClick={() => handleAction(item.membership_id, 'convert')}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#164151] text-white text-xs font-semibold hover:bg-[#1a4d5f] disabled:opacity-50"
-              >
-                <Wallet className="w-3.5 h-3.5" />
-                Convertir a saldo
-              </button>
-              <button
-                type="button"
                 disabled={busyId === item.membership_id}
-                onClick={() => handleAction(item.membership_id, 'discard')}
+                onClick={() => handleDiscard(item.membership_id)}
                 className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-300 dark:border-white/15 text-[#164151] dark:text-white text-xs font-semibold hover:bg-white/60 dark:hover:bg-white/5 disabled:opacity-50"
               >
                 <X className="w-3.5 h-3.5" />
-                Empezar en $0
+                Descartar
               </button>
               {busyId === item.membership_id ? (
                 <span className="inline-flex items-center gap-1 text-[11px] text-[#164151]/50 dark:text-white/40">

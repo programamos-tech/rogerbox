@@ -22,22 +22,6 @@ function isAdminUser(
   return Boolean(matchId || matchEmail || matchRole);
 }
 
-async function getBalances(
-  clientIds: string[],
-): Promise<Map<string, number>> {
-  const map = new Map<string, number>();
-  if (clientIds.length === 0) return map;
-  const { data } = await supabaseAdmin
-    .from('gym_client_credits')
-    .select('client_info_id, amount')
-    .in('client_info_id', clientIds);
-  for (const row of data || []) {
-    const id = String(row.client_info_id);
-    map.set(id, (map.get(id) || 0) + Number(row.amount || 0));
-  }
-  return map;
-}
-
 // GET - membresías futuras (Próximo) con factura, pendientes de revisar
 // Opcional: ?client_info_id= para el detalle de un cliente
 export async function GET(request: NextRequest) {
@@ -91,11 +75,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const clientIds = [
-      ...new Set((rows || []).map((r) => String(r.client_info_id))),
-    ];
-    const balances = await getBalances(clientIds);
-
     const items = (rows || []).map((m: any) => {
       const client = Array.isArray(m.client_info)
         ? m.client_info[0]
@@ -123,7 +102,6 @@ export async function GET(request: NextRequest) {
         payment_date: activePayment?.payment_date
           ? String(activePayment.payment_date).slice(0, 10)
           : null,
-        credit_balance: balances.get(String(m.client_info_id)) || 0,
       };
     });
 
@@ -136,7 +114,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST - convertir a saldo o empezar en 0
+// POST - descartar una membresía futura que aún no ha empezado
 export async function POST(request: NextRequest) {
   try {
     const { user } = await getUser();
@@ -146,11 +124,10 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const membershipId = String(body.membership_id || '').trim();
-    const action = body.action === 'convert' ? 'convert' : body.action === 'discard' ? 'discard' : null;
 
-    if (!membershipId || !action) {
+    if (!membershipId) {
       return NextResponse.json(
-        { error: 'membership_id y action (convert|discard) son requeridos' },
+        { error: 'membership_id es requerido' },
         { status: 400 },
       );
     }
@@ -205,64 +182,15 @@ export async function POST(request: NextRequest) {
 
     const activePayment = (payments || []).find((p) => p.status !== 'voided');
 
-    if (action === 'convert') {
-      if (!activePayment) {
-        return NextResponse.json(
-          { error: 'No hay pago activo para convertir a saldo' },
-          { status: 400 },
-        );
-      }
-
-      const amount = Number(activePayment.amount);
-      if (!(amount > 0)) {
-        return NextResponse.json(
-          { error: 'Monto de pago inválido' },
-          { status: 400 },
-        );
-      }
-
-      const { error: creditError } = await supabaseAdmin
-        .from('gym_client_credits')
-        .insert({
-          client_info_id: membership.client_info_id,
-          amount,
-          type: 'deposit',
-          payment_id: activePayment.id,
-          membership_id: membershipId,
-          notes: `Convertido desde anticipo factura #${activePayment.invoice_number || '—'}`,
-          store_id: STORE_ID_FISICA,
-          created_by: user?.id,
-        });
-
-      if (creditError) {
-        return NextResponse.json(
-          { error: 'Error al crear abono' },
-          { status: 500 },
-        );
-      }
-
+    if (activePayment) {
       await supabaseAdmin
         .from('gym_payments')
         .update({
           status: 'voided',
-          voided_reason:
-            'Anticipo convertido a saldo a favor (membresía futura cancelada).',
+          voided_reason: 'Anticipo descartado: membresía futura cancelada.',
           updated_at: new Date().toISOString(),
         })
         .eq('id', activePayment.id);
-    } else {
-      // discard: empezar en 0 — anular pago si existe, sin abono
-      if (activePayment) {
-        await supabaseAdmin
-          .from('gym_payments')
-          .update({
-            status: 'voided',
-            voided_reason:
-              'Anticipo descartado: cliente empieza en saldo $0 (membresía futura cancelada).',
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', activePayment.id);
-      }
     }
 
     await supabaseAdmin
@@ -279,10 +207,7 @@ export async function POST(request: NextRequest) {
 
     await insertLog({
       user_id: user?.id,
-      action:
-        action === 'convert'
-          ? 'gym_advance_convert_credit'
-          : 'gym_advance_discard',
+      action: 'gym_advance_discard',
       module: 'payments',
       details: {
         membership_id: membershipId,
@@ -290,23 +215,12 @@ export async function POST(request: NextRequest) {
         client_name: clientName || null,
         payment_id: activePayment?.id || null,
         amount: activePayment ? Number(activePayment.amount) : null,
-        description:
-          action === 'convert'
-            ? 'Anticipo convertido a saldo a favor'
-            : 'Anticipo descartado; saldo en $0',
+        description: 'Anticipo descartado; membresía futura cancelada',
       },
       store_id: STORE_ID_FISICA,
     });
 
-    const newBalance = await getBalances([
-      String(membership.client_info_id),
-    ]).then((m) => m.get(String(membership.client_info_id)) || 0);
-
-    return NextResponse.json({
-      success: true,
-      action,
-      credit_balance: newBalance,
-    });
+    return NextResponse.json({ success: true });
   } catch {
     return NextResponse.json(
       { error: 'Error interno del servidor' },

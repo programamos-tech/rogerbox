@@ -125,8 +125,7 @@ export async function POST(request: NextRequest) {
       invoice_number,
       notes,
       user_id,
-    } = body as GymPaymentInsert & { credit_applied?: number };
-    const creditApplied = Math.max(0, Number(body.credit_applied) || 0);
+    } = body as GymPaymentInsert;
 
     // Validaciones
     if (
@@ -146,16 +145,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (Number(amount) < 0) {
+    if (Number(amount) <= 0) {
       return NextResponse.json(
-        { error: 'El monto no puede ser negativo' },
-        { status: 400 },
-      );
-    }
-
-    if (Number(amount) === 0 && creditApplied <= 0) {
-      return NextResponse.json(
-        { error: 'El monto debe ser mayor a 0 o usar saldo a favor' },
+        { error: 'El monto debe ser mayor a 0' },
         { status: 400 },
       );
     }
@@ -201,33 +193,6 @@ export async function POST(request: NextRequest) {
         { error: 'Esta membresía ya tiene un pago registrado.' },
         { status: 400 },
       );
-    }
-
-    if (creditApplied > 0) {
-      const { data: creditRows, error: creditBalError } = await supabaseAdmin
-        .from('gym_client_credits')
-        .select('amount')
-        .eq('client_info_id', client_info_id);
-
-      if (creditBalError) {
-        return NextResponse.json(
-          { error: 'Error al consultar saldo a favor' },
-          { status: 500 },
-        );
-      }
-
-      const balance = (creditRows || []).reduce(
-        (sum, row) => sum + Number(row.amount || 0),
-        0,
-      );
-      if (creditApplied > balance + 0.001) {
-        return NextResponse.json(
-          {
-            error: `Saldo insuficiente. Disponible: $${balance.toLocaleString('es-CO')}`,
-          },
-          { status: 400 },
-        );
-      }
     }
 
     // Obtener user_id: primero del parámetro, luego de la membresía, luego del client_info
@@ -281,7 +246,6 @@ export async function POST(request: NextRequest) {
         client_info_id,
         plan_id,
         amount,
-        credit_applied: creditApplied,
         payment_method,
         payment_date,
         period_start,
@@ -308,29 +272,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (creditApplied > 0) {
-      const { error: applyError } = await supabaseAdmin
-        .from('gym_client_credits')
-        .insert({
-          client_info_id,
-          amount: -creditApplied,
-          type: 'apply',
-          payment_id: data.id,
-          membership_id,
-          notes: `Aplicado a factura #${finalInvoiceNumber}`,
-          store_id: storeIdForPayment,
-          created_by: user?.id,
-        });
-
-      if (applyError) {
-        await supabaseAdmin.from('gym_payments').delete().eq('id', data.id);
-        return NextResponse.json(
-          { error: 'Error al aplicar saldo a favor' },
-          { status: 500 },
-        );
-      }
-    }
-
     // Actualizar la membresía a 'active' si estaba en otro estado
     if (membership.status !== 'active') {
       await supabaseAdmin
@@ -347,7 +288,6 @@ export async function POST(request: NextRequest) {
       details: {
         payment_id: data.id,
         amount,
-        credit_applied: creditApplied,
         payment_method,
         client_info_id,
         client_name: data.client_info?.name || null,
@@ -356,11 +296,7 @@ export async function POST(request: NextRequest) {
         period_start,
         period_end,
         payment_date,
-        description: `Pago sede física: $${Number(amount).toLocaleString()}${
-          creditApplied > 0
-            ? ` + saldo $${creditApplied.toLocaleString('es-CO')}`
-            : ''
-        }`,
+        description: `Pago sede física: $${Number(amount).toLocaleString()}`,
       },
       store_id: storeIdForPayment,
     });
